@@ -29,24 +29,24 @@
 #include "DNP3PortConf.h"
 #include <opendatacon/util.h>
 #include <opendnp3/gen/Parity.h>
-#include <openpal/logging/LogLevels.h>
+#include <opendnp3/logging/LogLevels.h>
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	ChanH(this)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
-	static std::weak_ptr<asiodnp3::DNP3Manager> weak_mgr;
+	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
 
 	//if we're the first/only one on the scene,
 	// init the DNP3Manager
 	if(!init_flag.test_and_set(std::memory_order_acquire))
 	{
 		//make a custom deleter for the DNP3Manager that will also clear the init flag
-		auto deinit_del = [](asiodnp3::DNP3Manager* mgr_ptr)
+		auto deinit_del = [](opendnp3::DNP3Manager* mgr_ptr)
 					{init_flag.clear(); delete mgr_ptr;};
-		this->IOMgr = std::shared_ptr<asiodnp3::DNP3Manager>(
-			new asiodnp3::DNP3Manager(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>()),
+		this->IOMgr = std::shared_ptr<opendnp3::DNP3Manager>(
+			new opendnp3::DNP3Manager(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>()),
 			deinit_del);
 		weak_mgr = this->IOMgr;
 	}

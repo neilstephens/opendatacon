@@ -100,6 +100,8 @@ TEST_CASE(SUITE("TCP link"))
 		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
+		MPUT->Disable();
+
 		work.reset();
 		t.join();
 		ios.reset();
@@ -201,6 +203,8 @@ TEST_CASE(SUITE("Serial link"))
 
 			REQUIRE(new_status == "Port enabled - link down");
 			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
+			MPUT->Disable();
 
 			if(system("killall socat"))
 			{

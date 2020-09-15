@@ -27,51 +27,28 @@
 #include "DNP3Log2spdlog.h"
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
-#include <opendnp3/LogLevels.h>
+#include <opendnp3/logging/LogLevels.h>
 
 DNP3Log2spdlog::DNP3Log2spdlog()
 {}
 
-void DNP3Log2spdlog::Log( const openpal::LogEntry& arEntry )
+void DNP3Log2spdlog::log(opendnp3::ModuleId module, const char* id, opendnp3::LogLevel level, char const* location, char const* message)
 {
-	auto DNP3LevelName = opendnp3::LogFlagToString(arEntry.filters.GetBitfield());
-	spdlog::level::level_enum spdlevel = FilterToLevel(arEntry.filters);
+	auto DNP3LevelName = opendnp3::LogFlagToString(level);
+	spdlog::level::level_enum spdlevel;
+	if(level == opendnp3::flags::EVENT)
+		spdlevel = spdlog::level::critical;
+	else if(level == opendnp3::flags::ERR)
+		spdlevel = spdlog::level::err;
+	else if(level == opendnp3::flags::WARN)
+		spdlevel = spdlog::level::warn;
+	else if(level == opendnp3::flags::INFO)
+		spdlevel = spdlog::level::info;
+	else if(level == opendnp3::flags::DBG)
+		spdlevel = spdlog::level::debug;
+	else
+		spdlevel = spdlog::level::trace;
+
 	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->log(spdlevel, "{} - {} - {}",
-			DNP3LevelName,
-			arEntry.loggerid,
-			arEntry.message);
-}
-
-spdlog::level::level_enum DNP3Log2spdlog::FilterToLevel(const openpal::LogFilters& filters)
-{
-	switch (filters.GetBitfield())
-	{
-
-		case (opendnp3::flags::EVENT):
-			return spdlog::level::critical;
-		case (opendnp3::flags::ERR):
-			return spdlog::level::err;
-		case (opendnp3::flags::WARN):
-			return spdlog::level::warn;
-		case (opendnp3::flags::INFO):
-			return spdlog::level::info;
-		case (opendnp3::flags::DBG):
-			return spdlog::level::debug;
-		case (opendnp3::flags::LINK_RX):
-		case (opendnp3::flags::LINK_RX_HEX):
-		case (opendnp3::flags::LINK_TX):
-		case (opendnp3::flags::LINK_TX_HEX):
-		case (opendnp3::flags::TRANSPORT_RX):
-		case (opendnp3::flags::TRANSPORT_TX):
-		case (opendnp3::flags::APP_HEADER_RX):
-		case (opendnp3::flags::APP_OBJECT_RX):
-		case (opendnp3::flags::APP_HEX_RX):
-		case (opendnp3::flags::APP_HEADER_TX):
-		case (opendnp3::flags::APP_OBJECT_TX):
-		case (opendnp3::flags::APP_HEX_TX):
-			return spdlog::level::trace;
-		default:
-			return spdlog::level::critical;
-	}
+		log->log(spdlevel, "{} - {} - {}",DNP3LevelName,id,message);
 }

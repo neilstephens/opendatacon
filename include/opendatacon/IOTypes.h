@@ -140,19 +140,12 @@ enum class CommandStatus : uint8_t
 enum class ControlCode : uint8_t
 {
 	NUL = 1,
-	NUL_CANCEL = 2,
 	PULSE_ON = 3,
-	PULSE_ON_CANCEL = 4,
 	PULSE_OFF = 5,
-	PULSE_OFF_CANCEL = 6,
 	LATCH_ON = 7,
-	LATCH_ON_CANCEL = 8,
 	LATCH_OFF = 9,
-	LATCH_OFF_CANCEL = 10,
 	CLOSE_PULSE_ON = 11,
-	CLOSE_PULSE_ON_CANCEL = 12,
 	TRIP_PULSE_ON = 13,
-	TRIP_PULSE_ON_CANCEL = 14,
 	UNDEFINED = 15
 };
 
@@ -204,19 +197,12 @@ inline std::string ToString(const CommandStatus cc)
 inline std::string ToString(const ControlCode cc)
 {
 	ENUMSTRING(cc,ControlCode,NUL                  )
-	ENUMSTRING(cc,ControlCode,NUL_CANCEL           )
 	ENUMSTRING(cc,ControlCode,PULSE_ON             )
-	ENUMSTRING(cc,ControlCode,PULSE_ON_CANCEL      )
 	ENUMSTRING(cc,ControlCode,PULSE_OFF            )
-	ENUMSTRING(cc,ControlCode,PULSE_OFF_CANCEL     )
 	ENUMSTRING(cc,ControlCode,LATCH_ON             )
-	ENUMSTRING(cc,ControlCode,LATCH_ON_CANCEL      )
 	ENUMSTRING(cc,ControlCode,LATCH_OFF            )
-	ENUMSTRING(cc,ControlCode,LATCH_OFF_CANCEL     )
 	ENUMSTRING(cc,ControlCode,CLOSE_PULSE_ON       )
-	ENUMSTRING(cc,ControlCode,CLOSE_PULSE_ON_CANCEL)
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON        )
-	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON_CANCEL )
 	ENUMSTRING(cc,ControlCode,UNDEFINED            )
 	return "<no_string_representation>";
 }
@@ -393,19 +379,12 @@ inline bool ToControlCode(const std::string StrControlCode, ControlCode& Control
 	ControlCodeResult = ControlCode::UNDEFINED;
 
 	CHECKCONTROLCODESTRING(ControlCode::CLOSE_PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::CLOSE_PULSE_ON_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::LATCH_OFF);
-	CHECKCONTROLCODESTRING(ControlCode::LATCH_OFF_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::LATCH_ON);
-	CHECKCONTROLCODESTRING(ControlCode::LATCH_ON_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::NUL);
-	CHECKCONTROLCODESTRING(ControlCode::NUL_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::PULSE_OFF);
-	CHECKCONTROLCODESTRING(ControlCode::PULSE_OFF_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::PULSE_ON_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::TRIP_PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::TRIP_PULSE_ON_CANCEL);
 
 	return (ControlCodeResult != ControlCode::UNDEFINED);
 }

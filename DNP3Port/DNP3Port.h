@@ -31,7 +31,7 @@
 #include "ChannelHandler.h"
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
-#include <asiodnp3/DNP3Manager.h>
+#include <opendnp3/DNP3Manager.h>
 
 using namespace odc;
 
@@ -57,7 +57,7 @@ public:
 protected:
 	ChannelHandler ChanH;
 
-	std::shared_ptr<asiodnp3::DNP3Manager> IOMgr;
+	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 
 	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;
 	virtual void ChannelWatchdogTrigger(bool on) = 0;

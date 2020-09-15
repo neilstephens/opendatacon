@@ -276,15 +276,6 @@ void ModbusMasterPort::Build()
 				log->error(msg);
 			throw std::runtime_error(msg);
 		}
-
-//Not needed? - doesn't work at least
-//		if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232) == -1)
-//		{
-//			std::string msg = Name + ": Stack error: 'Failed to set Modbus serial mode to RS232'";
-//			auto log_entry = openpal::LogEntry("ModbusMasterPort", openpal::logflags::ERR,"", msg.c_str(), -1);
-//			pLoggers->Log(log_entry);
-//			throw std::runtime_error(msg);
-//		}
 	}
 	else
 	{

@@ -11,11 +11,23 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 	link_deadness(LinkDeadness::LinkDownChannelDown)
 {}
 
+ChannelHandler::~ChannelHandler()
+{
+	StateListener = nullptr;
+	LinkDown = nullptr;
+	LinkUp = nullptr;
+	SetLinkStatus = nullptr;
+	std::weak_ptr<void> tracker = handler_tracker;
+	handler_tracker.reset();
+	while(!tracker.expired() && !pIOS->stopped())
+		pIOS->poll_one();
+}
+
 // Called by OpenDNP3 Thread Pool
 void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelState {}.", pPort->Name, opendnp3::ChannelStateToString(state));
+		log->debug("{}: ChannelState {}.", pPort->Name, opendnp3::ChannelStateSpec::to_human_string(state));
 
 	auto previous_deadness = link_deadness.load();
 
@@ -68,9 +80,9 @@ void ChannelHandler::LinkUp_()
 	}
 }
 
-std::shared_ptr<asiodnp3::IChannel> ChannelHandler::SetChannel()
+std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 {
-	static std::unordered_map<std::string, std::pair<std::weak_ptr<asiodnp3::IChannel>,std::weak_ptr<ChannelLinksWatchdog>>> Channels;
+	static std::unordered_map<std::string, std::pair<std::weak_ptr<opendnp3::IChannel>,std::weak_ptr<ChannelLinksWatchdog>>> Channels;
 
 	auto pConf = static_cast<DNP3PortConf*>(pPort->pConf.get());
 
@@ -104,10 +116,10 @@ std::shared_ptr<asiodnp3::IChannel> ChannelHandler::SetChannel()
 	//create a new channel and watchdog if we get to here
 	if(isSerial)
 	{
-		pChannel = pPort->IOMgr->AddSerial(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
-			asiopal::ChannelRetry(
-				openpal::TimeDuration::Milliseconds(500),
-				openpal::TimeDuration::Milliseconds(5000)),
+		pChannel = pPort->IOMgr->AddSerial(ChannelID, pConf->LOG_LEVEL,
+			opendnp3::ChannelRetry(
+				opendnp3::TimeDuration::Milliseconds(500),
+				opendnp3::TimeDuration::Milliseconds(5000)),
 			pConf->mAddrConf.SerialSettings,listener);
 	}
 	else
@@ -116,22 +128,21 @@ std::shared_ptr<asiodnp3::IChannel> ChannelHandler::SetChannel()
 		{
 			case TCPClientServer::SERVER:
 			{
-				pChannel = pPort->IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
+				pChannel = pPort->IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL,
 					pConf->pPointConf->ServerAcceptMode,
-					pConf->mAddrConf.IP,
-					pConf->mAddrConf.Port,listener);
+					opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)
+					,listener);
 				break;
 			}
 
 			case TCPClientServer::CLIENT:
 			{
-				pChannel = pPort->IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL.GetBitfield(),
-					asiopal::ChannelRetry(
-						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-						openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-					pConf->mAddrConf.IP,
-					"0.0.0.0",
-					pConf->mAddrConf.Port,listener);
+				pChannel = pPort->IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL,
+					opendnp3::ChannelRetry(
+						opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
+						opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
+					std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),
+					"0.0.0.0",listener);
 				break;
 			}
 

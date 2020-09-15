@@ -35,7 +35,6 @@
 DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),
 	// DNP3 Link Configuration
-	LinkNumRetry(0),
 	LinkTimeoutms(1000),
 	LinkKeepAlivems(10000),
 	LinkUseConfirms(false),
@@ -67,7 +66,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventClass1ScanRatems(1000),
 	EventClass2ScanRatems(1000),
 	EventClass3ScanRatems(1000),
-	OverrideControlCode(opendnp3::ControlCode::UNDEFINED),
+	OverrideControlCode(std::pair<opendnp3::OperationType,opendnp3::TripCloseCode>(opendnp3::OperationType::Undefined,opendnp3::TripCloseCode::NUL)),
 	DoAssignClassOnStartup(false),
 	// Outstation configuration
 	MaxControlsPerRequest(16),
@@ -141,7 +140,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	// DNP3 Link Configuration
 	if (JSONRoot.isMember("LinkNumRetry"))
-		LinkNumRetry = JSONRoot["LinkNumRetry"].asUInt();
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->error("Use of 'LinkNumRetry' is deprecated");
 	if (JSONRoot.isMember("LinkTimeoutms"))
 		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
 	if (JSONRoot.isMember("LinkKeepAlivems"))
@@ -208,7 +208,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	{
 		if(JSONRoot["CommsPoint"].isMember("Index") && JSONRoot["CommsPoint"].isMember("FailValue"))
 		{
-			mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+			opendnp3::Flags flags;
+			flags.Set(opendnp3::BinaryQuality::ONLINE);
+			mCommsPoint.first = opendnp3::Binary(JSONRoot["CommsPoint"]["FailValue"].asBool(), flags);
 			mCommsPoint.second = JSONRoot["CommsPoint"]["Index"].asUInt();
 		}
 		else
@@ -235,22 +237,29 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("OverrideControlCode"))
 	{
+		OverrideControlCode.second = opendnp3::TripCloseCode::NUL;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_ON")
-			OverrideControlCode = opendnp3::ControlCode::PULSE_ON;
+			OverrideControlCode.first = opendnp3::OperationType::PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_OFF")
-			OverrideControlCode = opendnp3::ControlCode::PULSE_OFF;
+			OverrideControlCode.first = opendnp3::OperationType::PULSE_OFF;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE")
-			OverrideControlCode = opendnp3::ControlCode::PULSE_ON;
+			OverrideControlCode.first = opendnp3::OperationType::PULSE_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_OFF")
-			OverrideControlCode = opendnp3::ControlCode::LATCH_OFF;
+			OverrideControlCode.first = opendnp3::OperationType::LATCH_OFF;
 		if (JSONRoot["OverrideControlCode"].asString() == "LATCH_ON")
-			OverrideControlCode = opendnp3::ControlCode::LATCH_ON;
+			OverrideControlCode.first = opendnp3::OperationType::LATCH_ON;
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_CLOSE")
-			OverrideControlCode = opendnp3::ControlCode::CLOSE_PULSE_ON;
+		{
+			OverrideControlCode.first = opendnp3::OperationType::PULSE_ON;
+			OverrideControlCode.second = opendnp3::TripCloseCode::TRIP;
+		}
 		if (JSONRoot["OverrideControlCode"].asString() == "PULSE_TRIP")
-			OverrideControlCode = opendnp3::ControlCode::TRIP_PULSE_ON;
+		{
+			OverrideControlCode.first = opendnp3::OperationType::PULSE_ON;
+			OverrideControlCode.second = opendnp3::TripCloseCode::CLOSE;
+		}
 		if (JSONRoot["OverrideControlCode"].asString() == "NUL")
-			OverrideControlCode = opendnp3::ControlCode::NUL;
+			OverrideControlCode.first = opendnp3::OperationType::NUL;
 	}
 
 	// Outstation configuration
@@ -356,6 +365,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 				if(Analogs[n].isMember("StartVal"))
 				{
+					opendnp3::Flags flags;
 					std::string start_val = Analogs[n]["StartVal"].asString();
 					if(start_val == "D") //delete this index
 					{
@@ -371,9 +381,15 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 							}
 					}
 					else if(start_val == "X")
-						AnalogStartVals[index] = opendnp3::Analog(0,static_cast<uint8_t>(opendnp3::AnalogQuality::COMM_LOST));
+					{
+						flags.Set(opendnp3::AnalogQuality::COMM_LOST);
+						AnalogStartVals[index] = opendnp3::Analog(0,flags);
+					}
 					else
-						AnalogStartVals[index] = opendnp3::Analog(std::stod(start_val),static_cast<uint8_t>(opendnp3::AnalogQuality::ONLINE));
+					{
+						flags.Set(opendnp3::AnalogQuality::ONLINE);
+						AnalogStartVals[index] = opendnp3::Analog(std::stod(start_val),flags);
+					}
 				}
 				else if(AnalogStartVals.count(index))
 					AnalogStartVals.erase(index);
@@ -424,6 +440,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 				if(Binaries[n].isMember("StartVal"))
 				{
+					opendnp3::Flags flags;
 					std::string start_val = Binaries[n]["StartVal"].asString();
 					if(start_val == "D") //delete this index
 					{
@@ -439,9 +456,15 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 							}
 					}
 					else if(start_val == "X")
-						BinaryStartVals[index] = opendnp3::Binary(false,static_cast<uint8_t>(opendnp3::BinaryQuality::COMM_LOST));
+					{
+						flags.Set(opendnp3::BinaryQuality::COMM_LOST);
+						BinaryStartVals[index] = opendnp3::Binary(false,flags);
+					}
 					else
-						BinaryStartVals[index] = opendnp3::Binary(Binaries[n]["StartVal"].asBool(),static_cast<uint8_t>(opendnp3::BinaryQuality::ONLINE));
+					{
+						flags.Set(opendnp3::BinaryQuality::ONLINE);
+						BinaryStartVals[index] = opendnp3::Binary(Binaries[n]["StartVal"].asBool(),flags);
+					}
 				}
 				else if(BinaryStartVals.count(index))
 					BinaryStartVals.erase(index);
