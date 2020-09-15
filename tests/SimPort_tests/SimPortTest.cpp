@@ -34,10 +34,11 @@
 
 #define SUITE(name) "SimTests - " name
 
-const int START = 0;
-const int FINISH = 100;
-const std::vector<ControlCode> LATCH_ON_CODES = {ControlCode::LATCH_ON, ControlCode::CLOSE_PULSE_ON, ControlCode::PULSE_ON};
-const std::vector<ControlCode> LATCH_OFF_CODES = {ControlCode::LATCH_OFF, ControlCode::TRIP_PULSE_ON, ControlCode::PULSE_OFF};
+const std::vector<ControlCode> TRIP_CODES = {ControlCode::CLOSE_PULSE_ON, ControlCode::TRIP_PULSE_ON};
+const std::vector<std::vector<ControlCode>> CODES = {
+	{ControlCode::LATCH_OFF, ControlCode::TRIP_PULSE_ON, ControlCode::PULSE_OFF},
+	{ControlCode::LATCH_ON, ControlCode::CLOSE_PULSE_ON, ControlCode::PULSE_ON}
+};
 const std::vector<std::size_t> ANALOG_INDEXES = {0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 110, 120, 1110, 1293, 119201, 118281, 1782718, 19281919};
 const std::vector<std::size_t> BINARY_INDEXES = {0, 1, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15};
 
@@ -165,6 +166,16 @@ inline Json::Value GetTestConfigJSON()
                                        "Indexes" : [10,11,12,13,14],
                                        "OnAction":"RAISE",
                                        "OffAction":"LOWER",
+                                       "RaiseLimit":10,
+                                       "LowerLimit":0}
+			},
+			{
+				"Index" : 11,
+				"FeedbackPosition":	{
+                                       "Type": "BCD",
+                                       "Indexes" : [10,11,12,13,14],
+                                       "OnAction":"LOWER",
+                                       "OffAction":"RAISE",
                                        "RaiseLimit":10,
                                        "LowerLimit":0}
 			}
@@ -313,10 +324,10 @@ std::size_t GetBCDEncodedString(const std::vector<std::size_t>& indexes, const s
   param        : e, end of the set limit
   return       : random number
 */
-inline int RandomNumber()
+inline int RandomNumber(int s, int e)
 {
 	std::random_device rd;
-	std::uniform_int_distribution<> dt(START, FINISH);
+	std::uniform_int_distribution<> dt(s, e);
 	return dt(rd);
 }
 
@@ -677,6 +688,57 @@ TEST_CASE("DNP3TestAnalogTapChangerLower")
 
 /*
   function     : TEST_CASE
+  description  : tests tap changer random raise / lower for analog type
+  param        : DNP3TestAnalogTapChangerLower, name of the test case
+  return       : NA
+*/
+TEST_CASE("DNP3TestAnalogTapChangerRandom")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		int tap_position = std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString());
+		REQUIRE(tap_position == 5);
+		for (int i = 0; i < 20; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			const int index = RandomNumber(0, 1000) % 2;
+			if (index) --tap_position;
+			else ++tap_position;
+			if (tap_position < 0)
+			{
+				tap_position = 0;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			if (tap_position > 10)
+			{
+				tap_position = 10;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			SendEvent(ControlCode::UNDEFINED, 2 + index, sim_port, status);
+			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		}
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+
+/*
+  function     : TEST_CASE
   description  : tests tap changer raise for binary type
   param        : DNP3TestBinaryTapChangerRaise, name of the test case
   return       : NA
@@ -791,6 +853,59 @@ TEST_CASE("DNP3TestBinaryTapChangerLower")
 
 /*
   function     : TEST_CASE
+  description  : tests tap changer random raise / lower for binary type
+  param        : DNP3TestBinaryTapChangerRandom, name of the test case
+  return       : NA
+*/
+TEST_CASE("DNP3TestBinaryTapChangerRandom")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
+		std::string binary = GetBinaryEncodedString(indexes, sim_port);
+		int tap_position = odc::to_decimal(binary);
+		REQUIRE(tap_position == 5);
+		for (int i = 0; i < 20; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			const int index = RandomNumber(0, 1000) % 2;
+			if (index) --tap_position;
+			else ++tap_position;
+			if (tap_position < 0)
+			{
+				tap_position = 0;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			if (tap_position > 10)
+			{
+				tap_position = 10;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			SendEvent(ControlCode::UNDEFINED, 4 + index, sim_port, status);
+			binary = GetBinaryEncodedString(indexes, sim_port);
+			REQUIRE(tap_position == static_cast<int>(odc::to_decimal(binary)));
+		}
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
   description  : tests tap changer raise for BCD type
   param        : DNP3TestBCDTapChangerRaise, name of the test case
   return       : NA
@@ -893,6 +1008,57 @@ TEST_CASE("DNP3TestBCDTapChangerLower")
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests tap changer random raise / lower for BCD type
+  param        : DNP3TestBCDTapChangerRaise, name of the test case
+  return       : NA
+*/
+TEST_CASE("DNP3TestBCDTapChangerRandom")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		int tap_position = GetBCDEncodedString(indexes, sim_port);
+		REQUIRE(tap_position == 5);
+		for (int i = 0; i < 20; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			const int index = RandomNumber(0, 1000) % 2;
+			if (index) --tap_position;
+			else ++tap_position;
+			if (tap_position < 0)
+			{
+				tap_position = 0;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			if (tap_position > 10)
+			{
+				tap_position = 10;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			SendEvent(ControlCode::UNDEFINED, 6 + index, sim_port, status);
+			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
 /*-------------------------------------------------------------------------------
  *
  *                            Conitel tests
@@ -932,7 +1098,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRaise")
 		*/
 		for (int i = 6; i <= 10; ++i)
 		{
-			SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 8, sim_port, CommandStatus::SUCCESS);
+			SendEvent(CODES[1][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::SUCCESS);
 			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 		}
 
@@ -940,14 +1106,14 @@ TEST_CASE("ConitelTestAnalogTapChangerRaise")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
-		SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -986,7 +1152,7 @@ TEST_CASE("ConitelTestAnalogTapChangerLower")
 		*/
 		for (int i = 4; i >= 0; --i)
 		{
-			SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 8, sim_port, CommandStatus::SUCCESS);
+			SendEvent(CODES[0][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::SUCCESS);
 			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 		}
 
@@ -994,13 +1160,62 @@ TEST_CASE("ConitelTestAnalogTapChangerLower")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer random raise / lower for analog type
+  param        : ConitelTestAnalogTapChangerRandom, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelTestAnalogTapChangerRandom")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		int tap_position = std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString());
+		for (int i = 0; i < 20; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			const int index = RandomNumber(0, 1000) % 2;
+			if (index) ++tap_position;
+			else --tap_position;
+			if (tap_position < 0)
+			{
+				tap_position = 0;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			if (tap_position > 10)
+			{
+				tap_position = 10;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 8, sim_port, status);
+			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		}
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1041,7 +1256,7 @@ TEST_CASE("ConitelTestBinaryTapChangerRaise")
 		*/
 		for (int i = 6; i <= 10; ++i)
 		{
-			SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 9, sim_port, CommandStatus::SUCCESS);
+			SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
 			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
 		}
@@ -1050,7 +1265,7 @@ TEST_CASE("ConitelTestBinaryTapChangerRaise")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
-		SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 9, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
 		REQUIRE(10 == odc::to_decimal(binary));
 
@@ -1058,7 +1273,7 @@ TEST_CASE("ConitelTestBinaryTapChangerRaise")
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1098,7 +1313,7 @@ TEST_CASE("ConitelTestBinaryTapChangerLower")
 		*/
 		for (int i = 4; i >= 0; --i)
 		{
-			SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 9, sim_port, CommandStatus::SUCCESS);
+			SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
 			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
 		}
@@ -1106,7 +1321,7 @@ TEST_CASE("ConitelTestBinaryTapChangerLower")
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 9, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
 		REQUIRE(0 == odc::to_decimal(binary));
 
@@ -1114,7 +1329,60 @@ TEST_CASE("ConitelTestBinaryTapChangerLower")
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer random raise / lower for binary type
+  param        : ConitelTestBinaryTapChangerRandom, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelTestBinaryTapChangerRandom")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
+		std::string binary = GetBinaryEncodedString(indexes, sim_port);
+		int tap_position = odc::to_decimal(binary);
+		REQUIRE(tap_position == 5);
+		for (int i = 0; i < 20; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			const int index = RandomNumber(0, 1000) % 2;
+			if (index) ++tap_position;
+			else --tap_position;
+			if (tap_position < 0)
+			{
+				tap_position = 0;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			if (tap_position > 10)
+			{
+				tap_position = 10;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 9, sim_port, status);
+			binary = GetBinaryEncodedString(indexes, sim_port);
+			REQUIRE(tap_position == static_cast<int>(odc::to_decimal(binary)));
+		}
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1153,20 +1421,20 @@ TEST_CASE("ConitelTestBCDTapChangerRaise")
 		*/
 		for (int i = 6; i <= 10; ++i)
 		{
-			SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 10, sim_port, CommandStatus::SUCCESS);
+			SendEvent(CODES[1][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::SUCCESS);
 			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 10, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(10 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(LATCH_ON_CODES[RandomNumber() % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1205,22 +1473,227 @@ TEST_CASE("ConitelTestBCDTapChangerLower")
 		*/
 		for (int i = 4; i >= 0; --i)
 		{
-			SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 10, sim_port, CommandStatus::SUCCESS);
+			SendEvent(CODES[0][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::SUCCESS);
 			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
-		SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 10, sim_port, CommandStatus::OUT_OF_RANGE);
+		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::OUT_OF_RANGE);
 		REQUIRE(0 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
 		 */
-		SendEvent(LATCH_OFF_CODES[RandomNumber() % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests tap changer random raise / lower for BCD type
+  param        : ConitelTestBCDTapChangerRandom, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelTestBCDTapChangerRandom")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		int tap_position = GetBCDEncodedString(indexes, sim_port);
+		REQUIRE(tap_position == 5);
+		for (int i = 0; i < 20; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			const int index = RandomNumber(0, 1000) % 2;
+			if (index) ++tap_position;
+			else --tap_position;
+			if (tap_position < 0)
+			{
+				tap_position = 0;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			if (tap_position > 10)
+			{
+				tap_position = 10;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 10, sim_port, status);
+			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer raise for BCD type for trip
+  param        : ConitelBCDTapChangerRaiseWithTrip, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelBCDTapChangerRaiseWithTrip")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
+		  Raise -> 10 (because 10 is the max limit)
+		*/
+		for (int i = 6; i <= 10; ++i)
+		{
+			SendEvent(TRIP_CODES[1], 11, sim_port, CommandStatus::SUCCESS);
+			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the lower limit mark
+		 */
+		SendEvent(TRIP_CODES[1], 11, sim_port, CommandStatus::OUT_OF_RANGE);
+		REQUIRE(10 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		SendEvent(TRIP_CODES[1], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer lower for BCD type
+  param        : ConitelTestBCDTapChangerLowerWithClose, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelTestBCDTapChangerLowerWithClose")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  As we know the index 7 tap changer's default position is 5
+		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
+		  Lower -> 0 (because 0 is the min limit)
+		*/
+		for (int i = 4; i >= 0; --i)
+		{
+			SendEvent(TRIP_CODES[0], 11, sim_port, CommandStatus::SUCCESS);
+			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+		/*
+		  test the corner cases now.
+		  we will test to raise the tap changer beyond the lower limit mark
+		 */
+		SendEvent(TRIP_CODES[0], 11, sim_port, CommandStatus::OUT_OF_RANGE);
+		REQUIRE(0 == GetBCDEncodedString(indexes, sim_port));
+		/*
+		  test the corner cases now.
+		  send the event with an index which doesnt exist
+		 */
+		SendEvent(TRIP_CODES[0], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests tap changer random raise / lower for BCD type
+  param        : ConitelTestBCDTapChangerRandomWithClose, name of the test case
+  return       : NA
+*/
+TEST_CASE("ConitelTestBCDTapChangerRandomWithClose")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
+		int tap_position = GetBCDEncodedString(indexes, sim_port);
+		REQUIRE(tap_position == 5);
+		for (int i = 0; i < 20; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			const int index = RandomNumber(0, 100) % 2;
+			if (index) ++tap_position;
+			else --tap_position;
+			if (tap_position < 0)
+			{
+				tap_position = 0;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			if (tap_position > 10)
+			{
+				tap_position = 10;
+				status = CommandStatus::OUT_OF_RANGE;
+			}
+			SendEvent(TRIP_CODES[index], 11, sim_port, status);
+			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
