@@ -103,6 +103,7 @@ TEST_CASE(SUITE("TCP link"))
 		MPUT->Disable();
 
 		work.reset();
+		ios->run();
 		t.join();
 		ios.reset();
 	}
@@ -212,6 +213,7 @@ TEST_CASE(SUITE("Serial link"))
 			}
 
 			work.reset();
+			ios->run();
 			t.join();
 			ios.reset();
 		}

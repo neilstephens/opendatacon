@@ -306,6 +306,7 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
+	IOS->run();       \
 	for (auto& t : threads) t.join()
 
 #define TEST_CBMAPort(overridejson)\
@@ -907,12 +908,12 @@ TEST_CASE("Station - ScanRequest F0")
 	                "400a00b6"
 	                "4028000c"
 	                "800f7d19";
-	
+
 	CBMessage_t Msg = BuildCBMessageFromASCIIHexString(DesiredResult);
-	assert(Msg[2].GetA() == 1024);	// Checking payload values
-	assert(Msg[2].GetB() == 1025);	// Checking payload values
-	assert(Msg[3].GetA() == 1026);	// Checking payload values
-	assert(Msg[4].GetB() == (~((4 << 6) + 5) & 0x0FFF));	// Checking payload values	// The require below does the whole check in one go!
+	assert(Msg[2].GetA() == 1024);                       // Checking payload values
+	assert(Msg[2].GetB() == 1025);                       // Checking payload values
+	assert(Msg[3].GetA() == 1026);                       // Checking payload values
+	assert(Msg[4].GetB() == (~((4 << 6) + 5) & 0x0FFF)); // Checking payload values	// The require below does the whole check in one go!
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -950,7 +951,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "400a00b6"
 	                "4028000c"
 	                "800f7d19";
-	
+
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -975,7 +976,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "400a00b6"
 	                "4028000c"
 	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
-	
+
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1103,7 +1104,7 @@ TEST_CASE("Station - Time Set Command")
 	// 9b50201e 4deb6e35 - station 11
 	// 99502022 4de9ea0d - station 9
 	// 9a502000 4dec0229 - station 10
-	//CBBlockData b0("94501032");	// From a log file, this was sent by ADMS. 
+	//CBBlockData b0("94501032");	// From a log file, this was sent by ADMS.
 	//CBBlockData b1("7b2a4529");
 
 	auto cbtime = static_cast<CBTime>(0x0000016338b6d4fb); // A value around June 2018
@@ -1127,7 +1128,7 @@ TEST_CASE("Station - Time Set Command")
 
 	std::string DesiredResult = "99501030f0487dbb";
 
-	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult); 
+	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
 
 	// Check the time offset - 1 minute??
 
@@ -1355,7 +1356,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                            "00080006"
 	                            "00080006"
 	                            "000fff89";
-	
+
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
@@ -1437,7 +1438,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "4028000c"
 	                "800f7d19";
 	WaitIOS(*IOS, 1);
-	
+
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
@@ -1459,7 +1460,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "4028000c"
 	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
 	WaitIOS(*IOS, 1);
-	
+
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
 
@@ -1588,10 +1589,10 @@ TEST_CASE("Master - Scan Request F0")
 
 	// From the outstation test above!!
 	std::string Payload = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-																"fc080016" // Data 2A and 2B
-																"400a00b6"
-																"4028000c"
-																"800f7d19");
+		                                                    "fc080016" // Data 2A and 2B
+		                                                    "400a00b6"
+		                                                    "4028000c"
+		                                                    "800f7d19");
 	output << Payload;
 
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...

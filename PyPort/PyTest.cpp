@@ -279,6 +279,7 @@ private:
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
+	IOS->run();       \
 	for (auto& t : threads) t.join()
 
 #define TEST_PythonPort(overridejson)\

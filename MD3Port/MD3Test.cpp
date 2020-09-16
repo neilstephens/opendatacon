@@ -304,6 +304,7 @@ void Wait(odc::asio_service &IOS, int seconds)
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
+	IOS->run();       \
 	for (auto& t : threads) t.join()
 
 #define TEST_MD3MAPort(overridejson)\
@@ -407,7 +408,7 @@ TEST_CASE("Utility - Strand Queue")
 	REQUIRE(!success);
 
 	work.reset();
-
+	pIOS->run();
 	t1.join(); // Wait for thread to end
 	t2.join();
 }
