@@ -55,7 +55,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
-	ChannelHandler ChanH;
+	std::unique_ptr<ChannelHandler> pChanH;
 
 	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 

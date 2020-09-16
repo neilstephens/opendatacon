@@ -46,12 +46,13 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 
 DNP3OutstationPort::~DNP3OutstationPort()
 {
-	ChannelStateSubscriber::Unsubscribe(&ChanH);
 	if(pOutstation)
 	{
 		pOutstation->Shutdown();
 		pOutstation.reset();
 	}
+	ChannelStateSubscriber::Unsubscribe(pChanH.get());
+	pChanH.reset();
 }
 
 void DNP3OutstationPort::Enable()
@@ -87,7 +88,7 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
-	ChanH.SetLinkStatus(status);
+	pChanH->SetLinkStatus(status);
 	//TODO: track a new statistic - reset count
 }
 // Called by OpenDNP3 Thread Pool
@@ -97,7 +98,7 @@ void DNP3OutstationPort::OnKeepAliveFailure()
 	last_link_down_time = msSinceEpoch();
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveFailure() called.", Name);
-	ChanH.LinkDown();
+	pChanH->LinkDown();
 }
 //There's no callback if a link recovers after it goes down,
 //	we keep track of the last time a keepalive failed
@@ -113,7 +114,7 @@ void DNP3OutstationPort::LinkUpCheck()
 		auto ms_required = pConf->pPointConf->LinkKeepAlivems + pConf->pPointConf->LinkTimeoutms;
 		if(ms_since_down >= ms_required)
 		{
-			ChanH.LinkUp();
+			pChanH->LinkUp();
 			return;
 		}
 
@@ -168,7 +169,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
-	ChanH.LinkUp();
+	pChanH->LinkUp();
 }
 
 TCPClientServer DNP3OutstationPort::ClientOrServer()
@@ -183,7 +184,7 @@ void DNP3OutstationPort::Build()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	if (!ChanH.SetChannel())
+	if (!pChanH->SetChannel())
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for outstation.", Name);
@@ -249,7 +250,7 @@ void DNP3OutstationPort::Build()
 	auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(wont_free);
 	auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(wont_free);
 
-	pOutstation = ChanH.GetChannel()->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
+	pOutstation = pChanH->GetChannel()->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
 
 	if (pOutstation == nullptr)
 	{
@@ -284,7 +285,7 @@ const Json::Value DNP3OutstationPort::GetCurrentState() const
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
 	Json::Value event;
-	if (auto pChan = ChanH.GetChannel())
+	if (auto pChan = pChanH->GetChannel())
 	{
 		auto ChanStats = pChan->GetStatistics();
 		event["parser"]["numHeaderCrcError"] = Json::UInt(ChanStats.parser.numHeaderCrcError);

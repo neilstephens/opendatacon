@@ -37,7 +37,6 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
-	ChannelStateSubscriber::Unsubscribe(&ChanH);
 	if(IntegrityScan)
 		IntegrityScan.reset();
 	if(pMaster)
@@ -45,6 +44,8 @@ DNP3MasterPort::~DNP3MasterPort()
 		pMaster->Shutdown();
 		pMaster.reset();
 	}
+	ChannelStateSubscriber::Unsubscribe(pChanH.get());
+	pChanH.reset();
 }
 
 void DNP3MasterPort::Enable()
@@ -165,7 +166,7 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
-	ChanH.SetLinkStatus(status);
+	pChanH->SetLinkStatus(status);
 	//TODO: track a statistic - reset count
 }
 // Called by OpenDNP3 Thread Pool
@@ -174,7 +175,7 @@ void DNP3MasterPort::OnKeepAliveFailure()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveFailure() called.", Name);
-	ChanH.LinkDown();
+	pChanH->LinkDown();
 }
 
 //calls to this will be synchronised
@@ -251,13 +252,13 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
-	ChanH.LinkUp();
+	pChanH->LinkUp();
 }
 void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
-	ChanH.LinkUp();
+	pChanH->LinkUp();
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
@@ -272,7 +273,7 @@ void DNP3MasterPort::Build()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	if (!ChanH.SetChannel())
+	if (!pChanH->SetChannel())
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for masterstation.", Name);
@@ -308,7 +309,7 @@ void DNP3MasterPort::Build()
 	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
 	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
 
-	pMaster = ChanH.GetChannel()->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
+	pMaster = pChanH->GetChannel()->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
 
 	if (pMaster == nullptr)
 	{
@@ -510,7 +511,7 @@ const Json::Value DNP3MasterPort::GetStatistics() const
 {
 	Json::Value event;
 
-	if (auto pChan = ChanH.GetChannel())
+	if (auto pChan = pChanH->GetChannel())
 	{
 		auto ChanStats = pChan->GetStatistics();
 		event["parser"]["numHeaderCrcError"] = Json::UInt(ChanStats.parser.numHeaderCrcError);

@@ -20,12 +20,17 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 
 ChannelHandler::~ChannelHandler()
 {
+	//re-assign these because they hold shared pointers to the handler tracker
 	StateListener = nullptr;
 	LinkDown = nullptr;
 	LinkUp = nullptr;
 	SetLinkStatus = nullptr;
+
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
+	//now the only tracker shared pointers will be in actual outstanding handlers
+
+	//wait til they're all gone, or harmless
 	while(!tracker.expired() && !pIOS->stopped())
 		pIOS->poll_one();
 }

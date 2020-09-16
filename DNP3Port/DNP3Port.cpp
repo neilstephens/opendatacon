@@ -33,7 +33,7 @@
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	ChanH(this)
+	pChanH(std::make_unique<ChannelHandler>(this))
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
@@ -74,11 +74,11 @@ const Json::Value DNP3Port::GetStatus() const
 
 	if(!enabled)
 		ret_val["Result"] = "Port disabled";
-	else if(ChanH.GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
+	else if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
 		ret_val["Result"] = "Port enabled - link down";
-	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::RESET)
+	else if(pChanH->GetLinkStatus() == opendnp3::LinkStatus::RESET)
 		ret_val["Result"] = "Port enabled - link up (reset)";
-	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::UNRESET)
+	else if(pChanH->GetLinkStatus() == opendnp3::LinkStatus::UNRESET)
 		ret_val["Result"] = "Port enabled - link up (unreset)";
 	else
 		ret_val["Result"] = "Port enabled - link status unknown";
