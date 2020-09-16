@@ -63,6 +63,9 @@ before_build:
         } Else {
             $env:GEN_PLAT=""
         }
+        If ($env:LOG_LVL -eq "") {
+            $env:LOG_LVL="error"
+        } End
 - cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 15 2017%GEN_PLAT%" -DFULL=ON -DCMAKE_CONFIGURATION_TYPES=%configuration% -DCMAKE_INSTALL_PREFIX=%cmake_builddir%\install -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits% -DPYTHON_HOME=%python_inst%'
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
@@ -73,12 +76,12 @@ build_script:
 - cmd: cmake --build %cmake_builddir% --config %configuration% --target PACKAGE
 
 test_script:
-- cmd: '%cmake_builddir%\install\ODC_tests.exe error -d yes'
-- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe error -d yes'
+- cmd: '%cmake_builddir%\install\ODC_tests.exe %LOG_LVL% -d yes'
+- cmd: '%cmake_builddir%\install\DNP3Port_tests.exe %LOG_LVL% -d yes'
 - cmd: '%cmake_builddir%\install\SimPort_tests.exe -d yes'
-- cmd: '%cmake_builddir%\install\MD3Port_tests.exe error -d yes'
-- cmd: '%cmake_builddir%\install\CBPort_tests.exe error -d yes'
-- cmd: '%cmake_builddir%\install\PyPort_tests.exe error -d yes'
+- cmd: '%cmake_builddir%\install\MD3Port_tests.exe %LOG_LVL% -d yes'
+- cmd: '%cmake_builddir%\install\CBPort_tests.exe %LOG_LVL% -d yes'
+- cmd: '%cmake_builddir%\install\PyPort_tests.exe %LOG_LVL% -d yes'
 
 # Capture the log file outputs so we can debug failed tests.
 on_finish:
