@@ -4,6 +4,10 @@
 #include <opendatacon/util.h>
 
 ChannelHandler::ChannelHandler(DNP3Port *p):
+	SetLinkStatus(pSyncStrand->wrap([this,h {handler_tracker}](opendnp3::LinkStatus status){SetLinkStatus_(status);})),
+	LinkUp(pSyncStrand->wrap([this,h{handler_tracker}](){LinkUp_();})),
+	LinkDown(pSyncStrand->wrap([this,h{handler_tracker}](){LinkDown_();})),
+	StateListener(pSyncStrand->wrap([this,h{handler_tracker}](opendnp3::ChannelState state){StateListener_(state);})),
 	pPort(p),
 	pChannel(nullptr),
 	pWatchdog(nullptr),
