@@ -60,6 +60,11 @@ void spdlog_flush_all()
 	spdlog::apply_all([](const std::shared_ptr<spdlog::logger>& l) {l->flush(); });
 }
 
+void spdlog_flush_every(std::chrono::seconds interval)
+{
+	spdlog::flush_every(interval);
+}
+
 void spdlog_apply_all(const std::function<void(std::shared_ptr<spdlog::logger>)> &fun)
 {
 	spdlog::apply_all(fun);

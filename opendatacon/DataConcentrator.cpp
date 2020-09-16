@@ -71,6 +71,8 @@ inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_pt
 	odc::spdlog_drop_all();
 	for(const auto& name : lognames)
 		AddLogger(name, sinks);
+
+	odc::spdlog_flush_every(std::chrono::seconds(60));
 }
 
 DataConcentrator::DataConcentrator(const std::string& FileName):
@@ -124,6 +126,10 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 			{
 				this->SetLogLevel(ss);
 			},"Set the threshold for logging");
+		interface.second->AddCommand("flush_logs",[] (std::stringstream& ss)
+			{
+				odc::spdlog_flush_all();
+			},"Flush all registered loggers and sinks");
 		interface.second->AddCommand("add_logsink",[this] (std::stringstream& ss)
 			{
 				this->AddLogSink(ss);
@@ -715,6 +721,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 		}
 	}
+	odc::spdlog_flush_every(std::chrono::seconds(60));
 }
 
 void DataConcentrator::Build()
