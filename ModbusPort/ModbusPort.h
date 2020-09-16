@@ -47,7 +47,7 @@ public:
 	}
 	void Execute(std::function<void(modbus_t*)>&& f)
 	{
-		sync->dispatch([this,f = std::move(f)](){f(mb);});
+		sync->dispatch([this,f{std::move(f)}](){f(mb);});
 	}
 	bool isNull()
 	{

@@ -77,7 +77,7 @@ TCPSocketManager::TCPSocketManager
 
 void TCPSocketManager::Open()
 {
-	pSockStrand->post([this,h = handler_tracker](){Open(h);});
+	pSockStrand->post([this,h{handler_tracker}](){Open(h);});
 }
 
 
