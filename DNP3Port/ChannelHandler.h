@@ -31,10 +31,10 @@ public:
 	~ChannelHandler();
 
 	//Synchronised versions of their private couterparts
-	std::function<void(opendnp3::LinkStatus status)> SetLinkStatus = GetWrappedSetLinkStatus();
-	std::function<void()> LinkUp = GetWrappedLinkUp();
-	std::function<void()> LinkDown = GetWrappedLinkDown();
-	std::function<void(opendnp3::ChannelState state)> StateListener = GetWrappedStateListener();
+	std::function<void(opendnp3::LinkStatus status)> SetLinkStatus = pSyncStrand->wrap([this,h(handler_tracker)](opendnp3::LinkStatus status){SetLinkStatus_(status);});
+	std::function<void()> LinkUp = pSyncStrand->wrap([this,h(handler_tracker)](){LinkUp_();});
+	std::function<void()> LinkDown = pSyncStrand->wrap([this,h(handler_tracker)](){LinkDown_();});
+	std::function<void(opendnp3::ChannelState state)> StateListener = pSyncStrand->wrap([this,h(handler_tracker)](opendnp3::ChannelState state){StateListener_(state);});
 
 	//Factory function for the Channel
 	std::shared_ptr<opendnp3::IChannel> SetChannel();
@@ -58,28 +58,6 @@ private:
 	void SetLinkStatus_(opendnp3::LinkStatus status);
 	void LinkDown_();
 	void LinkUp_();
-
-	//helpers to initialise strand wrapped public functions
-	inline std::function<void(opendnp3::LinkStatus status)> GetWrappedSetLinkStatus()
-	{
-		auto h = handler_tracker;
-		return pSyncStrand->wrap([this,h](opendnp3::LinkStatus status){SetLinkStatus_(status);});
-	}
-	inline std::function<void()> GetWrappedLinkUp()
-	{
-		auto h = handler_tracker;
-		return pSyncStrand->wrap([this,h](){LinkUp_();});
-	}
-	inline std::function<void()> GetWrappedLinkDown()
-	{
-		auto h = handler_tracker;
-		return pSyncStrand->wrap([this,h](){LinkDown_();});
-	}
-	inline std::function<void(opendnp3::ChannelState state)> GetWrappedStateListener()
-	{
-		auto h = handler_tracker;
-		return pSyncStrand->wrap([this,h](opendnp3::ChannelState state){StateListener_(state);});
-	}
 
 	//data members
 	DNP3Port* const pPort;
