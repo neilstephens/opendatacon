@@ -21,9 +21,9 @@ class ChannelHandler
 {
 private:
 	//Strand for synchronising channel/link state changes
-	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
-	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
-	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
+	std::shared_ptr<odc::asio_service> pIOS;
+	std::unique_ptr<asio::io_service::strand> pSyncStrand;
+	std::shared_ptr<void> handler_tracker;
 
 public:
 	ChannelHandler() = delete;

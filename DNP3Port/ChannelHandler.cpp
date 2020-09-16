@@ -4,6 +4,9 @@
 #include <opendatacon/util.h>
 
 ChannelHandler::ChannelHandler(DNP3Port *p):
+	pIOS(odc::asio_service::Get()),
+	pSyncStrand(pIOS->make_strand()),
+	handler_tracker(std::make_shared<char>()),
 	SetLinkStatus(pSyncStrand->wrap([this,h {handler_tracker}](opendnp3::LinkStatus status){SetLinkStatus_(status);})),
 	LinkUp(pSyncStrand->wrap([this,h{handler_tracker}](){LinkUp_();})),
 	LinkDown(pSyncStrand->wrap([this,h{handler_tracker}](){LinkDown_();})),
