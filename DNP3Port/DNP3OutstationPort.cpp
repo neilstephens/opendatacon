@@ -191,17 +191,6 @@ void DNP3OutstationPort::Build()
 		return;
 	}
 
-//	opendnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
-//		pConf->pPointConf->BinaryIndicies.size(), //numBinary
-//		0,                                        //numDoubleBinary
-//		pConf->pPointConf->AnalogIndicies.size(), //numAnalog
-//		0,                                        //numCounter
-//		0,                                        //numFrozenCounter
-//		0,                                        //numBinaryOutputStatus
-//		0,                                        //numAnalogOutputStatus
-//		0,                                        //numTimeAndInterval
-//		0));                                      //numOctetString
-
 	opendnp3::OutstationStackConfig StackConfig;
 	for (uint16_t index : pConf->pPointConf->AnalogIndicies)
 	{

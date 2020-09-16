@@ -55,8 +55,11 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
+	inline std::shared_ptr<DNP3Port> ptr()
+	{
+		return std::static_pointer_cast<DNP3Port>(shared_from_this());
+	}
 	std::unique_ptr<ChannelHandler> pChanH;
-
 	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 
 	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;

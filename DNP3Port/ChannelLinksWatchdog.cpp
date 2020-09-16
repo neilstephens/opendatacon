@@ -4,20 +4,22 @@
 ChannelLinksWatchdog::ChannelLinksWatchdog()
 {}
 
-void ChannelLinksWatchdog::LinkUp_(DNP3Port* const pPort)
+void ChannelLinksWatchdog::LinkUp_(std::weak_ptr<DNP3Port> pPort)
 {
 	DownSet.erase(pPort);
 	UpSet.insert(pPort);
 }
 
-void ChannelLinksWatchdog::LinkDown_(DNP3Port* const pPort)
+void ChannelLinksWatchdog::LinkDown_(std::weak_ptr<DNP3Port> pPort)
 {
 	DownSet.insert(pPort);
 	if(UpSet.erase(pPort) && UpSet.empty())
 	{
-		for(auto p : DownSet)
-			p->ChannelWatchdogTrigger(true);
-		for(auto p : DownSet)
-			p->ChannelWatchdogTrigger(false);
+		for(auto weak : DownSet)
+			if(auto p = weak.lock())
+				p->ChannelWatchdogTrigger(true);
+		for(auto weak : DownSet)
+			if(auto p = weak.lock())
+				p->ChannelWatchdogTrigger(false);
 	}
 }

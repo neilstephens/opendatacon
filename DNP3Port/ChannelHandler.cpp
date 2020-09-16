@@ -47,13 +47,13 @@ void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 	{
 		link_deadness = LinkDeadness::LinkDownChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkDown(pPort);
+		pWatchdog->LinkDown(pPort->ptr());
 	}
 	else if(state != opendnp3::ChannelState::OPEN && link_deadness != LinkDeadness::LinkDownChannelDown)
 	{
 		link_deadness = LinkDeadness::LinkDownChannelDown;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkDown(pPort);
+		pWatchdog->LinkDown(pPort->ptr());
 	}
 }
 
@@ -66,7 +66,7 @@ void ChannelHandler::SetLinkStatus_(opendnp3::LinkStatus status)
 	{
 		link_deadness = LinkDeadness::LinkUpChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkUp(pPort);
+		pWatchdog->LinkUp(pPort->ptr());
 	}
 }
 void ChannelHandler::LinkDown_()
@@ -77,7 +77,7 @@ void ChannelHandler::LinkDown_()
 	{
 		link_deadness = LinkDeadness::LinkDownChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkDown(pPort);
+		pWatchdog->LinkDown(pPort->ptr());
 	}
 }
 void ChannelHandler::LinkUp_()
@@ -88,7 +88,7 @@ void ChannelHandler::LinkUp_()
 	{
 		link_deadness = LinkDeadness::LinkUpChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkUp(pPort);
+		pWatchdog->LinkUp(pPort->ptr());
 	}
 }
 
