@@ -55,7 +55,7 @@ TEST_CASE(SUITE("TCP link"))
 		REQUIRE(delMaster);
 
 		conf["ServerType"] = "PERSISTENT";
-		auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", conf), delMaster);
+		auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", conf), delMaster);
 		REQUIRE(MPUT);
 
 		//get them to build themselves using their configs
@@ -160,7 +160,7 @@ TEST_CASE(SUITE("Serial link"))
 			Mconf["LOG_LEVEL"] = "ALL";
 			Mconf["LinkKeepAlivems"] = 200;
 			Mconf["LinkTimeoutms"] = 100;
-			auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+			auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", Mconf), delMaster);
 			REQUIRE(MPUT);
 
 			//get them to build themselves using their configs
