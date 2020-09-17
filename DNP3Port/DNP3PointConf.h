@@ -56,8 +56,8 @@ public:
 
 	/// Common application stack configuration
 	opendnp3::ServerAcceptMode ServerAcceptMode;
-	uint32_t TCPConnectRetryPeriodMinms;
-	uint32_t TCPConnectRetryPeriodMaxms;
+	uint32_t IPConnectRetryPeriodMinms;
+	uint32_t IPConnectRetryPeriodMaxms;
 	bool EnableUnsol;
 	opendnp3::ClassField GetUnsolClassMask();
 	bool UnsolClass1;

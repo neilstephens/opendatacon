@@ -28,7 +28,19 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	"../include"
 	"${SPDLOG_HOME}/include"
 	"${ASIO_HOME}/asio/include")
-target_link_libraries(${PROJECT_NAME} JSON ${LIBCXX} ${RT})
+
+set(ODC_ASIO_SSL OFF CACHE BOOL "Enable TLS/SSL is ASIO compiled into libODC (requires OpenSSL)")
+if(FULL)
+	set(ODC_ASIO_SSL ON CACHE BOOL "Enable TLS/SSL is ASIO compiled into libODC (requires OpenSSL)" FORCE)
+endif()
+
+if(ODC_ASIO_SSL)
+	set(OPENSSL_USE_STATIC_LIBS TRUE)
+	find_package(OpenSSL 1.1.1 REQUIRED)
+	add_definitions(-DODC_ASIO_SSL)
+endif()
+
+target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> ${LIBCXX} ${RT})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

@@ -100,6 +100,8 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 
 	std::string ChannelID;
 	bool isSerial;
+	auto udp_listen_port = (pConf->mAddrConf.UDPListenPort == 0) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
+
 	if(pConf->mAddrConf.IP.empty())
 	{
 		ChannelID = pConf->mAddrConf.SerialSettings.deviceName;
@@ -107,7 +109,10 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	}
 	else
 	{
-		ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+to_string(pPort->ClientOrServer());
+		if(pConf->mAddrConf.Transport == IPTransport::UDP)
+			ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+std::to_string(udp_listen_port);
+		else
+			ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+to_string(pPort->ClientOrServer());
 		isSerial = false;
 	}
 
@@ -136,34 +141,71 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	}
 	else
 	{
-		switch (pPort->ClientOrServer())
+		if(pConf->mAddrConf.Transport == IPTransport::UDP)
 		{
-			case TCPClientServer::SERVER:
+			pChannel = pPort->IOMgr->AddUDPChannel(ChannelID, pConf->LOG_LEVEL,
+				opendnp3::ChannelRetry(
+					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
+					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms)),
+				opendnp3::IPEndpoint("0.0.0.0",udp_listen_port),
+				opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
+				listener);
+		}
+		else //TCP or TLS
+		{
+			switch (pPort->ClientOrServer())
 			{
-				pChannel = pPort->IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL,
-					pConf->pPointConf->ServerAcceptMode,
-					opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)
-					,listener);
-				break;
-			}
+				case TCPClientServer::SERVER:
+				{
+					if(pConf->mAddrConf.Transport == IPTransport::TLS)
+					{
+						pChannel = pPort->IOMgr->AddTLSServer(ChannelID, pConf->LOG_LEVEL,
+							pConf->pPointConf->ServerAcceptMode,
+							opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
+							opendnp3::TLSConfig(pConf->mAddrConf.TLSFiles.PeerCertFile,pConf->mAddrConf.TLSFiles.LocalCertFile,pConf->mAddrConf.TLSFiles.PrivateKeyFile),
+							listener);
+					}
+					else
+					{
+						pChannel = pPort->IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL,
+							pConf->pPointConf->ServerAcceptMode,
+							opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)
+							,listener);
+					}
+					break;
+				}
 
-			case TCPClientServer::CLIENT:
-			{
-				pChannel = pPort->IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL,
-					opendnp3::ChannelRetry(
-						opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-						opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-					std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),
-					"0.0.0.0",listener);
-				break;
-			}
+				case TCPClientServer::CLIENT:
+				{
+					if(pConf->mAddrConf.Transport == IPTransport::TLS)
+					{
+						pChannel = pPort->IOMgr->AddTLSClient(ChannelID, pConf->LOG_LEVEL,
+							opendnp3::ChannelRetry(
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms)),
+							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),"0.0.0.0",
+							opendnp3::TLSConfig(pConf->mAddrConf.TLSFiles.PeerCertFile,pConf->mAddrConf.TLSFiles.LocalCertFile,pConf->mAddrConf.TLSFiles.PrivateKeyFile),
+							listener);
+					}
+					else
+					{
+						pChannel = pPort->IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL,
+							opendnp3::ChannelRetry(
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms)),
+							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),
+							"0.0.0.0",listener);
+					}
+					break;
+				}
 
-			default:
-			{
-				const std::string msg(pPort->Name + ": Can't determine if TCP socket is client or server");
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->error(msg);
-				throw std::runtime_error(msg);
+				default:
+				{
+					const std::string msg(pPort->Name + ": Can't determine if TCP socket is client or server");
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->error(msg);
+					throw std::runtime_error(msg);
+				}
 			}
 		}
 	}
