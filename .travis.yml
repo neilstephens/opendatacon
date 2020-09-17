@@ -73,7 +73,7 @@ install:
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       HOMEBREW_NO_AUTO_UPDATE=1 brew install libmodbus libmicrohttpd socat openssl
-      export TOOLCHAIN_OPT="-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMICROHTTPD=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF"
+      export TOOLCHAIN_OPT="-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMICROHTTPD=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
     elif [ -z "$DOCKER_BUILD" ]; then
       # Not a docker build, just normal linux
       sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.6 python3.6-dev openssl libssl-dev
@@ -100,6 +100,7 @@ install:
         cp -a /usr/include/microhttpd.h /mnt/build/sysroot/usr/include/
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
         cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/openssl /mnt/build/sysroot/usr/include/
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '

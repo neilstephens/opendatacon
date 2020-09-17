@@ -35,9 +35,12 @@ if(FULL)
 endif()
 
 if(ODC_ASIO_SSL)
+	message("OpenSSL root dir: ${OPENSSL_ROOT_DIR}")
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
 	find_package(OpenSSL 1.1.1 REQUIRED)
 	add_definitions(-DODC_ASIO_SSL)
+	message("OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
+	message("OpenSSL libraries: ${OPENSSL_LIBRARIES}")
 endif()
 
 target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> ${LIBCXX} ${RT})
