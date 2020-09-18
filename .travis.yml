@@ -91,11 +91,13 @@ install:
       DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster bash)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
-      docker exec -i $DOCK sh -c "apt-get install -y python3 python3-dev" 
+      docker exec -i $DOCK sh -c "apt-get install -y python3.7 python3.7-dev" 
       mkdir sysroot
       # Copy headers and libs to sysroot from within the docker image
       docker exec -i $DOCK sh -c '
         mkdir -p /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
+        rm /usr/lib/python3.7/sitecustomize.py
+        cp /etc/python3.7/sitecustomize.py /usr/lib/python3.7/sitecustomize.py
         cp -a /usr/include/*/*/pyconfig.h /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
         cp -a /usr/include/microhttpd.h /mnt/build/sysroot/usr/include/
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
