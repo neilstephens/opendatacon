@@ -88,7 +88,7 @@ install:
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
-      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/buster:latest)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3 python3-dev" 
@@ -127,6 +127,9 @@ install:
         yum install -y applydeltarpm
         yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3 git file openssl11 openssl11-devel openssl11-static
         ln -s /usr/bin/cmake3 /bin/cmake
+        mkdir -p /opt/openssl-root
+        ln -s /usr/include/openssl11 /opt/openssl-root/include
+        ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
         
         #Extras that aren-t yum-able
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
@@ -145,7 +148,7 @@ install:
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt/src $SRC_DIR
       
-      export TOOLCHAIN_OPT="-DPYTHON_HOME=/opt/rh/rh-python36/root/usr"
+      export TOOLCHAIN_OPT="-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root"
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=oel7"
       export PRESOURCE="source scl_source enable rh-python36 && source scl_source enable devtoolset-8 &&"
       export RUN="docker exec --interactive --workdir /mnt/src/build $DOCK"
@@ -169,6 +172,7 @@ install:
         cp -a /usr/include/microhttpd.h /mnt/build/sysroot/usr/include/
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
         cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/openssl /mnt/build/sysroot/usr/include/
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '
