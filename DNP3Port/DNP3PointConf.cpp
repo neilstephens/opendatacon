@@ -40,8 +40,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	LinkUseConfirms(false),
 	// Common application stack configuration
 	ServerAcceptMode(opendnp3::ServerAcceptMode::CloseNew),
-	TCPConnectRetryPeriodMinms(500),
-	TCPConnectRetryPeriodMaxms(30000),
+	IPConnectRetryPeriodMinms(500),
+	IPConnectRetryPeriodMaxms(30000),
 	EnableUnsol(true),
 	UnsolClass1(false),
 	UnsolClass2(false),
@@ -164,9 +164,21 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			log->error("Invalid ServerAcceptMode : '{}'", JSONRoot["ServerAcceptMode"].asString());
 	}
 	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
-		TCPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
+	{
+		IPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("TCPConnectRetryPeriodMinms is deprecated, use IPConnectRetryPeriodMinms instead");
+	}
 	if (JSONRoot.isMember("TCPConnectRetryPeriodMaxms"))
-		TCPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
+	{
+		IPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("TCPConnectRetryPeriodMaxms is deprecated, use IPConnectRetryPeriodMaxms instead");
+	}
+	if (JSONRoot.isMember("IPConnectRetryPeriodMinms"))
+		IPConnectRetryPeriodMinms = JSONRoot["IPConnectRetryPeriodMinms"].asUInt();
+	if (JSONRoot.isMember("IPConnectRetryPeriodMaxms"))
+		IPConnectRetryPeriodMaxms = JSONRoot["IPConnectRetryPeriodMaxms"].asUInt();
 	if (JSONRoot.isMember("EnableUnsol"))
 		EnableUnsol = JSONRoot["EnableUnsol"].asBool();
 	if (JSONRoot.isMember("UnsolClass1"))

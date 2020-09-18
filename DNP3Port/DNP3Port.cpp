@@ -158,6 +158,49 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 	{
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = "";
+
+		if(JSONRoot.isMember("IPTransport"))
+		{
+			if(JSONRoot["IPTransport"].asString() == "UDP")
+			{
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::UDP;
+				if(JSONRoot.isMember("UDPListenPort"))
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.UDPListenPort = JSONRoot["UDPListenPort"].asUInt();
+			}
+			else if(JSONRoot["IPTransport"].asString() == "TLS")
+			{
+				if(JSONRoot.isMember("TLSFiles")
+				   && JSONRoot["TLSFiles"].isMember("PeerCert")
+				   && JSONRoot["TLSFiles"].isMember("LocalCert")
+				   && JSONRoot["TLSFiles"].isMember("PrivateKey"))
+				{
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::TLS;
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PeerCertFile =
+						JSONRoot["TLSFiles"]["PeerCert"].asString();
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.LocalCertFile =
+						JSONRoot["TLSFiles"]["LocalCert"].asString();
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PrivateKeyFile =
+						JSONRoot["TLSFiles"]["PrivateKey"].asString();
+				}
+				else
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+					{
+						Json::Value Eg;
+						Eg["TLSFiles"]["PeerCert"] = "/path/to/file";
+						Eg["TLSFiles"]["LocalCert"] = "/path/to/file";
+						Eg["TLSFiles"]["PrivateKey"] = "/path/to/file";
+						log->warn("Reverting to TCP: TLS IPTransport requires TLSFiles config, Eg '{}'", Eg.asString());
+					}
+				}
+			}
+			else if(JSONRoot["IPTransport"].asString() != "TCP")
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->warn("Invalid IP transport protocol: {}, should be TCP, UDP, or TLS. Using TCP", JSONRoot["IPTransport"].asString());
+			}
+			//else TCP, already default
+		}
 	}
 
 	if(JSONRoot.isMember("Port"))

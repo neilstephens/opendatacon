@@ -72,11 +72,11 @@ install:
     fi
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      HOMEBREW_NO_AUTO_UPDATE=1 brew install libmodbus libmicrohttpd socat
-      export TOOLCHAIN_OPT="-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMICROHTTPD=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF"
+      HOMEBREW_NO_AUTO_UPDATE=1 brew install libmodbus libmicrohttpd socat openssl
+      export TOOLCHAIN_OPT="-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMICROHTTPD=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl"
     elif [ -z "$DOCKER_BUILD" ]; then
       # Not a docker build, just normal linux
-      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.6 python3.6-dev
+      sudo apt-get install -y libmodbus-dev libmicrohttpd-dev socat libc++-dev libc++abi-dev python3.6 python3.6-dev openssl libssl-dev
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=generic"
     fi
   - |
@@ -88,18 +88,22 @@ install:
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
-      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster bash)
       # Install the arm versions of dependencies into the QEMU user image
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev" 
-      docker exec -i $DOCK sh -c "apt-get install -y python3.4 python3.4-dev" 
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
+      docker exec -i $DOCK sh -c "apt-get install -y python3.7 python3.7-dev" 
       mkdir sysroot
       # Copy headers and libs to sysroot from within the docker image
       docker exec -i $DOCK sh -c '
         mkdir -p /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
+        rm /usr/lib/python3.7/sitecustomize.py
+        cp /etc/python3.7/sitecustomize.py /usr/lib/python3.7/sitecustomize.py
         cp -a /usr/include/*/*/pyconfig.h /mnt/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
         cp -a /usr/include/microhttpd.h /mnt/build/sysroot/usr/include/
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
         cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/openssl /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/*/*/opensslconf.h /mnt/build/sysroot/usr/include/openssl/
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '
@@ -124,8 +128,11 @@ install:
         /usr/bin/ol_yum_configure.sh
         yum repolist
         yum install -y applydeltarpm
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3 git file
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3 git file openssl11 openssl11-devel openssl11-static
         ln -s /usr/bin/cmake3 /bin/cmake
+        mkdir -p /opt/openssl-root
+        ln -s /usr/include/openssl11 /opt/openssl-root/include
+        ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
         
         #Extras that aren-t yum-able
         curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
@@ -144,7 +151,7 @@ install:
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt/src $SRC_DIR
       
-      export TOOLCHAIN_OPT="-DPYTHON_HOME=/opt/rh/rh-python36/root/usr"
+      export TOOLCHAIN_OPT="-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root -DADD_LIBS=z"
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=oel7"
       export PRESOURCE="source scl_source enable rh-python36 && source scl_source enable devtoolset-8 &&"
       export RUN="docker exec --interactive --workdir /mnt/src/build $DOCK"
@@ -156,7 +163,7 @@ install:
       sudo apt-get update
       sudo apt-get install -y g++-7-i686-linux-gnu
       DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:bionic)
-      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev" 
+      docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.6 python3.6-dev" 
       mkdir sysroot
       # Copy headers and libs to sysroot from within the docker image
@@ -168,6 +175,8 @@ install:
         cp -a /usr/include/microhttpd.h /mnt/build/sysroot/usr/include/
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
         cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/openssl /mnt/build/sysroot/usr/include/
+        cp -a /usr/include/*/*/opensslconf.h /mnt/build/sysroot/usr/include/openssl/
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '
