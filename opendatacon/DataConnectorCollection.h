@@ -27,10 +27,8 @@
 
 #ifndef __opendatacon__DataConectorCollection__
 #define __opendatacon__DataConectorCollection__
-
-#include <iostream>
-
 #include "DataConnector.h"
+#include <iostream>
 #include <opendatacon/ResponderMap.h>
 
 using namespace odc;

@@ -24,21 +24,20 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <iostream>
-#include <regex>
-#include <chrono>
-#include <asiodnp3/Updates.h>
-#include <asiodnp3/UpdateBuilder.h>
-#include <asiopal/UTCTimeSource.h>
-#include <opendnp3/outstation/IOutstationApplication.h>
-#include <openpal/logging/LogLevels.h>
-#include <opendatacon/util.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
-
 #include "OpenDNP3Helpers.h"
 #include "TypeConversion.h"
-#include "ChannelStateSubscriber.h"
+#include <opendnp3/outstation/UpdateBuilder.h>
+#include <opendnp3/outstation/Updates.h>
+#include <opendnp3/master/IUTCTimeSource.h>
+#include <chrono>
+#include <iostream>
+#include <opendatacon/util.h>
+#include <opendnp3/outstation/IOutstationApplication.h>
+#include <opendnp3/logging/LogLevels.h>
+#include <regex>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
@@ -47,14 +46,13 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 
 DNP3OutstationPort::~DNP3OutstationPort()
 {
-	ChannelStateSubscriber::Unsubscribe(this);
 	if(pOutstation)
 	{
 		pOutstation->Shutdown();
 		pOutstation.reset();
 	}
-	if(pChannel)
-		pChannel.reset();
+	ChannelStateSubscriber::Unsubscribe(pChanH.get());
+	pChanH.reset();
 }
 
 void DNP3OutstationPort::Enable()
@@ -88,50 +86,95 @@ void DNP3OutstationPort::Disable()
 // Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
-	this->status = status;
-
 	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
-
-	if(link_dead && !channel_dead) //must be on link up
-	{
-		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED);
-	}
+		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
+	pChanH->SetLinkStatus(status);
 	//TODO: track a new statistic - reset count
 }
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message (request link status) receives no response
 void DNP3OutstationPort::OnKeepAliveFailure()
 {
+	last_link_down_time = msSinceEpoch();
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveFailure() called.", Name);
-	this->OnLinkDown();
+	pChanH->LinkDown();
 }
-void DNP3OutstationPort::OnLinkDown()
+//There's no callback if a link recovers after it goes down,
+//	we keep track of the last time a keepalive failed
+//	if there hasn't been a fail in longer than the configured keepalive period, we're back up.
+void DNP3OutstationPort::LinkUpCheck()
 {
-	if(!link_dead)
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: LinkUpCheck() called.", Name);
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->pPointConf->LinkKeepAlivems != 0)
 	{
-		link_dead = true;
-		PublishEvent(ConnectState::DISCONNECTED);
+		auto ms_since_down = msSinceEpoch() - last_link_down_time;
+		auto ms_required = pConf->pPointConf->LinkKeepAlivems + pConf->pPointConf->LinkTimeoutms;
+		if(ms_since_down >= ms_required)
+		{
+			pChanH->LinkUp();
+			return;
+		}
+
+		auto ms_left = ms_required - ms_since_down;
+		pLinkUpCheckTimer->expires_from_now(std::chrono::milliseconds(ms_left));
+		pLinkUpCheckTimer->async_wait([this](asio::error_code err)
+			{
+				if(!err)
+					LinkUpCheck();
+			});
 	}
 }
+void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
+{
+	if(to == LinkDeadness::LinkUpChannelUp) //must be on link up
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: Link up.", Name);
+		PublishEvent(ConnectState::CONNECTED);
+	}
+
+	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: Link down.", Name);
+		PublishEvent(ConnectState::DISCONNECTED);
+
+		if(to == LinkDeadness::LinkDownChannelUp) //means keepalive failed
+			LinkUpCheck();                      //kick off checking for coming back up
+	}
+
+	//if we get here, it's not link up or down, it's a channel up or down
+	if(to == LinkDeadness::LinkDownChannelDown)
+		pLinkUpCheckTimer->cancel();
+}
+void DNP3OutstationPort::ChannelWatchdogTrigger(bool on)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	if(enabled)
+	{
+		if(on)
+			pOutstation->Disable();
+		else
+			pOutstation->Enable();
+	}
+}
+
 // Called by OpenDNP3 Thread Pool
 // Called when a keep alive message receives a valid response
 void DNP3OutstationPort::OnKeepAliveSuccess()
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
-	if(link_dead)
-	{
-		link_dead = false;
-		PublishEvent(ConnectState::CONNECTED);
-	}
+	pChanH->LinkUp();
 }
 
 TCPClientServer DNP3OutstationPort::ClientOrServer()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->mAddrConf.ClientServer == TCPClientServer::DEFAULT)
 		return TCPClientServer::SERVER;
 	return pConf->mAddrConf.ClientServer;
@@ -139,71 +182,51 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 
 void DNP3OutstationPort::Build()
 {
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	pChannel = GetChannel();
-
-	if (pChannel == nullptr)
+	if (!pChanH->SetChannel())
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Channel not found for outstation.", Name);
 		return;
 	}
 
-	asiodnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
-			pConf->pPointConf->BinaryIndicies.size(), //numBinary
-			0,                                        //numDoubleBinary
-			pConf->pPointConf->AnalogIndicies.size(), //numAnalog
-			0,                                        //numCounter
-			0,                                        //numFrozenCounter
-			0,                                        //numBinaryOutputStatus
-			0,                                        //numAnalogOutputStatus
-			0,                                        //numTimeAndInterval
-			0));                                      //numOctetString
-
-	uint16_t rawIndex = 0;
-	for (auto index : pConf->pPointConf->AnalogIndicies)
+	opendnp3::OutstationStackConfig StackConfig;
+	for (uint16_t index : pConf->pPointConf->AnalogIndicies)
 	{
-		StackConfig.dbConfig.analog[rawIndex].vIndex = index;
-		StackConfig.dbConfig.analog[rawIndex].svariation = pConf->pPointConf->StaticAnalogResponses[index];
-		StackConfig.dbConfig.analog[rawIndex].evariation = pConf->pPointConf->EventAnalogResponses[index];
-		StackConfig.dbConfig.analog[rawIndex].clazz = pConf->pPointConf->AnalogClasses[index];
-		StackConfig.dbConfig.analog[rawIndex].deadband = pConf->pPointConf->AnalogDeadbands[index];
-		++rawIndex;
+		StackConfig.database.analog_input[index].clazz = pConf->pPointConf->AnalogClasses[index];
+		StackConfig.database.analog_input[index].evariation = pConf->pPointConf->EventAnalogResponses[index];
+		StackConfig.database.analog_input[index].svariation = pConf->pPointConf->StaticAnalogResponses[index];
+		StackConfig.database.analog_input[index].deadband = pConf->pPointConf->AnalogDeadbands[index];
 	}
-	rawIndex = 0;
-	for (auto index : pConf->pPointConf->BinaryIndicies)
+	for (uint16_t index : pConf->pPointConf->BinaryIndicies)
 	{
-		StackConfig.dbConfig.binary[rawIndex].vIndex = index;
-		StackConfig.dbConfig.binary[rawIndex].svariation = pConf->pPointConf->StaticBinaryResponses[index];
-		StackConfig.dbConfig.binary[rawIndex].evariation = pConf->pPointConf->EventBinaryResponses[index];
-		StackConfig.dbConfig.binary[rawIndex].clazz = pConf->pPointConf->BinaryClasses[index];
-		++rawIndex;
+		StackConfig.database.binary_input[index].clazz = pConf->pPointConf->BinaryClasses[index];
+		StackConfig.database.binary_input[index].evariation = pConf->pPointConf->EventBinaryResponses[index];
+		StackConfig.database.binary_input[index].svariation = pConf->pPointConf->StaticBinaryResponses[index];
 	}
 
 	// Link layer configuration
-	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
-	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
-	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	opendnp3::LinkConfig link(false,pConf->pPointConf->LinkUseConfirms);
+	link.LocalAddr = pConf->mAddrConf.OutstationAddr;
+	link.RemoteAddr = pConf->mAddrConf.MasterAddr;
+	link.Timeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	if(pConf->pPointConf->LinkKeepAlivems == 0)
-		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Max();
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Max();
 	else
-		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
-	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+	StackConfig.link = link;
 
 	// Outstation parameters
-	StackConfig.outstation.params.indexMode = opendnp3::IndexMode::Discontiguous;
 	StackConfig.outstation.params.allowUnsolicited = pConf->pPointConf->EnableUnsol;
 	StackConfig.outstation.params.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();                                     /// TODO: Create parameter
-	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest;                                    /// The maximum number of controls the outstation will attempt to process from a single APDU
-	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;                                                    /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;                                                    /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);             /// How long the outstation will allow an operate to proceed after a prior select
-	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);     /// Timeout for solicited confirms
-	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
-	StackConfig.outstation.params.unsolRetryTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms);   /// Timeout for unsolicited retried
+	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();                                      /// TODO: Create parameter
+	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest;                                     /// The maximum number of controls the outstation will attempt to process from a single APDU
+	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.selectTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);             /// How long the outstation will allow an operate to proceed after a prior select
+	StackConfig.outstation.params.solConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);     /// Timeout for solicited confirms
+	StackConfig.outstation.params.unsolConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
 
 	// TODO: Expose event limits for any new event types to be supported by opendatacon
 	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;   /// The number of binary events the outstation will buffer before overflowing
@@ -216,7 +239,7 @@ void DNP3OutstationPort::Build()
 	auto pCommandHandle = std::dynamic_pointer_cast<opendnp3::ICommandHandler>(wont_free);
 	auto pApplication = std::dynamic_pointer_cast<opendnp3::IOutstationApplication>(wont_free);
 
-	pOutstation = pChannel->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
+	pOutstation = pChanH->GetChannel()->AddOutstation(Name, pCommandHandle, pApplication, StackConfig);
 
 	if (pOutstation == nullptr)
 	{
@@ -224,70 +247,63 @@ void DNP3OutstationPort::Build()
 			log->error("{}: Error creating outstation.", Name);
 		return;
 	}
+
+	pStateSync = pIOS->make_strand();
 }
 
 //DataPort function for UI
 const Json::Value DNP3OutstationPort::GetCurrentState() const
 {
-	Json::Value event;
-	Json::Value analogValues;
-	Json::Value binaryValues;
-	if (pOutstation == nullptr)
-		return IUIResponder::GenerateResult("Bad port");
+	std::atomic_bool stateExecuted(false);
+	Json::Value temp_value;
+	pStateSync->post([this, &stateExecuted, &temp_value]()
+		{
+			temp_value = state;
+			stateExecuted = true;
+		});
 
-	//FIXME: The new opendnp3 API doesn't expose internal state
+	while (!stateExecuted)
+	{
+		pIOS->poll_one();
+	}
 
-//	auto configView = pOutstation->GetConfigView();
-//
-//	for (auto point : configView.analogs)
-//	{
-//		analogValues[std::to_string(point.vIndex)] = point.value.value;
-//	}
-//	for (auto point : configView.binaries)
-//	{
-//		binaryValues[std::to_string(point.vIndex)] = point.value.value;
-//	}
-
-	event["AnalogCurrent"] = analogValues;
-	event["BinaryCurrent"] = binaryValues;
-
-	return event;
+	return temp_value;
 }
 
 //DataPort function for UI
 const Json::Value DNP3OutstationPort::GetStatistics() const
 {
 	Json::Value event;
-	if (pChannel != nullptr)
+	if (auto pChan = pChanH->GetChannel())
 	{
-		auto ChanStats = this->pChannel->GetStatistics();
-		event["parser"]["numHeaderCrcError"] = ChanStats.parser.numHeaderCrcError;
-		event["parser"]["numBodyCrcError"] = ChanStats.parser.numBodyCrcError;
-		event["parser"]["numLinkFrameRx"] = ChanStats.parser.numLinkFrameRx;
-		event["parser"]["numBadLength"] = ChanStats.parser.numBadLength;
-		event["parser"]["numBadFunctionCode"] = ChanStats.parser.numBadFunctionCode;
-		event["parser"]["numBadFCV"] = ChanStats.parser.numBadFCV;
-		event["parser"]["numBadFCB"] = ChanStats.parser.numBadFCB;
-		event["channel"]["numOpen"] = ChanStats.channel.numOpen;
-		event["channel"]["numOpenFail"] = ChanStats.channel.numOpenFail;
-		event["channel"]["numClose"] = ChanStats.channel.numClose;
-		event["channel"]["numBytesRx"] = ChanStats.channel.numBytesRx;
-		event["channel"]["numBytesTx"] = ChanStats.channel.numBytesTx;
-		event["channel"]["numLinkFrameTx"] = ChanStats.channel.numLinkFrameTx;
+		auto ChanStats = pChan->GetStatistics();
+		event["parser"]["numHeaderCrcError"] = Json::UInt(ChanStats.parser.numHeaderCrcError);
+		event["parser"]["numBodyCrcError"] = Json::UInt(ChanStats.parser.numBodyCrcError);
+		event["parser"]["numLinkFrameRx"] = Json::UInt(ChanStats.parser.numLinkFrameRx);
+		event["parser"]["numBadLength"] = Json::UInt(ChanStats.parser.numBadLength);
+		event["parser"]["numBadFunctionCode"] = Json::UInt(ChanStats.parser.numBadFunctionCode);
+		event["parser"]["numBadFCV"] = Json::UInt(ChanStats.parser.numBadFCV);
+		event["parser"]["numBadFCB"] = Json::UInt(ChanStats.parser.numBadFCB);
+		event["channel"]["numOpen"] = Json::UInt(ChanStats.channel.numOpen);
+		event["channel"]["numOpenFail"] = Json::UInt(ChanStats.channel.numOpenFail);
+		event["channel"]["numClose"] = Json::UInt(ChanStats.channel.numClose);
+		event["channel"]["numBytesRx"] = Json::UInt(ChanStats.channel.numBytesRx);
+		event["channel"]["numBytesTx"] = Json::UInt(ChanStats.channel.numBytesTx);
+		event["channel"]["numLinkFrameTx"] = Json::UInt(ChanStats.channel.numLinkFrameTx);
 	}
 	if (pOutstation != nullptr)
 	{
 		auto StackStats = this->pOutstation->GetStackStatistics();
-		event["link"]["numBadMasterBit"] = StackStats.link.numBadMasterBit;
-		event["link"]["numUnexpectedFrame"] = StackStats.link.numUnexpectedFrame;
-		event["link"]["numUnknownDestination"] = StackStats.link.numUnknownDestination;
-		event["link"]["numUnknownSource"] = StackStats.link.numUnknownSource;
-		event["transport"]["numTransportBufferOverflow"] = StackStats.transport.rx.numTransportBufferOverflow;
-		event["transport"]["numTransportDiscard"] = StackStats.transport.rx.numTransportDiscard;
-		event["transport"]["numTransportErrorRx"] = StackStats.transport.rx.numTransportErrorRx;
-		event["transport"]["numTransportIgnore"] = StackStats.transport.rx.numTransportIgnore;
-		event["transport"]["numTransportRx"] = StackStats.transport.rx.numTransportRx;
-		event["transport"]["numTransportTx"] = StackStats.transport.tx.numTransportTx;
+		event["link"]["numBadMasterBit"] = Json::UInt(StackStats.link.numBadMasterBit);
+		event["link"]["numUnexpectedFrame"] = Json::UInt(StackStats.link.numUnexpectedFrame);
+		event["link"]["numUnknownDestination"] = Json::UInt(StackStats.link.numUnknownDestination);
+		event["link"]["numUnknownSource"] = Json::UInt(StackStats.link.numUnknownSource);
+		event["transport"]["numTransportBufferOverflow"] = Json::UInt(StackStats.transport.rx.numTransportBufferOverflow);
+		event["transport"]["numTransportDiscard"] = Json::UInt(StackStats.transport.rx.numTransportDiscard);
+		event["transport"]["numTransportErrorRx"] = Json::UInt(StackStats.transport.rx.numTransportErrorRx);
+		event["transport"]["numTransportIgnore"] = Json::UInt(StackStats.transport.rx.numTransportIgnore);
+		event["transport"]["numTransportRx"] = Json::UInt(StackStats.transport.rx.numTransportRx);
+		event["transport"]["numTransportTx"] = Json::UInt(StackStats.transport.tx.numTransportTx);
 	}
 
 	return event;
@@ -330,7 +346,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	// either one would avoid the below polling loop
 	std::atomic_bool cb_executed(false);
 	CommandStatus cb_status;
-	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
+	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&cb_executed](CommandStatus status)
 		{
 			cb_status = status;
 			cb_executed = true;
@@ -357,15 +373,21 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
+			SetState("BinaryCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("BinaryQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
+			SetState("AnalogCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("AnalogQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
+			SetState("BinaryQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
 			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
+			SetState("AnalogQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
 			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
@@ -380,8 +402,8 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 template<typename T, typename Q>
 inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index, opendnp3::FlagsType FT)
 {
-	asiodnp3::UpdateBuilder builder;
-	builder.Modify(FT,index,index,static_cast<uint8_t>(qual));
+	opendnp3::UpdateBuilder builder;
+	builder.Modify(FT, index, index, static_cast<uint8_t>(qual));
 	pOutstation->Apply(builder.Build());
 }
 
@@ -392,15 +414,21 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 
 	if (
 		(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time == 0))
+		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0))
 		)
 	{
 		meas.time = opendnp3::DNPTime(msSinceEpoch());
 	}
 
-	asiodnp3::UpdateBuilder builder;
+	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index);
 	pOutstation->Apply(builder.Build());
 }
 
-
+inline void DNP3OutstationPort::SetState(const std::string& type, const std::string& index, const std::string& payload)
+{
+	pStateSync->post([=]()
+		{
+			state[type][index] = payload;
+		});
+}

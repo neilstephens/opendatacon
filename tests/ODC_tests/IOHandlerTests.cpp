@@ -23,10 +23,12 @@
  *  Created on: 2018-06-17
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+
+#include "TestODCHelpers.h"
+#include "../opendatacon/DataConnector.h"
+#include "TestPorts.h"
 #include <catch.hpp>
 #include <opendatacon/IOTypes.h>
-#include "TestPorts.h"
-#include "../opendatacon/DataConnector.h"
 
 using namespace odc;
 
@@ -34,6 +36,7 @@ using namespace odc;
 
 TEST_CASE(SUITE("StatusCallback"))
 {
+	TestSetup();
 	/*
 	 * Send events from one port to 7 other ports
 	 *	- 3 ports via separate connector IOHandlers - check port (de)multiplexing
@@ -41,7 +44,7 @@ TEST_CASE(SUITE("StatusCallback"))
 	 * verify the status callback
 	 */
 
-	auto ios = std::make_shared<odc::asio_service>();
+	auto ios = odc::asio_service::Get();
 	auto work = ios->make_work();
 
 	PublicPublishPort Source("Null1","",Json::Value::nullSingleton());
@@ -86,18 +89,12 @@ TEST_CASE(SUITE("StatusCallback"))
 	DataConnector Conn4("Conn4","",Conn4Conf);
 	DataConnector* Conns[4] = {&Conn1,&Conn2,&Conn3,&Conn4};
 
-	Source.SetIOS(ios);
-	for(auto& p : Sinks)
-		p->SetIOS(ios);
 	for(auto& c :Conns)
-	{
-		c->SetIOS(ios);
 		c->Enable();
-	}
 
 	std::atomic_bool executed(false);
 	CommandStatus cb_status;
-	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
+	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_status,&executed](CommandStatus status)
 		{
 			cb_status = status;
 			executed = true;
@@ -126,4 +123,6 @@ TEST_CASE(SUITE("StatusCallback"))
 		else
 			REQUIRE(cb_status == CommandStatus::UNDEFINED);
 	}
+
+	TestTearDown();
 }

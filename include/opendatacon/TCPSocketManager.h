@@ -40,6 +40,8 @@
 #define TCPSOCKETMANAGER
 
 #include <opendatacon/asio.h>
+#include <opendatacon/Platform.h>
+#include <opendatacon/util.h>
 #include <string>
 #include <functional>
 
@@ -50,11 +52,10 @@ namespace odc
 typedef asio::basic_streambuf<std::allocator<char>> buf_t;
 
 //buffer to track a data container
-//T must be a container with a data(), size() and get_allocator() members
-template <typename T>
 class shared_const_buffer: public asio::const_buffer
 {
 public:
+	template <typename T> //T must be a container with a data(), size() and get_allocator() members
 	shared_const_buffer(std::shared_ptr<T> pCon):
 		asio::const_buffer(pCon->data(),pCon->size()*sizeof(pCon->get_allocator())),
 		con(pCon)
@@ -72,141 +73,86 @@ public:
 	}
 
 private:
-	std::shared_ptr<T> con;
+	std::shared_ptr<void> con;
 };
 
-template <typename Q>
+struct TCPKeepaliveOpts
+{
+	TCPKeepaliveOpts(bool enabled, unsigned int idle_timeout_s, unsigned int retry_interval_s, unsigned int fail_count):
+		enabled(enabled),
+		idle_timeout_s(idle_timeout_s),
+		retry_interval_s(retry_interval_s),
+		fail_count(fail_count)
+	{}
+	bool enabled;
+	unsigned int idle_timeout_s;
+	unsigned int retry_interval_s;
+	unsigned int fail_count;
+};
+
 class TCPSocketManager
 {
 public:
 	TCPSocketManager
-		(std::shared_ptr<odc::asio_service> apIOS,        //pointer to an asio io_service
-		bool aisServer,                                   //Whether to act as a server or client
-		const std::string& aEndPoint,                     //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,                         //Port to connect to if client, or listen on if server
-		const std::function<void(buf_t&)>& aReadCallback, //Handler for data read off socket
-		const std::function<void(bool)>& aStateCallback,  //Handler for communicating the connection state of the socket
-		const size_t abuffer_limit                        //
-		      = std::numeric_limits<size_t>::max(),       //maximum number of writes to buffer
-		bool aauto_reopen = false,                        //Keeps the socket open (retry on error), unless you explicitly Close() it
-		uint16_t aretry_time_ms = 0):                     //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
-		isConnected(false),
-		manuallyClosed(true),
-		pIOS(apIOS),
-		isServer(aisServer),
-		ReadCallback(aReadCallback),
-		StateCallback(aStateCallback),
-		pSock(pIOS->make_tcp_socket()),
-		pReadStrand(pIOS->make_strand()),
-		pWriteStrand(pIOS->make_strand()),
-		pSockStrand(pIOS->make_strand()),
-		pRetryTimer(pIOS->make_steady_timer()),
-		buffer_limit(abuffer_limit),
-		auto_reopen(aauto_reopen),
-		retry_time_ms(aretry_time_ms),
-		ramp_time_ms(0),
-		EndpointIterator(pIOS->make_tcp_resolver()->resolve(aEndPoint,aPort)),
-		pAcceptor(nullptr)
-	{}
+		(std::shared_ptr<odc::asio_service> apIOS,                        //pointer to an asio io_service
+		const bool aisServer,                                             //Whether to act as a server or client
+		const std::string& aEndPoint,                                     //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                                         //Port to connect to if client, or listen on if server
+		const std::function<void(buf_t&)>& aReadCallback,                 //Handler for data read off socket
+		const std::function<void(bool)>& aStateCallback,                  //Handler for communicating the connection state of the socket
+		const size_t abuffer_limit                                        //
+		      = std::numeric_limits<size_t>::max(),                       //maximum number of writes to buffer
+		const bool aauto_reopen = false,                                  //Keeps the socket open (retry on error), unless you explicitly Close() it
+		const uint16_t aretry_time_ms = 0,                                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
+		const std::function<void(const std::string&,const std::string&)>& //
+		aLogCallback = [](const std::string&, const std::string&){},      //Handler for log messages
+		const bool useKeepalives = true,                                  //Set TCP keepalive socket option
+		const unsigned int KeepAliveTimeout_s = 599,                      //TCP keepalive idle timeout (seconds)
+		const unsigned int KeepAliveRetry_s = 10,                         //TCP keepalive retry interval (seconds)
+		const unsigned int KeepAliveFailcount = 3);                       //TCP keepalive fail count
 
-	void Open()
-	{
-		pSockStrand->post([this]()
-			{
-				manuallyClosed = false;
-				if(isConnected)
-					return;
-				if(isServer)
-				{
-				      pAcceptor = pIOS->make_tcp_acceptor(EndpointIterator);
-				      pAcceptor->async_accept(*pSock,[this](asio::error_code err_code)
-						{
-							ConnectCompletionHandler(err_code);
-							pAcceptor.reset();
-						});
-				}
-				else
-				{
-				      pSock->async_connect(*EndpointIterator,[this](asio::error_code err_code)
-						{
-							ConnectCompletionHandler(err_code);
-						});
-				}
-			});
-	}
-	void Close()
-	{
-		pSockStrand->post([this]()
-			{
-				manuallyClosed = true;
-				ramp_time_ms = 0;
-				pRetryTimer->cancel();
-				pAcceptor.reset();
-				AutoClose();
-			});
-	}
+	void Open();
+	void Close();
 
-	template <typename T>
-	void Write(T&& aContainer)
+	template <typename Q> //Q must be a container with a data(), size() and get_allocator() members
+	void Write(Q&& aContainer)
 	{
 		//shared_const_buffer is a ref counted wraper that will delete the data in good time
-		auto buf = shared_const_buffer<T>(std::make_shared<T>(std::move(aContainer)));
-
-		pSockStrand->post([this,buf]()
-			{
-				if(!isConnected)
-				{
-				      pWriteStrand->post([this,buf]()
-						{
-							writebufs.push_back(buf);
-							if(writebufs.size() > buffer_limit)
-								writebufs.erase(writebufs.begin());
-						});
-				      return;
-				}
-
-				asio::async_write(*pSock,buf,asio::transfer_all(),pWriteStrand->wrap([this,buf](asio::error_code err_code, std::size_t n)
-						{
-							if(err_code)
-							{
-							      writebufs.push_back(buf);
-							      if(writebufs.size() > buffer_limit)
-									writebufs.erase(writebufs.begin());
-							      AutoClose();
-							      AutoOpen();
-							      return;
-							}
-						}));
-			});
+		shared_const_buffer buf(std::make_shared<Q>(std::move(aContainer)));
+		Write(buf);
 	}
 
-	~TCPSocketManager()
-	{
-		Close();
-	}
+	~TCPSocketManager();
 
 private:
+	std::shared_ptr<void> handler_tracker;
 	bool isConnected;
+	size_t pending_connections;
+	bool pending_write;
+	bool pending_read;
 	bool manuallyClosed;
 	std::shared_ptr<odc::asio_service> pIOS;
 	const bool isServer;
 	const std::function<void(buf_t&)> ReadCallback;
 	const std::function<void(bool)> StateCallback;
+	const std::function<void(const std::string& level,const std::string& message)> LogCallback;
+	TCPKeepaliveOpts Keepalives;
 
 	buf_t readbuf;
-	std::vector<shared_const_buffer<Q>> writebufs;
-	std::unique_ptr<asio::ip::tcp::socket> pSock;
+	//dual buffers for alternate queuing and passing to asio
+	std::vector<shared_const_buffer> writebufs1;
+	std::vector<shared_const_buffer> writebufs2;
+	std::vector<shared_const_buffer>* queue_writebufs;
+	std::vector<shared_const_buffer>* dispatch_writebufs;
 
-	//Strand to sync access to read buffer
-	std::unique_ptr<asio::io_service::strand> pReadStrand;
-	//Strand to sync access to write buffers
-	std::unique_ptr<asio::io_service::strand> pWriteStrand;
-	//Strand to sync access to socket state
+	std::shared_ptr<asio::ip::tcp::socket> pSock;
+	//Strand to sync access to socket
 	std::unique_ptr<asio::io_service::strand> pSockStrand;
 
 	//for timing open-retries
 	std::unique_ptr<asio::steady_timer> pRetryTimer;
 
+	//not a size limit, but number of Write() limit
 	size_t buffer_limit;
 
 	//Auto open funtionality - see constructor for description
@@ -214,102 +160,28 @@ private:
 	uint16_t retry_time_ms;
 	uint16_t ramp_time_ms; //keep track of exponential backoff
 
-	//Host/IP and Port are resolved into these:
+	//Host/IP and Port resolution:
+	const std::string host_name;
+	const std::string service_name;
 	asio::ip::tcp::resolver::iterator EndpointIterator;
+	msSinceEpoch_t resolve_time;
 	std::unique_ptr<asio::ip::tcp::acceptor> pAcceptor;
 
-	void ConnectCompletionHandler(asio::error_code err_code)
-	{
-		if(err_code)
-		{
-			//TODO: implement logging
-			AutoOpen();
-			return;
-		}
+	//some stats
+	uint64_t write_count = 0;
+	uint64_t read_count = 0;
 
-		pSockStrand->post([this]()
-			{
-				isConnected = true;
-				StateCallback(isConnected);
-				ramp_time_ms = 0;
-				//if there's anything in the buffer sequence, write it
-				pWriteStrand->post([this]()
-					{
-						if(writebufs.size() > 0)
-						{
-						      auto n = asio::write(*pSock,writebufs,asio::transfer_all());
-						      if(n == 0)
-						      {
-						            AutoClose();
-						            AutoOpen();
-						            return;
-							}
-						      writebufs.clear();
-						}
-					});
-				Read();
-			});
-	}
-	void Read()
-	{
-		asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pReadStrand->wrap([this](asio::error_code err_code, std::size_t n)
-				{
-					if(err_code)
-					{
-					      AutoClose();
-					      AutoOpen();
-					}
-					else
-					{
-					      ReadCallback(readbuf);
-					      Read();
-					}
-				}));
-	}
-	void AutoOpen()
-	{
-		pSockStrand->post([this]()
-			{
-				if(!auto_reopen || manuallyClosed)
-					return;
-
-				if(retry_time_ms != 0)
-				{
-				      ramp_time_ms = retry_time_ms;
-				}
-
-				if(ramp_time_ms == 0)
-				{
-				      ramp_time_ms = 125;
-				      Open();
-				}
-				else
-				{
-				      pRetryTimer->expires_from_now(std::chrono::milliseconds(ramp_time_ms));
-				      pRetryTimer->async_wait([this](asio::error_code err_code)
-						{
-							if (err_code != asio::error::operation_aborted)
-							{
-							      ramp_time_ms *= 2;
-							      Open();
-							}
-						});
-				}
-			});
-	}
-	void AutoClose()
-	{
-		pSockStrand->post([this]()
-			{
-				if(!isConnected)
-				{
-				      return;
-				}
-				pSock->close();
-				isConnected = false;
-				StateCallback(isConnected);
-			});
-	}
+	void Write(shared_const_buffer buf);
+	bool EndPointResolved(std::shared_ptr<void> tracker);
+	void ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
+	void ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
+	void CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
+	void WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
+	void ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str);
+	void Read(std::string remote_addr_str, std::shared_ptr<void> tracker);
+	void Open(std::shared_ptr<void> tracker);
+	void AutoOpen(std::shared_ptr<void> tracker);
+	void AutoClose(std::shared_ptr<void> tracker);
 };
 
 } //namespace odc

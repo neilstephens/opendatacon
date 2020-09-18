@@ -1,74 +1,186 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8"/>
-        <title>OpenDataCon</title>
-        <script src="/js/jquery-1.11.1.min.js"></script>
-        <script src="/js/jquery.dataTables.min.js"></script>
-		<link href="/css/odc.css" rel="stylesheet">        
-		<link href="/css/jquery.dataTables.css" rel="stylesheet">        
-    </head>
-    <body>
-        <h1>Data Ports</h1>
-        <table id="DataPortsTable" class="display" cellspacing="0" width="100%">
-        <thead><tr id="DataPortsTableHeader"><th>Port Name</th></tr></thead>
-        <tbody id="DataPortsTableBody"/>
-        </table>
-        <h1>Data Connectors</h1>
-        <table id="DataConnectorsTable" class="display" cellspacing="0" width="100%">
-        <thead><tr id="DataConnectorsTableHeader"><th>Connector Name</th></tr></thead>
-        <tbody id="DataConnectorsTableBody"/>
-        </table>
-        <h1>Logs</h1>
-        <table id="LoggersTable" class="display" cellspacing="0" width="100%">
-        <thead><tr id="LoggersTableHeader"><th>Log Name</th></tr></thead>
-        <tbody id="LoggersTableBody"/>
-        </table>
-        <script>
-            $.post( "/DataPorts/List", { } ).done(function( data ) {
-				for(command in data["Commands"]) {
-					$( "#DataPortsTableHeader" ).append('<th></th>');
-				}
-				var TableData = [];
-				for(elem in data["Items"]) {
-					var TableRow = [data["Items"][elem]];
-					for(command in data["Commands"]) {
-						TableRow.push('<a href="' + data["Commands"][command] + '.html#/DataPorts/' + data["Items"][elem] + '">' + data["Commands"][command] + '</a>');
-					}
-					TableData.push(TableRow);
-				}
-				$('#DataPortsTable').dataTable({ "data": TableData });
-            });
-            $.post( "/DataConnectors/List", { } ).done(function( data ) {
-				for(command in data["Commands"]) {
-					 $( "#DataConnectorsTableHeader" ).append('<th></th>');
-				}
-				var TableData = [];				       
-				for(elem in data["Items"])
-				{
-					var TableRow = [data["Items"][elem]];
-					for(command in data["Commands"])
-					{
-						 TableRow.push('<a href="' + data["Commands"][command] + '.html#/DataConnectors/' + data["Items"][elem] + '">' + data["Commands"][command] + '</a>');
-					}
-					TableData.push(TableRow);
-				}
-				$('#DataConnectorsTable').dataTable({"data": TableData });
-            });
-            $.post( "/Loggers/List", { } ).done(function( data ) {
-				for(command in data["Commands"]) {
-					 $( "#LoggersTableHeader" ).append('<th></th>');
-				}
-				var TableData = [];				        
-				for(elem in data["Items"]) {
-					var TableRow = [data["Items"][elem]];
-					for(command in data["Commands"]) {
-						 TableRow.push('<a href="' + data["Commands"][command] + '.html#/Loggers/' + data["Items"][elem] + '">' + data["Commands"][command] + '</a>');
-					}
-					TableData.push(TableRow);
-				}
-				$('#LoggersTable').dataTable({"data": TableData });				
-            });
-        </script>
-    </body>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/common_modules/css/datatables.min.css">
+
+    <script src= "/node_modules/jquery/dist/jquery.min.js"> </script>
+    <script src= "/node_modules/bootstrap/dist/js/bootstrap.min.js"> </script>
+    <script src="/common_modules/js/datatables.min.js"></script>
+    <script src="/common_modules/js/bootstrap-treeview.min.js"></script>
+
+    <script>
+      $(function() {
+          $("#common_content").load("common.html");
+      });
+    </script>
+
+    <style>
+      .modal.currentstate .modal-dialog {
+          width:1180px;
+          /* For responsive */
+          max-width:100%;
+          max-height:100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- html section -->
+    <div id="common_content"></div>
+
+    <!-- toggle between tabular and control panel mode -->
+    <div class="alert alert-info clearfix">
+      <a href="#" class="alert-link"></a>
+      <button type="button" class="btn btn-primary float-right" onclick="go_to_control_panel()">Control Panel</button>
+    </div>
+
+    <!-- Data ports table -->
+    <h1 style="text-align:center"> Data Ports </h1>
+    <table id="DataPortsTable" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
+      <thead>
+        <tr id="DataPortsTableHeader">
+          <th>Port Name</th>
+        </tr>
+      </thead>
+      <tbody id="DataPortsTableBody"/>
+    </table>
+
+    <!-- Data connectors table -->
+    <h1 style="text-align:center">Data Connectors</h1>
+    <table id="DataConnectorsTable" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
+      <thead>
+        <tr id="DataConnectorsTableHeader">
+          <th>Connector Name</th>
+        </tr>
+      </thead>
+      <tbody id="DataConnectorsTableBody"/>
+    </table>
+
+    <!-- java script section -->
+    <script>
+      /* function which will take user to the control panel mode */
+      function go_to_control_panel() {
+          window.location.href="control_panel.html";
+      }
+
+      /* post a query to the server with target and get the data ports */
+      function get_data_ports(target, command) {
+          if (command == "Configuration") {
+              document.getElementById("frame_src").src = "configuration.html?type=DataPorts&target=" + target;
+              document.getElementById("frame_modal_title").innerHTML="Configuration[" + target +"]";
+              $('#frame_modal').modal('show');
+          } else if (command == "Statistics") {
+              document.getElementById("frame_src").src = "statistics.html?type=DataPorts&target=" + target;
+              document.getElementById("frame_modal_title").innerHTML="Statistics[" + target +"]";
+              $('#frame_modal').modal('show');
+          } else if (command == "CurrentState") {
+              $.post("/DataPorts CurrentState", { Target : target })
+                  .done(function(data) {
+                      if (data) {
+                          document.getElementById("current_state_src").src = "current_state.html?type=DataPorts&target=" + target;
+                          document.getElementById("current_state_modal_title").innerHTML="Current State[" + target + "]";
+                          $('#current_state_modal').modal('show');
+
+                          $("#current_state_modal").on("hidden.bs.modal", function () {
+                              location.reload();
+                          });
+                      } else {
+                          document.getElementById("short_text_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML="NULL";
+                          $('#short_text_modal').modal('show');
+                      }
+                  });
+          } else {
+              const url = "/DataPorts " + command;
+              $.post( url, { Target : target } )
+                  .done(function( data ) {
+                      if (data) {
+                          var result = '';
+                          for (const [key, value] of Object.entries(data)) {
+                              result += key + ' : ' + value + '<br>';
+                          }
+
+                          document.getElementById("short_text_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML=result;
+                          $('#short_text_modal').modal('show');
+                      } else {
+                          document.getElementById("short_text_modal_title").innerHTML="Data Ports[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML="NULL";
+                          $('#short_text_modal').modal('show');
+                      }
+                  });
+          }
+      }
+
+      /* post a query to the server with target and get the data connectors */
+      function get_data_connectors(target, command) {
+          if (command == "Configuration") {
+              document.getElementById("frame_src").src = "configuration.html?type=DataConnectors&target=" + target;
+              document.getElementById("frame_modal_title").innerHTML="Configuration[" + target +"]";
+              $('#frame_modal').modal('show');
+          } else {
+              const url = "/DataConnectors " + command;
+              $.post( url, { Target : target } )
+                  .done(function( data ) {
+                      if (data) {
+                          var result = '';
+                          for (const [key, value] of Object.entries(data)) {
+                              result += key + ' : ' + value + '<br>';
+                          }
+
+                          document.getElementById("short_text_modal_title").innerHTML="Data Connectors[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML=result;
+                          $('#short_text_modal').modal('show');
+                      } else {
+                          document.getElementById("short_text_modal_title").innerHTML="Data Connectors[" + target + ", " + command +"]";
+                          document.getElementById("short_text_modal_data").innerHTML="NULL";
+                          $('#short_text_modal').modal('show');
+                      }
+                  });
+          }
+      }
+
+      /* post a query to the server with Data ports list */
+      $.post( "/DataPorts List", { } ).done(function( data ) {
+          for(command in data["Commands"]) {
+              $( "#DataPortsTableHeader" ).append('<th>' + data["Commands"][command] + '</th>');
+          }
+
+          var TableData = [];
+          for(target in data["Items"]) {
+              var TableRow = [data["Items"][target]];
+              for(command in data["Commands"]) {
+                  const row = '<a href="javascript:void(0);" onclick="get_data_ports(\'' + data["Items"][target] + '\', \'' + data["Commands"][command] + '\');">' + data["Commands"][command] + '</a>'
+                  TableRow.push(row);
+              }
+              TableData.push(TableRow);
+          }
+          $('#DataPortsTable').dataTable({ "data": TableData });
+      });
+
+      /* post a query to the server with Data connectors list */
+      $.post( "/DataConnectors List", { } ).done(function( data ) {
+          for(command in data["Commands"]) {
+              $( "#DataConnectorsTableHeader" ).append('<th>' + data["Commands"][command] + '</th>');
+          }
+
+          var TableData = [];
+          for(target in data["Items"]) {
+              var TableRow = [data["Items"][target]];
+              for(command in data["Commands"]) {
+                  const row = '<a href="javascript:void(0);" onclick="get_data_connectors(\'' + data["Items"][target] + '\', \'' + data["Commands"][command] + '\');">' + data["Commands"][command] + '</a>'
+                  TableRow.push(row);
+              }
+              TableData.push(TableRow);
+          }
+          $('#DataConnectorsTable').dataTable({"data": TableData });
+      });
+
+      </script>
+  </body>
 </html>

@@ -26,6 +26,8 @@
 //
 
 #include "MhdWrapper.h"
+#include <iostream>
+#include <opendatacon/util.h>
 
 const int POSTBUFFERSIZE = 512;
 const char EMPTY_PAGE[] = "<html><head><title>File not found</title></head><body>File not found</body></html>";
@@ -57,7 +59,7 @@ const std::string& GetMimeType(const std::string& rUrl)
 static ssize_t
 file_reader(void *cls, uint64_t pos, char *buf, size_t max)
 {
-	FILE *file = (FILE *)cls;
+	FILE *file = reinterpret_cast<FILE *>(cls);
 
 	(void)fseek(file, pos, SEEK_SET);
 	return fread(buf, 1, max, file);
@@ -66,15 +68,8 @@ file_reader(void *cls, uint64_t pos, char *buf, size_t max)
 static void
 file_free_callback(void *cls)
 {
-	FILE *file = (FILE *)cls;
+	FILE *file = reinterpret_cast<FILE *>(cls);
 	fclose(file);
-}
-
-const std::string GetPath(const std::string& rUrl)
-{
-	auto last = rUrl.find_last_of("/\\");
-	if (last == std::string::npos) return "";
-	return rUrl.substr(0,last);
 }
 
 const std::string GetFile(const std::string& rUrl)
@@ -84,20 +79,22 @@ const std::string GetFile(const std::string& rUrl)
 	return rUrl.substr(last+1);
 }
 
-int ReturnFile(struct MHD_Connection *connection,
-	const char *url)
+int ReturnFile(struct MHD_Connection *connection, const std::string& url)
 {
-	struct stat buf;
+	struct stat buf {};
 	FILE *file;
 	struct MHD_Response *response;
 	int ret;
 
-	if ((0 == stat(&url[1], &buf)) && (S_ISREG(buf.st_mode)))
-		fopen_s(&file, &url[1], "rb");
+	if ((0 == stat(url.c_str(), &buf)) && (S_ISREG(buf.st_mode)))
+		fopen_s(&file, url.c_str(), "rb");
 	else
 		file = nullptr;
 	if (file == nullptr)
 	{
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("Failed to open file {}", url);
+
 		response = MHD_create_response_from_buffer(strlen(EMPTY_PAGE),
 			(void *)EMPTY_PAGE,
 			MHD_RESPMEM_PERSISTENT);
@@ -111,32 +108,42 @@ int ReturnFile(struct MHD_Connection *connection,
 			&file_free_callback);
 		if (response == nullptr)
 		{
+			if (auto log = odc::spdlog_get("WebUI"))
+				log->error("MHD_create_response_from_callback failed.");
 			fclose(file);
-			return MHD_NO;
+			ret = MHD_NO;
 		}
-		MHD_add_response_header(response, "Content-Type", GetMimeType(url).c_str());
-		ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-		MHD_destroy_response(response);
+		else
+		{
+			MHD_add_response_header(response, "Content-Type", GetMimeType(url).c_str());
+			ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+			MHD_destroy_response(response);
+		}
 	}
+	if(ret != MHD_YES)
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("Failed to queue response from ReturnFileBlocking().");
 	return ret;
 }
 
-int ReturnJSON(struct MHD_Connection *connection, const char* jsoncstr)
+int ReturnJSON(struct MHD_Connection *connection, const std::string& json_str)
 {
 	struct MHD_Response *response;
-	int ret;
 
 	/*
 	 MHD_RESPMEM_MUST_FREE
 	 MHD_RESPMEM_MUST_COPY
 	 */
-	response = MHD_create_response_from_buffer(strlen(jsoncstr),
-		(void *)jsoncstr,
+	response = MHD_create_response_from_buffer(json_str.size(),
+		(void *)json_str.c_str(),
 		MHD_RESPMEM_MUST_COPY);
 	MHD_add_response_header (response, "Content-Type", MimeTypeMap.at("json").c_str());
-	ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+	int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
 	MHD_destroy_response(response);
 
+	if(ret != MHD_YES)
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error("Failed to queue response from ReturnJSON().");
 	return ret;
 }
 
@@ -212,7 +219,7 @@ iterate_post (void *coninfo_cls,
 	size_t size // POST VALUE LENGTH
 	)
 {
-	struct connection_info_struct* con_info = (connection_info_struct*) coninfo_cls;
+	auto con_info = reinterpret_cast<connection_info_struct*>(coninfo_cls);
 
 	if (kind == MHD_POSTDATA_KIND)
 	{
@@ -226,7 +233,7 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 	void **con_cls,
 	enum MHD_RequestTerminationCode toe)
 {
-	struct connection_info_struct *con_info = (connection_info_struct*)*con_cls;
+	auto *con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
 
 	if (nullptr == con_info) return;
 	if (nullptr != con_info->postprocessor) MHD_destroy_post_processor(con_info->postprocessor);
@@ -237,11 +244,11 @@ void request_completed(void *cls, struct MHD_Connection *connection,
 
 int CreateNewRequest(void *cls,
 	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
+	const std::string& url,
+	const std::string& method,
+	const std::string& version,
+	const std::string& upload_data,
+	size_t& upload_data_size,
 	void **con_cls)
 {
 	struct connection_info_struct *con_info;
@@ -250,17 +257,17 @@ int CreateNewRequest(void *cls,
 	if (nullptr == con_info) return MHD_NO;
 	*con_cls = (void*)con_info;
 
-	if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) return MHD_YES;
-	if (0 == strcmp(method, "POST"))
+	if (method == MHD_HTTP_METHOD_GET) return MHD_YES;
+	if (method == "POST")
 	{
 		auto length = atoi(MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Content-Length"));
 		if (length == 0) return MHD_YES;
-		con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void*) con_info);
+		con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, reinterpret_cast<MHD_PostDataIterator>(&iterate_post), con_info);
 		if (nullptr != con_info->postprocessor) return MHD_YES;
 	}
 
 	// unexpected method or couldn't create post processor
-	free(con_info);
+	delete con_info;
 	*con_cls = nullptr;
 	return MHD_NO;
 }

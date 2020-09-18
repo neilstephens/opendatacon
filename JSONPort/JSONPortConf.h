@@ -26,10 +26,9 @@
 
 #ifndef JSONPORTCONF_H_
 #define JSONPORTCONF_H_
-
+#include "JSONPointConf.h"
 #include <memory>
 #include <opendatacon/DataPortConf.h>
-#include "JSONPointConf.h"
 
 struct JSONAddrConf
 {
@@ -43,7 +42,8 @@ public:
 	JSONPortConf(const std::string& FileName, const Json::Value& ConfOverrides):
 		retry_time_ms(3000),
 		evt_buffer_size(1000),
-		style_output(false)
+		style_output(false),
+		print_all(false)
 	{
 		pPointConf = std::make_unique<JSONPointConf>(FileName, ConfOverrides);
 	}
@@ -53,6 +53,7 @@ public:
 	unsigned int retry_time_ms;
 	unsigned int evt_buffer_size;
 	bool style_output;
+	bool print_all;
 };
 
 #endif /* JSONPORTCONF_H_ */

@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project(WebUI)
-cmake_minimum_required(VERSION 2.8)
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 set(MICROHTTPD_HOME_INSTRUCTIONS "Choose the location of libmicrohttpd: where it was installed - there should be lib and include directories within")
@@ -63,6 +63,8 @@ target_link_libraries(${PROJECT_NAME} ODC httpd_target)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
+
+install(DIRECTORY "www" DESTINATION ".")
 
 install(CODE
 "

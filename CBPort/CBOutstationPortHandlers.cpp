@@ -30,18 +30,20 @@
  So an Event to an outstation will be data that needs to be sent up to the scada master.
  An event from an outstation will be a master control signal to turn something on or off.
 */
-#include <iostream>
-#include <future>
-#include <regex>
-#include <chrono>
-
 #include "CB.h"
 #include "CBUtility.h"
 #include "CBOutstationPort.h"
+#include "CBOutStationPortCollection.h"
+#include <chrono>
+#include <future>
+#include <iostream>
+#include <regex>
 
 
 void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 	assert(CompleteCBMessage.size() != 0);
 
@@ -205,13 +207,18 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	bool FoundMatch = false;
 	uint16_t Payload = 0;
 
-	MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+	MyPointConf->PointTable.ForEachMatchingAnalogPoint(Group, payloadlocation, [&Payload,&FoundMatch](CBAnalogCounterPoint &pt)
 		{
 			// We have a matching point - there may be 2, set a flag to indicate we have a match, and set our bits in the output.
 			uint8_t ch = pt.GetChannel();
-			if ((pt.GetPointType() == ANA6) && (ch == 1))
+			if (pt.GetPointType() == ANA6) 
 			{
-			      Payload |= ShiftLeftResult16Bits(pt.GetAnalog(), 6);
+				uint16_t value = (63 - pt.GetAnalog()) & 0x03f;	// ANA6 Are Inverted, 6 bit result only
+				// Shift only if ch == 1 (it is in the top bits!)
+				if (ch == 1)
+					Payload |= ShiftLeftResult16Bits(value, 6);
+				else
+					Payload |= value;
 			}
 			else
 				Payload |= pt.GetAnalog();
@@ -221,7 +228,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingCounterPoint(Group, payloadlocation, [&](CBAnalogCounterPoint &pt)
+		MyPointConf->PointTable.ForEachMatchingCounterPoint(Group, payloadlocation, [&Payload,&FoundMatch](CBAnalogCounterPoint &pt)
 			{
 				// We have a matching point - there will be only 1!!, set a flag to indicate we have a match, and set our bit in the output.
 				Payload = pt.GetAnalog();
@@ -230,7 +237,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	}
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingBinaryPoint(Group, payloadlocation, [&](CBBinaryPoint &pt)
+		MyPointConf->PointTable.ForEachMatchingBinaryPoint(Group, payloadlocation, [this,&Payload,&FoundMatch](CBBinaryPoint &pt)
 			{
 				// We have a matching point, set a flag to indicate we have a match, and set our bit in the output.
 				uint8_t ch = pt.GetChannel();
@@ -286,7 +293,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	if (!FoundMatch)
 	{
 		// See if it is a StatusByte we need to provide - there is only one status byte, but it could be requested in several groups.
-		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [&](void)
+		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [this,&Payload,&FoundMatch,&Group,&payloadlocation](void)
 			{
 				// We have a matching status byte, set a flag to indicate we have a match.
 				LOGDEBUG("{} Got a Status Byte request at :{} - {}",Name, Group ,payloadlocation.to_string());
@@ -347,8 +354,15 @@ void CBOutstationPort::FuncTripClose(CBBlockData &Header, PendingCommandType::Co
 		PendingCommands[group].Command = pCommand;
 		PendingCommands[group].ExpiryTime = CBNowUTC() + PendingCommands[group].CommandValidTimemsec;
 
-		LOGDEBUG("{} Got a valid {} PendingCommand, Data {}",Name, cmd, PendingCommands[group].Data);
+		LOGDEBUG("{} Got a valid {} PendingCommand, Data {} DeliberatelyFailControlResponse {}",Name, cmd, PendingCommands[group].Data, FailControlResponse);
 
+		if (FailControlResponse)
+		{
+			// We have to corrupt the response by shifting right by one bit. Channel is 1 to 12
+			uint8_t bit = 1 + numeric_cast<uint8_t>(GetSetBit(PendingCommands[group].Data, 12));
+			if (bit > 11) bit = 0;
+			PendingCommands[group].Data = 1 << (11 - bit);
+		}
 		auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), PendingCommands[group].Data, true);
 
 		// Now assemble and return the required response..
@@ -594,7 +608,7 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 			}
 			else
 			{
-				LOGERROR("{} Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES Command - Index {}, Blocks {}, Message Size {} ", Name, DataIndex, NumberOfBlocksInMessage, CompleteCBMessage.size());
+				LOGERROR("{} Received Illegal MASTER_SUB_FUNC_SEND_TIME_UPDATES Command - Index {} (must be 0), Blocks {} (must be 2), Message Size {} (must be 2) ", Name, DataIndex, NumberOfBlocksInMessage, CompleteCBMessage.size());
 			}
 		}
 		break;
@@ -660,7 +674,7 @@ void CBOutstationPort::FuncSendSOEResponse(CBBlockData & Header)
 	{
 		// The maximum number of bits we can send is 12 * 31 = 372.
 		uint32_t UsedBits = 0;
-		std::array<bool, MaxSOEBits> BitArray;
+		std::array<bool, MaxSOEBits> BitArray{};
 
 		BuildPackedEventBitArray(BitArray, UsedBits);
 
@@ -763,10 +777,10 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
 		// The time field is the delta between the previous event (if there is one) and the current event (in msec)
 		SOEEventFormat PackedEvent;
-		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; //TODO: Bottom three bits of the point group,  not the SOE Group! Pretty sure this is correct - from captures.
+		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; // Bottom three bits of the point group,  not the SOE Group!
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
-		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? 1 : 0;
-		PackedEvent.QualityBit = 0;
+		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? true : false;
+		PackedEvent.QualityBit = false;
 
 		CBTime TimeDelta = CurrentPoint.GetChangedTime() - LastPointTime;
 
@@ -820,7 +834,17 @@ void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 	// Value can be +/-
 	int16_t SetMinutes = hhin * 60 + mmin + (ssin > 30 ? 1 : 0);
 	int16_t ClockMinutes = hh * 60 + mm + (ss > 30 ? 1 : 0);
+
 	SOETimeOffsetMinutes = SetMinutes - ClockMinutes; // So when adjusting SOE times, just add the Offset to the Clock
+
+	// If we are doing this around a UTC clock rollover, it can fail we can get 1430 instead of -10.
+	// We dont care about the actual day, so 1430 is actually equal to -10.
+	// So we will limit the range to +/- 1440/2 (i.e. +/- half a day)
+	if (SOETimeOffsetMinutes > (1440 / 2))
+		SOETimeOffsetMinutes = SOETimeOffsetMinutes - 1440;
+
+	if (SOETimeOffsetMinutes < -(1440 / 2))
+		SOETimeOffsetMinutes = SOETimeOffsetMinutes + 1440;
 
 	LOGDEBUG("{} Received Time Set Command {}, Current UTC Time {} - SOE Offset Now Set to {} minutes",Name, to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), to_stringfromCBtime(CBNowUTC()), SOETimeOffsetMinutes);
 
@@ -858,12 +882,11 @@ bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
 }
 void CBOutstationPort::MarkAllBinaryPointsAsChanged()
 {
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &pt)
+	MyPointConf->PointTable.ForEachBinaryPoint([](CBBinaryPoint &pt)
 		{
 			pt.SetChangedFlag();
 		});
 }
-
 
 // Scan all binary/digital blocks for changes - used to determine what response we need to send
 // We return the total number of changed blocks we assume every block supports time tagging
@@ -874,7 +897,7 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChanges()
 	int lastblock = -1; // Non valid value
 
 	// The map is sorted, so when iterating, we are working to a specific order. We can have up to 16 points in a block only one changing will trigger a send.
-	MyPointConf->PointTable.ForEachBinaryPoint([&](CBBinaryPoint &pt)
+	MyPointConf->PointTable.ForEachBinaryPoint([&lastblock,&changedblocks](CBBinaryPoint &pt)
 		{
 			if (pt.GetChangedFlag())
 			{
@@ -888,6 +911,44 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChanges()
 		});
 
 	return changedblocks;
+}
+// UI Handlers
+std::pair<std::string, std::shared_ptr<IUIResponder>> CBOutstationPort::GetUIResponder()
+{
+	return std::pair<std::string, std::shared_ptr<CBOutstationPortCollection>>("CBOutstationPortControl", this->CBOutstationCollection);
+	// 	return std::pair<std::string, std::shared_ptr<SimPortCollection>>("SimControl", this->SimCollection);
+}
+
+bool CBOutstationPort::UIFailControl(const std::string &active)
+{
+	if (iequals(active,"true"))
+	{
+		FailControlResponse = true;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		FailControlResponse = false;
+		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	return false;
+}
+bool CBOutstationPort::UIRandomReponseBitFlips(const std::string& probability)
+{
+	try
+	{
+		auto prob = std::stod(probability);
+		if ((prob > 1.0) || (prob < 0.0))
+			return false;
+		BitFlipProbability = prob;
+		LOGCRITICAL("{} Set the probability of a flipped bit in the response packet to {}", Name, BitFlipProbability );
+		return true;
+	}
+	catch (...)
+	{}
+	return false;
 }
 #ifdef _MSC_VER
 #pragma endregion

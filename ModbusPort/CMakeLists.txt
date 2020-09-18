@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project(ModbusPort)
-cmake_minimum_required(VERSION 2.8)
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 set(MODBUS_HOME_INSTRUCTIONS "Choose the location of libmodbus: where it was installed - there should be lib and include directories within")

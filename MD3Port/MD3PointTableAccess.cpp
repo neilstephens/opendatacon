@@ -35,7 +35,7 @@ void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalco
 {
 	IsOutstation = isoutstation;
 	NewDigitalCommands = newdigitalcommands;
-	pBinaryTimeTaggedEventQueue.reset(new StrandProtectedQueue<MD3BinaryPoint>(IOS, 256));
+	pBinaryTimeTaggedEventQueue = std::make_unique<StrandProtectedQueue<MD3BinaryPoint>>(IOS, 256);
 }
 
 #ifdef _MSC_VER
@@ -149,7 +149,7 @@ bool MD3PointTableAccess::GetCounterValueUsingMD3Index(const uint16_t module, co
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != CounterMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetAnalog();
@@ -163,7 +163,7 @@ bool MD3PointTableAccess::GetCounterValueAndChangeUsingMD3Index(const uint16_t m
 	// Change being update the last read value
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != CounterMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetAnalogAndDelta(delta);
@@ -176,7 +176,7 @@ bool MD3PointTableAccess::SetCounterValueUsingMD3Index(const uint16_t module, co
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != CounterMD3PointMap.end())
 	{
 		MD3PointMapIter->second->SetAnalog(meas, MD3NowUTC());
@@ -188,7 +188,7 @@ bool MD3PointTableAccess::GetCounterODCIndexUsingMD3Index(const uint16_t module,
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = CounterMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != CounterMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetIndex();
@@ -198,7 +198,7 @@ bool MD3PointTableAccess::GetCounterODCIndexUsingMD3Index(const uint16_t module,
 }
 bool MD3PointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const uint16_t meas)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = CounterODCPointMap.find(index);
+	auto ODCPointMapIter = CounterODCPointMap.find(index);
 	if (ODCPointMapIter != CounterODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetAnalog(meas, MD3NowUTC());
@@ -208,7 +208,7 @@ bool MD3PointTableAccess::SetCounterValueUsingODCIndex(const size_t index, const
 }
 bool MD3PointTableAccess::ResetCounterValueUsingODCIndex(const size_t index)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->ResetAnalog(); // Sets to 0x8000, time = 0, HasBeenSet to false
@@ -221,7 +221,7 @@ bool MD3PointTableAccess::GetAnalogValueUsingMD3Index(const uint16_t module, con
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != AnalogMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetAnalog();
@@ -234,7 +234,7 @@ bool MD3PointTableAccess::GetAnalogValueAndChangeUsingMD3Index(const uint16_t mo
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != AnalogMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetAnalogAndDelta(delta);
@@ -247,7 +247,7 @@ bool MD3PointTableAccess::GetAnalogODCIndexUsingMD3Index(const uint16_t module, 
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != AnalogMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetIndex();
@@ -259,7 +259,7 @@ bool MD3PointTableAccess::SetAnalogValueUsingMD3Index(const uint16_t module, con
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = AnalogMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != AnalogMD3PointMap.end())
 	{
 		MD3PointMapIter->second->SetAnalog(meas, MD3NowUTC());
@@ -269,7 +269,7 @@ bool MD3PointTableAccess::SetAnalogValueUsingMD3Index(const uint16_t module, con
 }
 bool MD3PointTableAccess::GetAnalogValueUsingODCIndex(const size_t index, uint16_t &res, bool &hasbeenset)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->GetAnalog();
@@ -280,7 +280,7 @@ bool MD3PointTableAccess::GetAnalogValueUsingODCIndex(const size_t index, uint16
 }
 bool MD3PointTableAccess::SetAnalogValueUsingODCIndex(const size_t index, const uint16_t meas)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetAnalog(meas, MD3NowUTC());
@@ -290,7 +290,7 @@ bool MD3PointTableAccess::SetAnalogValueUsingODCIndex(const size_t index, const 
 }
 bool MD3PointTableAccess::ResetAnalogValueUsingODCIndex(const size_t index)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogODCPointMap.end())
 	{
 		ODCPointMapIter->second->ResetAnalog(); // Sets to 0x8000, time = 0, HasBeenSet to false
@@ -311,7 +311,7 @@ bool MD3PointTableAccess::GetBinaryODCIndexUsingMD3Index(const uint16_t module, 
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3BinaryPointMapIterType MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != BinaryMD3PointMap.end())
 	{
 		index = MD3PointMapIter->second->GetIndex();
@@ -323,7 +323,7 @@ bool MD3PointTableAccess::GetBinaryQualityUsingMD3Index(const uint16_t module, c
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3BinaryPointMapIterType MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != BinaryMD3PointMap.end())
 	{
 		hasbeenset = MD3PointMapIter->second->GetHasBeenSet();
@@ -337,7 +337,7 @@ bool MD3PointTableAccess::GetBinaryValueUsingMD3Index(const uint16_t module, con
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3BinaryPointMapIterType MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != BinaryMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetBinary();
@@ -351,7 +351,7 @@ bool MD3PointTableAccess::GetBinaryValueUsingMD3Index(const uint16_t module, con
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3BinaryPointMapIterType MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != BinaryMD3PointMap.end())
 	{
 		res = MD3PointMapIter->second->GetBinary();
@@ -364,7 +364,7 @@ bool MD3PointTableAccess::GetBinaryChangedUsingMD3Index(const uint16_t module, c
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3BinaryPointMapIterType MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != BinaryMD3PointMap.end())
 	{
 		changed = MD3PointMapIter->second->GetChangedFlag();
@@ -377,7 +377,7 @@ bool MD3PointTableAccess::SetBinaryValueUsingMD3Index(const uint16_t module, con
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3BinaryPointMapIterType MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = BinaryMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != BinaryMD3PointMap.end())
 	{
 		//TODO: Put this functionality into the MD3BinaryPoint class
@@ -394,7 +394,7 @@ bool MD3PointTableAccess::SetBinaryValueUsingMD3Index(const uint16_t module, con
 // Get value and reset changed flag..
 bool MD3PointTableAccess::GetBinaryValueUsingODCIndex(const size_t index, uint8_t &res, bool &changed)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryODCPointMap.end())
 	{
 		res = ODCPointMapIter->second->GetBinary();
@@ -405,7 +405,7 @@ bool MD3PointTableAccess::GetBinaryValueUsingODCIndex(const size_t index, uint8_
 }
 bool MD3PointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const uint8_t meas, MD3Time eventtime)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryODCPointMap.end())
 	{
 		ODCPointMapIter->second->SetBinary(meas, eventtime);
@@ -485,7 +485,7 @@ bool MD3PointTableAccess::GetBinaryControlODCIndexUsingMD3Index(const uint16_t m
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3BinaryPointMapIterType MD3PointMapIter = BinaryControlMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = BinaryControlMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != BinaryControlMD3PointMap.end())
 	{
 		index = MD3PointMapIter->second->GetIndex();
@@ -495,7 +495,7 @@ bool MD3PointTableAccess::GetBinaryControlODCIndexUsingMD3Index(const uint16_t m
 }
 bool MD3PointTableAccess::GetBinaryControlMD3IndexUsingODCIndex(const size_t index, uint8_t &module, uint8_t &channel, BinaryPointType &pointtype)
 {
-	ODCBinaryPointMapIterType ODCPointMapIter = BinaryControlODCPointMap.find(index);
+	auto ODCPointMapIter = BinaryControlODCPointMap.find(index);
 	if (ODCPointMapIter != BinaryControlODCPointMap.end())
 	{
 		module = ODCPointMapIter->second->GetModuleAddress();
@@ -509,7 +509,7 @@ bool MD3PointTableAccess::GetAnalogControlODCIndexUsingMD3Index(const uint16_t m
 {
 	uint16_t Md3Index = ShiftLeft8Result16Bits(module) | channel;
 
-	MD3AnalogCounterPointMapIterType MD3PointMapIter = AnalogControlMD3PointMap.find(Md3Index);
+	auto MD3PointMapIter = AnalogControlMD3PointMap.find(Md3Index);
 	if (MD3PointMapIter != AnalogControlMD3PointMap.end())
 	{
 		index = MD3PointMapIter->second->GetIndex();
@@ -519,7 +519,7 @@ bool MD3PointTableAccess::GetAnalogControlODCIndexUsingMD3Index(const uint16_t m
 }
 bool MD3PointTableAccess::GetAnalogControlMD3IndexUsingODCIndex(const size_t index, uint8_t& module, uint8_t& channel)
 {
-	ODCAnalogCounterPointMapIterType ODCPointMapIter = AnalogControlODCPointMap.find(index);
+	auto ODCPointMapIter = AnalogControlODCPointMap.find(index);
 	if (ODCPointMapIter != AnalogControlODCPointMap.end())
 	{
 		module = ODCPointMapIter->second->GetModuleAddress();
@@ -555,23 +555,23 @@ bool MD3PointTableAccess::TimeTaggedDataAvailable()
 	return !pBinaryTimeTaggedEventQueue->sync_empty();
 }
 
-void MD3PointTableAccess::ForEachBinaryPoint(std::function<void(MD3BinaryPoint &pt)> fn)
+void MD3PointTableAccess::ForEachBinaryPoint(const std::function<void(MD3BinaryPoint &pt)>& fn)
 {
-	for (auto md3pt : BinaryMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
+	for (const auto& md3pt : BinaryMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
 	{
 		fn(*md3pt.second);
 	}
 }
-void MD3PointTableAccess::ForEachAnalogPoint(std::function<void(MD3AnalogCounterPoint &pt)> fn)
+void MD3PointTableAccess::ForEachAnalogPoint(const std::function<void(MD3AnalogCounterPoint &pt)>& fn)
 {
-	for (auto md3pt : AnalogMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
+	for (const auto& md3pt : AnalogMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
 	{
 		fn(*md3pt.second);
 	}
 }
-void MD3PointTableAccess::ForEachCounterPoint(std::function<void(MD3AnalogCounterPoint &pt)> fn)
+void MD3PointTableAccess::ForEachCounterPoint(const std::function<void(MD3AnalogCounterPoint &pt)>& fn)
 {
-	for (auto md3pt : CounterMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
+	for (const auto& md3pt : CounterMD3PointMap) // We always use the MD3 map - its order is the only one we care about.
 	{
 		fn(*md3pt.second);
 	}

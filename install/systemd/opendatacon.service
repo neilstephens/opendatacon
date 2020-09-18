@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenDataCon Service
+Requires=network.target	
+# Make sure the network stack is up before we startup
+After=network.target
+
+[Service]
+ExecStart=/opt/ODC/bin/opendatacon-server-start.sh 
+ExecStop=/opt/ODC/bin/opendatacon-server-stop.sh
+Restart=always
+RestartSec=30
+# OCDconfig??
+User=root	
+
+[Install]
+# Make this service startup part of normal system booting
+WantedBy=multi-user.target 

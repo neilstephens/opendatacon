@@ -30,7 +30,6 @@
 #include <chrono>
 #include <string>
 #include <tuple>
-
 #include <opendatacon/EnumClassFlags.h>
 #include <opendatacon/util.h>
 
@@ -141,20 +140,28 @@ enum class CommandStatus : uint8_t
 enum class ControlCode : uint8_t
 {
 	NUL = 1,
-	NUL_CANCEL = 2,
 	PULSE_ON = 3,
-	PULSE_ON_CANCEL = 4,
 	PULSE_OFF = 5,
-	PULSE_OFF_CANCEL = 6,
 	LATCH_ON = 7,
-	LATCH_ON_CANCEL = 8,
 	LATCH_OFF = 9,
-	LATCH_OFF_CANCEL = 10,
 	CLOSE_PULSE_ON = 11,
-	CLOSE_PULSE_ON_CANCEL = 12,
 	TRIP_PULSE_ON = 13,
-	TRIP_PULSE_ON_CANCEL = 14,
 	UNDEFINED = 15
+};
+
+enum class FeedbackType : uint8_t
+{
+	ANALOG = 1,
+	BINARY = 2,
+	BCD = 3,
+	UNDEFINED = 4
+};
+
+enum class PositionAction : uint8_t
+{
+	RAISE = 1,
+	LOWER = 2,
+	UNDEFINED = 3
 };
 
 //TODO: make these ToString functions faster
@@ -190,19 +197,12 @@ inline std::string ToString(const CommandStatus cc)
 inline std::string ToString(const ControlCode cc)
 {
 	ENUMSTRING(cc,ControlCode,NUL                  )
-	ENUMSTRING(cc,ControlCode,NUL_CANCEL           )
 	ENUMSTRING(cc,ControlCode,PULSE_ON             )
-	ENUMSTRING(cc,ControlCode,PULSE_ON_CANCEL      )
 	ENUMSTRING(cc,ControlCode,PULSE_OFF            )
-	ENUMSTRING(cc,ControlCode,PULSE_OFF_CANCEL     )
 	ENUMSTRING(cc,ControlCode,LATCH_ON             )
-	ENUMSTRING(cc,ControlCode,LATCH_ON_CANCEL      )
 	ENUMSTRING(cc,ControlCode,LATCH_OFF            )
-	ENUMSTRING(cc,ControlCode,LATCH_OFF_CANCEL     )
 	ENUMSTRING(cc,ControlCode,CLOSE_PULSE_ON       )
-	ENUMSTRING(cc,ControlCode,CLOSE_PULSE_ON_CANCEL)
 	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON        )
-	ENUMSTRING(cc,ControlCode,TRIP_PULSE_ON_CANCEL )
 	ENUMSTRING(cc,ControlCode,UNDEFINED            )
 	return "<no_string_representation>";
 }
@@ -253,6 +253,15 @@ inline std::string ToString(const EventType et)
 	ENUMSTRING(et,EventType,Reserved10               )
 	ENUMSTRING(et,EventType,Reserved11               )
 	ENUMSTRING(et,EventType,Reserved12               )
+	return "<no_string_representation>";
+}
+
+inline std::string ToString(const FeedbackType type)
+{
+	ENUMSTRING(type, FeedbackType, ANALOG            )
+	ENUMSTRING(type, FeedbackType, BINARY            )
+	ENUMSTRING(type, FeedbackType, BCD               )
+	ENUMSTRING(type, FeedbackType, UNDEFINED         )
 	return "<no_string_representation>";
 }
 
@@ -362,29 +371,24 @@ inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType
 
 	return (EventTypeResult != EventType::BeforeRange);
 }
-inline bool GetControlCodeFromStringName(const std::string StrControlCode, ControlCode& ControlCodeResult)
+
+inline bool ToControlCode(const std::string StrControlCode, ControlCode& ControlCodeResult)
 {
 #define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
 
 	ControlCodeResult = ControlCode::UNDEFINED;
 
 	CHECKCONTROLCODESTRING(ControlCode::CLOSE_PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::CLOSE_PULSE_ON_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::LATCH_OFF);
-	CHECKCONTROLCODESTRING(ControlCode::LATCH_OFF_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::LATCH_ON);
-	CHECKCONTROLCODESTRING(ControlCode::LATCH_ON_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::NUL);
-	CHECKCONTROLCODESTRING(ControlCode::NUL_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::PULSE_OFF);
-	CHECKCONTROLCODESTRING(ControlCode::PULSE_OFF_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::PULSE_ON_CANCEL);
 	CHECKCONTROLCODESTRING(ControlCode::TRIP_PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::TRIP_PULSE_ON_CANCEL);
 
 	return (ControlCodeResult != ControlCode::UNDEFINED);
 }
+
 inline bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
 {
 #define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
@@ -397,11 +401,36 @@ inline bool GetConnectStateFromStringName(const std::string StrConnectState, Con
 	return false;
 }
 
-typedef uint64_t msSinceEpoch_t;
-inline msSinceEpoch_t msSinceEpoch()
+inline EventType ToEventType(const std::string& str_type)
 {
-	return std::chrono::duration_cast<std::chrono::milliseconds>
-		       (std::chrono::system_clock::now().time_since_epoch()).count();
+	EventType type = EventType::BeforeRange;
+	if (to_lower(str_type) == "binary")
+		type = EventType::Binary;
+	else if (to_lower(str_type) == "analog")
+		type = EventType::Analog;
+	return type;
+}
+
+inline FeedbackType ToFeedbackType(const std::string& str_type)
+{
+	FeedbackType type = FeedbackType::UNDEFINED;
+	if (to_lower(str_type) == "analog")
+		type = FeedbackType::ANALOG;
+	else if (to_lower(str_type) == "binary")
+		type = FeedbackType::BINARY;
+	else if (to_lower(str_type) == "bcd")
+		type = FeedbackType::BCD;
+	return type;
+}
+
+inline PositionAction ToPositionAction(const std::string& str_action)
+{
+	PositionAction action = PositionAction::UNDEFINED;
+	if (to_lower(str_action) == "raise")
+		action = PositionAction::RAISE;
+	else if (to_lower(str_action) == "lower")
+		action = PositionAction::LOWER;
+	return action;
 }
 
 //Map EventTypes to payload types

@@ -25,15 +25,16 @@
 */
 
 
-#include <iostream>
 #include "MD3Port.h"
 #include "MD3PortConf.h"
+#include <iostream>
+#include <utility>
 
 MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//the creation of a new MD3PortConf will get the point details
-	pConf.reset(new MD3PortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<MD3PortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<MD3PortConf*>(this->pConf.get());
@@ -103,12 +104,14 @@ uint8_t MD3Port::Limit(uint8_t val, uint8_t max)
 
 void MD3Port::SetSendTCPDataFn(std::function<void(std::string)> Send)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
 	MD3Connection::SetSendTCPDataFn(pConnection, Send);
 }
 
 // Test only method for simulating input from the TCP Connection.
 void MD3Port::InjectSimulatedTCPMessage(buf_t&readbuf)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
 	// Just pass to the Connection ReadCompletionHandler, as if it had come in from the TCP port
 	MD3Connection::InjectSimulatedTCPMessage(pConnection, readbuf);
 }
@@ -116,11 +119,12 @@ void MD3Port::InjectSimulatedTCPMessage(buf_t&readbuf)
 // The only method that sends to the TCP Socket
 void MD3Port::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 {
+	if (!enabled.load()) return; // Port Disabled so dont process
+
 	if (CompleteMD3Message.size() == 0)
 	{
 		LOGERROR("Tried to send an empty message to the TCP Port");
 		return;
 	}
-
 	MD3Connection::Write(pConnection, CompleteMD3Message);
 }

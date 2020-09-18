@@ -26,15 +26,13 @@
 
 #ifndef CBENGINE_H_
 #define CBENGINE_H_
-
+#include "CB.h"
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
 #include <array>
 #include <sstream>
 #include <iomanip>
-
-#include "CB.h"
 
 #define CONITEL_BLOCK_LENGTH  4
 #define MAX_BLOCK_COUNT       16
@@ -249,6 +247,12 @@ public:
 		builddataindex = 4;
 	}
 
+	void XORBit(uint8_t bit) // Used to corrupt the message...
+	{
+		if (bit < 32)
+			data = data ^ (1 << (31 - bit));
+	}
+
 	void DoBakerConitelSwap()
 	{
 		// Swap Station and Group values before sending - the swap is the next two lines...
@@ -430,6 +434,7 @@ std::string BuildBinaryStringFromASCIIHexString(const std::string &as);
 std::string BuildASCIIHexStringfromBinaryString(const std::string &bs);
 
 std::string BuildASCIIHexStringfromCBMessage(const CBMessage_t & CBMessage);
+CBMessage_t BuildCBMessageFromASCIIHexString(const  std::string Message);
 std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage);
 
 // SOE Data Packet Definitions.

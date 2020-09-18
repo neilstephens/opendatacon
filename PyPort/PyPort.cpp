@@ -35,14 +35,15 @@
 
 #include "PyPort.h"
 #include <chrono>
+#include <cstdio>
 #include <ctime>
-#include <time.h>
+#include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include <vector>
-#include <fstream>
-#include <stdio.h>
 #include <whereami++.h>
 #ifdef WIN32
 #include <direct.h>
@@ -86,7 +87,7 @@ std::vector<std::string> split(const std::string& s, char delim)
 }
 
 // Get the number contained in this string.
-std::string GetNumber(std::string input)
+std::string GetNumber(const std::string& input)
 {
 	std::string res;
 	for (char ch : input)
@@ -97,14 +98,6 @@ std::string GetNumber(std::string input)
 	return res;
 }
 
-struct MyException: public std::exception
-{
-	std::string s;
-	MyException(std::string ss): s(ss) {}
-	~MyException() throw () {} // Updated
-	const char* what() const throw() { return s.c_str(); }
-};
-
 // Constructor for PyPort --------------------------------------
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
@@ -112,7 +105,7 @@ PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const
 	JSONOverride("")
 {
 	//the creation of a new PyPortConf will get the point details
-	pConf.reset(new PyPortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<PyPortConf>(ConfFilename, ConfOverrides);
 
 	// Just to save a lot of dereferencing..
 	MyConf = static_cast<PyPortConf*>(this->pConf.get());
@@ -165,7 +158,7 @@ void PyPort::Build()
 		});
 
 	// Every call to pWrapper should be strand protected. NOTE ASIO is not running here...
-	python_strand->dispatch([&, PyModPath]()
+	python_strand->dispatch([this, PyModPath]()
 		{
 			LOGSTRAND("Entered Strand on Build");
 			// If first time constructor is called, will instansiate the interpreter.
@@ -189,11 +182,11 @@ void PyPort::Build()
 			LOGSTRAND("Exit Strand");
 		});
 
-	pServer = ServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new ServerManager if required
+	pServer = HttpServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new HttpServerManager if required
 
 	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
-	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			rep.status = http::reply::ok;
 			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
@@ -204,9 +197,9 @@ void PyPort::Build()
 			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
 		});
 
-	ServerManager::AddHandler(pServer, "GET /", roothandler);
+	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([&](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
 			std::string contenttype = "application/json";
@@ -241,9 +234,9 @@ void PyPort::Build()
 			rep.headers[1].name = "Content-Type";
 			rep.headers[1].value = contenttype;
 		});
-	ServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+	HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const std::string& content, http::reply& rep)
+	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
 			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
@@ -266,7 +259,7 @@ void PyPort::Build()
 			rep.headers[1].name = "Content-Type";
 			rep.headers[1].value = contenttype;
 		});
-	ServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+	HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
 }
 
 void PyPort::Enable()
@@ -286,15 +279,15 @@ void PyPort::Enable()
 	}
 	LOGDEBUG("pWrapper is good!");
 
-	ServerManager::StartConnection(pServer);
-	std::promise<bool> promise;
-	auto future = promise.get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
+	HttpServerManager::StartConnection(pServer);
+	auto promise = std::make_shared<std::promise<bool>>();
+	auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-	python_strand->dispatch([&]()
+	python_strand->dispatch([this,promise]()
 		{
 			LOGSTRAND("Entered Strand on Enable");
 			pWrapper->Enable();
-			promise.set_value(true);
+			promise->set_value(true);
 			pWrapper->PortOperational();
 			LOGDEBUG("Port enabled and  operational 1 {}", Name);
 			LOGSTRAND("Exit Strand");
@@ -321,9 +314,9 @@ void PyPort::Disable()
 		return;
 
 	// Leaves handlers in place, so can be restarted without re-adding handlers
-	ServerManager::StopConnection(pServer);
+	HttpServerManager::StopConnection(pServer);
 
-	python_strand->dispatch([&]()
+	python_strand->dispatch([this]()
 		{
 			LOGSTRAND("Entered Strand on Disable");
 			pWrapper->Disable();
@@ -366,7 +359,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::Binary:
 		{
 			pubevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, QualityResult);
-			bool val = (PayloadStr.find("1") != std::string::npos);
+			bool val = (PayloadStr.find('1') != std::string::npos);
 			pubevent->SetPayload<EventType::Binary>(std::move(val));
 		}
 		break;
@@ -403,19 +396,19 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				// Payload String looks like: "|LATCH_ON|Count 1|ON 100ms|OFF 100ms|"
 				EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 				auto Parts = split(PayloadStr, '|');
-				if (Parts.size() != 5) throw MyException("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
+				if (Parts.size() != 5) throw std::runtime_error("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
 
 				ControlCode ControlCodeResult;
-				GetControlCodeFromStringName(Parts[1], ControlCodeResult);
+				ToControlCode(Parts[1], ControlCodeResult);
 				val.functionCode = ControlCodeResult;
 
-				if (Parts[2].find("Count") == std::string::npos) throw MyException("Count field of ControlRelayOutputBlock not in " + Parts[2]);
+				if (Parts[2].find("Count") == std::string::npos) throw std::runtime_error("Count field of ControlRelayOutputBlock not in " + Parts[2]);
 				val.count = std::stoi(GetNumber(Parts[2]));
 
-				if (Parts[3].find("ON") == std::string::npos) throw MyException("ON field of ControlRelayOutputBlock not in " + Parts[3]);
+				if (Parts[3].find("ON") == std::string::npos) throw std::runtime_error("ON field of ControlRelayOutputBlock not in " + Parts[3]);
 				val.onTimeMS = std::stoi(GetNumber(Parts[3]));
 
-				if (Parts[4].find("OFF") == std::string::npos) throw MyException("OFF field of ControlRelayOutputBlock not in " + Parts[4]);
+				if (Parts[4].find("OFF") == std::string::npos) throw std::runtime_error("OFF field of ControlRelayOutputBlock not in " + Parts[4]);
 				val.offTimeMS = std::stoi(GetNumber(Parts[4]));
 
 				pubevent->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
@@ -483,26 +476,38 @@ std::string getISOCurrentTimestampUTC_from_msSinceEpoch_t(const odc::msSinceEpoc
 	return "Error";
 }
 
-std::string PyPort::GetTagValue(EventType Eventt, size_t Index)
+std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt, size_t Index)
 {
 	// The unordered_maps lookup reading do not need to be protected, they are threadsafe for this
 	// The Event handler calling this is multithreaded, so there will be concurrent access.
-	if (Eventt == EventType::Analog)
+
+	std::string Tag = "";
+
+	auto searchport = PortTagMap.find(SenderName);
+	if (searchport != PortTagMap.end())
 	{
-		auto search = AnalogMap.find(Index);
-		return (search != AnalogMap.end()) ? search->second : "";
+		auto foundport = searchport->second;
+		if (Eventt == EventType::Analog)
+		{
+			auto search = foundport->AnalogMap.find(Index);
+			if (search != foundport->AnalogMap.end())
+				Tag = search->second;
+		}
+		if (Eventt == EventType::Binary)
+		{
+			auto search = foundport->BinaryMap.find(Index);
+			if (search != foundport->BinaryMap.end())
+				Tag = search->second;
+		}
+		if (Eventt == EventType::ControlRelayOutputBlock)
+		{
+			auto search = foundport->BinaryControlMap.find(Index);
+			if (search != foundport->BinaryControlMap.end())
+				Tag = search->second;
+		}
 	}
-	if (Eventt == EventType::Binary)
-	{
-		auto search = BinaryMap.find(Index);
-		return (search != BinaryMap.end()) ? search->second : "";
-	}
-	if (Eventt == EventType::ControlRelayOutputBlock)
-	{
-		auto search = BinaryControlMap.find(Index);
-		return (search != BinaryControlMap.end()) ? search->second : "";
-	}
-	return "";
+	LOGTRACE("PyPort {} GetTagValue {} {} {} {}", Name, SenderName, Index, ToString(Eventt), Tag);
+	return Tag;
 }
 
 // So we have received an event from the ODC message bus - it will be Control or Connect events.
@@ -530,7 +535,11 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 		std::string isotimestamp = getISOCurrentTimestampUTC_from_msSinceEpoch_t(event->GetTimestamp());
 		try
 		{
-			std::string TagValue = GetTagValue(event->GetEventType(),event->GetIndex());
+			if (MyConf->pyQueueFormatString == "")
+				return;
+
+			// Could use event->SourcePort (for the sending port, instead of the the SenderName, which will be the connector name.
+			std::string TagValue = GetTagValue(SenderName, event->GetEventType(),event->GetIndex());
 
 			if (MyConf->pyOnlyQueueEventsWithTags && (TagValue == ""))
 				return; // If only queue events that have tags, and we dont have a tag, return
@@ -542,9 +551,11 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				ToString(event->GetQuality()),                             // 3
 				event->GetPayloadString(),                                 // 4
 				SenderName,                                                // 5
-				TagValue);                                                 // 6
+				TagValue,                                                  // 6
+				MyConf->pyTagPrefixString);                                // 7
 			pWrapper->QueueEvent(jsonevent);
 			LOGTRACE("Queued Event {}", jsonevent);
+			PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
 		}
 		catch(std::exception& e)
 		{
@@ -553,7 +564,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	}
 	else
 	{
-		python_strand->dispatch([&, event, SenderName, pStatusCallback]()
+		python_strand->dispatch([this, event, SenderName, pStatusCallback]()
 			{
 				LOGSTRAND("Entered Strand on Event");
 				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
@@ -570,28 +581,25 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		LOGDEBUG("PyPort {} not enabled, SetTimer call ignored", Name);
 		return;
 	}
-	//LOGDEBUG("SetTimer call {}, {}, {}", Name, id, delayms);
+	LOGTRACE("SetTimer call {}, {}, {}", Name, id, delayms);
 
 	pTimer_t timer = pIOS->make_steady_timer();
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
-	timer->async_wait(
-		[&, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
+	timer->async_wait(python_strand->wrap(
+		[this, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
 		{
 			if (err_code != asio::error::operation_aborted)
 			{
-			      python_strand->dispatch([&, id]()
-					{
-						LOGSTRAND("Entered Strand on SetTimer");
-						pWrapper->CallTimerHandler(id);
-						LOGSTRAND("Exit Strand");
-					});
+			      LOGSTRAND("Entered Strand on SetTimer");
+			      pWrapper->CallTimerHandler(id);
+			      LOGSTRAND("Exit Strand");
 			}
-		});
+		}));
 }
 
 // This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will
 // be used to actually send the response back to the caller.
-void PyPort::RestHandler(const std::string& url, const std::string& content, ResponseCallback_t pResponseCallback)
+void PyPort::RestHandler(const std::string& url, const std::string& content, const ResponseCallback_t& pResponseCallback)
 {
 	if (!enabled)
 	{
@@ -600,7 +608,7 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, Res
 		return;
 	}
 
-	python_strand->dispatch([&, url, content, pResponseCallback]()
+	python_strand->dispatch([this, url, content, pResponseCallback]()
 		{
 			LOGSTRAND("Entered Strand on RestHandler");
 			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
@@ -615,7 +623,7 @@ void PyPort::PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback
 {
 	if (pStatusCallback)
 	{
-		pIOS->post([&, pStatusCallback, c]()
+		pIOS->post([pStatusCallback, c]()
 			{
 				(*pStatusCallback)(c);
 			});
@@ -625,7 +633,7 @@ void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallba
 {
 	if (pResponseCallback)
 	{
-		pIOS->post([&, pResponseCallback, response]()
+		pIOS->post([pResponseCallback, response]()
 			{
 				(*pResponseCallback)(response);
 			});
@@ -660,6 +668,8 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("QueueFormatString"))
 		MyConf->pyQueueFormatString = JSONRoot["QueueFormatString"].asString();
+	if (JSONRoot.isMember("TagPrefix"))
+		MyConf->pyTagPrefixString = JSONRoot["TagPrefix"].asString();
 	if (JSONRoot.isMember("EventsAreQueued"))
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
 	if (JSONRoot.isMember("OnlyQueueEventsWithTags"))
@@ -669,22 +679,22 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("GlobalUseSystemPython"))
 		MyConf->GlobalUseSystemPython = JSONRoot["GlobalUseSystemPython"].asBool(); // Defaults to OFF
 
-	if (JSONRoot.isMember("Analog"))
+	if (JSONRoot.isMember("Analogs"))
 	{
-		const auto Analogs = JSONRoot["Analog"];
+		const auto Analogs = JSONRoot["Analogs"];
 		LOGDEBUG("Conf processed - Analog Points");
 		ProcessPoints(Analog, Analogs);
 	}
-	if (JSONRoot.isMember("Binary"))
+	if (JSONRoot.isMember("Binaries"))
 	{
-		const auto Binaries = JSONRoot["Binary"];
+		const auto Binaries = JSONRoot["Binaries"];
 		LOGDEBUG("Conf processed - Binary Points");
 		ProcessPoints(Binary, Binaries);
 	}
 
-	if (JSONRoot.isMember("Control"))
+	if (JSONRoot.isMember("BinaryControls"))
 	{
-		const auto BinaryControls = JSONRoot["Control"];
+		const auto BinaryControls = JSONRoot["BinaryControls"];
 		LOGDEBUG("Conf processed - Binary Controls");
 		ProcessPoints(BinaryControl, BinaryControls);
 	}
@@ -706,6 +716,7 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
 		size_t index = 0;
+		std::string sender = "";
 
 		if (JSONNode[n].isMember("Index"))
 		{
@@ -716,22 +727,44 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			throw std::invalid_argument("A point needs an \"Index\" : " + JSONNode[n].toStyledString());
 		}
 
+		if (JSONNode[n].isMember("Sender"))
+		{
+			sender = JSONNode[n]["Sender"].asString();
+		}
+
 		if (JSONNode[n].isMember("Tag"))
 		{
 			std::string Tag = JSONNode[n]["Tag"].asString();
 
-			// We have an index and a tag, so add to the hash.
+			if (sender == "")
+			{
+				throw std::invalid_argument("A point needs an \"Sender\" to match the PortName the event is coming from for a Tag to be valid : " + JSONNode[n].toStyledString());
+			}
+			// We have an index, tag and a sender, so add to the hash.
+			auto searchport = PortTagMap.find(sender);
+			if (searchport == PortTagMap.end())
+			{
+				PortTagMap.emplace(std::make_pair(sender, std::make_shared<PortMapClass>() ));
+			}
+			searchport = PortTagMap.find(sender);
+			if (searchport == PortTagMap.end())
+			{
+				throw std::invalid_argument("We could not find a PortTagMap entry that we just added? Bad things are happening! " + JSONNode[n].toStyledString());
+			}
+
+			auto foundport = searchport->second;
+
 			if (ptype == Analog)
-				AnalogMap.emplace(std::make_pair(index, Tag));
+				foundport->AnalogMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == Binary)
-				BinaryMap.emplace(std::make_pair(index, Tag));
+				foundport->BinaryMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == BinaryControl)
-				BinaryControlMap.emplace(std::make_pair(index, Tag));
+				foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
 			else
 			{
 				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
 			}
-			LOGTRACE("Type - {}, Tag - {}, Index - {}", Name, Tag, index);
+			LOGTRACE("Sender - {}, Type - {}, Tag - {}, Index - {}", sender, Name, Tag, index);
 		}
 	}
 	LOGDEBUG("Conf processing - {} - Finished",Name);

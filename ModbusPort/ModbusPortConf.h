@@ -26,9 +26,8 @@
 
 #ifndef ModbusOUTSTATIONPORTCONF_H_
 #define ModbusOUTSTATIONPORTCONF_H_
-
-#include <opendatacon/DataPort.h>
 #include "ModbusPointConf.h"
+#include <opendatacon/DataPort.h>
 
 enum class server_type_t
 {

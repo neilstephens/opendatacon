@@ -154,7 +154,7 @@ class SimPortClass:
         # Just to make sure it gets called and the call succeeds.
         currentqueuesize = odc.GetEventQueueSize(self.guid)
 
-        odc.SetTimer(self.guid, self.i, 1001-self.i)    # Set a timer to go off in a period less than a second
+        odc.SetTimer(self.guid, self.i, 1001-(self.i%1000))    # Set a timer to go off in a period less than a second
         self.i = self.i + 1
         self.LogTrace("RestRequestHander: Sent Set Timer Command {}".format(self.i))
 

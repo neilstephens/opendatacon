@@ -26,7 +26,7 @@
 #include <string>
 #include <map>
 #include <cstdint>
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 #include <spdlog/async.h>
 
 namespace odc
@@ -35,6 +35,8 @@ namespace odc
 void spdlog_init_thread_pool(size_t q_size, size_t thread_count);
 std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool();
 void spdlog_flush_all();
+void spdlog_flush_every(std::chrono::seconds interval);
+void spdlog_apply_all(const std::function<void(std::shared_ptr<spdlog::logger>)> &fun);
 void spdlog_register_logger(std::shared_ptr<spdlog::logger> logger);
 std::shared_ptr<spdlog::logger> spdlog_get(const std::string &name);
 void spdlog_drop(const std::string &name);
@@ -44,6 +46,20 @@ void spdlog_shutdown();
 bool getline_noncomment(std::istream& is, std::string& line);
 bool extract_delimited_string(std::istream& ist, std::string& extracted);
 bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted);
+std::string to_lower(const std::string& str);
+std::string GetConfigVersion();
+void SetConfigVersion(std::string Version);
+std::size_t to_decimal(const std::string& binary);
+std::string to_binary(std::size_t n, std::size_t size);
+std::size_t bcd_encoded_to_decimal(const std::string& str);
+std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size);
+
+typedef uint64_t msSinceEpoch_t;
+inline msSinceEpoch_t msSinceEpoch()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>
+		       (std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 } //namspace odc
 

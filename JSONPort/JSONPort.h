@@ -26,11 +26,10 @@
 
 #ifndef JSONDATAPORT_H_
 #define JSONDATAPORT_H_
-
+#include "JSONPortConf.h"
 #include <unordered_map>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/TCPSocketManager.h>
-#include "JSONPortConf.h"
 
 using namespace odc;
 
@@ -50,7 +49,7 @@ public:
 
 private:
 	bool isServer;
-	std::unique_ptr<TCPSocketManager<std::string>> pSockMan;
+	std::unique_ptr<TCPSocketManager> pSockMan;
 	void SocketStateHandler(bool state);
 	void ReadCompletionHandler(buf_t& readbuf);
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;

@@ -24,16 +24,13 @@
 *      Author: Scott Ellis <scott.ellis@novatex.com.au>
 */
 
-#ifndef CBCLIENTPORT_H_
-#define CBCLIENTPORT_H_
-
-#include <regex>
-#include <algorithm>
-#include <memory>
-#include <map>
 #include "CBPointConf.h"
-#include <opendatacon/util.h>
+#include <algorithm>
+#include <map>
+#include <memory>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <regex>
 
 using namespace odc;
 
@@ -362,7 +359,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			{
 				for (uint32_t index = start; index <= stop; index++)
 				{
-					uint8_t currentchannel = static_cast<uint8_t>(channel + (index - start));
+					auto currentchannel = static_cast<uint8_t>(channel + (index - start));
 
 					bool res = false;
 
@@ -697,4 +694,3 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 	return false;
 }
 
-#endif

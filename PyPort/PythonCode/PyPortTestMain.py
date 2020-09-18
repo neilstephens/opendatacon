@@ -96,7 +96,7 @@ def StimulateDirectly():
 
     # Load the part of the config file that we need, then pass it in as a string.
     # Need to strip comments as Python json handling does not like them!
-    f=open(r"C:\Users\scott\Documents\Scott\Company Work\AusGrid\example\JSON-PyPortRtuSim\opendatacon.conf", "r")
+    f=open(r"C:\Users\scott\Documents\opendatacon\example\JSON-PyPortRtuSim\opendatacon.conf", "r")
     if f.mode != 'r':
         print("Failed to open opendatacon.conf file - exiting")
         return
@@ -305,9 +305,9 @@ def StimulatePyPortKafkaDirectly():
 
 print("Start")
 #StimulateViaHttp() # Requires the PyPortCBSim.py file to be running in OpenDataCon
-StimulateDirectly() # Can use this to call code within this single Python program for simpler
+#StimulateDirectly() # Can use this to call code within this single Python program for simpler
 # debugging and testing.
 #KafkaProduceTest()
-#StimulatePyPortKafkaDirectly()
+StimulatePyPortKafkaDirectly()
 #KafkaConsumeTest()
 print("Done")

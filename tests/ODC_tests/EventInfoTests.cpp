@@ -23,10 +23,12 @@
  *  Created on: 05/06/2019
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+
+#include "TestODCHelpers.h"
+#include "../opendatacon/DataConnector.h"
+#include "TestPorts.h"
 #include <atomic>
 #include <catch.hpp>
-#include "TestPorts.h"
-#include "../opendatacon/DataConnector.h"
 
 using namespace odc;
 
@@ -34,6 +36,8 @@ using namespace odc;
 
 TEST_CASE(SUITE("EventTypes"))
 {
+	TestSetup();
+
 	auto event_type = EventType::BeforeRange;
 	REQUIRE(ToString(event_type) == "<no_string_representation>");
 	while((event_type+1) != EventType::AfterRange)
@@ -43,28 +47,32 @@ TEST_CASE(SUITE("EventTypes"))
 
 		//construct
 		std::shared_ptr<EventInfo> event;
-		REQUIRE_NOTHROW(event = std::make_shared<EventInfo>(event_type););
+		REQUIRE_NOTHROW([&](){event = std::make_shared<EventInfo>(event_type);} ());
 
 		//set default payload
 		REQUIRE_NOTHROW(event->SetPayload());
 
 		//copy
 		std::shared_ptr<EventInfo> event_copy;
-		REQUIRE_NOTHROW(event_copy = std::make_shared<EventInfo>(*event););
+		REQUIRE_NOTHROW([&](){event_copy = std::make_shared<EventInfo>(*event);} ());
 
 		//destruct
 		REQUIRE_NOTHROW(event.reset());
 		REQUIRE_NOTHROW(event_copy.reset());
 	}
+
+	TestTearDown();
 }
 
 TEST_CASE(SUITE("PayloadTransport"))
 {
+	TestSetup();
+
 	//Generate a load of events
 	//send them over a DataConnector
 	//check they arrived intact
 
-	auto ios = std::make_shared<odc::asio_service>();
+	auto ios = odc::asio_service::Get();
 	auto work = ios->make_work();
 
 	PublicPublishPort Source("Source","",Json::Value::nullSingleton());
@@ -76,15 +84,12 @@ TEST_CASE(SUITE("PayloadTransport"))
 	ConnConf["Connections"][0]["Port2"] = "Sink";
 	DataConnector Conn("Conn","",ConnConf);
 
-	Source.SetIOS(ios);
-	Sink.SetIOS(ios);
 	Source.Enable();
 	Sink.Enable();
-	Conn.SetIOS(ios);
 	Conn.Enable();
 
 	std::atomic<uint16_t> cb_count(0);
-	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&](CommandStatus status)
+	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_count](CommandStatus status)
 		{
 			REQUIRE(status == CommandStatus::SUCCESS);
 			cb_count++;
@@ -103,18 +108,21 @@ TEST_CASE(SUITE("PayloadTransport"))
 		                      std::to_string(time);
 		events.back()->SetPayload<EventType::OctetString>(std::move(payload));
 	}
-	for(auto e : events)
+	for(const auto& e : events)
 	{
 		Source.PublicPublishEvent(e,StatusCallback);
 	}
 	std::vector<std::thread> threads;
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		threads.emplace_back([&]() {ios->run(); });
+		threads.emplace_back([ios]() {ios->run(); });
 	while(cb_count < 1000)
 		ios->poll_one();
 	work.reset();
+	ios->run();
 	for(auto& t : threads)
 		t.join();
+
+	TestTearDown();
 }
 
 

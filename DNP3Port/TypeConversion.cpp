@@ -24,10 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 #include "TypeConversion.h"
-#include <opendnp3/app/MeasurementTypes.h>
-#include <opendnp3/app/ControlRelayOutputBlock.h>
-#include <opendnp3/app/AnalogOutput.h>
 #include <opendatacon/IOTypes.h>
+#include <opendnp3/app/AnalogOutput.h>
+#include <opendnp3/app/ControlRelayOutputBlock.h>
+#include <opendnp3/app/MeasurementTypes.h>
 
 namespace odc
 {
@@ -200,7 +200,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::Binary& dnp3, const size_t ind,
 
 	event->SetPayload<EventType::Binary>(std::move(val));
 	event->SetQuality(qual);
-	event->SetTimestamp(dnp3.time);
+	event->SetTimestamp(dnp3.time.value);
 
 	return event;
 }
@@ -239,7 +239,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::DoubleBitBinary& dnp3, const si
 
 	event->SetPayload<EventType::DoubleBitBinary>(std::move(val));
 	event->SetQuality(qual);
-	event->SetTimestamp(dnp3.time);
+	event->SetTimestamp(dnp3.time.value);
 
 	return event;
 }
@@ -268,7 +268,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::Analog& dnp3, const size_t ind,
 
 	event->SetPayload<EventType::Analog>(std::move(val));
 	event->SetQuality(qual);
-	event->SetTimestamp(dnp3.time);
+	event->SetTimestamp(dnp3.time.value);
 
 	return event;
 }
@@ -297,7 +297,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::Counter& dnp3, const size_t ind
 
 	event->SetPayload<EventType::Counter>(std::move(val));
 	event->SetQuality(qual);
-	event->SetTimestamp(dnp3.time);
+	event->SetTimestamp(dnp3.time.value);
 
 	return event;
 }
@@ -326,7 +326,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::FrozenCounter& dnp3, const size
 
 	event->SetPayload<EventType::FrozenCounter>(std::move(val));
 	event->SetQuality(qual);
-	event->SetTimestamp(dnp3.time);
+	event->SetTimestamp(dnp3.time.value);
 
 	return event;
 }
@@ -351,7 +351,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::BinaryOutputStatus& dnp3, const
 
 	event->SetPayload<EventType::BinaryOutputStatus>(std::move(val));
 	event->SetQuality(qual);
-	event->SetTimestamp(dnp3.time);
+	event->SetTimestamp(dnp3.time.value);
 
 	return event;
 }
@@ -380,7 +380,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputStatus& dnp3, const
 
 	event->SetPayload<EventType::AnalogOutputStatus>(std::move(val));
 	event->SetQuality(qual);
-	event->SetTimestamp(dnp3.time);
+	event->SetTimestamp(dnp3.time.value);
 
 	return event;
 }
@@ -518,55 +518,33 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::ControlRelayOutputBlock& dnp3, 
 
 	EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 
-	switch(dnp3.functionCode)
+	switch(dnp3.opType)
 	{
-		case opendnp3::ControlCode::NUL:
-			val.functionCode = ControlCode::NUL;
-			break;
-		case opendnp3::ControlCode::NUL_CANCEL:
-			val.functionCode = ControlCode::NUL_CANCEL;
-			break;
-		case opendnp3::ControlCode::PULSE_ON:
-			val.functionCode = ControlCode::PULSE_ON;
-			break;
-		case opendnp3::ControlCode::PULSE_ON_CANCEL:
-			val.functionCode = ControlCode::PULSE_ON_CANCEL;
-			break;
-		case opendnp3::ControlCode::PULSE_OFF:
-			val.functionCode = ControlCode::PULSE_OFF;
-			break;
-		case opendnp3::ControlCode::PULSE_OFF_CANCEL:
-			val.functionCode = ControlCode::PULSE_OFF_CANCEL;
-			break;
-		case opendnp3::ControlCode::LATCH_ON:
+		case opendnp3::OperationType::LATCH_ON:
 			val.functionCode = ControlCode::LATCH_ON;
 			break;
-		case opendnp3::ControlCode::LATCH_ON_CANCEL:
-			val.functionCode = ControlCode::LATCH_ON_CANCEL;
-			break;
-		case opendnp3::ControlCode::LATCH_OFF:
+		case opendnp3::OperationType::LATCH_OFF:
 			val.functionCode = ControlCode::LATCH_OFF;
 			break;
-		case opendnp3::ControlCode::LATCH_OFF_CANCEL:
-			val.functionCode = ControlCode::LATCH_OFF_CANCEL;
+		case opendnp3::OperationType::PULSE_ON:
+			if(dnp3.tcc == opendnp3::TripCloseCode::TRIP)
+				val.functionCode = ControlCode::TRIP_PULSE_ON;
+			else if(dnp3.tcc == opendnp3::TripCloseCode::CLOSE)
+				val.functionCode = ControlCode::CLOSE_PULSE_ON;
+			else
+				val.functionCode = ControlCode::PULSE_ON;
 			break;
-		case opendnp3::ControlCode::CLOSE_PULSE_ON:
-			val.functionCode = ControlCode::CLOSE_PULSE_ON;
+		case opendnp3::OperationType::PULSE_OFF:
+			val.functionCode = ControlCode::PULSE_OFF;
 			break;
-		case opendnp3::ControlCode::CLOSE_PULSE_ON_CANCEL:
-			val.functionCode = ControlCode::CLOSE_PULSE_ON_CANCEL;
+		case opendnp3::OperationType::NUL:
+			val.functionCode = ControlCode::NUL;
 			break;
-		case opendnp3::ControlCode::TRIP_PULSE_ON:
-			val.functionCode = ControlCode::TRIP_PULSE_ON;
-			break;
-		case opendnp3::ControlCode::TRIP_PULSE_ON_CANCEL:
-			val.functionCode = ControlCode::TRIP_PULSE_ON_CANCEL;
-			break;
-		case opendnp3::ControlCode::UNDEFINED:
-		default:
+		case opendnp3::OperationType::Undefined:
 			val.functionCode = ControlCode::UNDEFINED;
 			break;
 	}
+
 	val.count = dnp3.count;
 	val.onTimeMS = dnp3.onTimeMS;
 	val.offTimeMS = dnp3.offTimeMS;
@@ -741,7 +719,7 @@ template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputSta
 	return static_cast<opendnp3::BinaryOutputStatusQuality>(dnp3);
 }
 
-template<> opendnp3::Binary FromODC<opendnp3::Binary>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::Binary FromODC<opendnp3::Binary>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::Binary dnp3;
 	dnp3.value = event->GetPayload<EventType::Binary>();
@@ -753,11 +731,11 @@ template<> opendnp3::Binary FromODC<opendnp3::Binary>(const std::shared_ptr<cons
 	if(dnp3.value)
 		dnp3.flags.Set(opendnp3::BinaryQuality::STATE);
 
-	dnp3.time = opendnp3::DNPTime(event->GetTimestamp());
+	dnp3.time.value = event->GetTimestamp();
 
 	return dnp3;
 }
-template<> opendnp3::DoubleBitBinary FromODC<opendnp3::DoubleBitBinary>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::DoubleBitBinary FromODC<opendnp3::DoubleBitBinary>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::DoubleBitBinary dnp3;
 	auto val = event->GetPayload<EventType::DoubleBitBinary>();
@@ -777,61 +755,61 @@ template<> opendnp3::DoubleBitBinary FromODC<opendnp3::DoubleBitBinary>(const st
 	if(val.second)
 		dnp3.flags.value |= static_cast<uint8_t>(opendnp3::DoubleBitBinaryQuality::STATE2);
 
-	dnp3.time = opendnp3::DNPTime(event->GetTimestamp());
+	dnp3.time.value = event->GetTimestamp();
 
 	return dnp3;
 }
-template<> opendnp3::Analog FromODC<opendnp3::Analog>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::Analog FromODC<opendnp3::Analog>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::Analog dnp3(event->GetPayload<EventType::Analog>());
 
 	auto qual = FromODC<opendnp3::AnalogQuality>(event->GetQuality());
 	dnp3.flags.Set(qual);
-	dnp3.time = opendnp3::DNPTime(event->GetTimestamp());
+	dnp3.time.value = event->GetTimestamp();
 
 	return dnp3;
 }
-template<> opendnp3::Counter FromODC<opendnp3::Counter>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::Counter FromODC<opendnp3::Counter>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::Counter dnp3(event->GetPayload<EventType::Counter>());
 
 	auto qual = FromODC<opendnp3::CounterQuality>(event->GetQuality());
 	dnp3.flags.Set(qual);
-	dnp3.time = opendnp3::DNPTime(event->GetTimestamp());
+	dnp3.time.value = event->GetTimestamp();
 
 	return dnp3;
 }
-template<> opendnp3::FrozenCounter FromODC<opendnp3::FrozenCounter>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::FrozenCounter FromODC<opendnp3::FrozenCounter>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::FrozenCounter dnp3(event->GetPayload<EventType::FrozenCounter>());
 
 	auto qual = FromODC<opendnp3::CounterQuality>(event->GetQuality());
 	dnp3.flags.Set(qual);
-	dnp3.time = opendnp3::DNPTime(event->GetTimestamp());
+	dnp3.time.value = event->GetTimestamp();
 
 	return dnp3;
 }
-template<> opendnp3::BinaryOutputStatus FromODC<opendnp3::BinaryOutputStatus>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::BinaryOutputStatus FromODC<opendnp3::BinaryOutputStatus>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::BinaryOutputStatus dnp3(event->GetPayload<EventType::BinaryOutputStatus>());
 
 	auto qual = FromODC<opendnp3::BinaryOutputStatusQuality>(event->GetQuality());
 	dnp3.flags.Set(qual);
-	dnp3.time = opendnp3::DNPTime(event->GetTimestamp());
+	dnp3.time.value = event->GetTimestamp();
 
 	return dnp3;
 }
-template<> opendnp3::AnalogOutputStatus FromODC<opendnp3::AnalogOutputStatus>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::AnalogOutputStatus FromODC<opendnp3::AnalogOutputStatus>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::AnalogOutputStatus dnp3(event->GetPayload<EventType::AnalogOutputStatus>());
 
 	auto qual = FromODC<opendnp3::AnalogQuality>(event->GetQuality());
 	dnp3.flags.Set(qual);
-	dnp3.time = opendnp3::DNPTime(event->GetTimestamp());
+	dnp3.time.value = event->GetTimestamp();
 
 	return dnp3;
 }
-template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::shared_ptr<const EventInfo>& event)
 {
 	switch(event->GetEventType())
 	{
@@ -843,7 +821,7 @@ template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::s
 			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
 }
-template<> opendnp3::DoubleBitBinaryQuality FromODC<opendnp3::DoubleBitBinaryQuality>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::DoubleBitBinaryQuality FromODC<opendnp3::DoubleBitBinaryQuality>(const std::shared_ptr<const EventInfo>& event)
 {
 	switch(event->GetEventType())
 	{
@@ -855,7 +833,7 @@ template<> opendnp3::DoubleBitBinaryQuality FromODC<opendnp3::DoubleBitBinaryQua
 			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
 }
-template<> opendnp3::AnalogQuality FromODC<opendnp3::AnalogQuality>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::AnalogQuality FromODC<opendnp3::AnalogQuality>(const std::shared_ptr<const EventInfo>& event)
 {
 	switch(event->GetEventType())
 	{
@@ -867,7 +845,7 @@ template<> opendnp3::AnalogQuality FromODC<opendnp3::AnalogQuality>(const std::s
 			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
 }
-template<> opendnp3::CounterQuality FromODC<opendnp3::CounterQuality>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::CounterQuality FromODC<opendnp3::CounterQuality>(const std::shared_ptr<const EventInfo>& event)
 {
 	switch(event->GetEventType())
 	{
@@ -879,7 +857,7 @@ template<> opendnp3::CounterQuality FromODC<opendnp3::CounterQuality>(const std:
 			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
 }
-template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputStatusQuality>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputStatusQuality>(const std::shared_ptr<const EventInfo>& event)
 {
 	switch(event->GetEventType())
 	{
@@ -891,61 +869,45 @@ template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputSta
 			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}
 }
-template<> opendnp3::ControlRelayOutputBlock FromODC<opendnp3::ControlRelayOutputBlock>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::ControlRelayOutputBlock FromODC<opendnp3::ControlRelayOutputBlock>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::ControlRelayOutputBlock dnp3;
 
 	auto control = event->GetPayload<EventType::ControlRelayOutputBlock>();
 
+	dnp3.tcc = opendnp3::TripCloseCode::NUL;
+
 	switch(control.functionCode)
 	{
 		case ControlCode::NUL:
-			dnp3.functionCode = opendnp3::ControlCode::NUL;
-			break;
-		case ControlCode::NUL_CANCEL:
-			dnp3.functionCode = opendnp3::ControlCode::NUL_CANCEL;
+			dnp3.opType = opendnp3::OperationType::NUL;
 			break;
 		case ControlCode::PULSE_ON:
-			dnp3.functionCode = opendnp3::ControlCode::PULSE_ON;
-			break;
-		case ControlCode::PULSE_ON_CANCEL:
-			dnp3.functionCode = opendnp3::ControlCode::PULSE_ON_CANCEL;
+			dnp3.opType = opendnp3::OperationType::PULSE_ON;
 			break;
 		case ControlCode::PULSE_OFF:
-			dnp3.functionCode = opendnp3::ControlCode::PULSE_OFF;
-			break;
-		case ControlCode::PULSE_OFF_CANCEL:
-			dnp3.functionCode = opendnp3::ControlCode::PULSE_OFF_CANCEL;
+			dnp3.opType = opendnp3::OperationType::PULSE_OFF;
 			break;
 		case ControlCode::LATCH_ON:
-			dnp3.functionCode = opendnp3::ControlCode::LATCH_ON;
-			break;
-		case ControlCode::LATCH_ON_CANCEL:
-			dnp3.functionCode = opendnp3::ControlCode::LATCH_ON_CANCEL;
+			dnp3.opType = opendnp3::OperationType::LATCH_ON;
 			break;
 		case ControlCode::LATCH_OFF:
-			dnp3.functionCode = opendnp3::ControlCode::LATCH_OFF;
-			break;
-		case ControlCode::LATCH_OFF_CANCEL:
-			dnp3.functionCode = opendnp3::ControlCode::LATCH_OFF_CANCEL;
+			dnp3.opType = opendnp3::OperationType::LATCH_OFF;
 			break;
 		case ControlCode::CLOSE_PULSE_ON:
-			dnp3.functionCode = opendnp3::ControlCode::CLOSE_PULSE_ON;
-			break;
-		case ControlCode::CLOSE_PULSE_ON_CANCEL:
-			dnp3.functionCode = opendnp3::ControlCode::CLOSE_PULSE_ON_CANCEL;
+			dnp3.opType = opendnp3::OperationType::PULSE_ON;
+			dnp3.tcc = opendnp3::TripCloseCode::CLOSE;
 			break;
 		case ControlCode::TRIP_PULSE_ON:
-			dnp3.functionCode = opendnp3::ControlCode::TRIP_PULSE_ON;
-			break;
-		case ControlCode::TRIP_PULSE_ON_CANCEL:
-			dnp3.functionCode = opendnp3::ControlCode::TRIP_PULSE_ON_CANCEL;
+			dnp3.opType = opendnp3::OperationType::PULSE_ON;
+			dnp3.tcc = opendnp3::TripCloseCode::TRIP;
 			break;
 		case ControlCode::UNDEFINED:
 		default:
-			dnp3.functionCode = opendnp3::ControlCode::UNDEFINED;
+			dnp3.opType = opendnp3::OperationType::Undefined;
 			break;
 	}
+	dnp3.rawCode = opendnp3::OperationTypeSpec::to_type(dnp3.opType);
 	dnp3.count = control.count;
 	dnp3.onTimeMS = control.onTimeMS;
 	dnp3.offTimeMS = control.offTimeMS;
@@ -953,7 +915,7 @@ template<> opendnp3::ControlRelayOutputBlock FromODC<opendnp3::ControlRelayOutpu
 
 	return dnp3;
 }
-template<> opendnp3::AnalogOutputInt16 FromODC<opendnp3::AnalogOutputInt16>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::AnalogOutputInt16 FromODC<opendnp3::AnalogOutputInt16>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::AnalogOutputInt16 dnp3;
 
@@ -963,7 +925,7 @@ template<> opendnp3::AnalogOutputInt16 FromODC<opendnp3::AnalogOutputInt16>(cons
 
 	return dnp3;
 }
-template<> opendnp3::AnalogOutputInt32 FromODC<opendnp3::AnalogOutputInt32>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::AnalogOutputInt32 FromODC<opendnp3::AnalogOutputInt32>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::AnalogOutputInt32 dnp3;
 
@@ -973,7 +935,7 @@ template<> opendnp3::AnalogOutputInt32 FromODC<opendnp3::AnalogOutputInt32>(cons
 
 	return dnp3;
 }
-template<> opendnp3::AnalogOutputFloat32 FromODC<opendnp3::AnalogOutputFloat32>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::AnalogOutputFloat32 FromODC<opendnp3::AnalogOutputFloat32>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::AnalogOutputFloat32 dnp3;
 
@@ -983,7 +945,7 @@ template<> opendnp3::AnalogOutputFloat32 FromODC<opendnp3::AnalogOutputFloat32>(
 
 	return dnp3;
 }
-template<> opendnp3::AnalogOutputDouble64 FromODC<opendnp3::AnalogOutputDouble64>(const std::shared_ptr<const EventInfo> event)
+template<> opendnp3::AnalogOutputDouble64 FromODC<opendnp3::AnalogOutputDouble64>(const std::shared_ptr<const EventInfo>& event)
 {
 	opendnp3::AnalogOutputDouble64 dnp3;
 

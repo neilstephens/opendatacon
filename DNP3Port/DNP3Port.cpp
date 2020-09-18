@@ -24,32 +24,29 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <openpal/logging/LogLevels.h>
-#include <opendnp3/gen/Parity.h>
-#include <opendatacon/util.h>
+#include "ChannelStateSubscriber.h"
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
-#include "ChannelStateSubscriber.h"
+#include <opendatacon/util.h>
+#include <opendnp3/gen/Parity.h>
+#include <opendnp3/logging/LogLevels.h>
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	pChannel(nullptr),
-	status(opendnp3::LinkStatus::UNRESET),
-	link_dead(true),
-	channel_dead(true)
+	pChanH(std::make_unique<ChannelHandler>(this))
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
-	static std::weak_ptr<asiodnp3::DNP3Manager> weak_mgr;
+	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
 
 	//if we're the first/only one on the scene,
 	// init the DNP3Manager
 	if(!init_flag.test_and_set(std::memory_order_acquire))
 	{
 		//make a custom deleter for the DNP3Manager that will also clear the init flag
-		auto deinit_del = [](asiodnp3::DNP3Manager* mgr_ptr)
+		auto deinit_del = [](opendnp3::DNP3Manager* mgr_ptr)
 					{init_flag.clear(); delete mgr_ptr;};
-		this->IOMgr = std::shared_ptr<asiodnp3::DNP3Manager>(
-			new asiodnp3::DNP3Manager(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>()),
+		this->IOMgr = std::shared_ptr<opendnp3::DNP3Manager>(
+			new opendnp3::DNP3Manager(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>()),
 			deinit_del);
 		weak_mgr = this->IOMgr;
 	}
@@ -61,7 +58,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	}
 
 	//the creation of a new DNP3PortConf will get the point details
-	pConf.reset(new DNP3PortConf(ConfFilename, ConfOverrides));
+	pConf = std::make_unique<DNP3PortConf>(ConfFilename, ConfOverrides);
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
@@ -70,23 +67,6 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 DNP3Port::~DNP3Port()
 {}
 
-// Called by OpenDNP3 Thread Pool
-void DNP3Port::StateListener(opendnp3::ChannelState state)
-{
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelState {}.", Name, opendnp3::ChannelStateToString(state));
-
-	if(state != opendnp3::ChannelState::OPEN)
-	{
-		channel_dead = true;
-		OnLinkDown();
-	}
-	else
-	{
-		channel_dead = false;
-	}
-}
-
 //DataPort function for UI
 const Json::Value DNP3Port::GetStatus() const
 {
@@ -94,11 +74,11 @@ const Json::Value DNP3Port::GetStatus() const
 
 	if(!enabled)
 		ret_val["Result"] = "Port disabled";
-	else if(link_dead)
+	else if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
 		ret_val["Result"] = "Port enabled - link down";
-	else if(status == opendnp3::LinkStatus::RESET)
+	else if(pChanH->GetLinkStatus() == opendnp3::LinkStatus::RESET)
 		ret_val["Result"] = "Port enabled - link up (reset)";
-	else if(status == opendnp3::LinkStatus::UNRESET)
+	else if(pChanH->GetLinkStatus() == opendnp3::LinkStatus::UNRESET)
 		ret_val["Result"] = "Port enabled - link up (unreset)";
 	else
 		ret_val["Result"] = "Port enabled - link status unknown";
@@ -178,6 +158,49 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 	{
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = "";
+
+		if(JSONRoot.isMember("IPTransport"))
+		{
+			if(JSONRoot["IPTransport"].asString() == "UDP")
+			{
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::UDP;
+				if(JSONRoot.isMember("UDPListenPort"))
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.UDPListenPort = JSONRoot["UDPListenPort"].asUInt();
+			}
+			else if(JSONRoot["IPTransport"].asString() == "TLS")
+			{
+				if(JSONRoot.isMember("TLSFiles")
+				   && JSONRoot["TLSFiles"].isMember("PeerCert")
+				   && JSONRoot["TLSFiles"].isMember("LocalCert")
+				   && JSONRoot["TLSFiles"].isMember("PrivateKey"))
+				{
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::TLS;
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PeerCertFile =
+						JSONRoot["TLSFiles"]["PeerCert"].asString();
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.LocalCertFile =
+						JSONRoot["TLSFiles"]["LocalCert"].asString();
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PrivateKeyFile =
+						JSONRoot["TLSFiles"]["PrivateKey"].asString();
+				}
+				else
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+					{
+						Json::Value Eg;
+						Eg["TLSFiles"]["PeerCert"] = "/path/to/file";
+						Eg["TLSFiles"]["LocalCert"] = "/path/to/file";
+						Eg["TLSFiles"]["PrivateKey"] = "/path/to/file";
+						log->warn("Reverting to TCP: TLS IPTransport requires TLSFiles config, Eg '{}'", Eg.asString());
+					}
+				}
+			}
+			else if(JSONRoot["IPTransport"].asString() != "TCP")
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->warn("Invalid IP transport protocol: {}, should be TCP, UDP, or TLS. Using TCP", JSONRoot["IPTransport"].asString());
+			}
+			//else TCP, already default
+		}
 	}
 
 	if(JSONRoot.isMember("Port"))
@@ -219,94 +242,5 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 		}
 	}
 
-}
-
-class ChannelListener: public asiodnp3::IChannelListener
-{
-public:
-	ChannelListener(const std::string& aChanID, DNP3Port* pPort):
-		ChanID(aChanID)
-	{
-		ChannelStateSubscriber::Subscribe(pPort,ChanID);
-	}
-	//Receive callbacks for state transitions on the channels from opendnp3
-	void OnStateChange(opendnp3::ChannelState state) override
-	{
-		ChannelStateSubscriber::StateListener(ChanID,state);
-	}
-private:
-	const std::string ChanID;
-};
-
-std::shared_ptr<asiodnp3::IChannel> DNP3Port::GetChannel()
-{
-	static std::unordered_map<std::string, std::weak_ptr<asiodnp3::IChannel>> Channels;
-	std::shared_ptr<asiodnp3::IChannel> chan(nullptr);
-
-	DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	std::string ChannelID;
-	bool isSerial;
-	if(pConf->mAddrConf.IP.empty())
-	{
-		ChannelID = pConf->mAddrConf.SerialSettings.deviceName;
-		isSerial = true;
-	}
-	else
-	{
-		ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port);
-		isSerial = false;
-	}
-
-	//create a new channel if needed
-	if(!Channels.count(ChannelID) || !(chan = Channels[ChannelID].lock()))
-	{
-		auto listener = std::make_shared<ChannelListener>(ChannelID,this);
-		if(isSerial)
-		{
-			chan = IOMgr->AddSerial(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
-				asiopal::ChannelRetry(
-					openpal::TimeDuration::Milliseconds(500),
-					openpal::TimeDuration::Milliseconds(5000)),
-				pConf->mAddrConf.SerialSettings,listener);
-		}
-		else
-		{
-			switch (ClientOrServer())
-			{
-				case TCPClientServer::SERVER:
-				{
-					chan = IOMgr->AddTCPServer(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
-						pConf->pPointConf->ServerAcceptMode,
-						pConf->mAddrConf.IP,
-						pConf->mAddrConf.Port,listener);
-					break;
-				}
-
-				case TCPClientServer::CLIENT:
-				{
-					chan = IOMgr->AddTCPClient(ChannelID.c_str(), pConf->LOG_LEVEL.GetBitfield(),
-						asiopal::ChannelRetry(
-							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-							openpal::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
-						pConf->mAddrConf.IP,
-						"0.0.0.0",
-						pConf->mAddrConf.Port,listener);
-					break;
-				}
-
-				default:
-				{
-					const std::string msg(Name + ": Can't determine if TCP socket is client or server");
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->error(msg);
-					throw std::runtime_error(msg);
-				}
-			}
-		}
-		Channels[ChannelID] = chan;
-	}
-
-	return chan;
 }
 

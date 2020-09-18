@@ -26,19 +26,19 @@
 
 #ifndef DNP3PORT_H_
 #define DNP3PORT_H_
-
-#include <unordered_map>
-#include <opendatacon/DataPort.h>
-#include <opendnp3/gen/LinkStatus.h>
-#include <opendnp3/gen/ChannelState.h>
-#include <asiodnp3/DNP3Manager.h>
 #include "DNP3PortConf.h"
 #include "DNP3Log2spdlog.h"
+#include "ChannelHandler.h"
+#include <unordered_map>
+#include <opendatacon/DataPort.h>
+#include <opendnp3/DNP3Manager.h>
 
 using namespace odc;
 
 class DNP3Port: public DataPort
 {
+	friend class ChannelHandler;
+	friend class ChannelLinksWatchdog;
 public:
 	DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~DNP3Port() override;
@@ -46,8 +46,6 @@ public:
 	void Enable() override =0;
 	void Disable() override =0;
 	void Build() override =0;
-
-	void StateListener(opendnp3::ChannelState state);
 
 	//Override DataPort for UI
 	const Json::Value GetStatus() const override;
@@ -57,17 +55,16 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
-	std::shared_ptr<asiodnp3::DNP3Manager> IOMgr;
-	std::shared_ptr<asiodnp3::IChannel> GetChannel();
+	inline std::shared_ptr<DNP3Port> ptr()
+	{
+		return std::static_pointer_cast<DNP3Port>(shared_from_this());
+	}
+	std::unique_ptr<ChannelHandler> pChanH;
+	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 
-	std::shared_ptr<asiodnp3::IChannel> pChannel;
-	opendnp3::LinkStatus status;
-	bool link_dead;
-	bool channel_dead;
-
-	virtual void OnLinkDown()=0;
-	virtual TCPClientServer ClientOrServer()=0;
-
+	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;
+	virtual void ChannelWatchdogTrigger(bool on) = 0;
+	virtual TCPClientServer ClientOrServer() = 0;
 };
 
 #endif /* DNP3PORT_H_ */

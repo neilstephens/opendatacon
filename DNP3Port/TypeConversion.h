@@ -32,7 +32,6 @@
 #include <opendnp3/app/AnalogCommandEvent.h>
 #include <opendnp3/app/OctetString.h>
 #include <opendnp3/app/DNPTime.h>
-#include <opendnp3/app/SecurityStat.h>
 #include <opendatacon/IOTypes.h>
 
 
@@ -76,7 +75,6 @@ EVENTDNP3(EventType::BinaryCommandEvent       , opendnp3::BinaryCommandEvent)
 EVENTDNP3(EventType::AnalogCommandEvent       , opendnp3::AnalogCommandEvent)
 EVENTDNP3(EventType::OctetString              , opendnp3::OctetString)
 EVENTDNP3(EventType::TimeAndInterval          , opendnp3::TimeAndInterval)
-EVENTDNP3(EventType::SecurityStat             , opendnp3::SecurityStat)
 EVENTDNP3(EventType::ControlRelayOutputBlock  , opendnp3::ControlRelayOutputBlock)
 EVENTDNP3(EventType::AnalogOutputInt16        , opendnp3::AnalogOutputInt16)
 EVENTDNP3(EventType::AnalogOutputInt32        , opendnp3::AnalogOutputInt32)
@@ -91,6 +89,6 @@ EVENTDNP3(EventType::FrozenCounterQuality     , opendnp3::CounterQuality)
 EVENTDNP3(EventType::AnalogOutputStatusQuality, opendnp3::AnalogQuality)
 
 template<typename T> T FromODC(const QualityFlags& qual);
-template<typename T> T FromODC(const std::shared_ptr<const EventInfo> event);
+template<typename T> T FromODC(const std::shared_ptr<const EventInfo>& event);
 
 } //namespace odc

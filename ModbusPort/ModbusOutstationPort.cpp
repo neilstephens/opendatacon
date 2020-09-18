@@ -26,12 +26,11 @@
 // This is a fix for a VS bug
 #define NOMINMAX
 
-#include <iostream>
-#include <regex>
-#include <chrono>
 #include "ModbusOutstationPort.h"
-
+#include <chrono>
+#include <iostream>
 #include <opendatacon/util.h>
+#include <regex>
 
 ModbusOutstationPort::ModbusOutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ModbusPort(aName, aConfFilename, aConfOverrides)
@@ -49,7 +48,7 @@ void ModbusOutstationPort::Enable()
 	if(enabled) return;
 	enabled = true;
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	// Only change stack state if it is a persistent server
 	if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT)
@@ -117,7 +116,7 @@ void ModbusOutstationPort::Disconnect()
 
 void ModbusOutstationPort::Build()
 {
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
 	std::string log_id;
 
@@ -173,7 +172,7 @@ void ModbusOutstationPort::Build()
 		pConf->pPointConf->InputBitIndicies.Total(),
 		pConf->pPointConf->RegIndicies.Total(),
 		pConf->pPointConf->InputRegIndicies.Total());
-	if (mb_mapping == NULL)
+	if (mb_mapping == nullptr)
 	{
 		if(auto log = odc::spdlog_get("ModbusPort"))
 			log->error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
@@ -184,7 +183,7 @@ void ModbusOutstationPort::Build()
 
 int find_index (const ModbusReadGroupCollection& aCollection, uint16_t index)
 {
-	for(auto group : aCollection)
+	for(const auto& group : aCollection)
 		for(auto group_index = group.start; group_index < group.start + group.count; group_index++)
 			if(group_index + group.index_offset == index)
 				return (int)group_index;
@@ -199,7 +198,7 @@ void ModbusOutstationPort::Event(std::shared_ptr<const EventInfo> event, const s
 		return;
 	}
 
-	ModbusPortConf* pConf = static_cast<ModbusPortConf*>(this->pConf.get());
+	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 	auto event_type = event->GetEventType();
 	auto index = event->GetIndex();
 

@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project(PyPort)
-cmake_minimum_required(VERSION 2.8)
+
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def server/*.cpp server/*.hpp PythonCode/*.py)
 
 option(USE_PYTHON_SUBMODULE "Use git submodule to download and build python libraries" OFF)
@@ -54,7 +54,7 @@ endif()
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_include_directories(${PROJECT_NAME} PRIVATE "${PYTHON_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} ODC ${PYTHON_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ODC HTTP ${PYTHON_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

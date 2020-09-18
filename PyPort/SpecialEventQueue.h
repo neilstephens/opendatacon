@@ -86,7 +86,7 @@ public:
 			auto nodeptr = std::make_shared<node>(data);
 
 			// Dispatch will execute now - if we can, otherwise results in a post.
-			internal_queue_strand->dispatch([&, nodeptr]()
+			internal_queue_strand->dispatch([this, nodeptr]()
 				{
 					// This is only called from within the internal_queue_strand, so we are safe.
 					// Always add here, we have already checked
@@ -103,7 +103,7 @@ public:
 					}
 				});
 		}
-		catch (const std::exception)
+		catch (const std::exception&)
 		{
 			// Must be a memory allocation failure.
 			return false;

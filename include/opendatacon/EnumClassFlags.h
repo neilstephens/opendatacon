@@ -87,6 +87,11 @@ constexpr std::enable_if_t<BitwiseEnabled<E>::state, E> operator ~( const E arg)
 {
 	return static_cast<E>(~static_cast<std::underlying_type_t<E> >(arg));
 }
+template <typename E>
+constexpr std::enable_if_t<BitwiseEnabled<E>::state, bool> operator !( const E arg)
+{
+	return static_cast<std::underlying_type_t<E> >(arg) == 0;
+}
 
 } //namespace odc
 

@@ -25,7 +25,7 @@ int main( int argc, char* argv[] )
 {
 	std::string libname = "MD3Port";
 	std::string libfilename = GetLibFileName(libname);
-	auto pluginlib = LoadModule(libfilename.c_str());
+	auto pluginlib = LoadModule(libfilename);
 
 	if (pluginlib == nullptr)
 	{
@@ -33,9 +33,7 @@ int main( int argc, char* argv[] )
 		return 1;
 	}
 
-	int(*run_tests)(int,char**);
-
-	run_tests = (int(*)(int,char**))LoadSymbol(pluginlib, "run_tests");
+	auto run_tests = reinterpret_cast<int (*)(int,char**)>(LoadSymbol(pluginlib, "run_tests"));
 
 	if(run_tests == nullptr)
 	{

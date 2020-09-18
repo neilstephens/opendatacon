@@ -24,11 +24,11 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <memory>
-#include <chrono>
-#include <opendatacon/util.h>
-#include <opendatacon/IOTypes.h>
 #include "JSONPort.h"
+#include <chrono>
+#include <memory>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
 
 using namespace odc;
 
@@ -38,7 +38,7 @@ JSONPort::JSONPort(const std::string& aName, const std::string& aConfFilename, c
 	pSockMan(nullptr)
 {
 	//the creation of a new PortConf will get the point details
-	pConf.reset(new JSONPortConf(ConfFilename, aConfOverrides));
+	pConf = std::make_unique<JSONPortConf>(ConfFilename, aConfOverrides);
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();
@@ -49,7 +49,7 @@ void JSONPort::Enable()
 	if(enabled) return;
 	try
 	{
-		if(pSockMan.get() == nullptr)
+		if(!pSockMan)
 			throw std::runtime_error("Socket manager uninitilised");
 		pSockMan->Open();
 		enabled = true;
@@ -66,7 +66,7 @@ void JSONPort::Disable()
 {
 	if(!enabled) return;
 	enabled = false;
-	if(pSockMan.get() == nullptr)
+	if(!pSockMan)
 		return;
 	pSockMan->Close();
 }
@@ -109,13 +109,16 @@ void JSONPort::ProcessElements(const Json::Value& JSONRoot)
 	//TODO: document this
 	if(JSONRoot.isMember("StyleOutput"))
 		static_cast<JSONPortConf*>(pConf.get())->style_output = JSONRoot["StyleOutput"].asBool();
+	//TODO: document this
+	if(JSONRoot.isMember("PrintAllEvents"))
+		static_cast<JSONPortConf*>(pConf.get())->print_all = JSONRoot["PrintAllEvents"].asBool();
 }
 
 void JSONPort::Build()
 {
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
-	pSockMan = std::make_unique<TCPSocketManager<std::string>>
+	pSockMan = std::make_unique<TCPSocketManager>
 		           (pIOS, isServer, pConf->mAddrConf.IP, std::to_string(pConf->mAddrConf.Port),
 		           std::bind(&JSONPort::ReadCompletionHandler,this,std::placeholders::_1),
 		           std::bind(&JSONPort::SocketStateHandler,this,std::placeholders::_1),
@@ -182,7 +185,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	bool parsing_success = JSONReader->parse(start,stop,&JSONRoot,&err_str);
 	if (parsing_success)
 	{
-		JSONPortConf* pConf = static_cast<JSONPortConf*>(this->pConf.get());
+		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 		//little functor to traverse any paths, starting at the root
 		//pass a JSON array of nodes representing the path (that's how we store our point config after all)
@@ -206,7 +209,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				if(timestamp == 0)
 					throw std::runtime_error("Null timestamp");
 			}
-			catch(std::runtime_error e)
+			catch(std::runtime_error& e)
 			{
 				if(auto log = odc::spdlog_get("JSONPort"))
 					log->error("Error decoding timestamp as Uint64: '{}'",e.what());
@@ -312,7 +315,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				//work out control code to send
 				if(point_pair.second.isMember("ControlMode") && point_pair.second["ControlMode"].isString())
 				{
-					auto check_val = [&](std::string truename, std::string falsename) -> bool
+					auto check_val = [&point_pair,&val](const std::string& truename, const std::string& falsename) -> bool
 							     {
 								     bool ret = true;
 								     if(point_pair.second.isMember(truename))
@@ -360,7 +363,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						{
 							on = check_val("OnVal","OffVal");
 						}
-						catch(std::runtime_error e)
+						catch(std::runtime_error& e)
 						{
 							if(auto log = odc::spdlog_get("JSONPort"))
 								log->error("'{}', for index {}",e.what(),point_pair.first);
@@ -378,7 +381,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						{
 							trip = check_val("TripVal","CloseVal");
 						}
-						catch(std::runtime_error e)
+						catch(std::runtime_error& e)
 						{
 							if(auto log = odc::spdlog_get("JSONPort"))
 								log->error("'{}', for index {}",e.what(),point_pair.first);
@@ -408,11 +411,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						{
 							Json::Value result;
 							result["Command"]["Index"] = point_pair.first;
-
-							if(command_stat == CommandStatus::SUCCESS)
-								result["Command"]["Status"] = "SUCCESS";
-							else
-								result["Command"]["Status"] = "UNDEFINED";
+							result["Command"]["Status"] = odc::ToString(command_stat);
 
 							//TODO: make this writer reusable (class member)
 							//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
@@ -525,6 +524,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			auto v = event->GetPayload<EventType::Analog>();
 			auto& m = pConf->pPointConf->Analogs;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
 			          : Json::Value::nullSingleton());
 			break;
 		}
@@ -533,6 +533,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			auto v = event->GetPayload<EventType::Binary>();
 			auto& m = pConf->pPointConf->Binaries;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
 			          : Json::Value::nullSingleton());
 			break;
 		}
@@ -541,6 +542,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			auto v = std::string(event->GetPayload<EventType::ControlRelayOutputBlock>());
 			auto& m = pConf->pPointConf->Controls;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
 			          : Json::Value::nullSingleton());
 			break;
 		}

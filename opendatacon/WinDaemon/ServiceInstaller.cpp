@@ -15,9 +15,9 @@
 \***************************************************************************/
 
 #pragma region "Includes"
+#include "ServiceInstaller.h"
 #include <stdio.h>
 #include <windows.h>
-#include "ServiceInstaller.h"
 #include <xstring>
 #pragma endregion
 

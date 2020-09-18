@@ -18,7 +18,7 @@
  *	limitations under the License.
  */
 /*
- * IndexOffsetTransform.h
+ * RandTransform.h
  *
  *  Created on: 30/07/2014
  *      Author: Neil Stephens <dearknarl@gmail.com>
@@ -30,6 +30,8 @@
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
 #include <random>
+
+using namespace odc;
 
 class RandTransform: public Transform
 {

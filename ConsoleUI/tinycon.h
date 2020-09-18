@@ -57,7 +57,7 @@ protected:
 	int pos;
 	int line_pos;
 	int skip_out;
-	char c;
+	char c{};
 	std::string s, unused;
 	std::deque<char> buffer;
 	std::deque<std::string> history;
@@ -66,13 +66,13 @@ public:
 	tinyConsole(std::string);
 	void run();
 	void setPrompt(std::string);
-	virtual int trigger(std::string);
+	virtual int trigger(const std::string &);
 	virtual int hotkeys(char);
 	void pause();
 	void quit();
 	std::string getLine();
 	std::string getLine(int);
-	std::string getLine(int, std::string);
+	std::string getLine(int, const std::string&);
 	std::string version();
 	void setMaxHistory(int);
 	void setBuffer(std::string);

@@ -27,16 +27,20 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
-
-#include <opendatacon/IUI.h>
 #include "MhdWrapper.h"
+#include <opendatacon/IUI.h>
+#include <opendatacon/TCPSocketManager.h>
+#include <regex>
+#include <shared_mutex>
+#include <queue>
+#include <string_view>
 
 const char ROOTPAGE[] = "/index.html";
 
 class WebUI: public IUI
 {
 public:
-	WebUI(uint16_t port);
+	WebUI(uint16_t port, const std::string& web_root, const std::string& tcp_port, size_t log_q_size);
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
@@ -48,11 +52,11 @@ public:
 	/* HTTP response handler call back */
 	int http_ahc(void *cls,
 		struct MHD_Connection *connection,
-		const char *url,
-		const char *method,
-		const char *version,
-		const char *upload_data,
-		size_t *upload_data_size,
+		const std::string& url,
+		const std::string& method,
+		const std::string& version,
+		const std::string& upload_data,
+		size_t& upload_data_size,
 		void **ptr);
 
 private:
@@ -60,10 +64,38 @@ private:
 	const int port;
 	std::string cert_pem;
 	std::string key_pem;
+	std::string web_root;
+	std::string tcp_port;
+	std::unique_ptr<odc::TCPSocketManager> pSockMan;
+
+	//TODO: these can be maps with entry per web session
+	//the pairs in the Q hold:
+	//	* a string view, and
+	//	* a shared pointer that manages it's underlying memory
+	std::string filter;
+	bool filter_is_regex;
+	std::unique_ptr<std::regex> pLogRegex;
+	std::deque<std::pair<std::shared_ptr<void>,std::string_view>> log_queue;
+	size_t log_q_size;
+	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
 
 	bool useSSL = false;
+	/*Param Collection with POST from client side*/
+	ParamCollection params;
 	/* UI response handlers */
 	std::unordered_map<std::string, const IUIResponder*> Responders;
+	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
+	std::string InitCommand(const std::string& url);
+	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb);
+	void HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb);
+	void ConnectToTCPServer();
+	void ReadCompletionHandler(odc::buf_t& readbuf);
+	void ConnectionEvent(bool state);
+
+	//TODO: These could be per web session
+	Json::Value ApplyLogFilter(const std::string& new_filter, bool is_regex);
+	void ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss);
+	bool IsCommand(const std::string& url);
 };
 
 #endif /* defined(__opendatacon__WebUI__) */

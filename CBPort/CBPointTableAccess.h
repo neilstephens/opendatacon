@@ -26,15 +26,12 @@
 
 #ifndef CBPOINTTABLEACCESS_H_
 #define CBPOINTTABLEACCESS_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-
-
 #include "CB.h"
 #include "CBUtility.h"
 #include "StrandProtectedQueue.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 using namespace odc;
 
@@ -44,13 +41,14 @@ class CBPointTableAccess
 public:
 	CBPointTableAccess();
 	void SetName(std::string _Name) { Name = _Name; };
-	void Build(const std::string _Name, bool isoutstation, odc::asio_service & IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag);
+	void Build(const std::string& _Name, bool isoutstation, odc::asio_service & IOS, unsigned int SOEQueueSize, std::shared_ptr<protected_bool> SOEBufferOverflowFlag);
 
 	// The add to point table functions add to both the ODC and MD3 Map.
 	// The Conitel Baker methods require that a
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel,  const BinaryPointType & pointtype );
 	bool AddCounterPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
 	bool AddAnalogPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation, const AnalogCounterPointType &pointtype);
+	bool CheckForBinaryBitClash(const uint8_t group, uint8_t channel, const PayloadLocationType& payloadlocation, const BinaryPointType& pointtype);
 	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe, uint8_t soeindex);
 	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const AnalogCounterPointType &pointtype);
 
@@ -88,24 +86,26 @@ public:
 
 	bool SetAnalogControlValueUsingODCIndex(const size_t index, const uint16_t meas, CBTime eventtime);
 
-	void ForEachBinaryPoint(std::function<void(CBBinaryPoint &pt)>);
-	void ForEachAnalogPoint(std::function<void(CBAnalogCounterPoint&pt)> fn);
-	void ForEachCounterPoint(std::function<void(CBAnalogCounterPoint&pt)> fn);
+	void ForEachBinaryPoint(const std::function<void(CBBinaryPoint &pt)>&);
+	void ForEachAnalogPoint(const std::function<void(CBAnalogCounterPoint&pt)>& fn);
+	void ForEachCounterPoint(const std::function<void(CBAnalogCounterPoint&pt)>& fn);
 
-	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBBinaryPoint&pt)> fn);
-	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
-	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(CBAnalogCounterPoint&pt)> fn);
-	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, std::function<void(void)> fn);
+	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBBinaryPoint&pt)>& fn);
+	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint&pt)>& fn);
+	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint&pt)>& fn);
+	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(void)>& fn);
 
 	bool GetMaxPayload(uint8_t group, uint8_t &blockcount);
 
 	// Public only for testing
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
+	static uint16_t GetCBBitMapIndex(const uint8_t& group, uint8_t bit, const PayloadLocationType& payloadlocation, const BinaryPointType& pointtype);
 	static uint16_t GetCBControlPointMapIndex(const uint8_t & group, const uint8_t & channel);
 protected:
 
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
-	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryCBPointMap;  // Group/Payload/Channel, CBPoint
+	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinaryCBPointMap;  // Group/Payload/Channel, CBPoin
+	std::map<uint16_t, bool> BinaryCBBitMap;                              // Group/Payload/Bitl, bool
 	std::map<uint16_t, std::shared_ptr<CBBinaryPoint>> BinarySOEPointMap; // Group/SoeIndexl, CBPoint
 	std::map<size_t, std::shared_ptr<CBBinaryPoint>> BinaryODCPointMap;   // Index OpenDataCon, CBPoint
 

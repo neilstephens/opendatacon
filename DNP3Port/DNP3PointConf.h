@@ -34,7 +34,8 @@
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/MeasurementInfo.h>
 #include <opendnp3/app/ClassField.h>
-#include <opendnp3/gen/ControlCode.h>
+#include <opendnp3/gen/OperationType.h>
+#include <opendnp3/gen/TripCloseCode.h>
 #include <opendnp3/gen/PointClass.h>
 #include <opendnp3/gen/ServerAcceptMode.h>
 #include <opendatacon/DataPointConf.h>
@@ -55,8 +56,8 @@ public:
 
 	/// Common application stack configuration
 	opendnp3::ServerAcceptMode ServerAcceptMode;
-	uint32_t TCPConnectRetryPeriodMinms;
-	uint32_t TCPConnectRetryPeriodMaxms;
+	uint32_t IPConnectRetryPeriodMinms;
+	uint32_t IPConnectRetryPeriodMaxms;
 	bool EnableUnsol;
 	opendnp3::ClassField GetUnsolClassMask();
 	bool UnsolClass1;
@@ -86,7 +87,7 @@ public:
 	size_t EventClass2ScanRatems;
 	size_t EventClass3ScanRatems;
 
-	opendnp3::ControlCode OverrideControlCode;
+	std::pair<opendnp3::OperationType,opendnp3::TripCloseCode> OverrideControlCode;
 	bool DoAssignClassOnStartup;
 
 	// Outstation configuration
@@ -119,19 +120,19 @@ public:
 	// Point Configuration
 	// TODO: use struct or class for point configuration
 	std::pair<opendnp3::Binary, size_t> mCommsPoint;
-	std::vector<uint32_t> BinaryIndicies;
-	std::map<size_t, opendnp3::Binary> BinaryStartVals;
-	std::map<size_t, opendnp3::PointClass> BinaryClasses;
-	std::map<size_t, opendnp3::StaticBinaryVariation> StaticBinaryResponses;
-	std::map<size_t, opendnp3::EventBinaryVariation> EventBinaryResponses;
+	std::vector<uint16_t> BinaryIndicies;
+	std::map<uint16_t, opendnp3::Binary> BinaryStartVals;
+	std::map<uint16_t, opendnp3::PointClass> BinaryClasses;
+	std::map<uint16_t, opendnp3::StaticBinaryVariation> StaticBinaryResponses;
+	std::map<uint16_t, opendnp3::EventBinaryVariation> EventBinaryResponses;
 
 	std::vector<uint32_t> AnalogIndicies;
-	std::map<size_t, opendnp3::Analog> AnalogStartVals;
-	std::map<size_t, opendnp3::StaticAnalogVariation> StaticAnalogResponses;
-	std::map<size_t, opendnp3::EventAnalogVariation> EventAnalogResponses;
-	std::map<size_t, opendnp3::PointClass> AnalogClasses;
-	std::map<size_t, double> AnalogDeadbands;
-	std::vector<uint32_t> ControlIndicies;
+	std::map<uint16_t, opendnp3::Analog> AnalogStartVals;
+	std::map<uint16_t, opendnp3::StaticAnalogVariation> StaticAnalogResponses;
+	std::map<uint16_t, opendnp3::EventAnalogVariation> EventAnalogResponses;
+	std::map<uint16_t, opendnp3::PointClass> AnalogClasses;
+	std::map<uint16_t, double> AnalogDeadbands;
+	std::vector<uint16_t> ControlIndicies;
 };
 
 #endif /* DNP3POINTCONF_H_ */

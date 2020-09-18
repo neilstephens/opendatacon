@@ -26,18 +26,16 @@
 #ifndef DNP3Log2spdlog_H
 #define DNP3Log2spdlog_H
 
-#include <openpal/logging/ILogHandler.h>
+#include <opendnp3/logging/ILogHandler.h>
 #include <chrono>
 #include <opendatacon/TCPSocketManager.h>
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 
-class DNP3Log2spdlog: public openpal::ILogHandler
+class DNP3Log2spdlog: public opendnp3::ILogHandler
 {
 public:
 	DNP3Log2spdlog();
-	void Log( const openpal::LogEntry& arEntry ) override;
-private:
-	spdlog::level::level_enum FilterToLevel(const openpal::LogFilters& filters);
+	void log(opendnp3::ModuleId module, const char* id, opendnp3::LogLevel level, char const* location, char const* message) override;
 };
 
 #endif // DNP3Log2spdlog_H

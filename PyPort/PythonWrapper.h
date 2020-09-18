@@ -28,12 +28,12 @@
 #define PYWRAPPER_H_
 
 #include "Py.h"
+#include "SpecialEventQueue.h"
+#include <opendatacon/util.h>
+#include <opendatacon/DataPort.h>
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_set>
-#include <opendatacon/util.h>
-#include <opendatacon/DataPort.h>
-#include "SpecialEventQueue.h"
 
 
 using namespace odc;
@@ -76,7 +76,13 @@ public:
 	PythonInitWrapper(bool GlobalUseSystemPython);
 	~PythonInitWrapper();
 private:
-	static PyThreadState* threadState;
+	void Run(bool GlobalUseSystemPython);
+	bool running;
+	bool keep_running;
+	std::mutex RunMtx;
+	std::condition_variable RunBlocker;
+	std::thread PythonMainThread;
+	PyThreadState* threadState;
 };
 
 class PythonWrapper
@@ -91,7 +97,7 @@ public:
 	void Enable();
 	void Disable();
 
-	CommandStatus Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName);
+	CommandStatus Event(const std::shared_ptr<const EventInfo>& odcevent, const std::string& SenderName);
 	void QueueEvent(const std::string& jsonevent);
 
 	bool DequeueEvent(std::string& eq);
@@ -167,6 +173,7 @@ private:
 
 	SetTimerFnType PythonPortSetTimerFn;
 	PublishEventCallFnType PythonPortPublishEventCallFn;
+	std::atomic_int QueuePushErrorCount = 0;
 };
 
 #endif /* PYWRAPPER_H_ */

@@ -17,40 +17,34 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  #
+cmake_minimum_required(VERSION 3.10)
 
-option(SUPPRESS_ZERO_CHECK "Turn off the VS ZERO_CHECK config which runs everytime you build" OFF)
-if(SUPPRESS_ZERO_CHECK)
-	# If you dont want the ZERO_CHECK project in VS have the following line enabled.
-	set(CMAKE_SUPPRESS_REGENERATION true)
-endif()
-
-
-if(WIN32)
-	cmake_minimum_required(VERSION 3.4)
-else()
-	cmake_minimum_required(VERSION 2.8)
+if(NOT WIN32)
 	set(BUILD_TYPE_INSTRUCTIONS "Choose the type of build, default Release, other options: Debug RelWithDebInfo MinSizeRel.")
-	if(DEFINED CMAKE_BUILD_TYPE)
+	if(CMAKE_BUILD_TYPE)
 		set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
 	else()
 		set(CMAKE_BUILD_TYPE Release CACHE STRING ${BUILD_TYPE_INSTRUCTIONS})
 	endif()
 endif()
 
-if(POLICY CMP0048)
-	cmake_policy(SET CMP0048 OLD)
-endif()
+#tempting to move this to the top - but don't! Must set CMAKE_BUILD_TYPE first
+project(opendatacon_suite C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
 
 #macro for resolving chain of symlinks into a list
 include(file_w_symlinks.cmake)
 
-project(opendatacon_suite C CXX)
 install(FILES "LICENSE.txt" DESTINATION ".")
 install(FILES "NOTICE.txt" DESTINATION ".")
 install(FILES "README.md" DESTINATION ".")
 install(FILES "RELEASE_NOTES" DESTINATION ".")
 install(DIRECTORY "./3rdPartyLicenses" DESTINATION ".")
 install(DIRECTORY "install/init" DESTINATION ".")
+install(DIRECTORY install/systemd DESTINATION ".")
 
 #Deploy git workflow hook scripts
 include(git-hooks.cmake)
@@ -170,7 +164,12 @@ add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# using Visual Studio C++
 	message("CMAKE configuring opendatacon for Visual Studio C++" )
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP")
+	option(SUPPRESS_ZERO_CHECK "Turn off the VS ZERO_CHECK config which runs everytime you build" OFF)
+	if(SUPPRESS_ZERO_CHECK)
+		# If you dont want the ZERO_CHECK project in VS have the following line enabled.
+		set(CMAKE_SUPPRESS_REGENERATION true)
+	endif()
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP /Zc:rvalueCast")
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_SEPARATE_COMPILATION")
@@ -179,7 +178,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
 	message(WARNING "opendatacon has not been tested using Intel compiler" )
 	
-else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+else()
 	# using Clang or GNU compilers
 	message("-- configuring opendatacon for  Clang or GNU compilers" )
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -211,7 +210,7 @@ else()#if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_I
 			endif()
 		endif()
 	endif()
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
 	if(NOT APPLE)
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
 		#only export API symbols
@@ -298,10 +297,10 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an include directory within")
+set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an asio/include path within")
 if(USE_ASIO_SUBMODULE)
-	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/submodules/asio/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
-	if(NOT EXISTS "${ASIO_HOME}/../.git")
+	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/submodules/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
+	if(NOT EXISTS "${ASIO_HOME}/.git")
 		execute_process(COMMAND git submodule update --init -- submodules/asio
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()
@@ -332,6 +331,10 @@ message("add subdir JSON")
 add_subdirectory(JSON)
 message("add subdir ODC")
 add_subdirectory(ODC)
+if(PYPORT OR SIMPORT)
+	message("add subdir HTTP")
+	add_subdirectory(HTTP)
+endif()
 message("add subdir opendatacon")
 add_subdirectory(opendatacon)
 if(DNP3PORT)

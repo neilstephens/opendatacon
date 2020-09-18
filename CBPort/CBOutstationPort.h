@@ -26,16 +26,14 @@
 
 #ifndef CBOUTSTATIONPORT_H_
 #define CBOUTSTATIONPORT_H_
-
-#include <unordered_map>
-#include <vector>
-#include <functional>
-
 #include "CB.h"
 #include "CBPort.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
 #include "CBPointTableAccess.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 
 class OutstationSystemFlags
@@ -100,6 +98,8 @@ public:
 	CBTime ExpiryTime = 0; // If we dont receive the execute before this time, it will not be executed
 };
 
+class CBOutstationPortCollection;
+
 class CBOutstationPort: public CBPort
 {
 	enum AnalogChangeType { NoChange, DeltaChange, AllChange };
@@ -107,16 +107,18 @@ class CBOutstationPort: public CBPort
 
 public:
 	CBOutstationPort(const std::string & aName, const std::string & aConfFilename, const Json::Value & aConfOverrides);
+	void UpdateOutstationPortCollection();
 	~CBOutstationPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	CommandStatus Perform(std::shared_ptr<EventInfo> event, bool waitforresult);
+	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
 
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
+	CBMessage_t CorruptCBMessage(const CBMessage_t& CompleteCBMessage);
 	void ResendLastCBMessage()
 	{
 		SendCBMessage(LastSentCBMessage);
@@ -150,10 +152,21 @@ public:
 	void MarkAllBinaryPointsAsChanged();
 	uint8_t CountBinaryBlocksWithChanges();
 
+	// UI Interactions
+	std::pair<std::string, std::shared_ptr<IUIResponder>> GetUIResponder() final;
+	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
+	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
+
 	// Testing use only
 	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed
 	int GetSOEOffsetMinutes() { return SOETimeOffsetMinutes; }
 private:
+
+	std::shared_ptr<CBOutstationPortCollection> CBOutstationCollection;
+
+	// UI Testing flags to cause misbehaviour
+	bool FailControlResponse = false;
+	double BitFlipProbability = 0.0;
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);

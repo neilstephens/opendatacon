@@ -26,22 +26,52 @@
  */
 
 #include "tinycon.h"
+#include <opendatacon/util.h>
 
 #if !defined(WIN32) && !defined(_WIN32) && !defined(__WIN32)
 #include <termios.h>
+#include <thread>
 #include <unistd.h>
+#include <utility>
 int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 {
-	struct termios oldt, newt;
+	static const size_t secinaday = 10*60*60*24;
+	static size_t err_backoff = timeout_tenths_of_seconds;
+	static const auto err = [](const std::string& msg)
+	{
+		if(auto log = odc::spdlog_get("ConsoleUI"))
+			log->error("{}. Sleeping for {} ms", msg, 100*err_backoff);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100*err_backoff));
+
+		if(err_backoff < secinaday)
+			err_backoff *= 2;
+		else if(err_backoff > secinaday)
+			err_backoff = secinaday;
+	};
+
+	struct termios oldt{}, newt{};
 	int ch = 0;
-	tcgetattr(STDIN_FILENO, &oldt);
+
+	if(tcgetattr(STDIN_FILENO, &oldt) != 0)
+	{
+		err("Failed to get terminal attributes");
+		return 0;
+	}
+
 	newt = oldt;
 	newt.c_lflag &= ~(ICANON | ECHO);
 	newt.c_cc[VTIME] = timeout_tenths_of_seconds;
 	newt.c_cc[VMIN] = 0;
-	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
-	if(read(STDIN_FILENO,&ch,1) == 1)
+	if(tcsetattr(STDIN_FILENO, TCSANOW, &newt) != 0)
+	{
+		err("Failed to set terminal attributes");
+		return 0;
+	}
+
+	err_backoff = timeout_tenths_of_seconds;
+	auto rv = read(STDIN_FILENO,&ch,1);
+	if(rv == 1)
 	{
 		if(ch == ESC)
 		{
@@ -54,6 +84,11 @@ int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 			}
 		}
 	}
+	else if(rv != 0)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(100*timeout_tenths_of_seconds));
+	}
+
 	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 	return ch;
 }
@@ -106,7 +141,7 @@ tinyConsole::tinyConsole (std::string s)
 {
 	_max_history = MAX_HISTORY;
 	_quit = false;
-	_prompt = s;
+	_prompt = std::move(s);
 	pos = -1;
 	line_pos = 0;
 	skip_out = 0;
@@ -127,7 +162,7 @@ void tinyConsole::quit ()
 	_quit = true;
 }
 
-int tinyConsole::trigger (std::string cmd)
+int tinyConsole::trigger (const std::string& cmd)
 {
 	if (cmd == "exit") {
 		_quit = true;
@@ -157,7 +192,7 @@ std::string tinyConsole::getLine (int mode)
 	return getLine(mode, "");
 }
 
-std::string tinyConsole::getLine (int mode = M_LINE, std::string delimeter = "")
+std::string tinyConsole::getLine (int mode = M_LINE, const std::string& delimeter = "")
 {
 	std::string line;
 	char c;
@@ -387,10 +422,10 @@ void tinyConsole::run ()
 				line_pos = 0;
 				break;
 			default:
-        if (skip_out) {
-          skip_out = 0;
-          break;
-        }
+				if (skip_out) {
+					skip_out = 0;
+					break;
+				}
 				std::cout << c << std::flush;
 				if(line_pos == (int)buffer.size()) {
 					// line position is at the end of the buffer, just append

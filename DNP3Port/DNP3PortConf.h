@@ -26,24 +26,60 @@
 
 #ifndef DNP3OUTSTATIONPORTCONF_H_
 #define DNP3OUTSTATIONPORTCONF_H_
-
-#include <opendnp3/LogLevels.h>
-#include <opendatacon/DataPort.h>
-#include <asiopal/SerialTypes.h>
-#include <openpal/logging/LogFilters.h>
 #include "DNP3PointConf.h"
+#include <opendnp3/logging/LogLevels.h>
+#include <opendatacon/DataPort.h>
+#include <opendnp3/channel/SerialSettings.h>
 
 enum class TCPClientServer {CLIENT,SERVER,DEFAULT};
+inline std::string to_string(const TCPClientServer CS)
+{
+	switch(CS)
+	{
+		case TCPClientServer::CLIENT:
+			return "CLIENT";
+		case TCPClientServer::SERVER:
+			return "SERVER";
+		case TCPClientServer::DEFAULT:
+			return "DEFAULT";
+	}
+	return "UNKNOWN";
+}
+enum class IPTransport {TCP,UDP,TLS};
+inline std::string to_string(const IPTransport IPT)
+{
+	switch(IPT)
+	{
+		case IPTransport::TCP:
+			return "TCP";
+		case IPTransport::UDP:
+			return "UDP";
+		case IPTransport::TLS:
+			return "TLS";
+	}
+	return "UNKNOWN";
+}
+struct TLSFilesConf
+{
+	std::string PeerCertFile;
+	std::string LocalCertFile;
+	std::string PrivateKeyFile;
+};
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
 	//Serial
-	asiopal::SerialSettings SerialSettings;
+	opendnp3::SerialSettings SerialSettings;
 
 	//IP
 	std::string IP;
 	uint16_t Port;
+	uint16_t UDPListenPort;
 	TCPClientServer ClientServer;
+	IPTransport Transport;
+
+	//TLS
+	TLSFilesConf TLSFiles;
 
 	//Common
 	uint16_t OutstationAddr;
@@ -54,7 +90,9 @@ struct DNP3AddrConf
 		SerialSettings(),
 		IP("127.0.0.1"),
 		Port(20000),
+		UDPListenPort(0),
 		ClientServer(TCPClientServer::DEFAULT),
+		Transport(IPTransport::TCP),
 		OutstationAddr(1),
 		MasterAddr(0),
 		ServerType(server_type_t::ONDEMAND)
@@ -72,7 +110,7 @@ public:
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
 	DNP3AddrConf mAddrConf;
-	openpal::LogFilters LOG_LEVEL;
+	opendnp3::LogLevels LOG_LEVEL;
 };
 
 #endif /* DNP3OUTSTATIONPORTCONF_H_ */

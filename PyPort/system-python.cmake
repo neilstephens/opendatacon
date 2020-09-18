@@ -16,7 +16,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 		file(GLOB_RECURSE PYTHON_H ${PYTHON_HOME}/*Python.h)
 	endif()
 	message("Globbed '${PYTHON_H}'")
-	string(REGEX MATCH "([^;]*)[/]+include[/]+(python3.([0-9])+)m" PYTHON_VER "${PYTHON_H}")
+	string(REGEX MATCH "([^;]*)[/]+include[/]+(python3.([0-9])+)m?" PYTHON_VER "${PYTHON_H}")
 	if(PYTHON_VER)
 		set(PYTHON_HOME_DISCOVERED ${CMAKE_MATCH_1})
 		set(PYTHON_VER ${CMAKE_MATCH_2})
@@ -31,7 +31,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 	endif()
 
 	find_path(PYTHON_INCLUDE_DIRS Python.h
-		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}m ${PYTHON_HOME}/include
+		PATHS ${PYTHON_HOME}/include/${PYTHON_VER}m ${PYTHON_HOME}/include/${PYTHON_VER} ${PYTHON_HOME}/include
 		NO_DEFAULT_PATH
 		CMAKE_FIND_ROOT_PATH_BOTH)
 
@@ -66,7 +66,9 @@ if(NOT USE_PYTHON_SUBMODULE)
 	#import the python lib
 	find_library(PYTHON_LIBRARY_RELEASE
 		NAMES ${PYTHON_VER}m
+			${PYTHON_VER}
 			lib${PYTHON_VER}m
+			lib${PYTHON_VER}
 			libpython${PYTHON_NUM}
 			python${PYTHON_NUM}
 		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/libs ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
@@ -79,7 +81,9 @@ if(NOT USE_PYTHON_SUBMODULE)
 	#import the debug python lib
 	find_library(PYTHON_LIBRARY_DEBUG
 		NAMES ${PYTHON_VER}m${PYTHON_DEBUG_POSTFIX}
+			${PYTHON_VER}${PYTHON_DEBUG_POSTFIX}
 			lib${PYTHON_VER}m${PYTHON_DEBUG_POSTFIX}
+			lib${PYTHON_VER}${PYTHON_DEBUG_POSTFIX}
 			libpython${PYTHON_NUM}${PYTHON_DEBUG_POSTFIX}
 			python${PYTHON_NUM}${PYTHON_DEBUG_POSTFIX}
 		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/libs ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
@@ -115,7 +119,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 	if(PACKAGE_PYTHON)
 		set(PACK_NAMES python expat zlib tinfo sqlite readline ncurses mpdec lzma ffi db5 bz2)
 		find_path(PYTHON_STDLIB_DIR _pydecimal.py
-			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/Lib
+			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/lib64/${PYTHON_VER} ${PYTHON_HOME}/Lib
 			NO_DEFAULT_PATH
 			CMAKE_FIND_ROOT_PATH_BOTH)
 		if(PYTHON_STDLIB_DIR)
@@ -123,7 +127,12 @@ if(NOT USE_PYTHON_SUBMODULE)
 			if(NOT PYTHON_NUM)
 				set(PYTHON_NUM 3${PYTHON_MINOR_VER})
 			endif()
-			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM})
+			file(GLOB_RECURSE STDLIB_SUBDIR
+				RELATIVE ${PYTHON_HOME}
+				${PYTHON_STDLIB_DIR}/_pydecimal.py)
+			get_filename_component(STDLIB_SUBDIR ${STDLIB_SUBDIR} DIRECTORY)
+			message("Install Python stdlib dir: '${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}'")
+			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR})
 			add_definitions(-DPYTHON_LIBDIR="Python${PYTHON_NUM}")
 			file(GLOB_RECURSE PLATFORMPATH
 				RELATIVE ${PYTHON_STDLIB_DIR}
@@ -133,7 +142,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 				message("Found separate platform python dir: '${CMAKE_MATCH_1}'")
 			endif()
 			add_custom_target(copy-python-files ALL
-				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}
+				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}
 			)
 			file(GLOB_RECURSE PYTHON_EXES ${PYTHON_STDLIB_DIR}/*.exe)
 			foreach(python_exe ${PYTHON_EXES})

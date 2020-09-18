@@ -19,24 +19,24 @@
  */
 /**
  */
+#include "TestDNP3Helpers.h"
+#include "../PortLoader.h"
+#include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
-#include <catch.hpp>
-
-#include "PortLoader.h"
 
 #define SUITE(name) "DNP3PortEndToEndTestSuite - " name
 
 TEST_CASE(SUITE("TCP link"))
 {
-	//Load the library
-	InitLibaryLoading();
+	TestSetup();
+
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = std::make_shared<odc::asio_service>();
+		auto ios = odc::asio_service::Get();
 		auto work = ios->make_work();
-		std::thread t([&](){ios->run();});
+		std::thread t([ios](){ios->run();});
 
 		//make an outstation port
 		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
@@ -44,9 +44,8 @@ TEST_CASE(SUITE("TCP link"))
 		delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
 		REQUIRE(delOutstation);
 
-		Json::Value Oconf;
-		Oconf["IP"] = "0.0.0.0";
-		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
+		Json::Value conf;
+		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", conf), delOutstation);
 		REQUIRE(OPUT);
 
 		//make a master port
@@ -55,9 +54,8 @@ TEST_CASE(SUITE("TCP link"))
 		delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
 		REQUIRE(delMaster);
 
-		Json::Value Mconf;
-		Mconf["ServerType"] = "PERSISTENT";
-		auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+		conf["ServerType"] = "PERSISTENT";
+		auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", conf), delMaster);
 		REQUIRE(MPUT);
 
 		//get them to build themselves using their configs
@@ -65,8 +63,6 @@ TEST_CASE(SUITE("TCP link"))
 		MPUT->Build();
 
 		//turn them on
-		OPUT->SetIOS(ios);
-		MPUT->SetIOS(ios);
 		OPUT->Enable();
 		MPUT->Enable();
 
@@ -80,6 +76,15 @@ TEST_CASE(SUITE("TCP link"))
 
 		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+
+		//wait to actually recieve something
+		count = 0;
+		while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			count++;
+		}
+		REQUIRE(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() > 0);
 
 		//turn outstation off
 		OPUT->Disable();
@@ -95,12 +100,16 @@ TEST_CASE(SUITE("TCP link"))
 		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
+		MPUT->Disable();
+
 		work.reset();
+		ios->run();
 		t.join();
 		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);
+	TestTearDown();
 }
 
 
@@ -112,19 +121,20 @@ TEST_CASE(SUITE("Serial link"))
 	}
 	else
 	{
-		//Load the library
-		InitLibaryLoading();
+		TestSetup();
+
 		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 		REQUIRE(portlib);
 		{
-			auto ios = std::make_shared<odc::asio_service>();
+			auto ios = odc::asio_service::Get();
 			auto work = ios->make_work();
-			std::thread t([&](){ios->run();});
+			std::thread t([ios](){ios->run();});
 
 			if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
 			{
 				WARN("socat system call failed");
 			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 			//make an outstation port
 			newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
@@ -134,6 +144,7 @@ TEST_CASE(SUITE("Serial link"))
 
 			Json::Value Oconf;
 			Oconf["SerialDevice"] = "SerialEndpoint1";
+			Oconf["LOG_LEVEL"] = "ALL";
 			auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
 			REQUIRE(OPUT);
 
@@ -146,9 +157,10 @@ TEST_CASE(SUITE("Serial link"))
 			Json::Value Mconf;
 			Mconf["ServerType"] = "PERSISTENT";
 			Mconf["SerialDevice"] = "SerialEndpoint2";
+			Mconf["LOG_LEVEL"] = "ALL";
 			Mconf["LinkKeepAlivems"] = 200;
 			Mconf["LinkTimeoutms"] = 100;
-			auto MPUT = std::unique_ptr<DataPort,delptr>(newMaster("MasterUnderTest", "", Mconf), delMaster);
+			auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", Mconf), delMaster);
 			REQUIRE(MPUT);
 
 			//get them to build themselves using their configs
@@ -156,8 +168,6 @@ TEST_CASE(SUITE("Serial link"))
 			MPUT->Build();
 
 			//turn them on
-			OPUT->SetIOS(ios);
-			MPUT->SetIOS(ios);
 			OPUT->Enable();
 			MPUT->Enable();
 
@@ -172,18 +182,30 @@ TEST_CASE(SUITE("Serial link"))
 			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
 
+			//wait to actually recieve something
+			count = 0;
+			while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				count++;
+			}
+			REQUIRE(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() > 0);
+
 			//turn outstation off
 			OPUT->Disable();
 
 			count = 0;
-			while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
+			std::string new_status;
+			while((new_status = MPUT->GetStatus()["Result"].asString()) == "Port enabled - link up (unreset)" && count < 20000)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				count++;
 			}
 
-			REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
+			REQUIRE(new_status == "Port enabled - link down");
 			REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
+			MPUT->Disable();
 
 			if(system("killall socat"))
 			{
@@ -191,11 +213,13 @@ TEST_CASE(SUITE("Serial link"))
 			}
 
 			work.reset();
+			ios->run();
 			t.join();
 			ios.reset();
 		}
 		//Unload the library
 		UnLoadModule(portlib);
+		TestTearDown();
 	}
 }
 

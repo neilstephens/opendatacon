@@ -29,6 +29,7 @@
 #define opendatacon_IUI_h
 
 #include "IUIResponder.h"
+#include <opendatacon/asio.h>
 #include <memory>
 
 class IUI
@@ -40,6 +41,8 @@ public:
 	virtual void Build() = 0;
 	virtual void Enable() = 0;
 	virtual void Disable() = 0;
+protected:
+	const std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 };
 
 

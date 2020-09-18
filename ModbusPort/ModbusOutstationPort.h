@@ -26,10 +26,8 @@
 
 #ifndef ModbusSERVERPORT_H_
 #define ModbusSERVERPORT_H_
-
-#include <unordered_map>
-
 #include "ModbusPort.h"
+#include <unordered_map>
 
 class ModbusOutstationPort: public ModbusPort
 {
@@ -38,7 +36,7 @@ public:
 	~ModbusOutstationPort() override;
 
 	void Enable() override;
-	void Disable() override;
+	void Disable() override final;
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
@@ -47,7 +45,7 @@ public:
 	void Disconnect();
 
 private:
-	modbus_mapping_t *mb_mapping;
+	modbus_mapping_t *mb_mapping{};
 };
 
 #endif /* ModbusSERVERPORT_H_ */

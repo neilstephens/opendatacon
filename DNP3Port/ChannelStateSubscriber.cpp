@@ -27,15 +27,15 @@
 #include "ChannelStateSubscriber.h"
 #include <utility>
 
-std::multimap<std::string, DNP3Port*> ChannelStateSubscriber::SubscriberMap;
+std::multimap<std::string, ChannelHandler*> ChannelStateSubscriber::SubscriberMap;
 std::mutex ChannelStateSubscriber::MapMutex;
 
-void ChannelStateSubscriber::Subscribe(DNP3Port* pPort, std::string ChanID)
+void ChannelStateSubscriber::Subscribe(ChannelHandler* pPort, std::string ChanID)
 {
 	std::lock_guard<std::mutex> lock(MapMutex);
 	SubscriberMap.insert({std::move(ChanID),pPort});
 }
-void ChannelStateSubscriber::Unsubscribe(DNP3Port* pPort, std::string ChanID)
+void ChannelStateSubscriber::Unsubscribe(ChannelHandler* pPort, const std::string& ChanID)
 {
 	std::lock_guard<std::mutex> lock(MapMutex);
 	if(SubscriberMap.empty())

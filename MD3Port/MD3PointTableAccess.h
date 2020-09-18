@@ -26,14 +26,11 @@
 
 #ifndef MD3POINTTABLEACCESS_H_
 #define MD3POINTTABLEACCESS_H_
-
+#include "MD3.h"
+#include "MD3PointConf.h"
 #include <unordered_map>
 #include <vector>
 #include <functional>
-
-
-#include "MD3.h"
-#include "MD3PointConf.h"
 //#include "MD3PortConf.h"
 #include "MD3Utility.h"
 #include "StrandProtectedQueue.h"
@@ -89,9 +86,9 @@ public:
 	bool GetAnalogControlODCIndexUsingMD3Index(const uint16_t module, const uint8_t channel, size_t & index);
 	bool GetAnalogControlMD3IndexUsingODCIndex(const size_t index, uint8_t& module, uint8_t& channel);
 
-	void ForEachBinaryPoint(std::function<void(MD3BinaryPoint &pt)>);
-	void ForEachAnalogPoint(std::function<void(MD3AnalogCounterPoint&pt)> fn);
-	void ForEachCounterPoint(std::function<void(MD3AnalogCounterPoint&pt)> fn);
+	void ForEachBinaryPoint(const std::function<void(MD3BinaryPoint &pt)>&);
+	void ForEachAnalogPoint(const std::function<void(MD3AnalogCounterPoint&pt)>& fn);
+	void ForEachCounterPoint(const std::function<void(MD3AnalogCounterPoint&pt)>& fn);
 
 	std::vector<MD3BinaryPoint> DumpTimeTaggedPointList();
 

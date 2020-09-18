@@ -35,24 +35,23 @@
 
 
 #include "PythonWrapper.h"
-#include <frameobject.h>
-#include <chrono>
-#include <ctime>
-#include <exception>
-#include <datetime.h> //PyDateTime
-#include <time.h>
-#include <iomanip>
-#include <exception>
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/Platform.h>
-#include <whereami++.h>
 #include "PyPort.h"
 #include <Python.h>
+#include <chrono>
+#include <ctime>
+#include <ctime>
+#include <datetime.h> //PyDateTime
+#include <exception>
+#include <exception>
+#include <frameobject.h>
+#include <iomanip>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/Platform.h>
+#include <utility>
+#include <whereami++.h>
 
 
 using namespace odc;
-
-PyThreadState* PythonInitWrapper::threadState;
 
 std::unordered_set<uint64_t> PythonWrapper::PyWrappers;
 std::shared_timed_mutex PythonWrapper::WrapperHashMutex;
@@ -337,11 +336,11 @@ static PyMethodDef odcMethods[] = {
 	{"SetTimer", odc_SetTimer, METH_VARARGS, "Set a Timer Callback up"},
 	{"GetNextEvent", odc_GetNextEvent, METH_VARARGS, "Get the next event from the queue - return None if empty"},
 	{"GetEventQueueSize", odc_GetEventQueueSize, METH_VARARGS, "How many elements are there in the event queue - return None if empty"},
-	{NULL, NULL, 0, NULL}
+	{nullptr, nullptr, 0, nullptr}
 };
 
 static PyModuleDef odcModule = {
-	PyModuleDef_HEAD_INIT, "odc", NULL, -1, odcMethods,   NULL, NULL, NULL, NULL
+	PyModuleDef_HEAD_INIT, "odc", nullptr, -1, odcMethods,   nullptr, nullptr, nullptr, nullptr
 };
 
 static PyObject* PyInit_odc(void)
@@ -358,9 +357,9 @@ static PyObject* PyInit_odc(void)
 
 PythonWrapper::PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn):
 	Name(aName),
-	pIOS(_pIOS),
-	PythonPortSetTimerFn(SetTimerFn),
-	PythonPortPublishEventCallFn(PublishEventCallFn)
+	pIOS(std::move(_pIOS)),
+	PythonPortSetTimerFn(std::move(SetTimerFn)),
+	PythonPortPublishEventCallFn(std::move(PublishEventCallFn))
 {
 	EventQueue = std::make_shared<SpecialEventQueue<std::string>>(pIOS, MaximumQueueSize);
 }
@@ -375,7 +374,19 @@ void ImportODCModule()
 }
 
 // Startup the interpreter - need to have matching tear down in destructor.
-PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
+PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
+	running(false),
+	keep_running(true),
+	PythonMainThread([=](){Run(GlobalUseSystemPython);})
+{
+	//Wait til' the Run thread signals after init
+	std::unique_lock<std::mutex> RunLock(RunMtx);
+	RunBlocker.wait(RunLock, [this] {return running;});
+}
+
+// https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
+// Run() will act as the 'Main' thread
+void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 {
 	try
 	{
@@ -405,7 +416,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 			PlatformSetEnv("PYTHONPATH", newpythonpath.c_str(), 1);
 			LOGDEBUG("Set PYTHONPATH env var to: '{}'", newpythonpath);
 			#else
-			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true")
+			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true");
 			#endif
 		}
 
@@ -418,7 +429,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 		LOGDEBUG("Initialised Python");
 
 		#ifndef PYTHON_34_ORLESS
-		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),NULL));
+		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),nullptr));
 		#endif
 
 		// Now execute some commands to get the environment ready.
@@ -442,14 +453,6 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 
 		PyDateTime_IMPORT;
 
-		/* Kafka load test
-		if (PyRun_SimpleString("import confluent_kafka") != 0)
-		{
-		      LOGERROR("Unable to import python confluent_kafka library");
-		      PythonWrapper::PyErrOutput();
-		      return;
-		}
-		*/
 		// Initialize threads and release GIL (saving it as well):
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		if (!PyGILState_Check())
@@ -457,34 +460,49 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython)
 
 		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
-	catch (std::exception& e)
+	catch(const std::exception& e)
 	{
-		LOGERROR("Exception Caught during pyInitialize() - {}", e.what());
+		LOGERROR("Exception on main Python thread Init - {}", e.what());
+	}
+
+	//Signal c'tor that init finished
+	{ // lock scope
+		std::lock_guard<std::mutex> RunLock(RunMtx);
+		running = true;
+	}
+	RunBlocker.notify_one();
+
+	//This thread gets blocked after init, until we're ready to de-init
+	//Signalled from d'tor
+	std::unique_lock<std::mutex> RunLock(RunMtx);
+	RunBlocker.wait(RunLock, [this] {return !keep_running;});
+
+	try
+	{
+		// Restore the state as it was after we called Initialize()
+		// Supposed to acquire the GIL and restore the state...
+		LOGDEBUG("About to restore thread state - Have GIL {} ", PyGILState_Check());
+		PyEval_RestoreThread(threadState);
+		LOGDEBUG("Restored thread state - Have GIL {} ", PyGILState_Check());
+
+		LOGDEBUG("About to Py_Finalize");
+		Py_Finalize();
+	}
+	catch (const std::exception& e)
+	{
+		LOGERROR("Exception on main Python thread De-init - {}", e.what());
 	}
 }
 
-// This one seems to be excatly what we need, and we are doing it, but it is not working...
-// https://stackoverflow.com/questions/15470367/pyeval-initthreads-in-python-3-how-when-to-call-it-the-saga-continues-ad-naus
 PythonInitWrapper::~PythonInitWrapper()
 {
-	LOGDEBUG("Py_Finalize");
-	// Restore the state as it was after we called Initialize()
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
-	// Supposed to acquire the GIL and restore the state...
-	PyEval_RestoreThread(threadState);
-	LOGDEBUG("About to Finalize - Have GIL {} ", PyGILState_Check());
-
-	//	GetPythonGIL g; //TODO If we do this we hang, if we dont we get an error saying we dont have the GIL...
-	try
-	{
-		//TODO This try/catch does not work, as when Py_Finalize() fails, it calls abort - which we cannot catch.
-		//			if (!Py_FinalizeEx())
-		LOGERROR("Python Py_Finalize() Failed");
+	//Signal Run() thread to de-init and return
+	{ // lock scope
+		std::lock_guard<std::mutex> RunLock(RunMtx);
+		keep_running = false;
 	}
-	catch (std::exception& e)
-	{
-		LOGERROR("Exception Caught calling Py_FinalizeEx() - {}", e.what());
-	}
+	RunBlocker.notify_one();
+	PythonMainThread.join();
 }
 
 
@@ -550,7 +568,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	}
 
 	// Make sure the path to where the module is, is known to Python
-	PyObject* sysPath = PySys_GetObject((char*)"path");
+	PyObject* sysPath = PySys_GetObject("path");
 	PyObject* programName = PyUnicode_FromString(pyPathName.c_str());
 	PyList_Append(sysPath, programName);
 	Py_DECREF(programName);
@@ -713,8 +731,17 @@ void PythonWrapper::QueueEvent(const std::string& jsonevent)
 
 	if (!result)
 	{
-		size_t qsize = EventQueue->Size();
-		LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}",qsize);
+		if (QueuePushErrorCount.load() == 0)
+		{
+			QueuePushErrorCount.store(5000);
+			size_t qsize = EventQueue->Size();
+			LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}. Will not be a repeat of this message until after 5000 messages have been queued successfully", qsize);
+		}
+	}
+	else
+	{
+		if (QueuePushErrorCount.load() > 0)
+			QueuePushErrorCount--;
 	}
 }
 
@@ -729,7 +756,7 @@ bool PythonWrapper::DequeueEvent(std::string& eq)
 
 // When we get an event, we expect the Python code to act on it, and we get back a response straight away. PyPort will Post the result from us.
 // This method is synced with the asio strand in PyPort
-CommandStatus PythonWrapper::Event(std::shared_ptr<const EventInfo> odcevent, const std::string& SenderName)
+CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcevent, const std::string& SenderName)
 {
 	try
 	{
@@ -866,12 +893,12 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 void PythonWrapper::DumpStackTrace()
 {
 	PyThreadState* tstate = PyThreadState_GET();
-	if (NULL != tstate && NULL != tstate->frame)
+	if (nullptr != tstate && nullptr != tstate->frame)
 	{
 		PyFrameObject* frame = tstate->frame;
 
 		LOGERROR("Python stack trace:");
-		while (NULL != frame)
+		while (nullptr != frame)
 		{
 			// int line = frame->f_lineno;
 			/*

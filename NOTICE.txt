@@ -3,213 +3,329 @@
 
 opendatacon bundles some third party source code:
 
-	/*
-	 *  JSON/jsoncpp.cpp
-	 *  JSON/json/json-forwards.h
-	 *  JSON/json/json.h
-	 *
-	 *  JsonCpp - https://github.com/open-source-parsers/jsoncpp
-	 *  -------------------------
-	 *  ========================================================================
-	 *  Copyright (c) 2007-2010 Baptiste Lepilleur and The JsonCpp Authors
-	 *  
-	 *  Permission is hereby granted, free of charge, to any person
-	 *  obtaining a copy of this software and associated documentation
-	 *  files (the "Software"), to deal in the Software without
-	 *  restriction, including without limitation the rights to use, copy,
-	 *  modify, merge, publish, distribute, sublicense, and/or sell copies
-	 *  of the Software, and to permit persons to whom the Software is
-	 *  furnished to do so, subject to the following conditions:
-	 *  
-	 *  The above copyright notice and this permission notice shall be
-	 *  included in all copies or substantial portions of the Software.
-	 *  
-	 *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-	 *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-	 *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-	 *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-	 *  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-	 *  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-	 *  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-	 *  SOFTWARE.
-	 *  ========================================================================
-	 */
-	 
-	and
-	
-	/*
-	 * ConsoleUI/tinycon.h
-	 * ConsoleUI/tinycon.cpp
-	 *
-	 * TinyCon - A tiny console library, written for C++
-	 * https://sourceforge.net/projects/tinycon/
-	 * ------------------------------------------------------
-	 * License:  BSD
-	 * Author:   Unix-Ninja | chris (at) unix-ninja (dot) com
-	 */
-	 
-	and
+    /*
+     *  JSON/jsoncpp.cpp
+     *  JSON/json/json-forwards.h
+     *  JSON/json/json.h
+     *
+     *  JsonCpp - https://github.com/open-source-parsers/jsoncpp
+     *  -------------------------
+     *  ========================================================================
+     *  Copyright (c) 2007-2010 Baptiste Lepilleur and The JsonCpp Authors
+     *
+     *  Permission is hereby granted, free of charge, to any person
+     *  obtaining a copy of this software and associated documentation
+     *  files (the "Software"), to deal in the Software without
+     *  restriction, including without limitation the rights to use, copy,
+     *  modify, merge, publish, distribute, sublicense, and/or sell copies
+     *  of the Software, and to permit persons to whom the Software is
+     *  furnished to do so, subject to the following conditions:
+     *
+     *  The above copyright notice and this permission notice shall be
+     *  included in all copies or substantial portions of the Software.
+     *
+     *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+     *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+     *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+     *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+     *  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+     *  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+     *  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+     *  SOFTWARE.
+     *  ========================================================================
+     */
 
-	/*
-	 * include/catch.hpp
-	 *
-	 *  Catch
-	 *  ----------------------------------------------------------
-	 *  Copyright (c) 2012 Two Blue Cubes Ltd. All rights reserved.
-	 *
-	 *  Distributed under the Boost Software License, Version 1.0. (See accompanying
-	 *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-	 */ 
+    and
 
-	and
+    /*
+     * ConsoleUI/tinycon.h
+     * ConsoleUI/tinycon.cpp
+     *
+     * TinyCon - A tiny console library, written for C++
+     * https://sourceforge.net/projects/tinycon/
+     * ------------------------------------------------------
+     * License:  BSD
+     * Author:   Unix-Ninja | chris (at) unix-ninja (dot) com
+     */
 
-	/*
-	 * include/whereami.h
-	 * include/whereami++.h
-	 * ODC/whereami.c
-	 * ODC/whereami++.cpp
-	 *
-	 * Where Am I?
-	 * -------------------------------------------------------------------------
-	 * (‑●‑●)> released under the WTFPL v2 license, by Gregory Pakosz (@gpakosz)
-	 * https://github.com/gpakosz/whereami
-	 */
+    and
+
+    /*
+     * include/catch.hpp
+     *
+     *  Catch
+     *  ----------------------------------------------------------
+     *  Copyright (c) 2012 Two Blue Cubes Ltd. All rights reserved.
+     *
+     *  Distributed under the Boost Software License, Version 1.0. (See accompanying
+     *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+     */
+
+    and
+
+    /*
+     * include/whereami.h
+     * include/whereami++.h
+     * ODC/whereami.c
+     * ODC/whereami++.cpp
+     *
+     * Where Am I?
+     * -------------------------------------------------------------------------
+     * (‑●‑●)> released under the WTFPL v2 license, by Gregory Pakosz (@gpakosz)
+     * https://github.com/gpakosz/whereami
+     */
 
 it also (optionally) bundles some third party binary libraries in the installation package:
 
-	/*
-	 *  opendnp3 - github.com/automatak/dnp3
-	 *  ------------------------------------
-	 *  Copyright (c) (http://www.greenenergycorp.com/) and Automatak LLC (https://wwww.automatak.com),
-	 *  under the Apache License, Version 2.0
-	 */
-	 
-	and
-	
-	/*
-	 *  libmicrohttpd
-	 *  Source code can be found on the main GNU ftp server: https://ftp.gnu.org/gnu/libmicrohttpd/ (via HTTPS)
-	 *  and ftp://ftp.gnu.org/gnu/libmicrohttpd/ (via FTP). It can also be found on the GNU mirrors.
-	 *  ------------------------------------
-	 *	 Copyright (C) 2006-2015 Christian Grothoff (and other contributing authors)
-	 *
-	 *	 This library is free software; you can redistribute it and/or
-	 *	 modify it under the terms of the GNU Lesser General Public
-	 *	 License as published by the Free Software Foundation; either
-	 *	 version 2.1 of the License, or (at your option) any later version.
-	 *
-	 *	 This library is distributed in the hope that it will be useful,
-	 *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
-	 *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	 *	 Lesser General Public License for more details.
-	 *
-	 *	 You should have received a copy of the GNU Lesser General Public
-	 *	 License along with this library; if not, write to the Free Software
-	 *	 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-	 */
-	 
-	and
-	 
-	/*
-	 * libmodbus - http://libmodbus.org/download/ for source code
-	 * ------------------------------------
-	 * Copyright © 2001-2011 Stéphane Raimbault <stephane.raimbault@gmail.com>
-	 *
-	 * This library is free software; you can redistribute it and/or
-	 * modify it under the terms of the GNU Lesser General Public
-	 * License as published by the Free Software Foundation; either
-	 * version 2.1 of the License, or (at your option) any later version.
-	 *
-	 * This library is distributed in the hope that it will be useful,
-	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
-	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	 * Lesser General Public License for more details.
-	 *
-	 * You should have received a copy of the GNU Lesser General Public
-	 * License along with this library; if not, write to the Free Software
-	 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-	 */
+    /*
+     *  opendnp3 - github.com/automatak/dnp3
+     *  ------------------------------------
+     *  Copyright (c) (http://www.greenenergycorp.com/) and Automatak LLC (https://wwww.automatak.com),
+     *  under the Apache License, Version 2.0
+     */
 
-	and
+    and
 
-	/*
-	 * Python
-	 * http://www.python.org/
-	 *
-	 * Distributed under the PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2 (See accompanying
-	 *  file PSF-LICENSE or copy at https://github.com/python/cpython/raw/master/LICENSE)
-	 *
-	 */
+    /*
+     *  libmicrohttpd
+     *  Source code can be found on the main GNU ftp server: https://ftp.gnu.org/gnu/libmicrohttpd/ (via HTTPS)
+     *  and ftp://ftp.gnu.org/gnu/libmicrohttpd/ (via FTP). It can also be found on the GNU mirrors.
+     *  ------------------------------------
+     *	 Copyright (C) 2006-2015 Christian Grothoff (and other contributing authors)
+     *
+     *	 This library is free software; you can redistribute it and/or
+     *	 modify it under the terms of the GNU Lesser General Public
+     *	 License as published by the Free Software Foundation; either
+     *	 version 2.1 of the License, or (at your option) any later version.
+     *
+     *	 This library is distributed in the hope that it will be useful,
+     *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
+     *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     *	 Lesser General Public License for more details.
+     *
+     *	 You should have received a copy of the GNU Lesser General Public
+     *	 License along with this library; if not, write to the Free Software
+     *	 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+     */
 
-it is also compiled with some external third party dependancies:
+    and
 
-	//
-	// asio.hpp - https://think-async.com/
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	//
-	// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-	//
-	// Distributed under the Boost Software License, Version 1.0. (See accompanying
-	// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-	//
+    /*
+     * libmodbus - http://libmodbus.org/download/ for source code
+     * ------------------------------------
+     * Copyright © 2001-2011 Stéphane Raimbault <stephane.raimbault@gmail.com>
+     *
+     * This library is free software; you can redistribute it and/or
+     * modify it under the terms of the GNU Lesser General Public
+     * License as published by the Free Software Foundation; either
+     * version 2.1 of the License, or (at your option) any later version.
+     *
+     * This library is distributed in the hope that it will be useful,
+     * but WITHOUT ANY WARRANTY; without even the implied warranty of
+     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+     * Lesser General Public License for more details.
+     *
+     * You should have received a copy of the GNU Lesser General Public
+     * License along with this library; if not, write to the Free Software
+     * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+     */
 
-	and
-	
-	/*
-	 * Templatized C++ Command Line Parser - https://sourceforge.net/projects/tclap/
-	 * -----------------------------------------------------------------------------
-	 * Copyright (c) 2003 Michael E. Smoot 
-	 *
-	 * Permission is hereby granted, free of charge, to any person 
-	 * obtaining a copy of this software and associated documentation 
-	 * files (the "Software"), to deal in the Software without restriction, 
-	 * including without limitation the rights to use, copy, modify, merge, 
-	 * publish, distribute, sublicense, and/or sell copies of the Software, 
-	 * and to permit persons to whom the Software is furnished to do so, 
-	 * subject to the following conditions:
-	 * 
-	 * The above copyright notice and this permission notice shall be 
-	 * included in all copies or substantial portions of the Software.
-	 * 
-	 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
-	 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
-	 * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
-	 * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS 
-	 * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN 
-	 * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR 
-	 * IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN 
-	 * THE SOFTWARE.
-	 */
-	 
-	 and
-	 
-	// spdlog - Very fast, header only, C++ logging library.
-	// -----------------------------------------------------
-	// https://github.com/gabime/spdlog
-	//
-	// Distributed under the MIT License (http://opensource.org/licenses/MIT)
-	//
-	// Copyright (c) 2016 Gabi Melman.                                       
-	//
-	// Permission is hereby granted, free of charge, to any person obtaining a copy
-	// of this software and associated documentation files (the "Software"), to deal
-	// in the Software without restriction, including without limitation the rights
-	// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	// copies of the Software, and to permit persons to whom the Software is
-	// furnished to do so, subject to the following conditions:
-	// 
-	// The above copyright notice and this permission notice shall be included in
-	// all copies or substantial portions of the Software.
-	// 
-	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-	// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-	// THE SOFTWARE.
+    and
 
+    /*
+     * Python
+     * http://www.python.org/
+     *
+     * Distributed under the PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2 (See accompanying
+     *  file PSF-LICENSE or copy at https://github.com/python/cpython/raw/master/LICENSE)
+     *
+     */
 
+    // it is also compiled with some external third party dependancies:
 
+    //
+    // asio.hpp - https://think-async.com/
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //
+    // Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+    //
+    // Distributed under the Boost Software License, Version 1.0. (See accompanying
+    // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+    //
+
+    and
+
+    /*
+     * Templatized C++ Command Line Parser - https://sourceforge.net/projects/tclap/
+     * -----------------------------------------------------------------------------
+     * Copyright (c) 2003 Michael E. Smoot
+     *
+     * Permission is hereby granted, free of charge, to any person
+     * obtaining a copy of this software and associated documentation
+     * files (the "Software"), to deal in the Software without restriction,
+     * including without limitation the rights to use, copy, modify, merge,
+     * publish, distribute, sublicense, and/or sell copies of the Software,
+     * and to permit persons to whom the Software is furnished to do so,
+     * subject to the following conditions:
+     *
+     * The above copyright notice and this permission notice shall be
+     * included in all copies or substantial portions of the Software.
+     *
+     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+     * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+     * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+     * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+     * BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+     * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+     * IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+     * THE SOFTWARE.
+     */
+
+     and
+
+    // spdlog - Very fast, header only, C++ logging library.
+    // -----------------------------------------------------
+    // https://github.com/gabime/spdlog
+    //
+    // Distributed under the MIT License (http://opensource.org/licenses/MIT)
+    //
+    // Copyright (c) 2016 Gabi Melman.
+    //
+    // Permission is hereby granted, free of charge, to any person obtaining a copy
+    // of this software and associated documentation files (the "Software"), to deal
+    // in the Software without restriction, including without limitation the rights
+    // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    // copies of the Software, and to permit persons to whom the Software is
+    // furnished to do so, subject to the following conditions:
+    //
+    // The above copyright notice and this permission notice shall be included in
+    // all copies or substantial portions of the Software.
+    //
+    // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+    // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    // THE SOFTWARE.
+
+     and
+
+    // Bootstrap is a free and open-source CSS framework directed at responsive,
+    // mobile-first front-end web development. It contains CSS- and (optionally)
+    // JavaScript-based design templates for typography, forms, buttons, navigation,
+    // and other interface components
+    //
+    // -----------------------------------------------------
+    // https://getbootstrap.com/
+    // https://github.com/twbs/bootstrap
+    //
+    // Distributed under the MIT License (2.0) (http://opensource.org/licenses/MIT)
+    //
+    //
+    // Copyright (c) <year> <copyright holders>
+    // Permission is hereby granted, free of charge, to any person obtaining a copy
+    // of this software and associated documentation files (the "Software"), to deal
+    // in the Software without restriction, including without limitation the rights
+    // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    // copies of the Software, and to permit persons to whom the Software is
+    // furnished to do so, subject to the following conditions:
+    // The above copyright notice and this permission notice shall be included in all
+    // copies or substantial portions of the Software.
+    //
+    // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    // SOFTWARE.
+
+     and
+
+    // jQuery is a JavaScript library designed to simplify HTML DOM tree traversal and
+    // manipulation, as well as event handling, CSS animation, and Ajax.
+    //
+    // -----------------------------------------------------
+    // https://jquery.com/
+    // https://github.com/jquery/jquery
+    //
+    // Distributed under the MIT License (http://opensource.org/licenses/MIT)
+    //
+    //
+    // Copyright (c) <year> <copyright holders>
+    // Permission is hereby granted, free of charge, to any person obtaining a copy
+    // of this software and associated documentation files (the "Software"), to deal
+    // in the Software without restriction, including without limitation the rights
+    // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    // copies of the Software, and to permit persons to whom the Software is
+    // furnished to do so, subject to the following conditions:
+    // The above copyright notice and this permission notice shall be included in all
+    // copies or substantial portions of the Software.
+    //
+    // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    // SOFTWARE.
+
+     and
+
+    // Popper.js is a **positioning engine**, its purpose is to calculate the position
+    // of an element to make it possible to position it near a given reference element.
+    //
+    // -----------------------------------------------------
+    // https://popper.js.org/
+    // https://github.com/popperjs/popper-core
+    //
+    // Distributed under the MIT License (http://opensource.org/licenses/MIT)
+    //
+    //
+    // Copyright (c) <year> <copyright holders>
+    // Permission is hereby granted, free of charge, to any person obtaining a copy
+    // of this software and associated documentation files (the "Software"), to deal
+    // in the Software without restriction, including without limitation the rights
+    // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    // copies of the Software, and to permit persons to whom the Software is
+    // furnished to do so, subject to the following conditions:
+    // The above copyright notice and this permission notice shall be included in all
+    // copies or substantial portions of the Software.
+    //
+    // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    // SOFTWARE.
+
+    and
+
+    // The jQuery plugin that brings select elements into the 21st century with
+    // intuitive multiselection, searching, and much more. Now with Bootstrap 4 support.
+    //
+    // -----------------------------------------------------
+    // https://developer.snapappointments.com/bootstrap-select/
+    // https://github.com/snapappointments/bootstrap-select
+    //
+    //                       The MIT License (MIT)
+    // Copyright (c) 2012-2018 SnapAppointments, LLC
+    // Permission is hereby granted, free of charge, to any person obtaining a copy
+    // of this software and associated documentation files (the "Software"), to deal
+    // in the Software without restriction, including without limitation the rights
+    // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    // copies of the Software, and to permit persons to whom the Software is
+    // furnished to do so, subject to the following conditions:
+    // The above copyright notice and this permission notice shall be included in all
+    // copies or substantial portions of the Software.
+    //
+    // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 
 

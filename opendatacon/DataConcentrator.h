@@ -26,30 +26,26 @@
 
 #ifndef DATACONCENTRATOR_H_
 #define DATACONCENTRATOR_H_
-
-#include <opendatacon/asio.h>
-#include <unordered_map>
-#include <opendatacon/DataPort.h>
-#include <opendatacon/DataPortCollection.h>
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
+#include "DataConnector.h"
+#include <opendatacon/DataPort.h>
+#include <opendatacon/DataPortCollection.h>
 #include <opendatacon/InterfaceCollection.h>
-
 #include <opendatacon/Platform.h>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/TCPstringbuf.h>
-#include <spdlog/spdlog.h>
+#include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
-
-#include "DataConnector.h"
-
 #include <opendatacon/IUI.h>
+#include <opendatacon/asio.h>
+#include <unordered_map>
 
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
 public:
-	DataConcentrator(std::string FileName);
+	DataConcentrator(const std::string& FileName);
 	~DataConcentrator() override;
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
@@ -66,17 +62,21 @@ private:
 
 	std::shared_ptr<odc::asio_service> pIOS;
 	std::shared_ptr<asio::io_service::work> ios_working;
+	std::atomic<size_t> starting_element_count = 0;
 	std::once_flag shutdown_flag;
 	std::atomic_bool shutting_down;
 	std::atomic_bool shut_down;
 
 	//ostream for spdlog logging sink
-	TCPstringbuf TCPbuf;
-	std::unique_ptr<std::ostream> pTCPostream;
+	std::unordered_map<std::string, TCPstringbuf> TCPbufs;
+	std::unordered_map<std::string, std::unique_ptr<std::ostream>> pTCPostreams;
 
-	std::map<std::string,spdlog::sink_ptr> LogSinksMap;
-	std::vector<spdlog::sink_ptr> LogSinksVec;
+	std::unordered_map<std::string, spdlog::sink_ptr> LogSinks;
+	inline void ListLogSinks();
+	inline void ListLogLevels();
 	void SetLogLevel(std::stringstream& ss);
+	void AddLogSink(std::stringstream& ss);
+	void DeleteLogSink(std::stringstream& ss);
 
 	std::vector<std::thread> threads;
 };

@@ -19,9 +19,8 @@
  */
 /**
  */
+#include "../PortLoader.h"
 #include <catch.hpp>
-
-#include "PortLoader.h"
 
 #define SUITE(name) "DNP3OutstationPortTestSuite - " name
 
@@ -31,7 +30,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	InitLibaryLoading();
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	{
-		auto ios = std::make_shared<odc::asio_service>();
+		auto ios = odc::asio_service::Get();
 
 		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
@@ -40,7 +39,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		OPUT->SetIOS(ios);
 		OPUT->Enable();
 		OPUT->Disable();
 
@@ -48,7 +46,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	}
 	/// Test the destruction of an enabled port
 	{
-		auto ios = std::make_shared<odc::asio_service>();
+		auto ios = odc::asio_service::Get();
 
 		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
@@ -57,7 +55,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 		DataPort* OPUT = newOutstation("OutstationUnderTest", "", "");
 
-		OPUT->SetIOS(ios);
 		OPUT->Enable();
 
 		deleteOutstation(OPUT);
