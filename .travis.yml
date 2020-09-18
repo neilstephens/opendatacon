@@ -88,10 +88,10 @@ install:
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
-      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/jessie:latest)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti raspbian/buster:latest)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
-      docker exec -i $DOCK sh -c "apt-get install -y python3.4 python3.4-dev" 
+      docker exec -i $DOCK sh -c "apt-get install -y python3 python3-dev" 
       mkdir sysroot
       # Copy headers and libs to sysroot from within the docker image
       docker exec -i $DOCK sh -c '
@@ -125,7 +125,7 @@ install:
         /usr/bin/ol_yum_configure.sh
         yum repolist
         yum install -y applydeltarpm
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3 git file openssl11 openssl11-devel
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config libmicrohttpd make devtoolset-8-gcc-c++ cmake3 git file openssl11 openssl11-devel openssl11-static
         ln -s /usr/bin/cmake3 /bin/cmake
         
         #Extras that aren-t yum-able
