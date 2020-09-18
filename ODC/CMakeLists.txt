@@ -42,9 +42,12 @@ if(ODC_ASIO_SSL)
 	add_definitions(-DODC_ASIO_SSL)
 	message("OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
 	message("OpenSSL libraries: ${OPENSSL_LIBRARIES}")
+	if(WIN32)
+		set(ADD_LIBS Crypt32)
+	endif()
 endif()
 
-target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::Crypto> ${LIBCXX} ${RT})
+target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> ${ADD_LIBS} ${LIBCXX} ${RT})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

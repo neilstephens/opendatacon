@@ -88,7 +88,7 @@ install:
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
-      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster)
+      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti yummygooey/raspbian-buster:latest)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3 python3-dev" 
@@ -101,6 +101,8 @@ install:
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
         cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
         cp -a /usr/include/openssl /mnt/build/sysroot/usr/include/
+        mkdir -p /mnt/build/sysroot$(dirname /usr/include/*/*/opensslconf.h)
+        cp -a $(dirname /usr/include/*/*/opensslconf.h /mnt/build/sysroot$(dirname /usr/include/*/*/opensslconf.h)/
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '
@@ -148,7 +150,7 @@ install:
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt/src $SRC_DIR
       
-      export TOOLCHAIN_OPT="-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root"
+      export TOOLCHAIN_OPT="-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root -DADD_LIBS=z"
       export SYSVER_OPT="-DCMAKE_SYSTEM_VERSION=oel7"
       export PRESOURCE="source scl_source enable rh-python36 && source scl_source enable devtoolset-8 &&"
       export RUN="docker exec --interactive --workdir /mnt/src/build $DOCK"
