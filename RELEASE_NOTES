@@ -1,4 +1,35 @@
-opendatacon version 1.3.0
+opendatacon version 1.4.0
+
+1.4.0
+	- C++17
+	- Dropped support for OEL6 in favour of > OEL7
+	- Dropped support for jessie in favour of buster Debian/Raspbian
+	- TCP keepalives for native protocols
+	- Flush logs at least every minute or on command
+	- BlackHoleTransform for listen-only ports
+	- HTTP RESTFUL interface to SimPort and PythonPort
+	- DNP3Port:
+		- opendnp3 3.0.4
+		- UDP and TLS support
+		- Smarter keepalive timeout behaviour
+	- PyPort:
+		- examples (in git repo)
+		- bundling of stdlib
+	- SimPort:
+		- Play back Analogs from SQLite3 DB
+		- Position feedback (think tap changers) for Controls
+	- JSONPort:
+		- Option to accept everything (not just configured indexes)
+	- ConsoleUI:
+		- case insensitive commands
+	- WebUI major overhaul
+		- Modernised rendering
+		- Realtime log viewer
+		- Display point names
+		- Simport control panel
+	- Faster, cleaner shutdown
+	- Numerous features and fixes for Conitel/Baker and MD3 
+	- Other small features/fixes
 
 1.3.0
 	- PyPort: Implement your own port in Python!
