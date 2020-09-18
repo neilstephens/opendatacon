@@ -101,8 +101,7 @@ install:
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
         cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
         cp -a /usr/include/openssl /mnt/build/sysroot/usr/include/
-        mkdir -p /mnt/build/sysroot$(dirname /usr/include/*/*/opensslconf.h)
-        cp -a $(dirname /usr/include/*/*/opensslconf.h)/* /mnt/build/sysroot$(dirname /usr/include/*/*/opensslconf.h)/
+        cp -a /usr/include/*/*/opensslconf.h /mnt/build/sysroot/usr/include/openssl/
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '
@@ -175,8 +174,7 @@ install:
         cp -a /usr/include/modbus /mnt/build/sysroot/usr/include/
         cp -a /usr/include/python* /mnt/build/sysroot/usr/include/
         cp -a /usr/include/openssl /mnt/build/sysroot/usr/include/
-        mkdir -p /mnt/build/sysroot$(dirname /usr/include/*/*/opensslconf.h)
-        cp -a $(dirname /usr/include/*/*/opensslconf.h)/* /mnt/build/sysroot$(dirname /usr/include/*/*/opensslconf.h)/
+        cp -a /usr/include/*/*/opensslconf.h /mnt/build/sysroot/usr/include/openssl/
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '
