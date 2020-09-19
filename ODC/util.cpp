@@ -24,10 +24,10 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <iostream>
 #include <opendatacon/util.h>
 #include <regex>
 #include <utility>
+#include <iostream>
 
 const std::size_t bcd_pack_size = 4;
 
@@ -40,7 +40,7 @@ std::string GetConfigVersion()
 	return ConfigVersion;
 }
 
-void SetConfigVersion(std::string Version)
+void SetConfigVersion(const std::string& Version)
 {
 	ConfigVersion = Version;
 }

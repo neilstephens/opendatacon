@@ -203,7 +203,7 @@ TEST_CASE(SUITE("ManyStrings"))
 			while(buf.size())
 			{
 				count++;
-				auto ch = buf.sgetc();
+				uint8_t ch = buf.sgetc();
 				if((count+recv_offset)%256 != ch)
 				{
 					recv_offset = ch - count%256;
