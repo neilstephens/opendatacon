@@ -27,30 +27,36 @@
 #ifndef CONFIGPARSER_H_
 #define CONFIGPARSER_H_
 
-#include <unordered_map>
 #include <json/json.h>
+#include <unordered_map>
+#include <memory>
 
 class ConfigParser
 {
 public:
 	ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides = Json::Value());
 	virtual ~ConfigParser(){}
-	void ProcessFile();
-
-	virtual void ProcessElements(const Json::Value& JSONRoot)=0;
-	const Json::Value GetConfiguration() const;
+	Json::Value GetConfiguration() const;
 
 protected:
+	void ProcessFile();
+	virtual void ProcessElements(const Json::Value& JSONRoot) = 0;
+
 	const std::string ConfFilename;
 	const Json::Value ConfOverrides;
 
 private:
 	void ProcessInherits(const std::string& FileName);
 
-	static const Json::Value GetConfiguration(const std::string& FileName);
+//static members
+public:
+	static void ClearFileCache();
+private:
+	static std::shared_ptr<const Json::Value> GetFileConfig(const std::string& FileName);
 	static void AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits);
-	static Json::Value* RecallOrCreate(const std::string& FileName);
-	static std::unordered_map<std::string,Json::Value> JSONCache;
+	static std::shared_ptr<const Json::Value> RecallOrCreate(const std::string& FileName);
+
+	static std::unordered_map<std::string,std::shared_ptr<Json::Value>> JSONFileCache;
 };
 
 #endif /* CONFIGPARSER_H_ */
