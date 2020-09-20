@@ -78,7 +78,12 @@ private:
 	void AddLogSink(std::stringstream& ss);
 	void DeleteLogSink(std::stringstream& ss);
 
+	void ParkThread();
+	bool ParkThreads();
+	std::atomic_bool parking = false;
+	std::atomic<size_t> num_parked_threads = 0;
 	std::vector<std::thread> threads;
+	bool ReloadConfig();
 };
 
 #endif /* DATACONCENTRATOR_H_ */

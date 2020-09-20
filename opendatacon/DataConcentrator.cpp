@@ -35,6 +35,7 @@
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/fmt/ostr.h>
 #include <thread>
 
 /*
@@ -115,6 +116,11 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 				std::thread([this](){this->Shutdown();}).detach();
 			}
 			,"Shutdown opendatacon");
+		interface.second->AddCommand("reload",[this](std::stringstream& ss)
+			{
+				std::thread([this](){this->ReloadConfig();}).detach();
+			}
+			,"Reload config file(s)");
 		interface.second->AddCommand("version",[] (std::stringstream& ss)
 			{
 				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
@@ -866,6 +872,107 @@ void DataConcentrator::Run()
 		log->info("Destoying DataPorts...");
 	DataPorts.clear();
 	shut_down = true;
+}
+
+void DataConcentrator::ParkThread()
+{
+	if(shutting_down || !parking)
+		return;
+
+	//wait for startup to finish
+	while(starting_element_count > 0)
+		pIOS->run_one();
+
+	//park another threads if there's any left
+	pIOS->post([this](){ParkThread();});
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("ParkThread() parking thread {}",std::this_thread::get_id());
+
+	num_parked_threads++;
+	while(!shutting_down && parking)
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	num_parked_threads--;
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("ParkThread() releasing thread {}",std::this_thread::get_id());
+}
+
+bool DataConcentrator::ParkThreads()
+{
+	parking = true;
+	//post a paking task.
+	//As each thread is parked, it posts another paking task
+	pIOS->post([this](){ParkThread();});
+
+	//we have to park the pool threads plus the main run thread
+	auto threads_to_park = threads.size()+1;
+	while(num_parked_threads < threads_to_park && !shutting_down)
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+	if(shutting_down)
+		parking = false;
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("ParkThreads() returning {}",parking);
+
+	return parking;
+}
+
+bool DataConcentrator::ReloadConfig()
+{
+	//TODO: DataConcentrator::ReloadConfig()
+
+	//copy all the configs for ports, connectors and interfaces
+
+	//clear the config parser cache
+
+	//get the main config
+	//iterate over the new list of ports
+		//mark to create if new
+		//mark for delete and create if config changed
+	//mark the remaining ports for delete
+	//keep a list of subscribers for ports marked for delete
+
+	//iterate over the new list of connectors
+		//mark to create if new
+		//mark to delete/create if conf changed
+			//or if subscribed to port marked for delete
+	//mark the remaining conns for delete
+
+	//disable ports marked for delete
+	//disable conns marked for delete
+	//disable ports connected to deletion conns
+		//mark for re-enable (if check status before...)
+
+	//wait for a bit
+
+	///////////// PARK THREADS ///////////////
+	if(!ParkThreads())
+		return false;
+
+	std::this_thread::sleep_for(std::chrono::seconds(3));
+	//Unsubscribe conns to be deleted (from thier ports)
+	//delete marked ports
+		//remove from IOHandlers list
+		//erase from collection
+	//delete marked conns
+		//remove from IOHandlers list
+		//erase from collection
+	//create ports marked for creation
+	//create conns marked for creation
+	//build created ports
+		//push into collection
+	//build created conns
+		//push into collection
+
+	////////////// UNPARK THREADS ////////////
+	parking = false;
+
+	//enable (/w initstate) created conns
+	//enable (/w initstate) created ports
+
+	return true;
 }
 
 void DataConcentrator::Shutdown()
