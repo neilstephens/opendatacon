@@ -30,8 +30,8 @@
 namespace odc
 {
 
-template <typename Q>
-TCPSocketManager<Q>::TCPSocketManager
+
+TCPSocketManager::TCPSocketManager
 	(std::shared_ptr<odc::asio_service> apIOS,
 	const bool aisServer,
 	const std::string& aEndPoint,
@@ -74,14 +74,14 @@ TCPSocketManager<Q>::TCPSocketManager
 	pAcceptor(nullptr)
 {}
 
-template <typename Q>
-void TCPSocketManager<Q>::Open()
+
+void TCPSocketManager::Open()
 {
-	Open(handler_tracker);
+	pSockStrand->post([this,h{handler_tracker}](){Open(h);});
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::Close()
+
+void TCPSocketManager::Close()
 {
 	auto tracker = handler_tracker;
 	pSockStrand->post([this,tracker]()
@@ -95,12 +95,24 @@ void TCPSocketManager<Q>::Close()
 		});
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::Write(Q&& aContainer)
-{
-	//shared_const_buffer is a ref counted wraper that will delete the data in good time
-	shared_const_buffer<Q> buf(std::make_shared<Q>(std::move(aContainer)));
 
+TCPSocketManager::~TCPSocketManager()
+{
+	//There may be some outstanding handlers if we're destroyed right after Close()
+	std::weak_ptr<void> tracker = handler_tracker;
+	handler_tracker.reset();
+
+	while(!tracker.expired() && !pIOS->stopped())
+		pIOS->poll_one();
+
+	LogCallback("debug","Write total "+std::to_string(write_count)+" bytes");
+}
+
+//----------------Public^^^
+//----------------Private
+
+void TCPSocketManager::Write(shared_const_buffer buf)
+{
 	auto tracker = handler_tracker;
 	pSockStrand->post([this,tracker,buf]()
 		{
@@ -150,50 +162,30 @@ void TCPSocketManager<Q>::Write(Q&& aContainer)
 		});
 }
 
-template <typename Q>
-TCPSocketManager<Q>::~TCPSocketManager()
+void TCPSocketManager::Open(std::shared_ptr<void> tracker)
 {
-	//There may be some outstanding handlers if we're destroyed right after Close()
-	std::weak_ptr<void> tracker = handler_tracker;
-	handler_tracker.reset();
+	manuallyClosed = false;
+	if(isConnected || pending_connections || pending_read)
+		return;
 
-	while(!tracker.expired() && !pIOS->stopped())
-		pIOS->poll_one();
+	if(!EndPointResolved(tracker))
+		return;
 
-	LogCallback("debug","Write total "+std::to_string(write_count)+" bytes");
+	asio::ip::tcp::resolver::iterator end;
+	for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
+	{
+		auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
+		std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
+
+		if(isServer)
+			ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+		else
+			ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+	}
 }
 
-//----------------Public^^^
-//----------------Private
 
-template <typename Q>
-void TCPSocketManager<Q>::Open(std::shared_ptr<void> tracker)
-{
-	pSockStrand->post([this,tracker]()
-		{
-			manuallyClosed = false;
-			if(isConnected || pending_connections || pending_read)
-				return;
-
-			if(!EndPointResolved(tracker))
-				return;
-
-			asio::ip::tcp::resolver::iterator end;
-			for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
-			{
-			      auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
-			      std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
-
-			      if(isServer)
-					ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
-			      else
-					ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
-			}
-		});
-}
-
-template <typename Q>
-bool TCPSocketManager<Q>::EndPointResolved(std::shared_ptr<void> tracker)
+bool TCPSocketManager::EndPointResolved(std::shared_ptr<void> tracker)
 {
 	asio::ip::tcp::resolver::iterator end;
 
@@ -223,8 +215,8 @@ bool TCPSocketManager<Q>::EndPointResolved(std::shared_ptr<void> tracker)
 	return true;
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
+
+void TCPSocketManager::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
 {
 	try
 	{
@@ -259,8 +251,8 @@ void TCPSocketManager<Q>::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCan
 		}));
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
+
+void TCPSocketManager::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
 {
 	LogCallback("info","Connecting to "+addr_str);
 	pending_connections++;
@@ -283,8 +275,8 @@ void TCPSocketManager<Q>::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCan
 		}));
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
+
+void TCPSocketManager::CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	//if the connection is still the active one, keep writing
 	if(pWriteSock == pSock && isConnected && !manuallyClosed)
@@ -300,8 +292,8 @@ void TCPSocketManager<Q>::CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> 
 	}
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
+
+void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	//if there's anything in the buffer sequence, write it
 	if((queue_writebufs->size() || dispatch_writebufs->size()) && !pending_write)
@@ -350,8 +342,8 @@ void TCPSocketManager<Q>::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWr
 	}
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str)
+
+void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str)
 {
 	if(err_code)
 	{
@@ -386,8 +378,8 @@ void TCPSocketManager<Q>::ConnectCompletionHandler(std::shared_ptr<void> tracker
 	WriteBuffer(pSock,remote_addr_str,tracker);
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::Read(std::string remote_addr_str, std::shared_ptr<void> tracker)
+
+void TCPSocketManager::Read(std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	pending_read = true;
 	asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str](asio::error_code err_code, std::size_t n)
@@ -410,8 +402,8 @@ void TCPSocketManager<Q>::Read(std::string remote_addr_str, std::shared_ptr<void
 		}));
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::AutoOpen(std::shared_ptr<void> tracker)
+
+void TCPSocketManager::AutoOpen(std::shared_ptr<void> tracker)
 {
 	pSockStrand->post([this,tracker]()
 		{
@@ -444,8 +436,8 @@ void TCPSocketManager<Q>::AutoOpen(std::shared_ptr<void> tracker)
 		});
 }
 
-template <typename Q>
-void TCPSocketManager<Q>::AutoClose(std::shared_ptr<void> tracker)
+
+void TCPSocketManager::AutoClose(std::shared_ptr<void> tracker)
 {
 	pSockStrand->post([this,tracker]()
 		{
@@ -475,26 +467,6 @@ void TCPSocketManager<Q>::AutoClose(std::shared_ptr<void> tracker)
 			EndpointIterator = asio::ip::tcp::resolver::iterator();
 		});
 }
-
-template class TCPSocketManager<std::basic_string<char>>;
-template class TCPSocketManager<std::basic_string<uint8_t>>;
-template class TCPSocketManager<std::basic_string<int8_t>>;
-template class TCPSocketManager<std::basic_string<uint16_t>>;
-template class TCPSocketManager<std::basic_string<int16_t>>;
-template class TCPSocketManager<std::basic_string<uint32_t>>;
-template class TCPSocketManager<std::basic_string<int32_t>>;
-template class TCPSocketManager<std::basic_string<uint64_t>>;
-template class TCPSocketManager<std::basic_string<int64_t>>;
-
-template class TCPSocketManager<std::vector<char>>;
-template class TCPSocketManager<std::vector<uint8_t>>;
-template class TCPSocketManager<std::vector<int8_t>>;
-template class TCPSocketManager<std::vector<uint16_t>>;
-template class TCPSocketManager<std::vector<int16_t>>;
-template class TCPSocketManager<std::vector<uint32_t>>;
-template class TCPSocketManager<std::vector<int32_t>>;
-template class TCPSocketManager<std::vector<uint64_t>>;
-template class TCPSocketManager<std::vector<int64_t>>;
 
 } // namespace odc
 

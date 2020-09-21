@@ -180,6 +180,7 @@ TEST_CASE(SUITE("Single Drop"))
 		}
 
 		work.reset();
+		ios->run();
 		t.join();
 		ios.reset();
 	}
@@ -298,6 +299,7 @@ TEST_CASE(SUITE("Multi Drop"))
 		pMITM.reset();
 
 		work.reset();
+		ios->run();
 		t.join();
 		ios.reset();
 	}

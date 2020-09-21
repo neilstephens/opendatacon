@@ -24,6 +24,17 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 # Locate opendnp3
 option(USE_DNP3_SUBMODULE "Use git submodule to download and build opendnp3 libraries" ON)
 set(DNP3_HOME_INSTRUCTIONS "Choose the location of opendnp3: where it was installed - there should be lib and include directories within")
+
+set(DNP3_TLS OFF CACHE BOOL "Build TLS client/server support in opendnp3 (requires ODC_ASIO_SSL)")
+if(FULL)
+	set(DNP3_TLS ON CACHE BOOL "Build TLS client/server support in opendnp3 (requires ODC_ASIO_SSL)" FORCE)
+endif()
+if(DNP3_TLS)
+	if(NOT ODC_ASIO_SSL)
+		message(FATAL_ERROR "DNP3_TLS requires ODC_ASIO_SSL. Enable that option first")
+	endif()
+endif()
+
 if(USE_DNP3_SUBMODULE)
 	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/submodules/dnp3")
 	set(DNP3_BUILD "${CMAKE_BINARY_DIR}/submodules/dnp3")
@@ -33,12 +44,15 @@ if(USE_DNP3_SUBMODULE)
 	set(
 		DNP3_CMAKE_OPTS
 			-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-			-DDNP3_STATIC_LIBS=1
+			-DDNP3_STATIC_LIBS=ON
+			-DOPENSSL_USE_STATIC_LIBS=TRUE
 			"-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -fPIC"
 			-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 			-DCMAKE_INSTALL_PREFIX=${DNP3_HOME}/
 			-DCMAKE_DEBUG_POSTFIX=${CMAKE_DEBUG_POSTFIX}
 			-DFETCHCONTENT_SOURCE_DIR_ASIO=${ASIO_HOME}
+			-DDNP3_TLS=${DNP3_TLS}
+			-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
 		CACHE STRING "cmake options to use when building DNP3 submodule"
 	)
 	if(NOT EXISTS "${DNP3_SOURCE}/.git")
@@ -114,7 +128,6 @@ set(opendnp3_libs debug opendnp3_dtarget optimized opendnp3_target )
 
 #hide (in non-advanced mode) the library paths in cmake guis since they are derrived
 mark_as_advanced(FORCE opendnp3_lib opendnp3_dlib)
-
 
 #include in install/packaging
 option(PACKAGE_DNP3 "Package opendnp3 libs in c-pack installer" ON)

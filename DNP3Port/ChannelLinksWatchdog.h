@@ -2,7 +2,7 @@
 #define CHANNELLINKSWATCHDOG_H
 
 #include <opendatacon/asio.h>
-#include <unordered_set>
+#include <set>
 
 class DNP3Port;
 class ChannelLinksWatchdog
@@ -14,16 +14,16 @@ private:
 public:
 	ChannelLinksWatchdog();
 	//Synchronised versions of their private couterparts
-	std::function<void(DNP3Port* const pPort)> LinkUp = pSyncStrand->wrap([this](DNP3Port* const pPort){LinkUp_(pPort);});
-	std::function<void(DNP3Port* const pPort)> LinkDown = pSyncStrand->wrap([this](DNP3Port* const pPort){LinkDown_(pPort);});
+	std::function<void(std::weak_ptr<DNP3Port> pPort)> LinkUp = pSyncStrand->wrap([this](std::weak_ptr<DNP3Port> pPort){LinkUp_(pPort);});
+	std::function<void(std::weak_ptr<DNP3Port> pPort)> LinkDown = pSyncStrand->wrap([this](std::weak_ptr<DNP3Port> pPort){LinkDown_(pPort);});
 
 private:
 	//these access sets, so they're only called by sync'd public counterparts
-	void LinkUp_(DNP3Port* const pPort);
-	void LinkDown_(DNP3Port* const pPort);
+	void LinkUp_(std::weak_ptr<DNP3Port> pPort);
+	void LinkDown_(std::weak_ptr<DNP3Port> pPort);
 
-	std::unordered_set<DNP3Port*> UpSet;
-	std::unordered_set<DNP3Port*> DownSet;
+	std::set<std::weak_ptr<DNP3Port>,std::owner_less<std::weak_ptr<DNP3Port>>> UpSet;
+	std::set<std::weak_ptr<DNP3Port>,std::owner_less<std::weak_ptr<DNP3Port>>> DownSet;
 };
 
 #endif // CHANNELLINKSWATCHDOG_H

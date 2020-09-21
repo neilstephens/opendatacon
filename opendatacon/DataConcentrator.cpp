@@ -71,6 +71,8 @@ inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_pt
 	odc::spdlog_drop_all();
 	for(const auto& name : lognames)
 		AddLogger(name, sinks);
+
+	odc::spdlog_flush_every(std::chrono::seconds(60));
 }
 
 DataConcentrator::DataConcentrator(const std::string& FileName):
@@ -124,6 +126,10 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 			{
 				this->SetLogLevel(ss);
 			},"Set the threshold for logging");
+		interface.second->AddCommand("flush_logs",[] (std::stringstream& ss)
+			{
+				odc::spdlog_flush_all();
+			},"Flush all registered loggers and sinks");
 		interface.second->AddCommand("add_logsink",[this] (std::stringstream& ss)
 			{
 				this->AddLogSink(ss);
@@ -538,7 +544,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 						    };
 
 			//call the creation function and wrap the returned pointer to a new plugin
-			Interfaces.emplace(PluginName, std::unique_ptr<IUI,decltype(plugin_cleanup)>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), plugin_cleanup));
+			Interfaces.emplace(PluginName, std::shared_ptr<IUI>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), plugin_cleanup));
 		}
 	}
 
@@ -601,7 +607,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 			if(Ports[n]["Type"].asString() == "Null")
 			{
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -626,7 +632,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			{
 				log->error("{}",LastSystemError());
 				log->error("Failed to load library '{}' mapping {} to NullPort...", libfilename, Ports[n]["Name"].asString());
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -651,7 +657,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			if(new_port_func == nullptr || delete_port_func == nullptr)
 			{
 				log->error("{} : Failed to load port, mapping to NullPort...", Ports[n]["Name"].asString());
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,void (*)(DataPort*)>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+				DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 				continue;
 			}
@@ -663,7 +669,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 						  };
 
 			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::unique_ptr<DataPort,decltype(port_cleanup)>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 		}
 	}
@@ -687,7 +693,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 				log->error("Duplicate Connector Name; ignoring:\n'{}\n'", Connectors[n].toStyledString());
 				continue;
 			}
-			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::unique_ptr<DataConnector,void (*)(DataConnector*)>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
+			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::shared_ptr<DataConnector>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
 			if(Connectors[n].isMember("InitState"))
 			{
 				if(Connectors[n]["InitState"].asString() == "ENABLED")
@@ -715,6 +721,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 			}
 		}
 	}
+	odc::spdlog_flush_every(std::chrono::seconds(60));
 }
 
 void DataConcentrator::Build()

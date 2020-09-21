@@ -306,6 +306,7 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
+	IOS->run();       \
 	for (auto& t : threads) t.join()
 
 #define TEST_CBMAPort(overridejson)\
@@ -1533,7 +1534,7 @@ TEST_CASE("Station - Baker Global CONTROL Command")
 
 namespace MasterTests
 {
-void SendBinaryEvent(std::unique_ptr<CBOutstationPort> &CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
+void SendBinaryEvent(std::shared_ptr<CBOutstationPort> CBOSPort, int ODCIndex, bool val, QualityFlags qual = QualityFlags::ONLINE, msSinceEpoch_t time = msSinceEpoch())
 {
 	auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing", qual, time);
 	event->SetPayload<EventType::Binary>(std::move(val));
@@ -1829,7 +1830,7 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 
 	START_IOS(1);
 
-	std::unique_ptr<CBMasterPort> CBMAPort[16];
+	std::shared_ptr<CBMasterPort> CBMAPort[16];
 
 	for (int StationAddress = 0; StationAddress < 16; StationAddress++)
 	{

@@ -138,7 +138,7 @@ private:
 	std::unordered_map<uint8_t, std::function<void(MD3Message_t &MD3Message)>> ReadCallbackMap;
 	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
-	std::shared_ptr<TCPSocketManager<std::string>> pSockMan;
+	std::shared_ptr<TCPSocketManager> pSockMan;
 
 	// A list of CBConnections, so that we can find if one for out port/address combination already exists.
 	static std::unordered_map<std::string, std::shared_ptr<MD3Connection>> ConnectionMap;

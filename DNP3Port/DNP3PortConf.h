@@ -45,6 +45,26 @@ inline std::string to_string(const TCPClientServer CS)
 	}
 	return "UNKNOWN";
 }
+enum class IPTransport {TCP,UDP,TLS};
+inline std::string to_string(const IPTransport IPT)
+{
+	switch(IPT)
+	{
+		case IPTransport::TCP:
+			return "TCP";
+		case IPTransport::UDP:
+			return "UDP";
+		case IPTransport::TLS:
+			return "TLS";
+	}
+	return "UNKNOWN";
+}
+struct TLSFilesConf
+{
+	std::string PeerCertFile;
+	std::string LocalCertFile;
+	std::string PrivateKeyFile;
+};
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
@@ -54,7 +74,12 @@ struct DNP3AddrConf
 	//IP
 	std::string IP;
 	uint16_t Port;
+	uint16_t UDPListenPort;
 	TCPClientServer ClientServer;
+	IPTransport Transport;
+
+	//TLS
+	TLSFilesConf TLSFiles;
 
 	//Common
 	uint16_t OutstationAddr;
@@ -65,7 +90,9 @@ struct DNP3AddrConf
 		SerialSettings(),
 		IP("127.0.0.1"),
 		Port(20000),
+		UDPListenPort(0),
 		ClientServer(TCPClientServer::DEFAULT),
+		Transport(IPTransport::TCP),
 		OutstationAddr(1),
 		MasterAddr(0),
 		ServerType(server_type_t::ONDEMAND)

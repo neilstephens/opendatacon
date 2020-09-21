@@ -75,7 +75,7 @@ CBConnection::CBConnection
 	IsServer(aisServer),
 	IsBakerDevice(isbakerdevice)
 {
-	pSockMan = std::make_shared<TCPSocketManager<std::string>>
+	pSockMan = std::make_shared<TCPSocketManager>
 		           (pIOS, IsServer, EndPoint, Port,
 		           std::bind(&CBConnection::ReadCompletionHandler, this, std::placeholders::_1),
 		           std::bind(&CBConnection::SocketStateHandler, this, std::placeholders::_1),

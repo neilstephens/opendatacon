@@ -21,18 +21,20 @@ class ChannelHandler
 {
 private:
 	//Strand for synchronising channel/link state changes
-	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
-	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	std::shared_ptr<odc::asio_service> pIOS;
+	std::unique_ptr<asio::io_service::strand> pSyncStrand;
+	std::shared_ptr<void> handler_tracker;
 
 public:
 	ChannelHandler() = delete;
 	ChannelHandler(DNP3Port* p);
+	~ChannelHandler();
 
 	//Synchronised versions of their private couterparts
-	std::function<void(opendnp3::LinkStatus status)> SetLinkStatus = pSyncStrand->wrap([this](opendnp3::LinkStatus status){SetLinkStatus_(status);});
-	std::function<void()> LinkUp = pSyncStrand->wrap([this](){LinkUp_();});
-	std::function<void()> LinkDown = pSyncStrand->wrap([this](){LinkDown_();});
-	std::function<void(opendnp3::ChannelState state)> StateListener = pSyncStrand->wrap([this](opendnp3::ChannelState state){StateListener_(state);});
+	std::function<void(opendnp3::LinkStatus status)> SetLinkStatus;
+	std::function<void()> LinkUp;
+	std::function<void()> LinkDown;
+	std::function<void(opendnp3::ChannelState state)> StateListener;
 
 	//Factory function for the Channel
 	std::shared_ptr<opendnp3::IChannel> SetChannel();

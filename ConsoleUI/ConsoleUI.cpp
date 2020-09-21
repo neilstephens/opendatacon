@@ -19,13 +19,11 @@
  */
 
 #include "ConsoleUI.h"
-#include <exception>
-#include <fstream>
-#include <iomanip>
-#include <memory>
 #include <opendatacon/Version.h>
 #include <opendatacon/util.h>
-#include <utility>
+#include <fstream>
+#include <iomanip>
+#include <exception>
 
 using namespace odc;
 
@@ -139,9 +137,8 @@ void ConsoleUI::AddHelp(std::string help)
 int ConsoleUI::trigger (const std::string& s)
 {
 	std::stringstream LineStream(s);
-	std::string cmd, lower_cmd;
+	std::string cmd;
 	LineStream>>cmd;
-	lower_cmd = to_lower(cmd);
 
 	if(this->context.empty() && Responders.count(cmd))
 	{
@@ -160,7 +157,7 @@ int ConsoleUI::trigger (const std::string& s)
 			ExecuteCommand(Responders[cmd],rcmd,LineStream);
 		}
 	}
-	else if(!this->context.empty() && lower_cmd == "exit")
+	else if(!this->context.empty() && cmd == "exit")
 	{
 		/* change context */
 		this->context = "";
@@ -198,115 +195,21 @@ int ConsoleUI::hotkeys(char c)
 {
 	if (c == TAB) //auto complete/list
 	{
-		//store what's been entered so far
-		std::string cmd, lower_cmd;
-		cmd.assign(buffer.begin(), buffer.end());
+		std::stringstream stream(std::string(buffer.begin(), buffer.end()));
 
-		lower_cmd = to_lower(cmd);
+		std::string cmd, sub_cmd;
+		stream >> cmd;
+		stream >> sub_cmd;
 
-		//find root commands that start with the partial
-		std::vector<std::string> matching_cmds;
-		for(const auto& name_n_description : mDescriptions)
-		{
-			std::string name = to_lower(name_n_description.first);
-			if (name.substr(0, lower_cmd.size()) == lower_cmd)
-				matching_cmds.push_back(name_n_description.first);
-		}
+		std::string history_cmd;
+		std::string s;
+		while (stream >> s)
+			history_cmd += s + " ";
 
-		//find contextual commands that start with the partial
-		if (this->context.empty())
-		{
-			//check if command matches a Responder - if so, arg is our partial sub command
-			if (Responders.count(cmd))
-			{
-				/* list commands avaialble to responder */
-				auto commands = Responders[cmd]->GetCommandList();
-				for (const auto& command : commands)
-				{
-					std::string cmd = to_lower(command.asString());
-					if (cmd.substr(0, lower_cmd.size()) == lower_cmd)
-						matching_cmds.push_back(cmd + " " + command.asString());
-				}
-			}
-			//if not, cmd is a partial Responder
-			else
-			{
-				/* list all matching responders */
-				for(const auto& name_n_responder : Responders)
-				{
-					std::string name = to_lower(name_n_responder.first);
-					if (name.substr(0, lower_cmd.size()) == lower_cmd)
-						matching_cmds.emplace_back(name_n_responder.first);
-				}
-			}
-		}
-		else //we have context - cmd is a partial sub command
-		{
-			/* list commands available to current responder */
-			auto commands = Responders[this->context]->GetCommandList();
-			for (const auto& command : commands)
-			{
-				std::string cmd = to_lower(command.asString());
-				if (cmd.substr(0, lower_cmd.size()) == lower_cmd)
-					matching_cmds.push_back(command.asString());
-			}
-		}
-
-		//any matches?
-		if(matching_cmds.size())
-		{
-			//we want to see how many chars all the matches have in common
-			auto common_length = cmd.size() - 1; //starting from what we already know matched
-
-			if(matching_cmds.size() == 1)
-			{
-				common_length = matching_cmds.back().size();
-			}
-			else
-			{
-				bool common = true;
-				//iterate over each character while it's common to all
-				while(common)
-				{
-					common_length++;
-					char ch = matching_cmds[0][common_length];
-					for(auto& matching_cmd : matching_cmds)
-					{
-						if(matching_cmd[common_length] != ch)
-						{
-							common = false;
-							break;
-						}
-					}
-				}
-			}
-
-			//auto-complete common chars
-			if(common_length > cmd.size())
-			{
-				buffer.assign(matching_cmds.back().begin(),matching_cmds.back().begin()+common_length);
-				std::string remainder;
-				remainder.assign(matching_cmds.back().begin() + cmd.size(), matching_cmds.back().begin() + common_length);
-				std::cout<<remainder<< std::flush;
-				line_pos = (int)common_length;
-			}
-			//otherwise we're at the branching point - list possible commands
-			else if(matching_cmds.size() > 1)
-			{
-				std::cout<<std::endl;
-				for(const auto& cmd : matching_cmds)
-					std::cout<<cmd<<std::endl;
-				std::cout<<_prompt<<cmd<<std::flush;
-			}
-
-			//if there's just one match, and we just auto-completed it, print a trailing space.
-			if(matching_cmds.size() == 1 && cmd.size() <= matching_cmds.back().size())
-			{
-				std::cout<<' '<< std::flush;
-				buffer.push_back(' ');
-				line_pos++;
-			}
-		}
+		std::vector<std::string> matches;
+		AddRootCommands(cmd, matches);
+		AddCommands(cmd, sub_cmd, matches);
+		PrintMatches(cmd, sub_cmd, history_cmd, matches);
 
 		return 1;
 	}
@@ -353,6 +256,103 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 	{
 		auto result = pResponder->ExecuteCommand(command, params);
 		std::cout<<result.toStyledString()<<std::endl;
+	}
+}
+
+void ConsoleUI::AddRootCommands(const std::string& cmd, std::vector<std::string>& matches)
+{
+	std::string lower_cmd = to_lower(cmd);
+	for (auto name : mDescriptions)
+	{
+		std::string lower_name = to_lower(name.first);
+		if (lower_name.substr(0, lower_cmd.size()) == lower_cmd)
+			matches.push_back(name.first);
+	}
+}
+
+void ConsoleUI::AddCommands(const std::string& cmd, const std::string& sub_cmd, std::vector<std::string>& matches)
+{
+	std::string lower_cmd = to_lower(cmd);
+	std::string lower_sub_cmd = to_lower(sub_cmd);
+
+	if (context.empty())
+	{
+		if (Responders.count(cmd))
+		{
+			for (auto command : Responders[cmd]->GetCommandList())
+			{
+				std::string lower_name = to_lower(command.asString());
+				if (lower_name.substr(0, lower_sub_cmd.size()) == lower_sub_cmd)
+					matches.push_back(cmd + " " + command.asString());
+			}
+		}
+		else
+		{
+			for (auto name : Responders)
+			{
+				std::string lower_name = to_lower(name.first);
+				if (lower_name.substr(0, lower_cmd.size()) == lower_cmd)
+					matches.push_back(name.first);
+			}
+		}
+	}
+	else
+	{
+		for (auto command : Responders[context]->GetCommandList())
+		{
+			std::string lower_name = to_lower(command.asString());
+			if (lower_name.substr(0, lower_cmd.size()) == lower_cmd)
+				matches.push_back(command.asString());
+		}
+	}
+}
+
+void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
+	const std::string& history_cmd, const std::vector<std::string>& matches)
+{
+	std::string prompt;
+	if (!matches.empty())
+	{
+		if (matches.size() == 1)
+		{
+			/*
+			 * This line is to clear the current line so we can make the new prompt
+			 * It is easy to make the prompt than adding or not.
+			 */
+			printf("%c[2K\r", 27); std::cout << _prompt << std::flush;
+			prompt = matches[0] + " ";
+			if (matches[0].find(" ") == std::string::npos && !sub_cmd.empty())
+				prompt += sub_cmd + " ";
+			if (!history_cmd.empty()) prompt += history_cmd + " ";
+			std::cout << prompt << std::flush;
+		}
+		else
+		{
+			std::cout << std::endl << std::flush;
+			for (const std::string& c : matches)
+			{
+				if (!history_cmd.empty())
+					std::cout << c << " " << history_cmd << std::endl << std::flush;
+				else
+					std::cout << c << std::endl << std::flush;
+			}
+			std::size_t common_chars_count = 0;
+			while (common_chars_count < matches[0].size())
+			{
+				std::size_t diff = 0;
+				for (std::size_t i = 1; i < matches.size(); ++i)
+					diff += std::tolower(matches[i][common_chars_count]) - std::tolower(matches[0][common_chars_count]);
+				if (diff)
+					break;
+				++common_chars_count;
+			}
+			prompt = matches[0].substr(0, common_chars_count);
+			if (!history_cmd.empty())
+				prompt += " " + history_cmd;
+			std::cout << _prompt << prompt << std::flush;
+		}
+		buffer.assign(prompt.begin(), prompt.end());
+		line_pos = buffer.size();
 	}
 }
 

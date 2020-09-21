@@ -86,6 +86,12 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	ProcessFile();
 }
 
+SimPort::~SimPort()
+{
+	if(!httpServerToken.ServerID.empty())
+		HttpServerManager::StopConnection(httpServerToken);
+}
+
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([this]()
@@ -528,7 +534,7 @@ void SimPort::Build()
 
 	if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
 	{
-		pServer = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
+		httpServerToken = HttpServerManager::AddConnection(pIOS, pSimConf->HttpAddress(), pSimConf->HttpPort()); //Static method - creates a new HttpServerManager if required
 
 		// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
@@ -543,7 +549,7 @@ void SimPort::Build()
 				rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
 			});
 
-		HttpServerManager::AddHandler(pServer, "GET /", roothandler);
+		HttpServerManager::AddHandler(httpServerToken, "GET /", roothandler);
 
 		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
@@ -558,7 +564,7 @@ void SimPort::Build()
 				rep.headers[1].value = "application/json"; // http::server::mime_types::extension_to_type(extension);
 			});
 
-		HttpServerManager::AddHandler(pServer, "GET /Version", versionhandler);
+		HttpServerManager::AddHandler(httpServerToken, "GET /Version", versionhandler);
 
 		auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
@@ -614,7 +620,7 @@ void SimPort::Build()
 				rep.headers[1].value = contenttype;
 				LOGDEBUG("{} Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
-		HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+		HttpServerManager::AddHandler(httpServerToken, "GET /" + Name, gethandler);
 
 		auto posthandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
@@ -692,9 +698,9 @@ void SimPort::Build()
 				rep.headers[1].value = "text/html";
 				LOGDEBUG("{} Post/Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
-		HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
-		HttpServerManager::AddHandler(pServer, "GET /post/" + Name, posthandler); // Allow the post functionality but using a get - easier for testing!
-		HttpServerManager::StartConnection(pServer);
+		HttpServerManager::AddHandler(httpServerToken, "POST /" + Name, posthandler);
+		HttpServerManager::AddHandler(httpServerToken, "GET /post/" + Name, posthandler); // Allow the post functionality but using a get - easier for testing!
+		HttpServerManager::StartConnection(httpServerToken);
 	}
 }
 
@@ -753,49 +759,71 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 		{
 			if(auto log = odc::spdlog_get("SimPort"))
 				log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
-			if (IsPulse(command.functionCode))
+			switch(command.functionCode)
 			{
-				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
-					PostPublishEvent(fb->on_value);
-				else
-					forced = true;
-				ptimer_t ptimer = pIOS->make_steady_timer();
-				ptimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
-				ptimer->async_wait([ptimer,fb,this](asio::error_code err_code)
+				case ControlCode::PULSE_ON:
+				case ControlCode::LATCH_ON:
+				case ControlCode::LATCH_OFF:
+				case ControlCode::CLOSE_PULSE_ON:
+				case ControlCode::TRIP_PULSE_ON:
+				{
+					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
 					{
-						//FIXME: check err_code?
-						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
-							PostPublishEvent(fb->off_value);
-					});
-				//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
-			}
-			else
-			{
-				message = "Binary feedback is not supported";
-				status = CommandStatus::NOT_SUPPORTED;
+						auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
+						event->SetTimestamp();
+						PostPublishEvent(event);
+					}
+					else
+						forced = true;
+					ptimer_t ptimer = pIOS->make_steady_timer();
+					ptimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
+					ptimer->async_wait([ptimer,fb,this](asio::error_code err_code)
+						{
+							//FIXME: check err_code?
+							if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+							{
+							      auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
+							      event->SetTimestamp();
+							      PostPublishEvent(event);
+							}
+						});
+					//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
+					break;
+				}
+				default:
+					message = "Binary feedback is not supported";
+					status = CommandStatus::NOT_SUPPORTED;
 			}
 		}
 		else //LATCH
 		{
-			if (IsLatchOn(command.functionCode))
+			if (IsOnCommand(command.functionCode))
 			{
 				if(auto log = odc::spdlog_get("SimPort"))
 					log->trace("{}: Control {}: Latch on feedback to Binary {}.",
 						Name, index,fb->on_value->GetIndex());
 				fb->on_value->SetTimestamp();
 				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
-					PostPublishEvent(fb->on_value);
+				{
+					auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
+					event->SetTimestamp();
+					PostPublishEvent(event);
+				}
 				else
 					forced = true;
 			}
-			else if (IsLatchOff(command.functionCode))
+			else if (IsOffCommand(command.functionCode))
 			{
 				if(auto log = odc::spdlog_get("SimPort"))
 					log->trace("{}: Control {}: Latch off feedback to Binary {}.",
 						Name, index, fb->off_value->GetIndex());
 				fb->off_value->SetTimestamp();
 				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
-					PostPublishEvent(fb->off_value);
+				{
+					auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
+					event->SetTimestamp();
+					PostPublishEvent(event);
+				}
 				else
 					forced = true;
 			}
@@ -837,7 +865,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 		if (!pSimConf->ForcedState(odc::EventType::Analog, index))
 		{
 			odc::PositionAction action = binary_position->action[ON];
-			if (IsLatchOff(command.functionCode))
+			if (IsOffCommand(command.functionCode))
 				action = binary_position->action[OFF];
 			auto event = pSimConf->Event(odc::EventType::Analog, index);
 			double payload = event->GetPayload<odc::EventType::Analog>();
@@ -904,7 +932,7 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 
 	std::size_t payload = odc::to_decimal(binary);
 	odc::PositionAction action = binary_position->action[ON];
-	if (IsLatchOff(command.functionCode))
+	if (IsOffCommand(command.functionCode))
 		action = binary_position->action[OFF];
 	if (action == odc::PositionAction::RAISE)
 	{
@@ -960,7 +988,7 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 
 	std::size_t payload = bcd_encoded_to_decimal(bcd_binary);
 	odc::PositionAction action = binary_position->action[ON];
-	if (IsLatchOff(command.functionCode))
+	if (IsOffCommand(command.functionCode))
 		action = binary_position->action[OFF];
 	if (action == odc::PositionAction::RAISE)
 	{
@@ -1004,23 +1032,14 @@ void SimPort::EventResponse(const std::string& message, std::size_t index, Share
 	(*pStatusCallback)(status);
 }
 
-bool SimPort::IsPulse(odc::ControlCode code) const
-{
-	return code == ControlCode::PULSE_ON ||
-	       code == ControlCode::LATCH_ON ||
-	       code == ControlCode::LATCH_OFF ||
-	       code == ControlCode::CLOSE_PULSE_ON ||
-	       code == ControlCode::TRIP_PULSE_ON;
-}
-
-bool SimPort::IsLatchOff(odc::ControlCode code) const
+bool SimPort::IsOffCommand(odc::ControlCode code) const
 {
 	return code == ControlCode::LATCH_OFF ||
 	       code == ControlCode::TRIP_PULSE_ON ||
 	       code == ControlCode::PULSE_OFF;
 }
 
-bool SimPort::IsLatchOn(odc::ControlCode code) const
+bool SimPort::IsOnCommand(odc::ControlCode code) const
 {
 	return code == ControlCode::LATCH_ON ||
 	       code == ControlCode::CLOSE_PULSE_ON ||

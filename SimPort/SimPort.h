@@ -43,7 +43,7 @@ class SimPort: public DataPort
 public:
 	//Implement DataPort interface
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
-
+	~SimPort();
 	void Enable() final;
 	void Disable() final;
 	void Build() final;
@@ -120,15 +120,14 @@ private:
 
 	void EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status);
 
-	bool IsPulse(odc::ControlCode code) const;
-	bool IsLatchOff(odc::ControlCode code) const;
-	bool IsLatchOn(odc::ControlCode code) const;
+	bool IsOffCommand(odc::ControlCode code) const;
+	bool IsOnCommand(odc::ControlCode code) const;
 
 	std::shared_ptr<SimPortCollection> SimCollection;
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;
-	ServerTokenType pServer;
+	ServerTokenType httpServerToken;
 	SimPortConf* pSimConf = nullptr; // Set in constructor
 };
 

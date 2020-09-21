@@ -71,7 +71,7 @@ TEST_CASE(SUITE("SimpleStrings"))
 	std::atomic_bool state2 = false;
 
 	bool close_on_read = false;
-	std::unique_ptr<TCPSocketManager<std::string>>* sock_ptr_ptr;
+	std::unique_ptr<TCPSocketManager>* sock_ptr_ptr;
 	auto CloseOnRead = [&](){if(close_on_read) {(*sock_ptr_ptr)->Close();close_on_read = false;}};
 
 	auto ReadHandler = [&](bool sock1, odc::buf_t& buf)
@@ -99,12 +99,12 @@ TEST_CASE(SUITE("SimpleStrings"))
 	auto StateHandler2 = std::bind(StateHandler,false,std::placeholders::_1);
 
 	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
-	auto pSockMan1 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
+	auto pSockMan1 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,10,true,0,
 		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
 
 	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
-	auto pSockMan2 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
+	auto pSockMan2 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,10,true,0,
 		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock2: {}",msg);});
 
@@ -161,7 +161,7 @@ TEST_CASE(SUITE("SimpleStrings"))
 	TestTearDown();
 }
 
-void interrupt(std::unique_ptr<TCPSocketManager<std::string>>& sock, std::atomic_bool& open, std::unique_ptr<asio::steady_timer>& timer, const std::atomic_bool& stop)
+void interrupt(std::unique_ptr<TCPSocketManager>& sock, std::atomic_bool& open, std::unique_ptr<asio::steady_timer>& timer, const std::atomic_bool& stop)
 {
 	thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
 	open = !open;
@@ -228,13 +228,13 @@ TEST_CASE(SUITE("ManyStrings"))
 	auto StateHandler2 = std::bind(StateHandler,false,std::placeholders::_1);
 
 	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
-	auto pSockMan1 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
+	auto pSockMan1 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,1000000,true,10,
 		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->debug("[{}] Sock1: {}",level,msg);});
 	//use debug for logs - we force lots of errors
 
 	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
-	auto pSockMan2 = std::make_unique<TCPSocketManager<std::string>>(odc::asio_service::Get(),
+	auto pSockMan2 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,1000000,true,10,
 		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->debug("[{}] Sock2: {}",level,msg);});
 	//use debug for logs - we force lots of errors

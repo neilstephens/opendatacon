@@ -33,7 +33,7 @@
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	ChanH(this)
+	pChanH(std::make_unique<ChannelHandler>(this))
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
@@ -74,11 +74,11 @@ const Json::Value DNP3Port::GetStatus() const
 
 	if(!enabled)
 		ret_val["Result"] = "Port disabled";
-	else if(ChanH.GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
+	else if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
 		ret_val["Result"] = "Port enabled - link down";
-	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::RESET)
+	else if(pChanH->GetLinkStatus() == opendnp3::LinkStatus::RESET)
 		ret_val["Result"] = "Port enabled - link up (reset)";
-	else if(ChanH.GetLinkStatus() == opendnp3::LinkStatus::UNRESET)
+	else if(pChanH->GetLinkStatus() == opendnp3::LinkStatus::UNRESET)
 		ret_val["Result"] = "Port enabled - link up (unreset)";
 	else
 		ret_val["Result"] = "Port enabled - link status unknown";
@@ -158,6 +158,49 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 	{
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.IP = JSONRoot["IP"].asString();
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.deviceName = "";
+
+		if(JSONRoot.isMember("IPTransport"))
+		{
+			if(JSONRoot["IPTransport"].asString() == "UDP")
+			{
+				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::UDP;
+				if(JSONRoot.isMember("UDPListenPort"))
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.UDPListenPort = JSONRoot["UDPListenPort"].asUInt();
+			}
+			else if(JSONRoot["IPTransport"].asString() == "TLS")
+			{
+				if(JSONRoot.isMember("TLSFiles")
+				   && JSONRoot["TLSFiles"].isMember("PeerCert")
+				   && JSONRoot["TLSFiles"].isMember("LocalCert")
+				   && JSONRoot["TLSFiles"].isMember("PrivateKey"))
+				{
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::TLS;
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PeerCertFile =
+						JSONRoot["TLSFiles"]["PeerCert"].asString();
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.LocalCertFile =
+						JSONRoot["TLSFiles"]["LocalCert"].asString();
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PrivateKeyFile =
+						JSONRoot["TLSFiles"]["PrivateKey"].asString();
+				}
+				else
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+					{
+						Json::Value Eg;
+						Eg["TLSFiles"]["PeerCert"] = "/path/to/file";
+						Eg["TLSFiles"]["LocalCert"] = "/path/to/file";
+						Eg["TLSFiles"]["PrivateKey"] = "/path/to/file";
+						log->warn("Reverting to TCP: TLS IPTransport requires TLSFiles config, Eg '{}'", Eg.asString());
+					}
+				}
+			}
+			else if(JSONRoot["IPTransport"].asString() != "TCP")
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->warn("Invalid IP transport protocol: {}, should be TCP, UDP, or TLS. Using TCP", JSONRoot["IPTransport"].asString());
+			}
+			//else TCP, already default
+		}
 	}
 
 	if(JSONRoot.isMember("Port"))

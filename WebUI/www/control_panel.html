@@ -57,16 +57,12 @@
             <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
           </div>
         </div>
-        <div class="col-sm-4">
+
           <div class="col-sm-12 text-center">
-            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="init_tcp()">Init TCP Connection for logs</button>
+            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="init_tcp()">Connect    to TCP logs</button>
+            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="deinit_tcp()">Disconnect to TCP logs</button>
           </div>
         </div>
-      </div>
-
-      <br><br><br><br>
-      <div class="alert alert-info clearfix">
-        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="logs()">Logs</button>
       </div>
     </div>
 
@@ -79,7 +75,10 @@
       }
 
       $(document).ready(function() {
-          const commands = ["add_logsink", "del_logsink", "ls_logsink", "set_logsink", "shutdown", "version"];
+          const is_tcp = window.localStorage.getItem("is_tcp_on");
+          if (is_tcp != "ready")
+              window.localStorage.setItem("is_tcp_on", "not_ready");
+          const commands = ["add_logsink", "del_logsink", "ls_logsink", "set_loglevel", "shutdown", "version"];
           commands.forEach(function(value, index) {
               const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + value + '\');">' + value + '</a>'
               $('#opendatacon_list').append(item);
@@ -122,9 +121,6 @@
 
               $("#log_levels_modal").on("hidden.bs.modal", function () {
                   var log_level = window.localStorage.getItem("log_level");
-                  if (!log_level)
-                      log_level = "trace";
-
                   const url = "/RootCommand set_loglevel tcp_web_ui " + log_level;
                   $.post(url, {})
                       .done(function(data) {
@@ -135,26 +131,11 @@
       }
 
       function init_tcp() {
-          window.localStorage.setItem("is_tcp_on", "true");
+          window.localStorage.setItem("is_tcp_on", "ready");
       }
 
-      function logs() {
-          var log_level = window.localStorage.getItem("log_level");
-          if (!log_level)
-              log_level = "trace";
-          document.getElementById("opendatacon_logs_src").src = "log.html";
-          document.getElementById("opendatacon_logs_modal_title").innerHTML="OpenDataCon Logs";
-          $('#opendatacon_logs_modal').modal('show');
-
-          $("#opendatacon_logs_modal").on("hidden.bs.modal", function () {
-              location.reload();
-              const log_level = window.localStorage.getItem("log_level");
-              const url = "/RootCommand set_loglevel tcp_web_ui " + log_level + " off";
-              $.post(url, {})
-                  .done(function(data) {
-                      console.log("set log level success for == " + url + " turned off");
-                  });
-          });
+      function deinit_tcp() {
+          window.localStorage.setItem("is_tcp_on", "not_ready");
       }
 
       function go_to_command_control() {

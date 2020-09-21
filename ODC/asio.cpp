@@ -29,6 +29,9 @@
 //compile asio only in libODC
 //ASIO_SEPARATE_COMPILATION lets other modules link to it
 #include <asio/impl/src.hpp>
+#ifdef ODC_ASIO_SSL
+#include <asio/ssl/impl/src.hpp>
+#endif
 
 namespace odc
 {

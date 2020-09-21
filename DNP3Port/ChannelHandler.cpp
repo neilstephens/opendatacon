@@ -4,12 +4,36 @@
 #include <opendatacon/util.h>
 
 ChannelHandler::ChannelHandler(DNP3Port *p):
+	pIOS(odc::asio_service::Get()),
+	pSyncStrand(pIOS->make_strand()),
+	handler_tracker(std::make_shared<char>()),
+	SetLinkStatus(pSyncStrand->wrap([this,h {handler_tracker}](opendnp3::LinkStatus status){SetLinkStatus_(status);})),
+	LinkUp(pSyncStrand->wrap([this,h{handler_tracker}](){LinkUp_();})),
+	LinkDown(pSyncStrand->wrap([this,h{handler_tracker}](){LinkDown_();})),
+	StateListener(pSyncStrand->wrap([this,h{handler_tracker}](opendnp3::ChannelState state){StateListener_(state);})),
 	pPort(p),
 	pChannel(nullptr),
 	pWatchdog(nullptr),
 	link_status(opendnp3::LinkStatus::UNRESET),
 	link_deadness(LinkDeadness::LinkDownChannelDown)
 {}
+
+ChannelHandler::~ChannelHandler()
+{
+	//re-assign these because they hold shared pointers to the handler tracker
+	StateListener = nullptr;
+	LinkDown = nullptr;
+	LinkUp = nullptr;
+	SetLinkStatus = nullptr;
+
+	std::weak_ptr<void> tracker = handler_tracker;
+	handler_tracker.reset();
+	//now the only tracker shared pointers will be in actual outstanding handlers
+
+	//wait til they're all gone, or harmless
+	while(!tracker.expired() && !pIOS->stopped())
+		pIOS->poll_one();
+}
 
 // Called by OpenDNP3 Thread Pool
 void ChannelHandler::StateListener_(opendnp3::ChannelState state)
@@ -23,13 +47,13 @@ void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 	{
 		link_deadness = LinkDeadness::LinkDownChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkDown(pPort);
+		pWatchdog->LinkDown(pPort->ptr());
 	}
 	else if(state != opendnp3::ChannelState::OPEN && link_deadness != LinkDeadness::LinkDownChannelDown)
 	{
 		link_deadness = LinkDeadness::LinkDownChannelDown;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkDown(pPort);
+		pWatchdog->LinkDown(pPort->ptr());
 	}
 }
 
@@ -42,7 +66,7 @@ void ChannelHandler::SetLinkStatus_(opendnp3::LinkStatus status)
 	{
 		link_deadness = LinkDeadness::LinkUpChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkUp(pPort);
+		pWatchdog->LinkUp(pPort->ptr());
 	}
 }
 void ChannelHandler::LinkDown_()
@@ -53,7 +77,7 @@ void ChannelHandler::LinkDown_()
 	{
 		link_deadness = LinkDeadness::LinkDownChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkDown(pPort);
+		pWatchdog->LinkDown(pPort->ptr());
 	}
 }
 void ChannelHandler::LinkUp_()
@@ -64,7 +88,7 @@ void ChannelHandler::LinkUp_()
 	{
 		link_deadness = LinkDeadness::LinkUpChannelUp;
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
-		pWatchdog->LinkUp(pPort);
+		pWatchdog->LinkUp(pPort->ptr());
 	}
 }
 
@@ -76,6 +100,8 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 
 	std::string ChannelID;
 	bool isSerial;
+	auto udp_listen_port = (pConf->mAddrConf.UDPListenPort == 0) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
+
 	if(pConf->mAddrConf.IP.empty())
 	{
 		ChannelID = pConf->mAddrConf.SerialSettings.deviceName;
@@ -83,6 +109,9 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	}
 	else
 	{
+		if(pConf->mAddrConf.Transport == IPTransport::UDP)
+			ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+std::to_string(udp_listen_port);
+		else
 		ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+to_string(pPort->ClientOrServer());
 		isSerial = false;
 	}
@@ -112,25 +141,61 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	}
 	else
 	{
+		if(pConf->mAddrConf.Transport == IPTransport::UDP)
+		{
+			pChannel = pPort->IOMgr->AddUDPChannel(ChannelID, pConf->LOG_LEVEL,
+				opendnp3::ChannelRetry(
+					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
+					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms)),
+				opendnp3::IPEndpoint("0.0.0.0",udp_listen_port),
+				opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
+				listener);
+		}
+		else //TCP or TLS
+		{
 		switch (pPort->ClientOrServer())
 		{
 			case TCPClientServer::SERVER:
 			{
+					if(pConf->mAddrConf.Transport == IPTransport::TLS)
+					{
+						pChannel = pPort->IOMgr->AddTLSServer(ChannelID, pConf->LOG_LEVEL,
+							pConf->pPointConf->ServerAcceptMode,
+							opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
+							opendnp3::TLSConfig(pConf->mAddrConf.TLSFiles.PeerCertFile,pConf->mAddrConf.TLSFiles.LocalCertFile,pConf->mAddrConf.TLSFiles.PrivateKeyFile),
+							listener);
+					}
+					else
+					{
 				pChannel = pPort->IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL,
 					pConf->pPointConf->ServerAcceptMode,
 					opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)
 					,listener);
+					}
 				break;
 			}
 
 			case TCPClientServer::CLIENT:
 			{
+					if(pConf->mAddrConf.Transport == IPTransport::TLS)
+					{
+						pChannel = pPort->IOMgr->AddTLSClient(ChannelID, pConf->LOG_LEVEL,
+							opendnp3::ChannelRetry(
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms)),
+							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),"0.0.0.0",
+							opendnp3::TLSConfig(pConf->mAddrConf.TLSFiles.PeerCertFile,pConf->mAddrConf.TLSFiles.LocalCertFile,pConf->mAddrConf.TLSFiles.PrivateKeyFile),
+							listener);
+					}
+					else
+					{
 				pChannel = pPort->IOMgr->AddTCPClient(ChannelID, pConf->LOG_LEVEL,
 					opendnp3::ChannelRetry(
-						opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMinms),
-						opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TCPConnectRetryPeriodMaxms)),
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
+								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms)),
 					std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),
 					"0.0.0.0",listener);
+					}
 				break;
 			}
 
@@ -140,6 +205,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 				if(auto log = odc::spdlog_get("DNP3Port"))
 					log->error(msg);
 				throw std::runtime_error(msg);
+				}
 			}
 		}
 	}

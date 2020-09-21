@@ -118,6 +118,7 @@ TEST_CASE(SUITE("PayloadTransport"))
 	while(cb_count < 1000)
 		ios->poll_one();
 	work.reset();
+	ios->run();
 	for(auto& t : threads)
 		t.join();
 

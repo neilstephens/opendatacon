@@ -304,6 +304,7 @@ void Wait(odc::asio_service &IOS, int seconds)
 #define STOP_IOS() \
 	LOGINFO("Shutting Down ASIO Threads");    \
 	work.reset();     \
+	IOS->run();       \
 	for (auto& t : threads) t.join()
 
 #define TEST_MD3MAPort(overridejson)\
@@ -407,7 +408,7 @@ TEST_CASE("Utility - Strand Queue")
 	REQUIRE(!success);
 
 	work.reset();
-
+	pIOS->run();
 	t1.join(); // Wait for thread to end
 	t2.join();
 }
@@ -2394,7 +2395,7 @@ TEST_CASE("Station - Multi-drop TCP Test")
 
 	// An outstation is a server by default (Master connects to it...)
 	// Open a client socket on 127.0.0.1, 1000 and see if we get what we expect...
-	auto pSockMan = std::make_shared<TCPSocketManager<std::string>>
+	auto pSockMan = std::make_shared<TCPSocketManager>
 		                (IOS, false, "127.0.0.1", "10010",
 		                ResponseCallback,
 		                SocketStateHandler,
