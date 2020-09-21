@@ -29,14 +29,14 @@
 #include "DNP3PortConf.h"
 #include "OpenDNP3Helpers.h"
 #include "TypeConversion.h"
-#include <asiodnp3/UpdateBuilder.h>
-#include <asiodnp3/Updates.h>
-#include <asiopal/UTCTimeSource.h>
+#include <opendnp3/outstation/UpdateBuilder.h>
+#include <opendnp3/outstation/Updates.h>
+#include <opendnp3/master/IUTCTimeSource.h>
 #include <chrono>
 #include <iostream>
 #include <opendatacon/util.h>
 #include <opendnp3/outstation/IOutstationApplication.h>
-#include <openpal/logging/LogLevels.h>
+#include <opendnp3/logging/LogLevels.h>
 #include <regex>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -86,7 +86,7 @@ void DNP3OutstationPort::Disable()
 void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusToString(status));
+		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
 	ChanH.SetLinkStatus(status);
 	//TODO: track a new statistic - reset count
 }
@@ -190,60 +190,53 @@ void DNP3OutstationPort::Build()
 		return;
 	}
 
-	asiodnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
-		pConf->pPointConf->BinaryIndicies.size(), //numBinary
-		0,                                        //numDoubleBinary
-		pConf->pPointConf->AnalogIndicies.size(), //numAnalog
-		0,                                        //numCounter
-		0,                                        //numFrozenCounter
-		0,                                        //numBinaryOutputStatus
-		0,                                        //numAnalogOutputStatus
-		0,                                        //numTimeAndInterval
-		0));                                      //numOctetString
+//	opendnp3::OutstationStackConfig StackConfig(opendnp3::DatabaseSizes(
+//		pConf->pPointConf->BinaryIndicies.size(), //numBinary
+//		0,                                        //numDoubleBinary
+//		pConf->pPointConf->AnalogIndicies.size(), //numAnalog
+//		0,                                        //numCounter
+//		0,                                        //numFrozenCounter
+//		0,                                        //numBinaryOutputStatus
+//		0,                                        //numAnalogOutputStatus
+//		0,                                        //numTimeAndInterval
+//		0));                                      //numOctetString
 
-	uint16_t rawIndex = 0;
-	for (auto index : pConf->pPointConf->AnalogIndicies)
+	opendnp3::OutstationStackConfig StackConfig;
+	for (uint16_t index : pConf->pPointConf->AnalogIndicies)
 	{
-		StackConfig.dbConfig.analog[rawIndex].vIndex = index;
-		StackConfig.dbConfig.analog[rawIndex].svariation = pConf->pPointConf->StaticAnalogResponses[index];
-		StackConfig.dbConfig.analog[rawIndex].evariation = pConf->pPointConf->EventAnalogResponses[index];
-		StackConfig.dbConfig.analog[rawIndex].clazz = pConf->pPointConf->AnalogClasses[index];
-		StackConfig.dbConfig.analog[rawIndex].deadband = pConf->pPointConf->AnalogDeadbands[index];
-		++rawIndex;
+		StackConfig.database.analog_input[index].clazz = pConf->pPointConf->AnalogClasses[index];
+		StackConfig.database.analog_input[index].evariation = pConf->pPointConf->EventAnalogResponses[index];
+		StackConfig.database.analog_input[index].svariation = pConf->pPointConf->StaticAnalogResponses[index];
+		StackConfig.database.analog_input[index].deadband = pConf->pPointConf->AnalogDeadbands[index];
 	}
-	rawIndex = 0;
-	for (auto index : pConf->pPointConf->BinaryIndicies)
+	for (uint16_t index : pConf->pPointConf->BinaryIndicies)
 	{
-		StackConfig.dbConfig.binary[rawIndex].vIndex = index;
-		StackConfig.dbConfig.binary[rawIndex].svariation = pConf->pPointConf->StaticBinaryResponses[index];
-		StackConfig.dbConfig.binary[rawIndex].evariation = pConf->pPointConf->EventBinaryResponses[index];
-		StackConfig.dbConfig.binary[rawIndex].clazz = pConf->pPointConf->BinaryClasses[index];
-		++rawIndex;
+		StackConfig.database.binary_input[index].clazz = pConf->pPointConf->BinaryClasses[index];
+		StackConfig.database.binary_input[index].evariation = pConf->pPointConf->EventBinaryResponses[index];
+		StackConfig.database.binary_input[index].svariation = pConf->pPointConf->StaticBinaryResponses[index];
 	}
 
 	// Link layer configuration
-	StackConfig.link.LocalAddr = pConf->mAddrConf.OutstationAddr;
-	StackConfig.link.RemoteAddr = pConf->mAddrConf.MasterAddr;
-	StackConfig.link.NumRetry = pConf->pPointConf->LinkNumRetry;
-	StackConfig.link.Timeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
+	opendnp3::LinkConfig link(false,pConf->pPointConf->LinkUseConfirms);
+	link.LocalAddr = pConf->mAddrConf.OutstationAddr;
+	link.RemoteAddr = pConf->mAddrConf.MasterAddr;
+	link.Timeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);
 	if(pConf->pPointConf->LinkKeepAlivems == 0)
-		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Max();
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Max();
 	else
-		StackConfig.link.KeepAliveTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
-	StackConfig.link.UseConfirms = pConf->pPointConf->LinkUseConfirms;
+		link.KeepAliveTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+	StackConfig.link = link;
 
 	// Outstation parameters
-	StackConfig.outstation.params.indexMode = opendnp3::IndexMode::Discontiguous;
 	StackConfig.outstation.params.allowUnsolicited = pConf->pPointConf->EnableUnsol;
 	StackConfig.outstation.params.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();                                     /// TODO: Create parameter
-	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest;                                    /// The maximum number of controls the outstation will attempt to process from a single APDU
-	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;                                                    /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;                                                    /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.selectTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);             /// How long the outstation will allow an operate to proceed after a prior select
-	StackConfig.outstation.params.solConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);     /// Timeout for solicited confirms
-	StackConfig.outstation.params.unsolConfirmTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
-	StackConfig.outstation.params.unsolRetryTimeout = openpal::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms);   /// Timeout for unsolicited retried
+	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();                                      /// TODO: Create parameter
+	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest;                                     /// The maximum number of controls the outstation will attempt to process from a single APDU
+	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.selectTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);             /// How long the outstation will allow an operate to proceed after a prior select
+	StackConfig.outstation.params.solConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);     /// Timeout for solicited confirms
+	StackConfig.outstation.params.unsolConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
 
 	// TODO: Expose event limits for any new event types to be supported by opendatacon
 	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;   /// The number of binary events the outstation will buffer before overflowing
@@ -422,7 +415,7 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 template<typename T, typename Q>
 inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index, opendnp3::FlagsType FT)
 {
-	asiodnp3::UpdateBuilder builder;
+	opendnp3::UpdateBuilder builder;
 	builder.Modify(FT, index, index, static_cast<uint8_t>(qual));
 	pOutstation->Apply(builder.Build());
 }
@@ -434,13 +427,13 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 
 	if (
 		(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time == 0))
+		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0))
 		)
 	{
 		meas.time = opendnp3::DNPTime(msSinceEpoch());
 	}
 
-	asiodnp3::UpdateBuilder builder;
+	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index);
 	pOutstation->Apply(builder.Build());
 }

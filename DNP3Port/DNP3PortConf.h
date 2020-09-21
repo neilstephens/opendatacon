@@ -27,10 +27,9 @@
 #ifndef DNP3OUTSTATIONPORTCONF_H_
 #define DNP3OUTSTATIONPORTCONF_H_
 #include "DNP3PointConf.h"
-#include <opendnp3/LogLevels.h>
+#include <opendnp3/logging/LogLevels.h>
 #include <opendatacon/DataPort.h>
-#include <asiopal/SerialTypes.h>
-#include <openpal/logging/LogFilters.h>
+#include <opendnp3/channel/SerialSettings.h>
 
 enum class TCPClientServer {CLIENT,SERVER,DEFAULT};
 inline std::string to_string(const TCPClientServer CS)
@@ -50,7 +49,7 @@ enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 struct DNP3AddrConf
 {
 	//Serial
-	asiopal::SerialSettings SerialSettings;
+	opendnp3::SerialSettings SerialSettings;
 
 	//IP
 	std::string IP;
@@ -84,7 +83,7 @@ public:
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
 	DNP3AddrConf mAddrConf;
-	openpal::LogFilters LOG_LEVEL;
+	opendnp3::LogLevels LOG_LEVEL;
 };
 
 #endif /* DNP3OUTSTATIONPORTCONF_H_ */
