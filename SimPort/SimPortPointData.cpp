@@ -193,13 +193,17 @@ Json::Value SimPortPointData::CurrentState()
 	for (auto it = m_points[type].begin(); it != m_points[type].end(); ++it)
 	{
 		const bool val = it->second->event->GetPayload<odc::EventType::Binary>();
-		state["BinaryCurrent"][std::to_string(it->first)] = std::to_string(val);
+		state["BinaryPayload"][std::to_string(it->first)] = std::to_string(val);
+		state["BinaryQuality"][std::to_string(it->first)] = odc::ToString(it->second->event->GetQuality());
+		state["BinaryTimestamp"][std::to_string(it->first)] = odc::since_epoch_to_datetime(it->second->event->GetTimestamp());
 	}
 	type = odc::EventType::Analog;
 	for (auto it = m_points[type].begin(); it != m_points[type].end(); ++it)
 	{
 		const double val = it->second->event->GetPayload<odc::EventType::Analog>();
-		state["AnalogCurrent"][std::to_string(it->first)] = std::to_string(val);
+		state["AnalogPayload"][std::to_string(it->first)] = std::to_string(val);
+		state["AnalogQuality"][std::to_string(it->first)] = odc::ToString(it->second->event->GetQuality());
+		state["AnalogTimestamp"][std::to_string(it->first)] = odc::since_epoch_to_datetime(it->second->event->GetTimestamp());
 	}
 	return state;
 }

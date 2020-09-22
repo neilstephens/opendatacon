@@ -297,7 +297,7 @@ inline std::string GetBinaryEncodedString(const std::vector<std::size_t>& indexe
 {
 	std::string binary;
 	for (std::size_t index : indexes)
-		binary += sim_port->GetCurrentState()["BinaryCurrent"][std::to_string(index)].asString();
+		binary += sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)].asString();
 	return binary;
 }
 
@@ -313,7 +313,7 @@ std::size_t GetBCDEncodedString(const std::vector<std::size_t>& indexes, const s
 {
 	std::string bcd_str;
 	for (std::size_t index : indexes)
-		bcd_str += sim_port->GetCurrentState()["BinaryCurrent"][std::to_string(index)].asString();
+		bcd_str += sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)].asString();
 	return odc::bcd_encoded_to_decimal(bcd_str);
 }
 
@@ -355,7 +355,7 @@ TEST_CASE("TestConfigLoad")
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
 		sim_port->Build();
 		sim_port->Enable();
-		const bool result = sim_port->GetCurrentState()["AnalogCurrent"].isMember("0");
+		const bool result = sim_port->GetCurrentState()["AnalogPayload"].isMember("0");
 		REQUIRE(result == true);
 	}
 
@@ -391,7 +391,7 @@ TEST_CASE("TestForcedPoint")
 		const ParamCollection params = BuildParams("Analog", "0", "12345.6789");
 		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
-		REQUIRE(sim_port->GetCurrentState()["AnalogCurrent"]["0"] == "12345.678900");
+		REQUIRE(sim_port->GetCurrentState()["AnalogPayload"]["0"] == "12345.678900");
 	}
 
 	UnLoadModule(port_lib);
@@ -461,7 +461,7 @@ TEST_CASE("TestAnalogEventToAll")
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : ANALOG_INDEXES)
-			REQUIRE(sim_port->GetCurrentState()["AnalogCurrent"][std::to_string(index)] == "12345.678900");
+			REQUIRE(sim_port->GetCurrentState()["AnalogPayload"][std::to_string(index)] == "12345.678900");
 	}
 
 	UnLoadModule(port_lib);
@@ -497,7 +497,7 @@ TEST_CASE("TestBinaryEventToAll")
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
-			REQUIRE(sim_port->GetCurrentState()["BinaryCurrent"][std::to_string(index)] == "1");
+			REQUIRE(sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)] == "1");
 	}
 
 	UnLoadModule(port_lib);
@@ -527,10 +527,10 @@ TEST_CASE("TestLatchOn")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		std::string result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
 		REQUIRE(result == "0");
 		SendEvent(ControlCode::LATCH_ON, 0, sim_port, CommandStatus::SUCCESS);
-		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
 		REQUIRE(result == "1");
 	}
 
@@ -561,10 +561,10 @@ TEST_CASE("TestLatchOff")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::string result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		std::string result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
 		REQUIRE(result == "0");
 		SendEvent(ControlCode::TRIP_PULSE_ON, 0, sim_port, CommandStatus::SUCCESS);
-		result = sim_port->GetCurrentState()["BinaryCurrent"]["0"].asString();
+		result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
 		REQUIRE(result == "0");
 	}
 
@@ -602,7 +602,7 @@ TEST_CASE("DNP3TestAnalogTapChangerRaise")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
 		REQUIRE(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
@@ -612,7 +612,7 @@ TEST_CASE("DNP3TestAnalogTapChangerRaise")
 		for (int i = 6; i <= 10; ++i)
 		{
 			SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -620,7 +620,7 @@ TEST_CASE("DNP3TestAnalogTapChangerRaise")
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
 		SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
@@ -656,7 +656,7 @@ TEST_CASE("DNP3TestAnalogTapChangerLower")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
 		REQUIRE(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
@@ -666,7 +666,7 @@ TEST_CASE("DNP3TestAnalogTapChangerLower")
 		for (int i = 4; i >= 0; --i)
 		{
 			SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -674,7 +674,7 @@ TEST_CASE("DNP3TestAnalogTapChangerLower")
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
@@ -710,7 +710,7 @@ TEST_CASE("DNP3TestAnalogTapChangerRandom")
 		sim_port->Build();
 		sim_port->Enable();
 
-		int tap_position = std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString());
+		int tap_position = std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString());
 		REQUIRE(tap_position == 5);
 		for (int i = 0; i < 20; ++i)
 		{
@@ -729,7 +729,7 @@ TEST_CASE("DNP3TestAnalogTapChangerRandom")
 				status = CommandStatus::OUT_OF_RANGE;
 			}
 			SendEvent(ControlCode::UNDEFINED, 2 + index, sim_port, status);
-			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 	}
 	UnLoadModule(port_lib);
@@ -1089,7 +1089,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRaise")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
 		REQUIRE(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
@@ -1099,7 +1099,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRaise")
 		for (int i = 6; i <= 10; ++i)
 		{
 			SendEvent(CODES[1][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -1107,7 +1107,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRaise")
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
 		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
@@ -1143,7 +1143,7 @@ TEST_CASE("ConitelTestAnalogTapChangerLower")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::string result = sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString();
+		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
 		REQUIRE(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
@@ -1153,7 +1153,7 @@ TEST_CASE("ConitelTestAnalogTapChangerLower")
 		for (int i = 4; i >= 0; --i)
 		{
 			SendEvent(CODES[0][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -1161,7 +1161,7 @@ TEST_CASE("ConitelTestAnalogTapChangerLower")
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1196,7 +1196,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRandom")
 		sim_port->Build();
 		sim_port->Enable();
 
-		int tap_position = std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString());
+		int tap_position = std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString());
 		for (int i = 0; i < 20; ++i)
 		{
 			CommandStatus status = CommandStatus::SUCCESS;
@@ -1214,7 +1214,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRandom")
 				status = CommandStatus::OUT_OF_RANGE;
 			}
 			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 8, sim_port, status);
-			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogCurrent"]["7"].asString()));
+			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 	}
 	UnLoadModule(port_lib);
@@ -1697,3 +1697,4 @@ TEST_CASE("ConitelTestBCDTapChangerRandomWithClose")
 	UnLoadModule(port_lib);
 	TestTearDown();
 }
+

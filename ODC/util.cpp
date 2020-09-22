@@ -270,4 +270,14 @@ std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size)
 	return decimal.substr(decimal.size() - size, size);
 }
 
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds)
+{
+	auto tm = spdlog::details::os::localtime(milliseconds / 1000);
+	char buff[64] = {0};
+	std::sprintf(buff, "%04d-%02d-%02d %02d:%02d:%02d.%03d",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec, static_cast<int>(milliseconds % 1000));
+	return std::string(buff);
+}
+
 } // namespace odc
