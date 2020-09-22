@@ -188,22 +188,18 @@ std::unordered_map<std::size_t, double> SimPortPointData::Values(odc::EventType 
 Json::Value SimPortPointData::CurrentState()
 {
 	Json::Value state;
-	odc::EventType type = odc::EventType::Binary;
-	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
-	for (auto it = m_points[type].begin(); it != m_points[type].end(); ++it)
+	std::vector<odc::EventType> type = {odc::EventType::Binary, odc::EventType::Analog};
+	for (auto t : type)
 	{
-		const bool val = it->second->event->GetPayload<odc::EventType::Binary>();
-		state["BinaryPayload"][std::to_string(it->first)] = std::to_string(val);
-		state["BinaryQuality"][std::to_string(it->first)] = odc::ToString(it->second->event->GetQuality());
-		state["BinaryTimestamp"][std::to_string(it->first)] = odc::since_epoch_to_datetime(it->second->event->GetTimestamp());
-	}
-	type = odc::EventType::Analog;
-	for (auto it = m_points[type].begin(); it != m_points[type].end(); ++it)
-	{
-		const double val = it->second->event->GetPayload<odc::EventType::Analog>();
-		state["AnalogPayload"][std::to_string(it->first)] = std::to_string(val);
-		state["AnalogQuality"][std::to_string(it->first)] = odc::ToString(it->second->event->GetQuality());
-		state["AnalogTimestamp"][std::to_string(it->first)] = odc::since_epoch_to_datetime(it->second->event->GetTimestamp());
+		for (auto it : m_points[t])
+		{
+			if (t == odc::EventType::Binary)
+				state[odc::ToString(t)+"Payload"][std::to_string(it.first)] = std::to_string(it.second->event->GetPayload<odc::EventType::Binary>());
+			else
+				state[odc::ToString(t)+"Payload"][std::to_string(it.first)] = std::to_string(it.second->event->GetPayload<odc::EventType::Analog>());
+			state[odc::ToString(t)+"Quality"][std::to_string(it.first)] = odc::ToString(it.second->event->GetQuality());
+			state[odc::ToString(t)+"Timestamp"][std::to_string(it.first)] = odc::since_epoch_to_datetime(it.second->event->GetTimestamp());
+		}
 	}
 	return state;
 }
