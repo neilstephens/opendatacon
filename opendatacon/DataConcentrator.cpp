@@ -37,6 +37,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/fmt/ostr.h>
 #include <thread>
+#include <set>
 
 /*
    Whenever needed we will ask for all the Sinks present,
@@ -923,54 +924,189 @@ bool DataConcentrator::ReloadConfig()
 {
 	//TODO: DataConcentrator::ReloadConfig()
 
-	//copy all the configs for ports, connectors and interfaces
+	auto old_main_conf = RecallOrCreate(ConfFilename);
 
-	//clear the config parser cache
+	//copy all the old config file contents for ports and connectors
+	std::unordered_map<std::string,std::shared_ptr<const Json::Value>> old_file_confs;
+	auto cache_confs = [&](const auto& conf_files)
+				 {
+					 for(auto& file : conf_files)
+						 if(file != "ConfOverrides" && old_file_confs.find(file) == old_file_confs.end())
+							 old_file_confs[file] = RecallOrCreate(file);
+				 };
+	for(auto p : DataPorts)
+		cache_confs(p.second->GetConfiguration().getMemberNames());
+	for(auto c : DataConnectors)
+		cache_confs(c.second->GetConfiguration().getMemberNames());
 
-	//get the main config
-	//iterate over the new list of ports
-		//mark to create if new
-		//mark for delete and create if config changed
-	//mark the remaining ports for delete
-	//keep a list of subscribers for ports marked for delete
+	//clear the config parser cache so new files are loaded when we GetConfiguration()
+	ConfigParser::ClearFileCache();
 
-	//iterate over the new list of connectors
-		//mark to create if new
-		//mark to delete/create if conf changed
-			//or if subscribed to port marked for delete
-	//mark the remaining conns for delete
+	auto new_main_conf = RecallOrCreate(ConfFilename);
+	std::set<std::string> created;
+	std::set<std::string> changed;
+	std::set<std::string> deleted;
+	try
+	{
+		for(auto IOType : {"Ports","Connectors"})
+		{
+			//check for new or changed ports/conns in the new config
+			for(Json::ArrayIndex n = 0; n < (*new_main_conf)[IOType].size(); ++n)
+			{
+				const auto& new_object = (*new_main_conf)[IOType][n];
+				if(!new_object.isMember("Name"))
+				{
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->error("{} object without 'Name' : '{}'",IOType,new_object.toStyledString());
+					continue;
+				}
+				const auto& name = new_object["Name"].asString();
 
-	//disable ports marked for delete
-	//disable conns marked for delete
-	//disable ports connected to deletion conns
-		//mark for re-enable (if check status before...)
+				//try to find that name in the old config
+				const Json::Value* p_old_object = nullptr;
+				for(Json::ArrayIndex m = 0; m < (*old_main_conf)[IOType].size(); ++m)
+					if((*old_main_conf)[IOType][m]["Name"] == name)
+					{
+						p_old_object = &(*old_main_conf)[IOType][m];
+						break;
+					}
 
-	//wait for a bit
+				if(p_old_object)
+				{
+					auto diff_overrides = ((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"]);
+
+					auto diff_config = *old_file_confs[(*p_old_object)["ConfFilename"].asString()]
+					                   != *RecallOrCreate(new_object["ConfFilename"].asString());
+
+					if(diff_overrides || diff_config)
+						changed.insert(name);
+				}
+				else
+					created.insert(name);
+			}
+			//check for old ports that aren't in the new config
+			for(Json::ArrayIndex m = 0; m < (*old_main_conf)[IOType].size(); ++m)
+			{
+				bool found = false;
+				for(Json::ArrayIndex n = 0; n < (*new_main_conf)[IOType].size(); ++n)
+					if((*old_main_conf)[IOType][m]["Name"] == (*new_main_conf)[IOType][n]["Name"])
+					{
+						found = true;
+						break;
+					}
+				if(!found)
+					deleted.insert((*old_main_conf)[IOType][m]["Name"].asString());
+			}
+		}
+	}
+	catch(std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("DataConcentrator::ReloadConfig() Failed : '{}'",e.what());
+		return false;
+	}
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+	{
+		for(auto create : created)
+			log->debug("New IOHandler: '{}'",create);
+		for(auto change : changed)
+			log->debug("Changed IOHandler: '{}'",change);
+		for(auto del : deleted)
+			log->debug("Deleted IOHandler: '{}'",del);
+	}
+
+	//superset for all that will be deleted
+	std::set<std::string> delete_or_change(deleted);
+	for(auto name : changed)
+		delete_or_change.insert(name);
+
+	//check to make sure things really got constructed, not just in the config
+	for(auto name : delete_or_change)
+	{
+		auto ioh_it = IOHandler::GetIOHandlers().find(name);
+		if(ioh_it == IOHandler::GetIOHandlers().end())
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->warn("IOHandler '{}' in running config not found.",name);
+			delete_or_change.erase(name);
+			deleted.erase(name);
+			if(changed.erase(name))
+				created.insert(name);
+		}
+	}
+
+	//check for connections that would be left dangling by deleted ports before we do anything
+	for(auto name : deleted)
+		for(auto& sub_pair : IOHandler::GetIOHandlers().at(name)->GetSubscribers())
+			if(dynamic_cast<DataConnector*>(sub_pair.second) && delete_or_change.find(sub_pair.first) == delete_or_change.end())
+			{
+				if(auto log = odc::spdlog_get("opendatacon"))
+					log->error("Connector '{}' would be left with dangling reference to deleted object '{}'.",sub_pair.first,name);
+				return false;
+			}
+
+	std::set<std::string> reenable;
+	for(auto name : delete_or_change)
+	{
+		//disable IOHandlers marked for delete/change
+		IOHandler::GetIOHandlers().at(name)->Disable();
+
+		//if it's a connector, also disable connected ports
+		if(auto pConn = dynamic_cast<DataConnector*>(IOHandler::GetIOHandlers().at(name)))
+			for(auto conn_pair : pConn->GetConnections())
+				for(auto& p : {conn_pair.second.first, conn_pair.second.second})
+					if(p->Enabled() && delete_or_change.find(p->GetName()) == delete_or_change.end())
+					{
+						if(auto log = odc::spdlog_get("opendatacon"))
+							log->debug("Temporary disablement of IOHandler '{}', connected to changing connection '{}'.",p->GetName(),pConn->GetName());
+						p->Disable();
+						reenable.insert(p->GetName());
+					}
+	}
+
+	//wait a while to make sure everything is disabled
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 	///////////// PARK THREADS ///////////////
 	if(!ParkThreads())
 		return false;
+	//Now we can modify the unprotected collections
+	//We've induced a state similar to start-up (when there are no other threads running)
 
-	std::this_thread::sleep_for(std::chrono::seconds(3));
 	//Unsubscribe conns to be deleted (from thier ports)
-	//delete marked ports
-		//remove from IOHandlers list
-		//erase from collection
-	//delete marked conns
-		//remove from IOHandlers list
-		//erase from collection
+	for(auto name : delete_or_change)
+	{
+		if(auto pConn = dynamic_cast<DataConnector*>(IOHandler::GetIOHandlers().at(name)))
+			for(auto conn_pair : pConn->GetConnections())
+				for(auto& p : {conn_pair.second.first, conn_pair.second.second})
+					p->UnSubscribe(pConn->GetName());
+	}
+
+	//delete old objects
+	for(auto name : delete_or_change)
+	{
+		//FIXME: backup OnDemand state??? anything else stateful???
+		IOHandler::GetIOHandlers().erase(name);
+		DataPorts.erase(name);
+		DataConnectors.erase(name);
+	}
+
 	//create ports marked for creation
 	//create conns marked for creation
 	//build created ports
-		//push into collection
+	//push into collection
 	//build created conns
-		//push into collection
+	//push into collection
 
 	////////////// UNPARK THREADS ////////////
 	parking = false;
 
 	//enable (/w initstate) created conns
 	//enable (/w initstate) created ports
+
+	for(auto enable : reenable)
+		IOHandler::GetIOHandlers().at(enable)->Enable();
 
 	return true;
 }

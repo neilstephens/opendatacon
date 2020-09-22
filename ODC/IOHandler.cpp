@@ -50,6 +50,10 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, const std::string& aName)
 {
 	this->Subscribers[aName] = pIOHandler;
 }
+void IOHandler::UnSubscribe(const std::string& aName)
+{
+	this->Subscribers.erase(aName);
+}
 
 bool DemandMap::InDemand()
 {

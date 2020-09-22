@@ -71,6 +71,8 @@ public:
 	virtual void Disable() = 0;
 
 	void Subscribe(IOHandler* pIOHandler, const std::string& aName);
+	void UnSubscribe(const std::string& aName);
+	inline const std::unordered_map<std::string,IOHandler*>& GetSubscribers(){return Subscribers;}
 
 	inline const std::string& GetName(){return Name;}
 	inline const bool Enabled(){return enabled;}

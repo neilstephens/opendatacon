@@ -50,11 +50,11 @@ private:
 
 //static members
 public:
+	static std::shared_ptr<const Json::Value> RecallOrCreate(const std::string& FileName);
 	static void ClearFileCache();
 private:
-	static std::shared_ptr<const Json::Value> GetFileConfig(const std::string& FileName);
 	static void AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits);
-	static std::shared_ptr<const Json::Value> RecallOrCreate(const std::string& FileName);
+	static Json::Value GetConfiguration(const std::string& aConfFilename, const Json::Value& aConfOverrides);
 
 	static std::unordered_map<std::string,std::shared_ptr<Json::Value>> JSONFileCache;
 };

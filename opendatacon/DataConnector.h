@@ -53,6 +53,11 @@ public:
 		return Json::Value();
 	}
 
+	inline const std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*>>& GetConnections()
+	{
+		return Connections;
+	}
+
 	void Enable() override;
 	void Disable() override;
 	void Build();

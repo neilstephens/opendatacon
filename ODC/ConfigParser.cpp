@@ -59,6 +59,8 @@ void ConfigParser::ProcessFile()
 //static
 std::shared_ptr<const Json::Value> ConfigParser::RecallOrCreate(const std::string& FileName)
 {
+	if(FileName.empty())
+		return std::make_shared<Json::Value>();
 	if(JSONFileCache.find(FileName) == JSONFileCache.end()) //not cached - read it in
 	{
 		std::ifstream fin(FileName);
@@ -69,7 +71,7 @@ std::shared_ptr<const Json::Value> ConfigParser::RecallOrCreate(const std::strin
 				log->error(msg);
 			else
 				std::cerr << "ERROR: " << msg << std::endl;
-			return nullptr;
+			return std::make_shared<Json::Value>();
 		}
 		Json::CharReaderBuilder JSONReader;
 		std::string err_str;
@@ -82,7 +84,7 @@ std::shared_ptr<const Json::Value> ConfigParser::RecallOrCreate(const std::strin
 				log->error(msg);
 			else
 				std::cerr << "ERROR: " << msg <<std::endl;
-			return nullptr;
+			return std::make_shared<Json::Value>();
 		}
 	}
 	return JSONFileCache[FileName];
@@ -95,36 +97,32 @@ void ConfigParser::ClearFileCache()
 }
 
 //static
-std::shared_ptr<const Json::Value> ConfigParser::GetFileConfig(const std::string& FileName)
-{
-	auto it = JSONFileCache.find(FileName);
-	if(it != JSONFileCache.end())
-		return it->second;
-
-	return std::make_shared<Json::Value>();
-}
-
-//static
 void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits)
 {
 	for(auto& InheritFile : Inherits)
 	{
 		auto Filename = InheritFile.asString();
-		JSONRoot[Filename] = *GetFileConfig(Filename);
+		JSONRoot[Filename] = *RecallOrCreate(Filename);
 		if (JSONRoot[Filename].isMember("Inherits"))
 			AddInherits(JSONRoot, JSONRoot[Filename]["Inherits"]);
 	}
 }
 
-Json::Value ConfigParser::GetConfiguration() const
+//static
+Json::Value ConfigParser::GetConfiguration(const std::string& aConfFilename, const Json::Value& aConfOverrides)
 {
 	Json::Value JSONRoot;
-	JSONRoot[ConfFilename] = *GetFileConfig(ConfFilename);
-	if(JSONRoot[ConfFilename].isMember("Inherits"))
+	JSONRoot[aConfFilename] = *RecallOrCreate(aConfFilename);
+	if(JSONRoot[aConfFilename].isMember("Inherits"))
 	{
-		AddInherits(JSONRoot, JSONRoot[ConfFilename]["Inherits"]);
+		AddInherits(JSONRoot, JSONRoot[aConfFilename]["Inherits"]);
 	}
-	JSONRoot["ConfigOverrides"] = ConfOverrides;
+	JSONRoot["ConfOverrides"] = aConfOverrides;
 
 	return JSONRoot;
+}
+
+Json::Value ConfigParser::GetConfiguration() const
+{
+	return GetConfiguration(ConfFilename, ConfOverrides);
 }

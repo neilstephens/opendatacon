@@ -239,7 +239,7 @@ TEST_CASE(SUITE("Get"))
 			    ],
 			    "Three" : "Own"
 		  },
-		  "ConfigOverrides" :
+		  "ConfOverrides" :
 		  {
 			    "Five" : "Override",
 			    "Four" : "Override"
