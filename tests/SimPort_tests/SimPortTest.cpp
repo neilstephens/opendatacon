@@ -31,6 +31,8 @@
 #include <array>
 #include <random>
 #include <sstream>
+#include <chrono>
+#include <iostream>
 
 #define SUITE(name) "SimTests - " name
 
@@ -498,6 +500,164 @@ TEST_CASE("TestBinaryEventToAll")
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
 			REQUIRE(sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)] == "1");
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests binary event quality
+  param        : TestBinaryEventQuality
+  return       : NA
+*/
+TEST_CASE("TestBinaryEventQuality")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const ParamCollection params = BuildParams("Binary", ".*", "1");
+		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+		for (std::size_t index : BINARY_INDEXES)
+			REQUIRE(sim_port->GetCurrentState()["BinaryQuality"][std::to_string(index)] == "|ONLINE|");
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests analog event quality
+  param        : TestAnalogEventQuality
+  return       : NA
+*/
+TEST_CASE("TestAnalogEventQuality")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const ParamCollection params = BuildParams("Binary", ".*", "1");
+		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+		for (std::size_t index : ANALOG_INDEXES)
+			REQUIRE(sim_port->GetCurrentState()["AnalogQuality"][std::to_string(index)] == "|ONLINE|");
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests binary event timestamp
+  param        : TestBinaryEventTimestamp
+  return       : NA
+*/
+TEST_CASE("TestBinaryEventTimestamp")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		char buf[64] = {0};
+		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+		const std::string now_time(buf);
+		const ParamCollection params = BuildParams("Binary", ".*", "1");
+		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+		for (std::size_t index : BINARY_INDEXES)
+		{
+			const std::string dt = sim_port->GetCurrentState()["BinaryTimestamp"][std::to_string(index)].asString();
+			REQUIRE(now_time == dt.substr(0, now_time.size()));
+		}
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests analog event timestamp
+  param        : TestAnalogEventTimestamp
+  return       : NA
+*/
+TEST_CASE("TestAnalogEventTimestamp")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		char buf[64] = {0};
+		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+		const std::string now_time(buf);
+		const ParamCollection params = BuildParams("Binary", ".*", "1");
+		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		REQUIRE(value["RESULT"].asString() == "Success");
+		for (std::size_t index : ANALOG_INDEXES)
+		{
+			const std::string dt = sim_port->GetCurrentState()["AnalogTimestamp"][std::to_string(index)].asString();
+			REQUIRE(now_time == dt.substr(0, now_time.size()));
+		}
 	}
 
 	UnLoadModule(port_lib);
