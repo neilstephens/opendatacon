@@ -31,8 +31,10 @@
 #include <unordered_map>
 #include <memory>
 
+class DataConcentrator;
 class ConfigParser
 {
+	friend class DataConcentrator;
 public:
 	ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides = Json::Value());
 	virtual ~ConfigParser(){}
@@ -48,11 +50,8 @@ protected:
 private:
 	void ProcessInherits(const std::string& FileName);
 
-//static members
-public:
+	//static members
 	static std::shared_ptr<const Json::Value> RecallOrCreate(const std::string& FileName);
-	static void ClearFileCache();
-private:
 	static void AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits);
 	static Json::Value GetConfiguration(const std::string& aConfFilename, const Json::Value& aConfOverrides);
 

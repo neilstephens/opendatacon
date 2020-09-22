@@ -223,6 +223,17 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
+void DataConnector::ReplaceAddress(IOHandler* original, IOHandler* replacement)
+{
+	for(auto& connection : Connections)
+	{
+		if(connection.second.first == original)
+			connection.second.first = replacement;
+		if(connection.second.second == original)
+			connection.second.second = replacement;
+	}
+}
+
 void DataConnector::Event(ConnectState state, const std::string& SenderName)
 {
 	if(MuxConnectionEvents(state, SenderName))

@@ -480,255 +480,272 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 	//Configure the user interface
 	if(JSONRoot.isMember("Plugins"))
-	{
-		log->info("Loading Plugins... ");
-
-		const Json::Value Plugins = JSONRoot["Plugins"];
-
-		for(Json::Value::ArrayIndex n = 0; n < Plugins.size(); ++n)
-		{
-			if(!Plugins[n].isMember("Type") || !Plugins[n].isMember("Name") || !Plugins[n].isMember("ConfFilename"))
-			{
-				log->error("Invalid plugin config: need at least Type, Name, ConfFilename: \n'{}\n' : ignoring", Plugins[n].toStyledString());
-				continue;
-			}
-
-			auto PluginName = Plugins[n]["Name"].asString();
-			if(Interfaces.count(PluginName) > 0)
-			{
-				log->error("Ignoring duplicate plugin name '{}'.", PluginName);
-				continue;
-			}
-
-			//Looks for a specific library (for libs that implement more than one class)
-			std::string libname;
-			if(Plugins[n].isMember("Library"))
-			{
-				libname = Plugins[n]["Library"].asString();
-			}
-			//Otherwise use the naming convention lib<Type>Plugin.so to find the default lib that implements a type of plugin
-			else
-			{
-				libname = Plugins[n]["Type"].asString();
-			}
-			std::string libfilename = GetLibFileName(libname);
-
-			//try to load the lib
-			auto pluginlib = LoadModule(libfilename);
-
-			if(pluginlib == nullptr)
-			{
-				log->error("{}",LastSystemError());
-				log->error("{} : Dynamic library '{}' load failed skipping plugin...", PluginName, libfilename);
-				continue;
-			}
-
-			//Our API says the library should export a creation function: IUI* new_<Type>Plugin(Name, Filename, Overrides)
-			//it should return a pointer to a heap allocated instance of a descendant of IUI
-			std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
-			auto new_plugin_func = reinterpret_cast<IUI*(*)(std::string, std::string, const Json::Value)>(LoadSymbol(pluginlib, new_funcname));
-
-			std::string delete_funcname = "delete_"+Plugins[n]["Type"].asString()+"Plugin";
-			auto delete_plugin_func = reinterpret_cast<void (*)(IUI*)>(LoadSymbol(pluginlib, delete_funcname));
-
-			if(new_plugin_func == nullptr)
-				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", PluginName, new_funcname, libfilename, LastSystemError());
-			if(delete_plugin_func == nullptr)
-				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", PluginName, delete_funcname, libfilename, LastSystemError());
-			if(new_plugin_func == nullptr || delete_plugin_func == nullptr)
-			{
-				log->error("{} : Failed to load plugin, skipping...", PluginName);
-				continue;
-			}
-			//Create a logger if we haven't already
-			if(!odc::spdlog_get(libname))
-				AddLogger(libname, LogSinks);
-
-			auto plugin_cleanup = [=](IUI* plugin)
-						    {
-							    delete_plugin_func(plugin);
-							    UnLoadModule(pluginlib);
-						    };
-
-			//call the creation function and wrap the returned pointer to a new plugin
-			Interfaces.emplace(PluginName, std::shared_ptr<IUI>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), plugin_cleanup));
-		}
-	}
+		ProcessPlugins(JSONRoot["Plugins"]);
 
 	if(JSONRoot.isMember("Ports"))
-	{
-		const Json::Value Ports = JSONRoot["Ports"];
-
-		for(Json::Value::ArrayIndex n = 0; n < Ports.size(); ++n)
-		{
-			if(!Ports[n].isMember("Type") || !Ports[n].isMember("Name") || !Ports[n].isMember("ConfFilename"))
-			{
-				log->error("Invalid port config: need at least Type, Name, ConfFilename: \n'{}\n' : ignoring", Ports[n].toStyledString());
-				continue;
-			}
-			if(DataPorts.count(Ports[n]["Name"].asString()))
-			{
-				log->error("Duplicate Port Name; ignoring:\n'{}\n'", Ports[n].toStyledString());
-				continue;
-			}
-
-			std::function<void (IOHandler*)> set_init_mode;
-			if(Ports[n].isMember("InitState"))
-			{
-				if(Ports[n]["InitState"].asString() == "ENABLED")
-				{
-					set_init_mode = [](IOHandler* aIOH)
-							    {
-								    aIOH->InitState = InitState_t::ENABLED;
-							    };
-				}
-				else if(Ports[n]["InitState"].asString() == "DISABLED")
-				{
-					set_init_mode = [](IOHandler* aIOH)
-							    {
-								    aIOH->InitState = InitState_t::DISABLED;
-							    };
-				}
-				else if(Ports[n]["InitState"].asString() == "DELAYED")
-				{
-					uint16_t delay = 0;
-					if(Ports[n].isMember("EnableDelayms"))
-					{
-						delay = Ports[n]["EnableDelayms"].asUInt();
-					}
-					else
-					{
-						log->error("Invalid Port config: Missing 'EnableDelayms':'\n{}\n' : defaulting to 0", Ports[n].toStyledString());
-					}
-					set_init_mode = [=](IOHandler* aIOH)
-							    {
-								    aIOH->InitState = InitState_t::DELAYED;
-								    aIOH->EnableDelayms = delay;
-							    };
-				}
-			}
-			else
-			{
-				set_init_mode = [](IOHandler* aIOH){};
-			}
-
-			if(Ports[n]["Type"].asString() == "Null")
-			{
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
-				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
-				continue;
-			}
-
-			//Looks for a specific library (for libs that implement more than one class)
-			std::string libname;
-			if(Ports[n].isMember("Library"))
-			{
-				libname = Ports[n]["Library"].asString();
-			}
-			//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
-			else
-			{
-				libname = Ports[n]["Type"].asString()+"Port";
-			}
-			std::string libfilename(GetLibFileName(libname));
-
-			//try to load the lib
-			auto portlib = LoadModule(libfilename);
-
-			if(portlib == nullptr)
-			{
-				log->error("{}",LastSystemError());
-				log->error("Failed to load library '{}' mapping {} to NullPort...", libfilename, Ports[n]["Name"].asString());
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
-				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
-				continue;
-			}
-
-			//Create a logger if we haven't already
-			if(!odc::spdlog_get(libname))
-				AddLogger(libname, LogSinks);
-
-			//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
-			//it should return a pointer to a heap allocated instance of a descendant of DataPort
-			std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
-			auto new_port_func = reinterpret_cast<DataPort*(*)(const std::string&, const std::string&, const Json::Value&)>(LoadSymbol(portlib, new_funcname));
-
-			std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
-			auto delete_port_func = reinterpret_cast<void (*)(DataPort*)>(LoadSymbol(portlib, delete_funcname));
-
-			if(new_port_func == nullptr)
-				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), new_funcname, libfilename, LastSystemError());
-			if(delete_port_func == nullptr)
-				log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), delete_funcname, libfilename, LastSystemError());
-
-			if(new_port_func == nullptr || delete_port_func == nullptr)
-			{
-				log->error("{} : Failed to load port, mapping to NullPort...", Ports[n]["Name"].asString());
-				DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
-				set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
-				continue;
-			}
-
-			auto port_cleanup = [=](DataPort* port)
-						  {
-							  delete_port_func(port);
-							  UnLoadModule(portlib);
-						  };
-
-			//call the creation function and wrap the returned pointer to a new port
-			DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
-			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
-		}
-	}
+		ProcessPorts(JSONRoot["Ports"]);
 
 	if(JSONRoot.isMember("Connectors"))
 	{
-		const Json::Value Connectors = JSONRoot["Connectors"];
-
 		//make a logger for use by Connectors
 		AddLogger("Connectors", LogSinks);
+		ProcessConnectors(JSONRoot["Connectors"]);
+	}
 
-		for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)
+	odc::spdlog_flush_every(std::chrono::seconds(60));
+}
+
+void DataConcentrator::ProcessPorts(const Json::Value& Ports)
+{
+	auto log = odc::spdlog_get("opendatacon");
+	if(!log)
+		throw std::runtime_error("Failed to fetch main logger registration");
+
+	for(Json::Value::ArrayIndex n = 0; n < Ports.size(); ++n)
+	{
+		if(!Ports[n].isMember("Type") || !Ports[n].isMember("Name") || !Ports[n].isMember("ConfFilename"))
 		{
-			if(!Connectors[n].isMember("Name") || !Connectors[n].isMember("ConfFilename"))
+			log->error("Invalid port config: need at least Type, Name, ConfFilename: \n'{}\n' : ignoring", Ports[n].toStyledString());
+			continue;
+		}
+		if(DataPorts.count(Ports[n]["Name"].asString()))
+		{
+			log->error("Duplicate Port Name; ignoring:\n'{}\n'", Ports[n].toStyledString());
+			continue;
+		}
+
+		std::function<void (IOHandler*)> set_init_mode;
+		if(Ports[n].isMember("InitState"))
+		{
+			if(Ports[n]["InitState"].asString() == "ENABLED")
 			{
-				log->error("Invalid Connector config: need at least Name, ConfFilename: \n'{}\n' : ignoring", Connectors[n].toStyledString());
-				continue;
+				set_init_mode = [](IOHandler* aIOH)
+						    {
+							    aIOH->InitState = InitState_t::ENABLED;
+						    };
 			}
-			if(DataConnectors.count(Connectors[n]["Name"].asString()))
+			else if(Ports[n]["InitState"].asString() == "DISABLED")
 			{
-				log->error("Duplicate Connector Name; ignoring:\n'{}\n'", Connectors[n].toStyledString());
-				continue;
+				set_init_mode = [](IOHandler* aIOH)
+						    {
+							    aIOH->InitState = InitState_t::DISABLED;
+						    };
 			}
-			DataConnectors.emplace(Connectors[n]["Name"].asString(), std::shared_ptr<DataConnector>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
-			if(Connectors[n].isMember("InitState"))
+			else if(Ports[n]["InitState"].asString() == "DELAYED")
 			{
-				if(Connectors[n]["InitState"].asString() == "ENABLED")
+				uint16_t delay = 0;
+				if(Ports[n].isMember("EnableDelayms"))
 				{
-					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::ENABLED;
+					delay = Ports[n]["EnableDelayms"].asUInt();
 				}
-				else if(Connectors[n]["InitState"].asString() == "DISABLED")
+				else
 				{
-					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DISABLED;
+					log->error("Invalid Port config: Missing 'EnableDelayms':'\n{}\n' : defaulting to 0", Ports[n].toStyledString());
 				}
-				else if(Connectors[n]["InitState"].asString() == "DELAYED")
+				set_init_mode = [=](IOHandler* aIOH)
+						    {
+							    aIOH->InitState = InitState_t::DELAYED;
+							    aIOH->EnableDelayms = delay;
+						    };
+			}
+		}
+		else
+		{
+			set_init_mode = [](IOHandler* aIOH){};
+		}
+
+		if(Ports[n]["Type"].asString() == "Null")
+		{
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+			continue;
+		}
+
+		//Looks for a specific library (for libs that implement more than one class)
+		std::string libname;
+		if(Ports[n].isMember("Library"))
+		{
+			libname = Ports[n]["Library"].asString();
+		}
+		//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+		else
+		{
+			libname = Ports[n]["Type"].asString()+"Port";
+		}
+		std::string libfilename(GetLibFileName(libname));
+
+		//try to load the lib
+		auto portlib = LoadModule(libfilename);
+
+		if(portlib == nullptr)
+		{
+			log->error("{}",LastSystemError());
+			log->error("Failed to load library '{}' mapping {} to NullPort...", libfilename, Ports[n]["Name"].asString());
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+			continue;
+		}
+
+		//Create a logger if we haven't already
+		if(!odc::spdlog_get(libname))
+			AddLogger(libname, LogSinks);
+
+		//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
+		//it should return a pointer to a heap allocated instance of a descendant of DataPort
+		std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
+		auto new_port_func = reinterpret_cast<DataPort*(*)(const std::string&, const std::string&, const Json::Value&)>(LoadSymbol(portlib, new_funcname));
+
+		std::string delete_funcname = "delete_"+Ports[n]["Type"].asString()+"Port";
+		auto delete_port_func = reinterpret_cast<void (*)(DataPort*)>(LoadSymbol(portlib, delete_funcname));
+
+		if(new_port_func == nullptr)
+			log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), new_funcname, libfilename, LastSystemError());
+		if(delete_port_func == nullptr)
+			log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), delete_funcname, libfilename, LastSystemError());
+
+		if(new_port_func == nullptr || delete_port_func == nullptr)
+		{
+			log->error("{} : Failed to load port, mapping to NullPort...", Ports[n]["Name"].asString());
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
+			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+			continue;
+		}
+
+		auto port_cleanup = [=](DataPort* port)
+					  {
+						  delete_port_func(port);
+						  UnLoadModule(portlib);
+					  };
+
+		//call the creation function and wrap the returned pointer to a new port
+		DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
+		set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+	}
+}
+
+void DataConcentrator::ProcessConnectors(const Json::Value& Connectors)
+{
+	auto log = odc::spdlog_get("opendatacon");
+	if(!log)
+		throw std::runtime_error("Failed to fetch main logger registration");
+
+	for(Json::Value::ArrayIndex n = 0; n < Connectors.size(); ++n)
+	{
+		if(!Connectors[n].isMember("Name") || !Connectors[n].isMember("ConfFilename"))
+		{
+			log->error("Invalid Connector config: need at least Name, ConfFilename: \n'{}\n' : ignoring", Connectors[n].toStyledString());
+			continue;
+		}
+		if(DataConnectors.count(Connectors[n]["Name"].asString()))
+		{
+			log->error("Duplicate Connector Name; ignoring:\n'{}\n'", Connectors[n].toStyledString());
+			continue;
+		}
+		DataConnectors.emplace(Connectors[n]["Name"].asString(), std::shared_ptr<DataConnector>(new DataConnector(Connectors[n]["Name"].asString(), Connectors[n]["ConfFilename"].asString(), Connectors[n]["ConfOverrides"]),[](DataConnector* pDC){delete pDC;}));
+		if(Connectors[n].isMember("InitState"))
+		{
+			if(Connectors[n]["InitState"].asString() == "ENABLED")
+			{
+				DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::ENABLED;
+			}
+			else if(Connectors[n]["InitState"].asString() == "DISABLED")
+			{
+				DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DISABLED;
+			}
+			else if(Connectors[n]["InitState"].asString() == "DELAYED")
+			{
+				uint16_t delay = 0;
+				if(Connectors[n].isMember("EnableDelayms"))
 				{
-					uint16_t delay = 0;
-					if(Connectors[n].isMember("EnableDelayms"))
-					{
-						delay = Connectors[n]["EnableDelayms"].asUInt();
-					}
-					else
-					{
-						log->error("Invalid Connector config: Missing 'EnableDelayms':'\n{}\n' : defaulting to 0", Connectors[n].toStyledString());
-					}
-					DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DELAYED;
-					DataConnectors.at(Connectors[n]["Name"].asString())->EnableDelayms = delay;
+					delay = Connectors[n]["EnableDelayms"].asUInt();
 				}
+				else
+				{
+					log->error("Invalid Connector config: Missing 'EnableDelayms':'\n{}\n' : defaulting to 0", Connectors[n].toStyledString());
+				}
+				DataConnectors.at(Connectors[n]["Name"].asString())->InitState = InitState_t::DELAYED;
+				DataConnectors.at(Connectors[n]["Name"].asString())->EnableDelayms = delay;
 			}
 		}
 	}
-	odc::spdlog_flush_every(std::chrono::seconds(60));
+}
+
+void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
+{
+	auto log = odc::spdlog_get("opendatacon");
+	if(!log)
+		throw std::runtime_error("Failed to fetch main logger registration");
+
+	log->info("Loading Plugins... ");
+
+	for(Json::Value::ArrayIndex n = 0; n < Plugins.size(); ++n)
+	{
+		if(!Plugins[n].isMember("Type") || !Plugins[n].isMember("Name") || !Plugins[n].isMember("ConfFilename"))
+		{
+			log->error("Invalid plugin config: need at least Type, Name, ConfFilename: \n'{}\n' : ignoring", Plugins[n].toStyledString());
+			continue;
+		}
+
+		auto PluginName = Plugins[n]["Name"].asString();
+		if(Interfaces.count(PluginName) > 0)
+		{
+			log->error("Ignoring duplicate plugin name '{}'.", PluginName);
+			continue;
+		}
+
+		//Looks for a specific library (for libs that implement more than one class)
+		std::string libname;
+		if(Plugins[n].isMember("Library"))
+		{
+			libname = Plugins[n]["Library"].asString();
+		}
+		//Otherwise use the naming convention lib<Type>Plugin.so to find the default lib that implements a type of plugin
+		else
+		{
+			libname = Plugins[n]["Type"].asString();
+		}
+		std::string libfilename = GetLibFileName(libname);
+
+		//try to load the lib
+		auto pluginlib = LoadModule(libfilename);
+
+		if(pluginlib == nullptr)
+		{
+			log->error("{}",LastSystemError());
+			log->error("{} : Dynamic library '{}' load failed skipping plugin...", PluginName, libfilename);
+			continue;
+		}
+
+		//Our API says the library should export a creation function: IUI* new_<Type>Plugin(Name, Filename, Overrides)
+		//it should return a pointer to a heap allocated instance of a descendant of IUI
+		std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
+		auto new_plugin_func = reinterpret_cast<IUI*(*)(std::string, std::string, const Json::Value)>(LoadSymbol(pluginlib, new_funcname));
+
+		std::string delete_funcname = "delete_"+Plugins[n]["Type"].asString()+"Plugin";
+		auto delete_plugin_func = reinterpret_cast<void (*)(IUI*)>(LoadSymbol(pluginlib, delete_funcname));
+
+		if(new_plugin_func == nullptr)
+			log->info("{} : Failed to load symbol '{}' from library '{}' - {}", PluginName, new_funcname, libfilename, LastSystemError());
+		if(delete_plugin_func == nullptr)
+			log->info("{} : Failed to load symbol '{}' from library '{}' - {}", PluginName, delete_funcname, libfilename, LastSystemError());
+		if(new_plugin_func == nullptr || delete_plugin_func == nullptr)
+		{
+			log->error("{} : Failed to load plugin, skipping...", PluginName);
+			continue;
+		}
+		//Create a logger if we haven't already
+		if(!odc::spdlog_get(libname))
+			AddLogger(libname, LogSinks);
+
+		auto plugin_cleanup = [=](IUI* plugin)
+					    {
+						    delete_plugin_func(plugin);
+						    UnLoadModule(pluginlib);
+					    };
+
+		//call the creation function and wrap the returned pointer to a new plugin
+		Interfaces.emplace(PluginName, std::shared_ptr<IUI>(new_plugin_func(PluginName, Plugins[n]["ConfFilename"].asString(), Plugins[n]["ConfOverrides"]), plugin_cleanup));
+	}
 }
 
 void DataConcentrator::Build()
@@ -751,6 +768,32 @@ void DataConcentrator::Build()
 	{
 		Name_n_Conn.second->Build();
 	}
+}
+
+void DataConcentrator::EnableIOHandler(std::shared_ptr<IOHandler> ioh)
+{
+	starting_element_count++;
+	if(ioh->InitState == InitState_t::ENABLED)
+	{
+		pIOS->post([this,ioh]()
+			{
+				ioh->Enable();
+				starting_element_count--;
+			});
+	}
+	else if(ioh->InitState == InitState_t::DELAYED)
+	{
+		std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+		pTimer->expires_from_now(std::chrono::milliseconds(ioh->EnableDelayms));
+		pTimer->async_wait([this,pTimer,ioh](asio::error_code err_code)
+			{
+				//FIXME: check err_code?
+				ioh->Enable();
+				starting_element_count--;
+			});
+	}
+	else
+		starting_element_count--;
 }
 
 void DataConcentrator::Run()
@@ -776,57 +819,13 @@ void DataConcentrator::Run()
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
-	{
-		starting_element_count++;
-		if(Name_n_Conn.second->InitState == InitState_t::ENABLED)
-		{
-			pIOS->post([this,Name_n_Conn]()
-				{
-					Name_n_Conn.second->Enable();
-					starting_element_count--;
-				});
-		}
-		else if(Name_n_Conn.second->InitState == InitState_t::DELAYED)
-		{
-			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
-			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Conn.second->EnableDelayms));
-			pTimer->async_wait([this,pTimer,Name_n_Conn](asio::error_code err_code)
-				{
-					//FIXME: check err_code?
-					Name_n_Conn.second->Enable();
-					starting_element_count--;
-				});
-		}
-		else
-			starting_element_count--;
-	}
+		EnableIOHandler(Name_n_Conn.second);
+
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
-	{
-		starting_element_count++;
-		if(Name_n_Port.second->InitState == InitState_t::ENABLED)
-		{
-			pIOS->post([this,Name_n_Port]()
-				{
-					Name_n_Port.second->Enable();
-					starting_element_count--;
-				});
-		}
-		else if(Name_n_Port.second->InitState == InitState_t::DELAYED)
-		{
-			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
-			pTimer->expires_from_now(std::chrono::milliseconds(Name_n_Port.second->EnableDelayms));
-			pTimer->async_wait([this,pTimer,Name_n_Port](asio::error_code err_code)
-				{
-					//FIXME: check err_code?
-					Name_n_Port.second->Enable();
-					starting_element_count--;
-				});
-		}
-		else
-			starting_element_count--;
-	}
+		EnableIOHandler(Name_n_Port.second);
+
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
@@ -922,27 +921,16 @@ bool DataConcentrator::ParkThreads()
 
 bool DataConcentrator::ReloadConfig()
 {
-	//TODO: DataConcentrator::ReloadConfig()
-
 	auto old_main_conf = RecallOrCreate(ConfFilename);
 
-	//copy all the old config file contents for ports and connectors
-	std::unordered_map<std::string,std::shared_ptr<const Json::Value>> old_file_confs;
-	auto cache_confs = [&](const auto& conf_files)
-				 {
-					 for(auto& file : conf_files)
-						 if(file != "ConfOverrides" && old_file_confs.find(file) == old_file_confs.end())
-							 old_file_confs[file] = RecallOrCreate(file);
-				 };
-	for(auto p : DataPorts)
-		cache_confs(p.second->GetConfiguration().getMemberNames());
-	for(auto c : DataConnectors)
-		cache_confs(c.second->GetConfiguration().getMemberNames());
+	//copy all the old config file contents
+	auto old_file_confs = ConfigParser::JSONFileCache;
 
 	//clear the config parser cache so new files are loaded when we GetConfiguration()
-	ConfigParser::ClearFileCache();
+	ConfigParser::JSONFileCache.clear();
 
 	auto new_main_conf = RecallOrCreate(ConfFilename);
+	Json::Value changed_confs;
 	std::set<std::string> created;
 	std::set<std::string> changed;
 	std::set<std::string> deleted;
@@ -975,14 +963,23 @@ bool DataConcentrator::ReloadConfig()
 				{
 					auto diff_overrides = ((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"]);
 
-					auto diff_config = *old_file_confs[(*p_old_object)["ConfFilename"].asString()]
-					                   != *RecallOrCreate(new_object["ConfFilename"].asString());
+					auto pOld = old_file_confs[(*p_old_object)["ConfFilename"].asString()];
+					if(!pOld)
+						pOld = std::make_shared<Json::Value>();
+
+					auto diff_config = *pOld != *RecallOrCreate(new_object["ConfFilename"].asString());
 
 					if(diff_overrides || diff_config)
+					{
 						changed.insert(name);
+						changed_confs[IOType].append(new_object);
+					}
 				}
-				else
+				else //totally new
+				{
 					created.insert(name);
+					changed_confs[IOType].append(new_object);
+				}
 			}
 			//check for old ports that aren't in the new config
 			for(Json::ArrayIndex m = 0; m < (*old_main_conf)[IOType].size(); ++m)
@@ -1043,6 +1040,7 @@ bool DataConcentrator::ReloadConfig()
 			{
 				if(auto log = odc::spdlog_get("opendatacon"))
 					log->error("Connector '{}' would be left with dangling reference to deleted object '{}'.",sub_pair.first,name);
+				ConfigParser::JSONFileCache = old_file_confs;
 				return false;
 			}
 
@@ -1069,8 +1067,9 @@ bool DataConcentrator::ReloadConfig()
 	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 	///////////// PARK THREADS ///////////////
-	if(!ParkThreads())
+	if(!ParkThreads()) //This should only return false if we're shutting down, so no cleanup required
 		return false;
+
 	//Now we can modify the unprotected collections
 	//We've induced a state similar to start-up (when there are no other threads running)
 
@@ -1084,26 +1083,83 @@ bool DataConcentrator::ReloadConfig()
 	}
 
 	//delete old objects
+	std::map<std::string,IOHandler*> old_addrs;
+	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
+	std::map<std::string,std::map<std::string,bool>> old_demands;
+	std::multimap<std::string,DataConnector*> needs_new_addr;
 	for(auto name : delete_or_change)
 	{
+		if(changed.find(name) != changed.end())
+		{
+			//store the old addr
+			old_addrs[name] = IOHandler::GetIOHandlers().at(name);
+			old_demands[name] = old_addrs[name]->GetDemands();
+			old_subs[name] = old_addrs[name]->GetSubscribers();
+
+			for(auto& sub_pair : old_subs[name])
+				if(auto pConn = dynamic_cast<DataConnector*>(sub_pair.second))
+					if(delete_or_change.find(sub_pair.first) == delete_or_change.end())
+						needs_new_addr.insert({name,pConn});
+		}
+
 		//FIXME: backup OnDemand state??? anything else stateful???
 		IOHandler::GetIOHandlers().erase(name);
 		DataPorts.erase(name);
 		DataConnectors.erase(name);
 	}
 
-	//create ports marked for creation
-	//create conns marked for creation
-	//build created ports
-	//push into collection
-	//build created conns
-	//push into collection
+	//create replacements and new
+	ProcessPorts(changed_confs["Ports"]);
+	for(auto name : changed)
+	{
+		auto ioh_it = IOHandler::GetIOHandlers().find(name);
+		if(ioh_it != IOHandler::GetIOHandlers().end())
+			if(auto pPort = dynamic_cast<DataPort*>(ioh_it->second))
+				for(auto sub_pair : old_subs[name])
+					pPort->Subscribe(sub_pair.second,sub_pair.first);
+	}
+
+	ProcessConnectors(changed_confs["Connectors"]);
+	for(auto name : changed)
+	{
+		auto ioh_it = IOHandler::GetIOHandlers().find(name);
+		if(ioh_it != IOHandler::GetIOHandlers().end())
+		{
+			auto bounds = needs_new_addr.equal_range(name);
+			for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+				aMatch_it->second->ReplaceAddress(old_addrs[name],ioh_it->second);
+		}
+		else if(auto count = needs_new_addr.count(name))
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->critical("{} connectors with dangling pointer because port '{}' construction failed.",count,name);
+			throw std::runtime_error("Reload config failed terminally");
+		}
+	}
+
+	//superset for all changed and new
+	std::set<std::string> created_or_change(created);
+	for(auto name : changed)
+		created_or_change.insert(name);
+
+	for(auto& port_pair : DataPorts)
+		if(created_or_change.find(port_pair.first) != created_or_change.end())
+			port_pair.second->Build();
+
+	for(auto& conn_pair : DataConnectors)
+		if(created_or_change.find(conn_pair.first) != created_or_change.end())
+			conn_pair.second->Build();
 
 	////////////// UNPARK THREADS ////////////
 	parking = false;
 
-	//enable (/w initstate) created conns
-	//enable (/w initstate) created ports
+	for(auto& conn_pair : DataConnectors)
+		if(created_or_change.find(conn_pair.first) != created_or_change.end())
+			EnableIOHandler(conn_pair.second);
+
+	for(auto& port_pair : DataPorts)
+		if(created_or_change.find(port_pair.first) != created_or_change.end())
+			EnableIOHandler(port_pair.second);
 
 	for(auto enable : reenable)
 		IOHandler::GetIOHandlers().at(enable)->Enable();

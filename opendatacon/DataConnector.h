@@ -33,8 +33,10 @@
 
 using namespace odc;
 
+class DataConcentrator;
 class DataConnector: public IOHandler, public ConfigParser
 {
+	friend class DataConcentrator;
 public:
 	DataConnector(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~DataConnector() override {}
@@ -53,17 +55,19 @@ public:
 		return Json::Value();
 	}
 
-	inline const std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*>>& GetConnections()
-	{
-		return Connections;
-	}
-
 	void Enable() override;
 	void Disable() override;
 	void Build();
 
 protected:
 	void ProcessElements(const Json::Value& JSONRoot) override;
+
+	inline const std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*>>& GetConnections()
+	{
+		return Connections;
+	}
+
+	void ReplaceAddress(IOHandler* original, IOHandler* replacement);
 
 	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*> > Connections;
 	std::multimap<std::string,std::string> SenderConnectionsLookup;

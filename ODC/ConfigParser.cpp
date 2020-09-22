@@ -91,12 +91,6 @@ std::shared_ptr<const Json::Value> ConfigParser::RecallOrCreate(const std::strin
 }
 
 //static
-void ConfigParser::ClearFileCache()
-{
-	JSONFileCache.clear();
-}
-
-//static
 void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits)
 {
 	for(auto& InheritFile : Inherits)

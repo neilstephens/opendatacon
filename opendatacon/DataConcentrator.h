@@ -56,6 +56,11 @@ public:
 	bool isShutDown();
 
 private:
+	void ProcessPorts(const Json::Value& Ports);
+	void ProcessConnectors(const Json::Value& Connectors);
+	void ProcessPlugins(const Json::Value& Plugins);
+	void EnableIOHandler(std::shared_ptr<IOHandler> ioh);
+
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
 	InterfaceCollection Interfaces;

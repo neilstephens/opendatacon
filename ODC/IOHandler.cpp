@@ -84,6 +84,12 @@ bool DemandMap::MuxConnectionEvents(ConnectState state, const std::string& Sende
 	return true;
 }
 
+std::map<std::string,bool> DemandMap::GetDemands()
+{
+	std::lock_guard<std::mutex> lck (mtx);
+	return connection_demands;
+}
+
 void IOHandler::Event(ConnectState state, const std::string& SenderName)
 {
 	MuxConnectionEvents(state, SenderName);
