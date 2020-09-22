@@ -1006,11 +1006,11 @@ bool DataConcentrator::ReloadConfig()
 	if(auto log = odc::spdlog_get("opendatacon"))
 	{
 		for(auto create : created)
-			log->debug("New IOHandler: '{}'",create);
+			log->info("New IOHandler: '{}'",create);
 		for(auto change : changed)
-			log->debug("Changed IOHandler: '{}'",change);
+			log->info("Changed IOHandler: '{}'",change);
 		for(auto del : deleted)
-			log->debug("Deleted IOHandler: '{}'",del);
+			log->info("Deleted IOHandler: '{}'",del);
 	}
 
 	//superset for all that will be deleted
@@ -1053,14 +1053,13 @@ bool DataConcentrator::ReloadConfig()
 		//if it's a connector, also disable connected ports
 		if(auto pConn = dynamic_cast<DataConnector*>(IOHandler::GetIOHandlers().at(name)))
 			for(auto conn_pair : pConn->GetConnections())
-				for(auto& p : {conn_pair.second.first, conn_pair.second.second})
-					if(p->Enabled() && delete_or_change.find(p->GetName()) == delete_or_change.end())
-					{
-						if(auto log = odc::spdlog_get("opendatacon"))
-							log->debug("Temporary disablement of IOHandler '{}', connected to changing connection '{}'.",p->GetName(),pConn->GetName());
-						p->Disable();
-						reenable.insert(p->GetName());
-					}
+				if(conn_pair.second.second->Enabled() && delete_or_change.find(conn_pair.second.second->GetName()) == delete_or_change.end())
+				{
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->debug("Temporary disablement of IOHandler '{}', connected to changing connection '{}'.",conn_pair.second.second->GetName(),pConn->GetName());
+					conn_pair.second.second->Disable();
+					reenable.insert(conn_pair.second.second->GetName());
+				}
 	}
 
 	//wait a while to make sure everything is disabled
@@ -1078,12 +1077,10 @@ bool DataConcentrator::ReloadConfig()
 	{
 		if(auto pConn = dynamic_cast<DataConnector*>(IOHandler::GetIOHandlers().at(name)))
 			for(auto conn_pair : pConn->GetConnections())
-				for(auto& p : {conn_pair.second.first, conn_pair.second.second})
-					p->UnSubscribe(pConn->GetName());
+				conn_pair.second.second->UnSubscribe(pConn->GetName());
 	}
 
 	//delete old objects
-	std::map<std::string,IOHandler*> old_addrs;
 	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
 	std::map<std::string,std::map<std::string,bool>> old_demands;
 	std::multimap<std::string,DataConnector*> needs_new_addr;
@@ -1092,9 +1089,9 @@ bool DataConcentrator::ReloadConfig()
 		if(changed.find(name) != changed.end())
 		{
 			//store the old addr
-			old_addrs[name] = IOHandler::GetIOHandlers().at(name);
-			old_demands[name] = old_addrs[name]->GetDemands();
-			old_subs[name] = old_addrs[name]->GetSubscribers();
+			auto pIOH = IOHandler::GetIOHandlers().at(name);
+			old_demands[name] = pIOH->GetDemands();
+			old_subs[name] = pIOH->GetSubscribers();
 
 			for(auto& sub_pair : old_subs[name])
 				if(auto pConn = dynamic_cast<DataConnector*>(sub_pair.second))
@@ -1114,9 +1111,9 @@ bool DataConcentrator::ReloadConfig()
 	{
 		auto ioh_it = IOHandler::GetIOHandlers().find(name);
 		if(ioh_it != IOHandler::GetIOHandlers().end())
-			if(auto pPort = dynamic_cast<DataPort*>(ioh_it->second))
+			if(!dynamic_cast<DataConnector*>(ioh_it->second))
 				for(auto sub_pair : old_subs[name])
-					pPort->Subscribe(sub_pair.second,sub_pair.first);
+					ioh_it->second->Subscribe(sub_pair.second,sub_pair.first);
 	}
 
 	ProcessConnectors(changed_confs["Connectors"]);
@@ -1127,7 +1124,7 @@ bool DataConcentrator::ReloadConfig()
 		{
 			auto bounds = needs_new_addr.equal_range(name);
 			for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
-				aMatch_it->second->ReplaceAddress(old_addrs[name],ioh_it->second);
+				aMatch_it->second->ReplaceAddress(name,ioh_it->second);
 		}
 		else if(auto count = needs_new_addr.count(name))
 		{

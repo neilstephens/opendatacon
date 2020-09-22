@@ -62,16 +62,17 @@ public:
 protected:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
-	inline const std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*>>& GetConnections()
+	inline const std::unordered_multimap<std::string,std::pair<std::string,IOHandler*>>& GetConnections()
 	{
-		return Connections;
+		return SenderConnections;
 	}
 
-	void ReplaceAddress(IOHandler* original, IOHandler* replacement);
+	void ReplaceAddress(std::string PortName, IOHandler* Addr);
 
-	std::unordered_map<std::string,std::pair<IOHandler*,IOHandler*> > Connections;
-	std::multimap<std::string,std::string> SenderConnectionsLookup;
-	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, std::function<void(Transform*)>> > > ConnectionTransforms;
+	//All the names and addrs to send to for each sender
+	std::unordered_multimap<std::string,std::pair<std::string,IOHandler*>> SenderConnections;
+	//The transfors to perform for each sender
+	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, std::function<void(Transform*)>> > > SenderTransforms;
 };
 
 #endif /* DATACONNECTOR_H_ */
