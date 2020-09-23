@@ -216,6 +216,8 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
+//If the datacon re-creates a port with a new address,
+//	it calls this so we can update our records
 void DataConnector::ReplaceAddress(std::string PortName, IOHandler* Addr)
 {
 	for(auto& connection : SenderConnections)

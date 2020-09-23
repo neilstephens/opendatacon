@@ -117,7 +117,7 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 				std::thread([this](){this->Shutdown();}).detach();
 			}
 			,"Shutdown opendatacon");
-		interface.second->AddCommand("reload",[this](std::stringstream& ss)
+		interface.second->AddCommand("reload_config",[this](std::stringstream& ss)
 			{
 				std::thread([this](){this->ReloadConfig();}).detach();
 			}
@@ -921,6 +921,11 @@ bool DataConcentrator::ParkThreads()
 
 bool DataConcentrator::ReloadConfig()
 {
+	static std::mutex mtx;
+	std::unique_lock<std::mutex> lock(mtx, std::try_to_lock);
+	if(!lock.owns_lock())
+		return false;
+
 	auto old_main_conf = RecallOrCreate(ConfFilename);
 
 	//copy all the old config file contents
@@ -1112,8 +1117,13 @@ bool DataConcentrator::ReloadConfig()
 		auto ioh_it = IOHandler::GetIOHandlers().find(name);
 		if(ioh_it != IOHandler::GetIOHandlers().end())
 			if(!dynamic_cast<DataConnector*>(ioh_it->second))
+			{
 				for(auto sub_pair : old_subs[name])
 					ioh_it->second->Subscribe(sub_pair.second,sub_pair.first);
+				for(auto name_demand : old_demands[name])
+					if(name_demand.second)
+						ioh_it->second->Event(ConnectState::CONNECTED, name_demand.first);
+			}
 	}
 
 	ProcessConnectors(changed_confs["Connectors"]);
@@ -1130,7 +1140,7 @@ bool DataConcentrator::ReloadConfig()
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->critical("{} connectors with dangling pointer because port '{}' construction failed.",count,name);
-			throw std::runtime_error("Reload config failed terminally");
+			throw std::runtime_error("Reload config failed terminally - connectors with dangling pointer");
 		}
 	}
 

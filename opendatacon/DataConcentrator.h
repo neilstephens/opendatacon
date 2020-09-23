@@ -51,6 +51,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void Build();
 	void Run();
+	bool ReloadConfig();
 	void Shutdown();
 	bool isShuttingDown();
 	bool isShutDown();
@@ -88,7 +89,6 @@ private:
 	std::atomic_bool parking = false;
 	std::atomic<size_t> num_parked_threads = 0;
 	std::vector<std::thread> threads;
-	bool ReloadConfig();
 };
 
 #endif /* DATACONCENTRATOR_H_ */
