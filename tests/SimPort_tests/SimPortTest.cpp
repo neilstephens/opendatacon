@@ -25,6 +25,7 @@
 */
 
 #include "../PortLoader.h"
+#include "../ThreadPool.h"
 #include <catch.hpp>
 #include <opendatacon/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -58,8 +59,8 @@ inline Json::Value GetTestConfigJSON()
 	static const char* conf = R"001(
 	{
 		"HttpIP" : "0.0.0.0",
-		"HttpPort" : 9000,
-		"Version" : "Dummy Version 2-3-2020",
+		//"HttpPort" : 9000,
+		//"Version" : "Dummy Version 2-3-2020",
 
 		//-------Point conf--------#
 		"Binaries" :
@@ -115,7 +116,7 @@ inline Json::Value GetTestConfigJSON()
 					{"Index":6,"FeedbackMode":"LATCH","OnValue":false,"OffValue":true}
 				]
 			},
-            // this is the testing for DNP3
+		// this is the testing for 'activation model' controls. AKA Pulse
 			{
 				"Index" : 2,
 				"FeedbackPosition": {"Type": "Analog", "Index" : 7, "OnAction":"RAISE", "RaiseLimit":10}
@@ -140,7 +141,7 @@ inline Json::Value GetTestConfigJSON()
 				"Index" : 7,
 				"FeedbackPosition": {"Type": "BCD", "Indexes" : [10,11,12,13,14], "OnAction":"LOWER", "LowerLimit":0}
 			},
-            // this is the testing for Conitel
+		// this is the testing for 'complimentary latch model' controls. AKA Trip/Close Latch On/Off
 			{
 				"Index" : 8,
 				"FeedbackPosition": {
@@ -385,6 +386,7 @@ TEST_CASE("TestForcedPoint")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
@@ -394,6 +396,7 @@ TEST_CASE("TestForcedPoint")
 		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
 		REQUIRE(sim_port->GetCurrentState()["AnalogPayload"]["0"] == "12345.678900");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -420,6 +423,7 @@ TEST_CASE("TestReleasePoint")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
@@ -428,6 +432,7 @@ TEST_CASE("TestReleasePoint")
 		const ParamCollection params = BuildParams("Analog", "0", "");
 		Json::Value value = resp->ExecuteCommand("ReleasePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -454,16 +459,20 @@ TEST_CASE("TestAnalogEventToAll")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", ".*", "12345.6789");
-		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : ANALOG_INDEXES)
 			REQUIRE(sim_port->GetCurrentState()["AnalogPayload"][std::to_string(index)] == "12345.678900");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -490,6 +499,7 @@ TEST_CASE("TestBinaryEventToAll")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
@@ -500,6 +510,7 @@ TEST_CASE("TestBinaryEventToAll")
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
 			REQUIRE(sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)] == "1");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -526,6 +537,7 @@ TEST_CASE("TestBinaryEventQuality")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
@@ -536,6 +548,7 @@ TEST_CASE("TestBinaryEventQuality")
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
 			REQUIRE(sim_port->GetCurrentState()["BinaryQuality"][std::to_string(index)] == "|ONLINE|");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -562,6 +575,7 @@ TEST_CASE("TestAnalogEventQuality")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
@@ -572,6 +586,7 @@ TEST_CASE("TestAnalogEventQuality")
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : ANALOG_INDEXES)
 			REQUIRE(sim_port->GetCurrentState()["AnalogQuality"][std::to_string(index)] == "|ONLINE|");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -598,6 +613,7 @@ TEST_CASE("TestBinaryEventTimestamp")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
@@ -615,6 +631,7 @@ TEST_CASE("TestBinaryEventTimestamp")
 			const std::string dt = sim_port->GetCurrentState()["BinaryTimestamp"][std::to_string(index)].asString();
 			REQUIRE(now_time == dt.substr(0, now_time.size()));
 		}
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -641,6 +658,7 @@ TEST_CASE("TestAnalogEventTimestamp")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		ThreadPool thread_pool(1);
 
 		sim_port->Build();
 		sim_port->Enable();
@@ -658,6 +676,7 @@ TEST_CASE("TestAnalogEventTimestamp")
 			const std::string dt = sim_port->GetCurrentState()["AnalogTimestamp"][std::to_string(index)].asString();
 			REQUIRE(now_time == dt.substr(0, now_time.size()));
 		}
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -692,6 +711,7 @@ TEST_CASE("TestLatchOn")
 		SendEvent(ControlCode::LATCH_ON, 0, sim_port, CommandStatus::SUCCESS);
 		result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
 		REQUIRE(result == "1");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -726,6 +746,7 @@ TEST_CASE("TestLatchOff")
 		SendEvent(ControlCode::TRIP_PULSE_ON, 0, sim_port, CommandStatus::SUCCESS);
 		result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
 		REQUIRE(result == "0");
+		sim_port->Disable();
 	}
 
 	UnLoadModule(port_lib);
@@ -734,17 +755,17 @@ TEST_CASE("TestLatchOff")
 
 /*-------------------------------------------------------------------------------
  *
- *                            DNP3 tests
+ *                            Pulse tests
  *
  *-------------------------------------------------------------------------------*/
 
 /*
   function     : TEST_CASE
   description  : tests tap changer raise for analog types
-  param        : DNP3TestAnalogTapChangerRaise, name of the test case
+  param        : PulseTestAnalogTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestAnalogTapChangerRaise")
+TEST_CASE("PulseTestAnalogTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -787,6 +808,7 @@ TEST_CASE("DNP3TestAnalogTapChangerRaise")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -795,10 +817,10 @@ TEST_CASE("DNP3TestAnalogTapChangerRaise")
 /*
   function     : TEST_CASE
   description  : tests tap changer lower for analog type
-  param        : DNP3TestAnalogTapChangerLower, name of the test case
+  param        : PulseTestAnalogTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestAnalogTapChangerLower")
+TEST_CASE("PulseTestAnalogTapChangerLower")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -841,6 +863,7 @@ TEST_CASE("DNP3TestAnalogTapChangerLower")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -849,10 +872,10 @@ TEST_CASE("DNP3TestAnalogTapChangerLower")
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for analog type
-  param        : DNP3TestAnalogTapChangerLower, name of the test case
+  param        : PulseTestAnalogTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestAnalogTapChangerRandom")
+TEST_CASE("PulseTestAnalogTapChangerRandom")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -891,6 +914,7 @@ TEST_CASE("DNP3TestAnalogTapChangerRandom")
 			SendEvent(ControlCode::UNDEFINED, 2 + index, sim_port, status);
 			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -900,10 +924,10 @@ TEST_CASE("DNP3TestAnalogTapChangerRandom")
 /*
   function     : TEST_CASE
   description  : tests tap changer raise for binary type
-  param        : DNP3TestBinaryTapChangerRaise, name of the test case
+  param        : PulseTestBinaryTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestBinaryTapChangerRaise")
+TEST_CASE("PulseTestBinaryTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -950,6 +974,7 @@ TEST_CASE("DNP3TestBinaryTapChangerRaise")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -958,10 +983,10 @@ TEST_CASE("DNP3TestBinaryTapChangerRaise")
 /*
   function     : TEST_CASE
   description  : tests tap changer lower for binary type
-  param        : DNP3TestBinaryTapChangerLower, name of the test case
+  param        : PulseTestBinaryTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestBinaryTapChangerLower")
+TEST_CASE("PulseTestBinaryTapChangerLower")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1006,6 +1031,7 @@ TEST_CASE("DNP3TestBinaryTapChangerLower")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1014,10 +1040,10 @@ TEST_CASE("DNP3TestBinaryTapChangerLower")
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for binary type
-  param        : DNP3TestBinaryTapChangerRandom, name of the test case
+  param        : PulseTestBinaryTapChangerRandom, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestBinaryTapChangerRandom")
+TEST_CASE("PulseTestBinaryTapChangerRandom")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1059,6 +1085,7 @@ TEST_CASE("DNP3TestBinaryTapChangerRandom")
 			binary = GetBinaryEncodedString(indexes, sim_port);
 			REQUIRE(tap_position == static_cast<int>(odc::to_decimal(binary)));
 		}
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1067,10 +1094,10 @@ TEST_CASE("DNP3TestBinaryTapChangerRandom")
 /*
   function     : TEST_CASE
   description  : tests tap changer raise for BCD type
-  param        : DNP3TestBCDTapChangerRaise, name of the test case
+  param        : PulseTestBCDTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestBCDTapChangerRaise")
+TEST_CASE("PulseTestBCDTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1111,6 +1138,7 @@ TEST_CASE("DNP3TestBCDTapChangerRaise")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1119,10 +1147,10 @@ TEST_CASE("DNP3TestBCDTapChangerRaise")
 /*
   function     : TEST_CASE
   description  : tests tap changer lower for BCD type
-  param        : DNP3TestBCDTapChangerLower, name of the test case
+  param        : PulseTestBCDTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestBCDTapChangerLower")
+TEST_CASE("PulseTestBCDTapChangerLower")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1163,6 +1191,7 @@ TEST_CASE("DNP3TestBCDTapChangerLower")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(ControlCode::UNDEFINED, 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1171,10 +1200,10 @@ TEST_CASE("DNP3TestBCDTapChangerLower")
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for BCD type
-  param        : DNP3TestBCDTapChangerRaise, name of the test case
+  param        : PulseTestBCDTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("DNP3TestBCDTapChangerRandom")
+TEST_CASE("PulseTestBCDTapChangerRandom")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1214,6 +1243,7 @@ TEST_CASE("DNP3TestBCDTapChangerRandom")
 			SendEvent(ControlCode::UNDEFINED, 6 + index, sim_port, status);
 			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1221,17 +1251,17 @@ TEST_CASE("DNP3TestBCDTapChangerRandom")
 
 /*-------------------------------------------------------------------------------
  *
- *                            Conitel tests
+ *                            OnOff tests
  *
  *-------------------------------------------------------------------------------*/
 
 /*
   function     : TEST_CASE
   description  : tests tap changer raise for analog types
-  param        : ConitelTestAnalogTapChangerRaise, name of the test case
+  param        : OnOffTestAnalogTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestAnalogTapChangerRaise")
+TEST_CASE("OnOffTestAnalogTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1274,6 +1304,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRaise")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1282,10 +1313,10 @@ TEST_CASE("ConitelTestAnalogTapChangerRaise")
 /*
   function     : TEST_CASE
   description  : tests tap changer lower for analog type
-  param        : ConitelTestAnalogTapChangerLower, name of the test case
+  param        : OnOffTestAnalogTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestAnalogTapChangerLower")
+TEST_CASE("OnOffTestAnalogTapChangerLower")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1327,6 +1358,7 @@ TEST_CASE("ConitelTestAnalogTapChangerLower")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1335,10 +1367,10 @@ TEST_CASE("ConitelTestAnalogTapChangerLower")
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for analog type
-  param        : ConitelTestAnalogTapChangerRandom, name of the test case
+  param        : OnOffTestAnalogTapChangerRandom, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestAnalogTapChangerRandom")
+TEST_CASE("OnOffTestAnalogTapChangerRandom")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1376,6 +1408,7 @@ TEST_CASE("ConitelTestAnalogTapChangerRandom")
 			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 8, sim_port, status);
 			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1384,10 +1417,10 @@ TEST_CASE("ConitelTestAnalogTapChangerRandom")
 /*
   function     : TEST_CASE
   description  : tests tap changer raise for binary type
-  param        : ConitelTestBinaryTapChangerRaise, name of the test case
+  param        : OnOffTestBinaryTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBinaryTapChangerRaise")
+TEST_CASE("OnOffTestBinaryTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1434,6 +1467,7 @@ TEST_CASE("ConitelTestBinaryTapChangerRaise")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1442,10 +1476,10 @@ TEST_CASE("ConitelTestBinaryTapChangerRaise")
 /*
   function     : TEST_CASE
   description  : tests tap changer lower for binary type
-  param        : ConitelTestBinaryTapChangerLower, name of the test case
+  param        : OnOffTestBinaryTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBinaryTapChangerLower")
+TEST_CASE("OnOffTestBinaryTapChangerLower")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1490,6 +1524,7 @@ TEST_CASE("ConitelTestBinaryTapChangerLower")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1498,10 +1533,10 @@ TEST_CASE("ConitelTestBinaryTapChangerLower")
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for binary type
-  param        : ConitelTestBinaryTapChangerRandom, name of the test case
+  param        : OnOffTestBinaryTapChangerRandom, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBinaryTapChangerRandom")
+TEST_CASE("OnOffTestBinaryTapChangerRandom")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1543,6 +1578,7 @@ TEST_CASE("ConitelTestBinaryTapChangerRandom")
 			binary = GetBinaryEncodedString(indexes, sim_port);
 			REQUIRE(tap_position == static_cast<int>(odc::to_decimal(binary)));
 		}
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1551,10 +1587,10 @@ TEST_CASE("ConitelTestBinaryTapChangerRandom")
 /*
   function     : TEST_CASE
   description  : tests tap changer raise for BCD type
-  param        : ConitelBCDTapChangerRaise, name of the test case
+  param        : OnOffBCDTapChangerRaise, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBCDTapChangerRaise")
+TEST_CASE("OnOffTestBCDTapChangerRaise")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1595,6 +1631,7 @@ TEST_CASE("ConitelTestBCDTapChangerRaise")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1603,10 +1640,10 @@ TEST_CASE("ConitelTestBCDTapChangerRaise")
 /*
   function     : TEST_CASE
   description  : tests tap changer lower for BCD type
-  param        : ConitelTestBCDTapChangerLower, name of the test case
+  param        : OnOffTestBCDTapChangerLower, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBCDTapChangerLower")
+TEST_CASE("OnOffTestBCDTapChangerLower")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1647,6 +1684,7 @@ TEST_CASE("ConitelTestBCDTapChangerLower")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1655,10 +1693,10 @@ TEST_CASE("ConitelTestBCDTapChangerLower")
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for BCD type
-  param        : ConitelTestBCDTapChangerRandom, name of the test case
+  param        : OnOffTestBCDTapChangerRandom, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBCDTapChangerRandom")
+TEST_CASE("OnOffTestBCDTapChangerRandom")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1698,6 +1736,7 @@ TEST_CASE("ConitelTestBCDTapChangerRandom")
 			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 10, sim_port, status);
 			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1706,10 +1745,10 @@ TEST_CASE("ConitelTestBCDTapChangerRandom")
 /*
   function     : TEST_CASE
   description  : tests tap changer raise for BCD type for trip
-  param        : ConitelBCDTapChangerRaiseWithTrip, name of the test case
+  param        : OnOffBCDTapChangerRaiseWithTrip, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelBCDTapChangerRaiseWithTrip")
+TEST_CASE("OnOffBCDTapChangerRaiseWithTrip")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1750,6 +1789,7 @@ TEST_CASE("ConitelBCDTapChangerRaiseWithTrip")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(TRIP_CODES[1], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1758,10 +1798,10 @@ TEST_CASE("ConitelBCDTapChangerRaiseWithTrip")
 /*
   function     : TEST_CASE
   description  : tests tap changer lower for BCD type
-  param        : ConitelTestBCDTapChangerLowerWithClose, name of the test case
+  param        : OnOffTestBCDTapChangerLowerWithClose, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBCDTapChangerLowerWithClose")
+TEST_CASE("OnOffTestBCDTapChangerLowerWithClose")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1802,6 +1842,7 @@ TEST_CASE("ConitelTestBCDTapChangerLowerWithClose")
 		  send the event with an index which doesnt exist
 		 */
 		SendEvent(TRIP_CODES[0], 9189, sim_port, CommandStatus::NOT_SUPPORTED);
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1810,10 +1851,10 @@ TEST_CASE("ConitelTestBCDTapChangerLowerWithClose")
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for BCD type
-  param        : ConitelTestBCDTapChangerRandomWithClose, name of the test case
+  param        : OnOffTestBCDTapChangerRandomWithClose, name of the test case
   return       : NA
 */
-TEST_CASE("ConitelTestBCDTapChangerRandomWithClose")
+TEST_CASE("OnOffTestBCDTapChangerRandomWithClose")
 {
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -1853,6 +1894,7 @@ TEST_CASE("ConitelTestBCDTapChangerRandomWithClose")
 			SendEvent(TRIP_CODES[index], 11, sim_port, status);
 			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
+		sim_port->Disable();
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();

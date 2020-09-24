@@ -244,7 +244,7 @@ ptimer_t SimPortPointData::Timer(const std::string& name)
 
 void SimPortPointData::CancelTimers()
 {
-	std::shared_lock<std::shared_timed_mutex> lck(timer_mutex);
+	std::unique_lock<std::shared_timed_mutex> lck(timer_mutex);
 	for (const auto& timer : m_timers)
 		timer.second->cancel();
 	m_timers.clear();

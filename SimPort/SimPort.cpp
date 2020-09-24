@@ -98,8 +98,8 @@ void SimPort::Enable()
 		{
 			if(!enabled)
 			{
-			      enabled = true;
 			      PortUp();
+			      enabled = true;
 			}
 		});
 }
