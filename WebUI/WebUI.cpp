@@ -323,16 +323,14 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 
 std::string WebUI::InitCommand(const std::string& url)
 {
-	Json::Value return_data;
-	std::atomic_bool executed(false);
-	HandleCommand(url, [&executed,&return_data](const Json::Value& data)
+	std::promise<Json::Value> result_prom;
+	auto result = result_prom.get_future();
+	HandleCommand(url, [&result_prom](const Json::Value&& data)
 		{
-			return_data = std::move(data);
-			executed = true;
+			result_prom.set_value(data);
 		});
 	//OK to block this thread because it's a callback from MHD
-	while(!executed)
-		pIOS->poll_one();
+	auto return_data = result.get();
 
 	Json::StreamWriterBuilder wbuilder;
 	wbuilder["commentStyle"] = "None";

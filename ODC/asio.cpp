@@ -111,5 +111,20 @@ std::unique_ptr<asio::ip::udp::socket> asio_service::make_udp_socket()
 {
 	return std::make_unique<asio::ip::udp::socket>(*unwrap_this);
 }
+std::unordered_set<std::thread::id> asio_service::threads_in_pool;
+std::mutex asio_service::threads_in_pool_mtx;
+void asio_service::run()
+{
+	{ //lock scope
+		std::lock_guard lock(threads_in_pool_mtx);
+		threads_in_pool.insert(std::this_thread::get_id());
+	}
+	asio::io_service::run();
+}
+bool asio_service::current_thread_in_pool()
+{
+	std::lock_guard lock(threads_in_pool_mtx);
+	return (threads_in_pool.find(std::this_thread::get_id()) != threads_in_pool.end());
+}
 
 } //namespace odc

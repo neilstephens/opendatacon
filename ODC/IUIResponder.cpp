@@ -56,9 +56,26 @@ std::string IUIResponder::GetCommandDescription(const std::string& acmd) const
 
 Json::Value IUIResponder::ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const
 {
+	//This function will typically be called from an external UI thread
+	//,in which case we'll post the task and block
+	//This way all commands are under the control of the datacon
+	//(the datacon might want to park the threads to do un-threadsafe things)
+	//if, on the other hand, this is a thread pool thread already - just run it
+
 	if(commands.count(arCommandName) != 0)
 	{
 		auto command = commands.at(arCommandName);
+
+		if(!pIOS->current_thread_in_pool())
+		{
+			std::promise<Json::Value> result_prom;
+			auto result = result_prom.get_future();
+			pIOS->post([&]()
+				{
+					result_prom.set_value(command.function(params));
+				});
+			return result.get();
+		}
 		return command.function(params);
 	}
 	return IUIResponder::GenerateResult("Bad command");
