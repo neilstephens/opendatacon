@@ -103,7 +103,12 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 	_putenv_s(var, val);
 }
 static constexpr const char* OSPATHSEP = ";";
+
+#ifdef MAIN_EXE
 #define DllImport   __declspec( dllimport )
+#else
+#define DllImport
+#endif
 
 #else
 #include <dlfcn.h>
