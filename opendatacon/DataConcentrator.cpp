@@ -119,9 +119,12 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 			,"Shutdown opendatacon");
 		interface.second->AddCommand("reload_config",[this](std::stringstream& ss)
 			{
-				std::thread([this](){this->ReloadConfig();}).detach();
+				std::string filename;
+				if(!(ss >> filename))
+					filename = "";
+				std::thread([this,f{std::move(filename)}](){this->ReloadConfig(f);}).detach();
 			}
-			,"Reload config file(s)");
+			,"Reload config file(s). Usage: reload_config [<optional_filename>]");
 		interface.second->AddCommand("version",[] (std::stringstream& ss)
 			{
 				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
@@ -919,12 +922,16 @@ bool DataConcentrator::ParkThreads()
 	return parking;
 }
 
-bool DataConcentrator::ReloadConfig()
+bool DataConcentrator::ReloadConfig(const std::string &filename)
 {
 	static std::mutex mtx;
 	std::unique_lock<std::mutex> lock(mtx, std::try_to_lock);
 	if(!lock.owns_lock())
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("Reload failed: Another reload already in progress.");
 		return false;
+	}
 
 	auto old_main_conf = RecallOrCreate(ConfFilename);
 
@@ -933,6 +940,10 @@ bool DataConcentrator::ReloadConfig()
 
 	//clear the config parser cache so new files are loaded when we GetConfiguration()
 	ConfigParser::JSONFileCache.clear();
+
+	auto old_ConfFilename = ConfFilename;
+	if(filename != "")
+		ConfFilename = filename;
 
 	auto new_main_conf = RecallOrCreate(ConfFilename);
 	Json::Value changed_confs;
@@ -1005,6 +1016,8 @@ bool DataConcentrator::ReloadConfig()
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
 			log->error("DataConcentrator::ReloadConfig() Failed : '{}'",e.what());
+		ConfigParser::JSONFileCache = old_file_confs;
+		ConfFilename = old_ConfFilename;
 		return false;
 	}
 
@@ -1046,6 +1059,7 @@ bool DataConcentrator::ReloadConfig()
 				if(auto log = odc::spdlog_get("opendatacon"))
 					log->error("Connector '{}' would be left with dangling reference to deleted object '{}'.",sub_pair.first,name);
 				ConfigParser::JSONFileCache = old_file_confs;
+				ConfFilename = old_ConfFilename;
 				return false;
 			}
 
@@ -1067,7 +1081,10 @@ bool DataConcentrator::ReloadConfig()
 				}
 	}
 
-	//wait a while to make sure everything is disabled
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Disabled {} objects affected by reload.",delete_or_change.size()+reenable.size());
+
+	//wait a while to make sure disable events flow through
 	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 	///////////// PARK THREADS ///////////////
@@ -1076,6 +1093,8 @@ bool DataConcentrator::ReloadConfig()
 
 	//Now we can modify the unprotected collections
 	//We've induced a state similar to start-up (when there are no other threads running)
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->critical("Applying reloaded config.");
 
 	//Unsubscribe conns to be deleted (from thier ports)
 	for(auto name : delete_or_change)
@@ -1116,6 +1135,9 @@ bool DataConcentrator::ReloadConfig()
 	{
 		auto ioh_it = IOHandler::GetIOHandlers().find(name);
 		if(ioh_it != IOHandler::GetIOHandlers().end())
+			//Can't downcast to DataPort because RTTI info isn't exported from our dynamically loaded modules
+			//This is intentional - to have a simple C API
+			//Not to worry - if it's not a connector, it's a port
 			if(!dynamic_cast<DataConnector*>(ioh_it->second))
 			{
 				for(auto sub_pair : old_subs[name])
@@ -1157,6 +1179,9 @@ bool DataConcentrator::ReloadConfig()
 		if(created_or_change.find(conn_pair.first) != created_or_change.end())
 			conn_pair.second->Build();
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->critical("Reloaded config applied.");
+
 	////////////// UNPARK THREADS ////////////
 	parking = false;
 
@@ -1170,6 +1195,9 @@ bool DataConcentrator::ReloadConfig()
 
 	for(auto enable : reenable)
 		IOHandler::GetIOHandlers().at(enable)->Enable();
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->info("Enabled (not including configured delays) {} objects affected by reload.",created_or_change.size()+reenable.size());
 
 	return true;
 }

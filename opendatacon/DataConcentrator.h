@@ -51,7 +51,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void Build();
 	void Run();
-	bool ReloadConfig();
+	bool ReloadConfig(const std::string& filename = "");
 	void Shutdown();
 	bool isShuttingDown();
 	bool isShutDown();

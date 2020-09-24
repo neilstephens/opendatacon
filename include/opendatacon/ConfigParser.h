@@ -28,6 +28,7 @@
 #define CONFIGPARSER_H_
 
 #include <json/json.h>
+#include <opendatacon/Platform.h>
 #include <unordered_map>
 #include <memory>
 
@@ -44,7 +45,7 @@ protected:
 	void ProcessFile();
 	virtual void ProcessElements(const Json::Value& JSONRoot) = 0;
 
-	const std::string ConfFilename;
+	std::string ConfFilename;
 	const Json::Value ConfOverrides;
 
 private:
@@ -55,7 +56,10 @@ private:
 	static void AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits);
 	static Json::Value GetConfiguration(const std::string& aConfFilename, const Json::Value& aConfOverrides);
 
-	static std::unordered_map<std::string,std::shared_ptr<Json::Value>> JSONFileCache;
+	//On windows we still need to decorate data member exports for DLL import
+	//All other symbols are exported/imported automatically using cmake WINDOWS_EXPORT_ALL_SYMBOLS
+	//JSONFileCache is used in the main exe - so we need to mark it
+	DllImport static std::unordered_map<std::string,std::shared_ptr<Json::Value>> JSONFileCache;
 };
 
 #endif /* CONFIGPARSER_H_ */

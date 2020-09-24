@@ -34,7 +34,7 @@ ConsoleUI::ConsoleUI():
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
 		  "the first argument is taken as a regex to match which items in the collection the "
 		  "command will run for. The remainer of the arguments should be parameter Name/Value pairs."
-		  "Eg. Loggers ignore \".*\" filter \"[Aa]n{2}oying\\smessage\"");
+		  "Eg. Collection Dosomething \".*OnlyAFewMatch.*\" arg_to_dosomething ...");
 	AddCommand("help",[this](std::stringstream& LineStream)
 		{
 			std::string arg;
