@@ -37,7 +37,6 @@
  *		-Gridlab-D
  *		-JSONoHTML
  */
-#define MAIN_EXE
 
 #include "DataConcentrator.h"
 #include "DaemonInterface.h"

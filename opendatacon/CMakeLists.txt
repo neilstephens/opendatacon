@@ -20,6 +20,8 @@
 project(opendatacon)
 file(GLOB SRC_LIST *.cpp *.h)
 
+add_definitions(-DMAIN_EXE)
+
 if(WIN32)
 	file(GLOB DAEMON_SRC_LIST WinDaemon/*.cpp WinDaemon/*.h)
 else()
