@@ -946,12 +946,19 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		ConfFilename = filename;
 
 	auto new_main_conf = RecallOrCreate(ConfFilename);
+
 	Json::Value changed_confs;
 	std::set<std::string> created;
 	std::set<std::string> changed;
 	std::set<std::string> deleted;
 	try
 	{
+		if(*new_main_conf == Json::Value::null ||
+		   (!(*new_main_conf)["Ports"].size()
+		    && !(*new_main_conf)["Connectors"].size()
+		    && !(*new_main_conf)["Interfaces"].size()))
+			throw std::runtime_error("No objects found");
+
 		for(auto IOType : {"Ports","Connectors"})
 		{
 			//check for new or changed ports/conns in the new config
@@ -1085,7 +1092,12 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		log->info("Disabled {} objects affected by reload.",delete_or_change.size()+reenable.size());
 
 	//wait a while to make sure disable events flow through
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	for(auto& t : {5,4,3,2,1})
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->info("{} seconds until reload...",t);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	}
 
 	///////////// PARK THREADS ///////////////
 	if(!ParkThreads()) //This should only return false if we're shutting down, so no cleanup required
