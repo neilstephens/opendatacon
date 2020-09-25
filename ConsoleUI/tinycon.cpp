@@ -238,8 +238,16 @@ void tinyConsole::run ()
 	// grab input
 	for (;;)
 	{
+		for(auto i = _prompt.size()+buffer.size();i>0;i--)
+			std::cout<<"\b \b";
+		std::cout<<_prompt;
+		for(auto b : buffer)
+			std::cout<<b;
+		std::cout<<std::flush;
+
+
 		if(_quit)break;
-		c = GetCharTimeout(5);
+		c = GetCharTimeout(1);
 		if(c == 0)continue;
 		if(!hotkeys(c))
 		switch (c)

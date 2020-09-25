@@ -319,7 +319,9 @@ void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
 			 * This line is to clear the current line so we can make the new prompt
 			 * It is easy to make the prompt than adding or not.
 			 */
-			printf("%c[2K\r", 27); std::cout << _prompt << std::flush;
+			for(auto i = _prompt.size()+buffer.size(); i>0; i--)
+				std::cout<<"\b \b";
+			std::cout << _prompt << std::flush;
 			prompt = matches[0] + " ";
 			if (matches[0].find(" ") == std::string::npos && !sub_cmd.empty())
 				prompt += sub_cmd + " ";
