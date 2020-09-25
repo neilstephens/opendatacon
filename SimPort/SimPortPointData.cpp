@@ -215,13 +215,15 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 			if (type == odc::EventType::Binary)
 			{
 				const bool val = m_points[type][index]->event->GetPayload<odc::EventType::Binary>();
-				state[std::to_string(index)] = std::to_string(val);
+				state[std::to_string(index)]["Payload"] = std::to_string(val);
 			}
 			if (type == odc::EventType::Analog)
 			{
 				const double val = m_points[type][index]->event->GetPayload<odc::EventType::Analog>();
-				state[std::to_string(index)] = std::to_string(val);
+				state[std::to_string(index)]["Payload"] = std::to_string(val);
 			}
+			state[std::to_string(index)]["Quality"] = odc::ToString(m_points[type][index]->event->GetQuality());
+			state[std::to_string(index)]["Timestamp"] = odc::since_epoch_to_datetime(m_points[type][index]->event->GetTimestamp());
 		}
 	}
 	Json::StreamWriterBuilder wbuilder;

@@ -1,24 +1,24 @@
 function updateMimic(mimic, data)
 {
     //Analogue inputs
-    mimic.getElementById("weather_wind_speed").textContent = data.AnalogCurrent[0].toFixed(2);
-    mimic.getElementById("weather_wind_direction").textContent = data.AnalogCurrent[1].toFixed(1);
-    mimic.getElementById("weather_humidity").textContent = data.AnalogCurrent[2].toFixed(2);
-    mimic.getElementById("weather_pressure").textContent = data.AnalogCurrent[5].toFixed(0);
-    mimic.getElementById("weather_temp").textContent = data.AnalogCurrent[3].toFixed(2);
+    mimic.getElementById("weather_wind_speed").textContent = data.AnalogPayload[0].toFixed(2);
+    mimic.getElementById("weather_wind_direction").textContent = data.AnalogPayload[1].toFixed(1);
+    mimic.getElementById("weather_humidity").textContent = data.AnalogPayload[2].toFixed(2);
+    mimic.getElementById("weather_pressure").textContent = data.AnalogPayload[5].toFixed(0);
+    mimic.getElementById("weather_temp").textContent = data.AnalogPayload[3].toFixed(2);
 
-    var windScale = data.AnalogCurrent[0] / 20; // Normalised to 72 k/h
-    mimic.getElementById("wind_arrow").setAttributeNS(null, 'transform', "translate(126, 150) rotate("+data.AnalogCurrent[1]+") scale(1,"+windScale+") translate(-126, -150) ");
+    var windScale = data.AnalogPayload[0] / 20; // Normalised to 72 k/h
+    mimic.getElementById("wind_arrow").setAttributeNS(null, 'transform', "translate(126, 150) rotate("+data.AnalogPayload[1]+") scale(1,"+windScale+") translate(-126, -150) ");
 
-    mimic.getElementById("PV_voltage").textContent = (data.AnalogCurrent[12544]/100).toFixed(2);
-    mimic.getElementById("PV_current").textContent = (data.AnalogCurrent[12545]/100).toFixed(2);
-    mimic.getElementById("battery_voltage").textContent = (data.AnalogCurrent[12548]/100).toFixed(2);
-    mimic.getElementById("battery_current").textContent = (data.AnalogCurrent[12549]/100).toFixed(2);
-    mimic.getElementById("battery_SOC").textContent = (data.AnalogCurrent[12570]).toFixed(0);
-    mimic.getElementById("battery_temp").textContent = (data.AnalogCurrent[12560]/100).toFixed(2);
+    mimic.getElementById("PV_voltage").textContent = (data.AnalogPayload[12544]/100).toFixed(2);
+    mimic.getElementById("PV_current").textContent = (data.AnalogPayload[12545]/100).toFixed(2);
+    mimic.getElementById("battery_voltage").textContent = (data.AnalogPayload[12548]/100).toFixed(2);
+    mimic.getElementById("battery_current").textContent = (data.AnalogPayload[12549]/100).toFixed(2);
+    mimic.getElementById("battery_SOC").textContent = (data.AnalogPayload[12570]).toFixed(0);
+    mimic.getElementById("battery_temp").textContent = (data.AnalogPayload[12560]/100).toFixed(2);
 
-    mimic.getElementById("batt_SOC_display").textContent = (data.AnalogCurrent[12570]).toFixed(0);
-    var batpix = 90 * (data.AnalogCurrent[12570]/100);
+    mimic.getElementById("batt_SOC_display").textContent = (data.AnalogPayload[12570]).toFixed(0);
+    var batpix = 90 * (data.AnalogPayload[12570]/100);
     mimic.getElementById("batt_SOC_meter").setAttributeNS(null, 'y', 240 - batpix);
     mimic.getElementById("batt_SOC_meter").setAttributeNS(null, 'height', batpix);
 
@@ -31,23 +31,23 @@ function updateMimic(mimic, data)
     var m_per_pix = 0.03127; // meters per pixel (for calculating line blowout)
 
     // Picture animation - shouldn't need to change anything past here
-    var t1x = data.AnalogCurrent[30]-t1x_fixed;
-    var t1y = data.AnalogCurrent[31]-t1y_fixed;
-    var t2x = data.AnalogCurrent[33]-t2x_fixed;
-    var t2y = data.AnalogCurrent[34]-t2y_fixed;
+    var t1x = data.AnalogPayload[30]-t1x_fixed;
+    var t1y = data.AnalogPayload[31]-t1y_fixed;
+    var t2x = data.AnalogPayload[33]-t2x_fixed;
+    var t2y = data.AnalogPayload[34]-t2y_fixed;
 
-    mimic.getElementById("target1_x").textContent = (data.AnalogCurrent[30]).toFixed(2);
-    mimic.getElementById("target1_y").textContent = (data.AnalogCurrent[31]).toFixed(2);
-    mimic.getElementById("target1_size").textContent = (data.AnalogCurrent[32]).toFixed(0);
-    mimic.getElementById("target2_x").textContent = (data.AnalogCurrent[33]).toFixed(2);
-    mimic.getElementById("target2_y").textContent = (data.AnalogCurrent[34]).toFixed(2);
-    mimic.getElementById("target2_size").textContent = (data.AnalogCurrent[35]).toFixed(0);
-    mimic.getElementById("target3_x").textContent = (data.AnalogCurrent[36]).toFixed(2);
-    mimic.getElementById("target3_y").textContent = (data.AnalogCurrent[37]).toFixed(2);
-    mimic.getElementById("target3_size").textContent = (data.AnalogCurrent[38]).toFixed(0);
+    mimic.getElementById("target1_x").textContent = (data.AnalogPayload[30]).toFixed(2);
+    mimic.getElementById("target1_y").textContent = (data.AnalogPayload[31]).toFixed(2);
+    mimic.getElementById("target1_size").textContent = (data.AnalogPayload[32]).toFixed(0);
+    mimic.getElementById("target2_x").textContent = (data.AnalogPayload[33]).toFixed(2);
+    mimic.getElementById("target2_y").textContent = (data.AnalogPayload[34]).toFixed(2);
+    mimic.getElementById("target2_size").textContent = (data.AnalogPayload[35]).toFixed(0);
+    mimic.getElementById("target3_x").textContent = (data.AnalogPayload[36]).toFixed(2);
+    mimic.getElementById("target3_y").textContent = (data.AnalogPayload[37]).toFixed(2);
+    mimic.getElementById("target3_size").textContent = (data.AnalogPayload[38]).toFixed(0);
 
-    var x = data.AnalogCurrent[36]-t1x;
-    var y = data.AnalogCurrent[37]-t1y;
+    var x = data.AnalogPayload[36]-t1x;
+    var y = data.AnalogPayload[37]-t1y;
 
     mimic.getElementById("BlowOut").textContent = (m_per_pix * (x - t3x_fixed)).toFixed(2);
 
@@ -66,7 +66,7 @@ function updateMimic(mimic, data)
     mimic.getElementById("fromTarget2").setAttributeNS(null, 'x2', x);
     mimic.getElementById("fromTarget2").setAttributeNS(null, 'y2', y);
 
-    if ( data.AnalogCurrent[38] == 0 ) {
+    if ( data.AnalogPayload[38] == 0 ) {
         mimic.getElementById("gLineTarget").setAttributeNS(null, 'visibility', 'hidden');
         mimic.getElementById("fromTarget1").setAttributeNS(null, 'visibility', 'hidden');
         mimic.getElementById("fromTarget2").setAttributeNS(null, 'visibility', 'hidden');
