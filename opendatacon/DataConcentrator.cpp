@@ -124,7 +124,7 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 					filename = "";
 				std::thread([this,f{std::move(filename)}](){this->ReloadConfig(f);}).detach();
 			}
-			,"Reload config file(s). Usage: reload_config [<optional_filename>]");
+			,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename>]");
 		interface.second->AddCommand("version",[] (std::stringstream& ss)
 			{
 				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
@@ -984,15 +984,26 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 
 				if(p_old_object)
 				{
-					auto diff_overrides = ((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"]);
+					auto isDifferent = [&]() -> bool
+								 {
+									 if((*p_old_object)["Type"] != new_object["Type"])
+										 return true;
+									 if((*p_old_object)["Library"] != new_object["Library"])
+										 return true;
+									 if((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"])
+										 return true;
 
-					auto pOld = old_file_confs[(*p_old_object)["ConfFilename"].asString()];
-					if(!pOld)
-						pOld = std::make_shared<Json::Value>();
+									 auto pOld = old_file_confs[(*p_old_object)["ConfFilename"].asString()];
+									 if(!pOld)
+										 pOld = std::make_shared<Json::Value>();
 
-					auto diff_config = *pOld != *RecallOrCreate(new_object["ConfFilename"].asString());
+									 if(*pOld != *RecallOrCreate(new_object["ConfFilename"].asString()))
+										 return true;
 
-					if(diff_overrides || diff_config)
+									 return false;
+								 };
+
+					if(isDifferent())
 					{
 						changed.insert(name);
 						changed_confs[IOType].append(new_object);
@@ -1052,6 +1063,13 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 			log->info("Changed IOHandler: '{}'",change);
 		for(auto del : deleted)
 			log->info("Deleted IOHandler: '{}'",del);
+	}
+
+	if(created.size()+changed.size()+deleted.size() == 0)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->info("No changed objects - reload finished.");
+		return true;
 	}
 
 	//superset for all that will be deleted
