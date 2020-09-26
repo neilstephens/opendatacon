@@ -64,7 +64,7 @@ public:
 	using asio::io_service::dispatch;
 	using asio::io_service::stopped;
 
-	static std::shared_ptr<asio_service> Get();
+	static std::shared_ptr<asio_service> Get(int concurrency_hint = std::thread::hardware_concurrency());
 
 	std::unique_ptr<asio::io_service::work> make_work();
 	std::unique_ptr<asio::io_service::strand> make_strand();
@@ -78,6 +78,8 @@ public:
 	std::unique_ptr<asio::ip::udp::resolver> make_udp_resolver();
 	std::unique_ptr<asio::ip::udp::socket> make_udp_socket();
 
+	inline int GetConcurrency(){return concurrency;}
+
 private:
 	asio_service():
 		asio::io_service()
@@ -86,6 +88,7 @@ private:
 		asio::io_service(concurrency_hint)
 	{}
 
+	int concurrency;
 	asio::io_service* const unwrap_this = static_cast<asio::io_service*>(this);
 };
 

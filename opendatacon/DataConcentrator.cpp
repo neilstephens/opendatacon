@@ -751,7 +751,7 @@ void DataConcentrator::Run()
 	if (auto log = odc::spdlog_get("opendatacon"))
 		log->info("Starting worker threads...");
 
-	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
+	for (int i = 0; i < pIOS->GetConcurrency(); ++i)
 		threads.emplace_back([this]()
 			{
 				try

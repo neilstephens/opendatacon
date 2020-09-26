@@ -97,6 +97,10 @@ int main(int argc, char* argv[])
 				pidfile = Args.PIDFileArg.getValue();
 		}
 
+		std::shared_ptr<odc::asio_service> pIOS;
+		if(Args.ConcurrencyArg.isSet())
+			pIOS = odc::asio_service::Get(Args.ConcurrencyArg.getValue());
+
 		// Construct and build opendatacon object
 		//	static shared ptr to use in signal handler
 		static auto TheDataConcentrator = std::make_shared<DataConcentrator>(Args.ConfigFileArg.getValue());
@@ -129,13 +133,13 @@ int main(int argc, char* argv[])
 			{
 				try
 				{
-					TheDataConcentrator->Run();
+				      TheDataConcentrator->Run();
 				}
 				catch(const std::exception& e)
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
+				      if(auto log = odc::spdlog_get("opendatacon"))
 						log->critical("Shutting down due to exception in DataConcentrator::Run() thread: {}", e.what());
-					TheDataConcentrator->Shutdown();
+				      TheDataConcentrator->Shutdown();
 				}
 			});
 
