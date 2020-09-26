@@ -364,7 +364,7 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 	}
 	else
 	{
-		std::cout << "Usage: del_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
+		std::cout << "Usage: del_logsink <sinkname>" << std::endl;
 	}
 
 	ReloadLogSinks(LogSinks);
@@ -1004,7 +1004,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 					changed_confs[IOType].append(new_object);
 				}
 			}
-			//check for old ports that aren't in the new config
+			//check for old objects that aren't in the new config
 			for(Json::ArrayIndex m = 0; m < (*old_main_conf)[IOType].size(); ++m)
 			{
 				bool found = false;
@@ -1017,6 +1017,22 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 				if(!found)
 					deleted.insert((*old_main_conf)[IOType][m]["Name"].asString());
 			}
+		}
+		//change log levels before anything else
+		std::stringstream ss;
+		if(new_main_conf->isMember("LogLevel") && (*old_main_conf)["LogLevel"] != (*new_main_conf)["LogLevel"])
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("Changing LogLevel from {} to {}",(*old_main_conf)["LogLevel"].asString(), (*new_main_conf)["LogLevel"].asString());
+			ss<<"file "<<(*new_main_conf)["LogLevel"].asString();
+			SetLogLevel(ss);
+		}
+		if(new_main_conf->isMember("ConsoleLevel") && (*old_main_conf)["ConsoleLevel"] != (*new_main_conf)["ConsoleLevel"])
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("Changing ConsoleLevel from {} to {}",(*old_main_conf)["ConsoleLevel"].asString(), (*new_main_conf)["ConsoleLevel"].asString());
+			ss.clear(); ss<<"console "<<(*new_main_conf)["ConsoleLevel"].asString();
+			SetLogLevel(ss);
 		}
 	}
 	catch(std::exception& e)
@@ -1046,11 +1062,10 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 	//check to make sure things really got constructed, not just in the config
 	for(auto name : delete_or_change)
 	{
-		auto ioh_it = IOHandler::GetIOHandlers().find(name);
-		if(ioh_it == IOHandler::GetIOHandlers().end())
+		if(IOHandler::GetIOHandlers().find(name) != IOHandler::GetIOHandlers().end())
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->warn("IOHandler '{}' in running config not found.",name);
+				log->warn("IOHandler '{}' from old config not found.",name);
 			delete_or_change.erase(name);
 			deleted.erase(name);
 			if(changed.erase(name))
