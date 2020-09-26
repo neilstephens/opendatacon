@@ -43,12 +43,12 @@ class SimPort: public DataPort
 public:
 	//Implement DataPort interface
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
-	~SimPort();
 	void Enable() final;
 	void Disable() final;
 	void Build() final;
 	void ProcessElements(const Json::Value& json_root) final;
 	void Event(std::shared_ptr<const odc::EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
+
 	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
 
 	//Implement ODC::DataPort functions for UI

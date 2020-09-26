@@ -86,12 +86,6 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	ProcessFile();
 }
 
-SimPort::~SimPort()
-{
-	if(!httpServerToken.ServerID.empty())
-		HttpServerManager::StopConnection(httpServerToken);
-}
-
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([this]()
@@ -100,6 +94,8 @@ void SimPort::Enable()
 			{
 			      PortUp();
 			      enabled = true;
+			      if(!httpServerToken.ServerID.empty())
+					HttpServerManager::StartConnection(httpServerToken);
 			}
 		});
 }
@@ -112,6 +108,8 @@ void SimPort::Disable()
 			{
 			      enabled = false;
 			      PortDown();
+			      if(!httpServerToken.ServerID.empty())
+					HttpServerManager::StopConnection(httpServerToken);
 			}
 		});
 }
