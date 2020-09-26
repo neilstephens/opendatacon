@@ -41,7 +41,7 @@ namespace odc
  * manages the lifetime of a single shared resource using smart pointers and atomic_flag
  * avoids the perils of non-trivial statics that a typical singleton pattern uses
  */
-std::shared_ptr<asio_service> asio_service::Get()
+std::shared_ptr<asio_service> asio_service::Get(int concurrency_hint)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<asio_service> weak_service;
@@ -51,11 +51,15 @@ std::shared_ptr<asio_service> asio_service::Get()
 	//if the init flag isn't set, we need to initialise the service
 	if(!init_flag.test_and_set(std::memory_order_acquire))
 	{
+		if(concurrency_hint < 1)
+			concurrency_hint = 1;
+
 		//make a custom deleter that will also clear the init flag
 		auto deinit_del = [](asio_service* service_ptr)
-					{init_flag.clear(); delete service_ptr;};
-		shared_service = std::shared_ptr<asio_service>(new asio_service(std::thread::hardware_concurrency()+2), deinit_del);
+					{init_flag.clear(std::memory_order_release); delete service_ptr;};
+		shared_service = std::shared_ptr<asio_service>(new asio_service(concurrency_hint+2), deinit_del);
 		weak_service = shared_service;
+		shared_service->concurrency = concurrency_hint;
 	}
 	//otherwise just make sure it's finished initialising and take a shared_ptr
 	else
