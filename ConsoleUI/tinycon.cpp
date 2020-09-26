@@ -238,11 +238,14 @@ void tinyConsole::run ()
 	// grab input
 	for (;;)
 	{
+		//Re-print the line in case logging as clobbered it
 		for(auto i = _prompt.size()+buffer.size();i>0;i--)
 			std::cout<<"\b \b";
 		std::cout<<_prompt;
 		for(auto b : buffer)
 			std::cout<<b;
+		for (size_t i = 0; i < buffer.size()-line_pos; i++)
+			std::cout<<"\b";
 		std::cout<<std::flush;
 
 
