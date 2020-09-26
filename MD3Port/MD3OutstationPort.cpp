@@ -71,7 +71,7 @@ void MD3OutstationPort::UpdateOutstationPortCollection()
 		// This will be called when the shared_ptr destructs (last ref gone)
 		auto deinit_del = [](MD3OutstationPortCollection* collection_ptr)
 					{
-						init_flag.clear();
+						init_flag.clear(std::memory_order_release);
 						delete collection_ptr;
 					};
 		// Save a pointer to the collection in this object

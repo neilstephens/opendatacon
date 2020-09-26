@@ -44,7 +44,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	{
 		//make a custom deleter for the DNP3Manager that will also clear the init flag
 		auto deinit_del = [](opendnp3::DNP3Manager* mgr_ptr)
-					{init_flag.clear(); delete mgr_ptr;};
+					{init_flag.clear(std::memory_order_release); delete mgr_ptr;};
 		this->IOMgr = std::shared_ptr<opendnp3::DNP3Manager>(
 			new opendnp3::DNP3Manager(std::thread::hardware_concurrency(),std::make_shared<DNP3Log2spdlog>()),
 			deinit_del);

@@ -53,7 +53,7 @@ std::shared_ptr<asio_service> asio_service::Get()
 	{
 		//make a custom deleter that will also clear the init flag
 		auto deinit_del = [](asio_service* service_ptr)
-					{init_flag.clear(); delete service_ptr;};
+					{init_flag.clear(std::memory_order_release); delete service_ptr;};
 		shared_service = std::shared_ptr<asio_service>(new asio_service(std::thread::hardware_concurrency()+2), deinit_del);
 		weak_service = shared_service;
 	}

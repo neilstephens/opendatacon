@@ -69,7 +69,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	{
 		//make a custom deleter for the DNP3Manager that will also clear the init flag
 		auto deinit_del = [](SimPortCollection* collection_ptr)
-					{init_flag.clear(); delete collection_ptr;};
+					{init_flag.clear(std::memory_order_release); delete collection_ptr;};
 		this->SimCollection = std::shared_ptr<SimPortCollection>(new SimPortCollection(), deinit_del);
 		weak_collection = this->SimCollection;
 	}
