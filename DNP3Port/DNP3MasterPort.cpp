@@ -84,8 +84,6 @@ void DNP3MasterPort::Disable()
 		pMaster->Disable(); //this will trigger comms down
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: DNP3 stack disabled", Name);
-		//don't delay setting comms down if we're disabled intentionally
-		pCommsRideThroughTimer->FastForward();
 	}
 }
 
@@ -105,6 +103,9 @@ void DNP3MasterPort::PortDown()
 
 	//trigger the ride through timer
 	pCommsRideThroughTimer->Trigger();
+	//but we don't want to wait if we're intentionally disabled
+	if(!enabled)
+		pCommsRideThroughTimer->FastForward();
 }
 
 void DNP3MasterPort::SetCommsGood()
