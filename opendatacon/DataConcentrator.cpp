@@ -953,7 +953,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 	std::set<std::string> deleted;
 	try
 	{
-		if(*new_main_conf == Json::Value::null ||
+		if(new_main_conf->isNull() ||
 		   (!(*new_main_conf)["Ports"].size()
 		    && !(*new_main_conf)["Connectors"].size()
 		    && !(*new_main_conf)["Interfaces"].size()))
