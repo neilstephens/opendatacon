@@ -41,6 +41,7 @@ public:
 		pIOS->run();
 		for(auto& t : threads)
 			t.join();
+		threads.clear();
 	}
 private:
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
