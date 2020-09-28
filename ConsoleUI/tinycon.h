@@ -54,6 +54,7 @@ protected:
 	size_t _max_history;
 	std::string _prompt;
 
+	bool prompt_anchor = true;
 	int pos;
 	int line_pos;
 	int skip_out;
