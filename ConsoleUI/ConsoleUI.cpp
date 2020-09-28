@@ -216,12 +216,6 @@ int ConsoleUI::hotkeys(char c)
 	return 0;
 }
 
-
-void ConsoleUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
-{
-	Responders[ name ] = &pResponder;
-}
-
 void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
 {
 	ParamCollection params;

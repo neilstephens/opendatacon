@@ -101,65 +101,72 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 	if(Interfaces.empty() && DataPorts.empty() && DataConnectors.empty())
 		throw std::runtime_error("No objects to manage");
 
-	std::unordered_map<std::string,std::shared_ptr<IUIResponder>> PortResponders;
+	RefreshIUIResponders();
+
+	for(auto& interface : Interfaces)
+		PrepInterface(interface.second);
+}
+
+void DataConcentrator::RefreshIUIResponders()
+{
+	RespondersMasterCopy.clear();
+	RespondersMasterCopy["OpenDataCon"] = this;
+	RespondersMasterCopy["DataPorts"] = &DataPorts;
+	RespondersMasterCopy["DataConnectors"] = &DataConnectors;
+	RespondersMasterCopy["Plugins"] = &Interfaces;
 	for(auto& port : DataPorts)
 	{
 		auto ResponderPair = port.second->GetUIResponder();
 		//if it's a different, valid responder pair, store it
-		if(ResponderPair.second && PortResponders.count(ResponderPair.first) == 0)
-			PortResponders.insert(ResponderPair);
+		if(ResponderPair.second && RespondersMasterCopy.count(ResponderPair.first) == 0)
+			RespondersMasterCopy.insert(ResponderPair);
 	}
+}
 
-	for(auto& interface : Interfaces)
-	{
-		interface.second->AddCommand("shutdown",[this](std::stringstream& ss)
-			{
-				std::thread([this](){this->Shutdown();}).detach();
-			}
-			,"Shutdown opendatacon");
-		interface.second->AddCommand("reload_config",[this](std::stringstream& ss)
-			{
-				std::string filename;
-				if(!(ss >> filename))
-					filename = "";
-				std::thread([this,f{std::move(filename)}](){this->ReloadConfig(f);}).detach();
-			}
-			,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename>]");
-		interface.second->AddCommand("version",[] (std::stringstream& ss)
-			{
-				std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
-				         <<"Submodules:"<<std::endl
-				         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl;
+void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
+{
+	interface->AddCommand("shutdown",[this](std::stringstream& ss)
+		{
+			std::thread([this](){this->Shutdown();}).detach();
+		}
+		,"Shutdown opendatacon");
+	interface->AddCommand("reload_config",[this](std::stringstream& ss)
+		{
+			std::string filename;
+			if(!(ss >> filename))
+				filename = "";
+			std::thread([this,f{std::move(filename)}](){this->ReloadConfig(f);}).detach();
+		}
+		,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename>]");
+	interface->AddCommand("version",[] (std::stringstream& ss)
+		{
+			std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
+			         <<"Submodules:"<<std::endl
+			         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl;
 
-			},"Print version information");
-		interface.second->AddCommand("set_loglevel",[this] (std::stringstream& ss)
-			{
-				this->SetLogLevel(ss);
-			},"Set the threshold for logging");
-		interface.second->AddCommand("flush_logs",[] (std::stringstream& ss)
-			{
-				odc::spdlog_flush_all();
-			},"Flush all registered loggers and sinks");
-		interface.second->AddCommand("add_logsink",[this] (std::stringstream& ss)
-			{
-				this->AddLogSink(ss);
-			},"Add a log sink. WARNING: May cause missed log messages momentarily");
-		interface.second->AddCommand("del_logsink",[this] (std::stringstream& ss)
-			{
-				this->DeleteLogSink(ss);
-			},"Delete a log sink. WARNING: May cause missed log messages momentarily");
-		interface.second->AddCommand("ls_logsink",[this] (std::stringstream& ss)
-			{
-				this->ListLogSinks();
-			},"List the names of all the log sinks");
+		},"Print version information");
+	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss)
+		{
+			this->SetLogLevel(ss);
+		},"Set the threshold for logging");
+	interface->AddCommand("flush_logs",[] (std::stringstream& ss)
+		{
+			odc::spdlog_flush_all();
+		},"Flush all registered loggers and sinks");
+	interface->AddCommand("add_logsink",[this] (std::stringstream& ss)
+		{
+			this->AddLogSink(ss);
+		},"Add a log sink. WARNING: May cause missed log messages momentarily");
+	interface->AddCommand("del_logsink",[this] (std::stringstream& ss)
+		{
+			this->DeleteLogSink(ss);
+		},"Delete a log sink. WARNING: May cause missed log messages momentarily");
+	interface->AddCommand("ls_logsink",[this] (std::stringstream& ss)
+		{
+			this->ListLogSinks();
+		},"List the names of all the log sinks");
 
-		interface.second->AddResponder("OpenDataCon", *this);
-		interface.second->AddResponder("DataPorts", DataPorts);
-		interface.second->AddResponder("DataConnectors", DataConnectors);
-		interface.second->AddResponder("Plugins", Interfaces);
-		for(auto& ResponderPair : PortResponders)
-			interface.second->AddResponder(ResponderPair.first, *ResponderPair.second);
-	}
+	interface->SetResponders(RespondersMasterCopy);
 }
 
 DataConcentrator::~DataConcentrator()
@@ -799,6 +806,16 @@ void DataConcentrator::EnableIOHandler(std::shared_ptr<IOHandler> ioh)
 		starting_element_count--;
 }
 
+void DataConcentrator::EnableIUI(std::shared_ptr<IUI> iui)
+{
+	starting_element_count++;
+	pIOS->post([this,iui]()
+		{
+			iui->Enable();
+			starting_element_count--;
+		});
+}
+
 void DataConcentrator::Run()
 {
 	if (auto log = odc::spdlog_get("opendatacon"))
@@ -832,14 +849,7 @@ void DataConcentrator::Run()
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
-	{
-		starting_element_count++;
-		pIOS->post([this,Name_n_UI]()
-			{
-				Name_n_UI.second->Enable();
-				starting_element_count--;
-			});
-	}
+		EnableIUI(Name_n_UI.second);
 
 	try
 	{
@@ -922,6 +932,82 @@ bool DataConcentrator::ParkThreads()
 	return parking;
 }
 
+Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_name,
+	std::unordered_map<std::string,std::shared_ptr<Json::Value>>& old_file_confs,
+	const Json::Value& old_main_conf, const Json::Value& new_main_conf,
+	std::set<std::string>& created, std::set<std::string>& changed, std::set<std::string>& deleted)
+{
+	Json::Value changed_confs;
+	//check for new or changed objects in the new config
+	for(Json::ArrayIndex n = 0; n < new_main_conf[collection_name].size(); ++n)
+	{
+		const auto& new_object = new_main_conf[collection_name][n];
+		if(!new_object.isMember("Name"))
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->error("{} object without 'Name' : '{}'",collection_name,new_object.toStyledString());
+			continue;
+		}
+		const auto& name = new_object["Name"].asString();
+
+		//try to find that name in the old config
+		const Json::Value* p_old_object = nullptr;
+		for(Json::ArrayIndex m = 0; m < old_main_conf[collection_name].size(); ++m)
+			if(old_main_conf[collection_name][m]["Name"] == name)
+			{
+				p_old_object = &old_main_conf[collection_name][m];
+				break;
+			}
+
+		if(p_old_object)
+		{
+			auto isDifferent = [&]() -> bool
+						 {
+							 if((*p_old_object)["Type"] != new_object["Type"])
+								 return true;
+							 if((*p_old_object)["Library"] != new_object["Library"])
+								 return true;
+							 if((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"])
+								 return true;
+
+							 auto pOld = old_file_confs[(*p_old_object)["ConfFilename"].asString()];
+							 if(!pOld)
+								 pOld = std::make_shared<Json::Value>();
+
+							 if(*pOld != *RecallOrCreate(new_object["ConfFilename"].asString()))
+								 return true;
+
+							 return false;
+						 };
+
+			if(isDifferent())
+			{
+				changed.insert(name);
+				changed_confs.append(new_object);
+			}
+		}
+		else //totally new
+		{
+			created.insert(name);
+			changed_confs.append(new_object);
+		}
+	}
+	//check for old objects that aren't in the new config
+	for(Json::ArrayIndex m = 0; m < old_main_conf[collection_name].size(); ++m)
+	{
+		bool found = false;
+		for(Json::ArrayIndex n = 0; n < new_main_conf[collection_name].size(); ++n)
+			if(old_main_conf[collection_name][m]["Name"] == new_main_conf[collection_name][n]["Name"])
+			{
+				found = true;
+				break;
+			}
+		if(!found)
+			deleted.insert(old_main_conf[collection_name][m]["Name"].asString());
+	}
+	return changed_confs;
+}
+
 bool DataConcentrator::ReloadConfig(const std::string &filename)
 {
 	static std::mutex mtx;
@@ -948,87 +1034,24 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 	auto new_main_conf = RecallOrCreate(ConfFilename);
 
 	Json::Value changed_confs;
-	std::set<std::string> created;
-	std::set<std::string> changed;
-	std::set<std::string> deleted;
+	std::set<std::string> createdIOHs;
+	std::set<std::string> changedIOHs;
+	std::set<std::string> deletedIOHs;
+	std::set<std::string> createdIUIs;
+	std::set<std::string> changedIUIs;
+	std::set<std::string> deletedIUIs;
 	try
 	{
 		if(new_main_conf->isNull() ||
 		   (!(*new_main_conf)["Ports"].size()
 		    && !(*new_main_conf)["Connectors"].size()
-		    && !(*new_main_conf)["Interfaces"].size()))
+		    && !(*new_main_conf)["Plugins"].size()))
 			throw std::runtime_error("No objects found");
 
-		for(auto IOType : {"Ports","Connectors"})
-		{
-			//check for new or changed ports/conns in the new config
-			for(Json::ArrayIndex n = 0; n < (*new_main_conf)[IOType].size(); ++n)
-			{
-				const auto& new_object = (*new_main_conf)[IOType][n];
-				if(!new_object.isMember("Name"))
-				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->error("{} object without 'Name' : '{}'",IOType,new_object.toStyledString());
-					continue;
-				}
-				const auto& name = new_object["Name"].asString();
+		changed_confs["Ports"] = FindChangedConfs("Ports",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
+		changed_confs["Connectors"] = FindChangedConfs("Connectors",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
+		changed_confs["Plugins"] = FindChangedConfs("Plugins",old_file_confs,*old_main_conf,*new_main_conf,createdIUIs,changedIUIs,deletedIUIs);
 
-				//try to find that name in the old config
-				const Json::Value* p_old_object = nullptr;
-				for(Json::ArrayIndex m = 0; m < (*old_main_conf)[IOType].size(); ++m)
-					if((*old_main_conf)[IOType][m]["Name"] == name)
-					{
-						p_old_object = &(*old_main_conf)[IOType][m];
-						break;
-					}
-
-				if(p_old_object)
-				{
-					auto isDifferent = [&]() -> bool
-								 {
-									 if((*p_old_object)["Type"] != new_object["Type"])
-										 return true;
-									 if((*p_old_object)["Library"] != new_object["Library"])
-										 return true;
-									 if((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"])
-										 return true;
-
-									 auto pOld = old_file_confs[(*p_old_object)["ConfFilename"].asString()];
-									 if(!pOld)
-										 pOld = std::make_shared<Json::Value>();
-
-									 if(*pOld != *RecallOrCreate(new_object["ConfFilename"].asString()))
-										 return true;
-
-									 return false;
-								 };
-
-					if(isDifferent())
-					{
-						changed.insert(name);
-						changed_confs[IOType].append(new_object);
-					}
-				}
-				else //totally new
-				{
-					created.insert(name);
-					changed_confs[IOType].append(new_object);
-				}
-			}
-			//check for old objects that aren't in the new config
-			for(Json::ArrayIndex m = 0; m < (*old_main_conf)[IOType].size(); ++m)
-			{
-				bool found = false;
-				for(Json::ArrayIndex n = 0; n < (*new_main_conf)[IOType].size(); ++n)
-					if((*old_main_conf)[IOType][m]["Name"] == (*new_main_conf)[IOType][n]["Name"])
-					{
-						found = true;
-						break;
-					}
-				if(!found)
-					deleted.insert((*old_main_conf)[IOType][m]["Name"].asString());
-			}
-		}
 		//change log levels before anything else
 		std::stringstream ss;
 		if(new_main_conf->isMember("LogLevel") && (*old_main_conf)["LogLevel"] != (*new_main_conf)["LogLevel"])
@@ -1057,44 +1080,73 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 	{
-		for(auto create : created)
+		for(auto create : createdIOHs)
 			log->info("New IOHandler: '{}'",create);
-		for(auto change : changed)
+		for(auto change : changedIOHs)
 			log->info("Changed IOHandler: '{}'",change);
-		for(auto del : deleted)
+		for(auto del : deletedIOHs)
 			log->info("Deleted IOHandler: '{}'",del);
+		for(auto create : createdIUIs)
+			log->info("New UI: '{}'",create);
+		for(auto change : changedIUIs)
+			log->info("Changed UI: '{}'",change);
+		for(auto del : deletedIUIs)
+			log->info("Deleted UI: '{}'",del);
 	}
 
-	if(created.size()+changed.size()+deleted.size() == 0)
+	if(createdIOHs.size()+changedIOHs.size()+deletedIOHs.size()
+	   +createdIUIs.size()+changedIUIs.size()+deletedIUIs.size() == 0)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
 			log->info("No changed objects - reload finished.");
 		return true;
 	}
 
-	//superset for all that will be deleted
-	std::set<std::string> delete_or_change(deleted);
-	for(auto name : changed)
-		delete_or_change.insert(name);
+	//superset for all IOHs that will be deleted
+	std::set<std::string> delete_or_changeIOHs(deletedIOHs);
+	for(auto name : changedIOHs)
+		delete_or_changeIOHs.insert(name);
 
-	//check to make sure things really got constructed, not just in the config
-	for(auto name : delete_or_change)
+	//check to make sure IOHs really got constructed, not just in the config
+	std::set<std::string> not_found;
+	for(auto& name : delete_or_changeIOHs)
 	{
-		if(IOHandler::GetIOHandlers().find(name) != IOHandler::GetIOHandlers().end())
+		if(IOHandler::GetIOHandlers().find(name) == IOHandler::GetIOHandlers().end())
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->warn("IOHandler '{}' from old config not found.",name);
-			delete_or_change.erase(name);
-			deleted.erase(name);
-			if(changed.erase(name))
-				created.insert(name);
+			not_found.insert(name);
 		}
 	}
+	for(auto& name : not_found)
+	{
+		delete_or_changeIOHs.erase(name);
+		deletedIOHs.erase(name);
+		if(changedIOHs.erase(name))
+			createdIOHs.insert(name);
+	}
+
+	//superset for all IUIs that will be deleted
+	std::set<std::string> delete_or_changeIUIs(deletedIUIs);
+	for(auto name : changedIUIs)
+		delete_or_changeIUIs.insert(name);
+
+	//check to make sure IUIs really got constructed, not just in the config
+	for(auto name : delete_or_changeIUIs)
+		if(Interfaces.find(name) == Interfaces.end())
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->warn("UI '{}' from old config not found.",name);
+			delete_or_changeIUIs.erase(name);
+			deletedIUIs.erase(name);
+			if(changedIUIs.erase(name))
+				createdIUIs.insert(name);
+		}
 
 	//check for connections that would be left dangling by deleted ports before we do anything
-	for(auto name : deleted)
+	for(auto name : deletedIOHs)
 		for(auto& sub_pair : IOHandler::GetIOHandlers().at(name)->GetSubscribers())
-			if(dynamic_cast<DataConnector*>(sub_pair.second) && delete_or_change.find(sub_pair.first) == delete_or_change.end())
+			if(dynamic_cast<DataConnector*>(sub_pair.second) && delete_or_changeIOHs.find(sub_pair.first) == delete_or_changeIOHs.end())
 			{
 				if(auto log = odc::spdlog_get("opendatacon"))
 					log->error("Connector '{}' would be left with dangling reference to deleted object '{}'.",sub_pair.first,name);
@@ -1104,7 +1156,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 			}
 
 	std::set<std::string> reenable;
-	for(auto name : delete_or_change)
+	for(auto name : delete_or_changeIOHs)
 	{
 		//disable IOHandlers marked for delete/change
 		IOHandler::GetIOHandlers().at(name)->Disable();
@@ -1112,7 +1164,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		//if it's a connector, also disable connected ports
 		if(auto pConn = dynamic_cast<DataConnector*>(IOHandler::GetIOHandlers().at(name)))
 			for(auto conn_pair : pConn->GetConnections())
-				if(conn_pair.second.second->Enabled() && delete_or_change.find(conn_pair.second.second->GetName()) == delete_or_change.end())
+				if(conn_pair.second.second->Enabled() && delete_or_changeIOHs.find(conn_pair.second.second->GetName()) == delete_or_changeIOHs.end())
 				{
 					if(auto log = odc::spdlog_get("opendatacon"))
 						log->debug("Temporary disablement of IOHandler '{}', connected to changing connection '{}'.",conn_pair.second.second->GetName(),pConn->GetName());
@@ -1121,8 +1173,12 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 				}
 	}
 
+	//Disable all interfaces because deleteing ports can delete IUIResponders - refresh those below
+	for(auto interface : Interfaces)
+		interface.second->Disable();
+
 	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Disabled {} objects affected by reload.",delete_or_change.size()+reenable.size());
+		log->info("Disabled {} objects affected by reload.",Interfaces.size()+delete_or_changeIOHs.size()+reenable.size());
 
 	//wait a while to make sure disable events flow through
 	for(auto& t : {5,4,3,2,1})
@@ -1142,7 +1198,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		log->critical("Applying reloaded config.");
 
 	//Unsubscribe conns to be deleted (from thier ports)
-	for(auto name : delete_or_change)
+	for(auto name : delete_or_changeIOHs)
 	{
 		if(auto pConn = dynamic_cast<DataConnector*>(IOHandler::GetIOHandlers().at(name)))
 			for(auto conn_pair : pConn->GetConnections())
@@ -1153,9 +1209,9 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
 	std::map<std::string,std::map<std::string,bool>> old_demands;
 	std::multimap<std::string,DataConnector*> needs_new_addr;
-	for(auto name : delete_or_change)
+	for(auto name : delete_or_changeIOHs)
 	{
-		if(changed.find(name) != changed.end())
+		if(changedIOHs.find(name) != changedIOHs.end())
 		{
 			//store the old addr
 			auto pIOH = IOHandler::GetIOHandlers().at(name);
@@ -1164,7 +1220,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 
 			for(auto& sub_pair : old_subs[name])
 				if(auto pConn = dynamic_cast<DataConnector*>(sub_pair.second))
-					if(delete_or_change.find(sub_pair.first) == delete_or_change.end())
+					if(delete_or_changeIOHs.find(sub_pair.first) == delete_or_changeIOHs.end())
 						needs_new_addr.insert({name,pConn});
 		}
 
@@ -1173,11 +1229,14 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		DataPorts.erase(name);
 		DataConnectors.erase(name);
 	}
+	for(auto name : delete_or_changeIUIs)
+		Interfaces.erase(name);
 
 	//create replacements and new
 	ProcessPorts(changed_confs["Ports"]);
-	for(auto name : changed)
+	for(auto name : changedIOHs)
 	{
+		//go through and replace subscriptions and inDemand states
 		auto ioh_it = IOHandler::GetIOHandlers().find(name);
 		if(ioh_it != IOHandler::GetIOHandlers().end())
 			//Can't downcast to DataPort because RTTI info isn't exported from our dynamically loaded modules
@@ -1194,8 +1253,9 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 	}
 
 	ProcessConnectors(changed_confs["Connectors"]);
-	for(auto name : changed)
+	for(auto name : changedIOHs)
 	{
+		//go through and replace addresses
 		auto ioh_it = IOHandler::GetIOHandlers().find(name);
 		if(ioh_it != IOHandler::GetIOHandlers().end())
 		{
@@ -1211,18 +1271,37 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		}
 	}
 
+	ProcessPlugins(changed_confs["Plugins"]);
+
 	//superset for all changed and new
-	std::set<std::string> created_or_change(created);
-	for(auto name : changed)
-		created_or_change.insert(name);
+	std::set<std::string> created_or_changeIOHs(createdIOHs);
+	for(auto name : changedIOHs)
+		created_or_changeIOHs.insert(name);
+	std::set<std::string> created_or_changeIUIs(createdIUIs);
+	for(auto name : changedIUIs)
+		created_or_changeIUIs.insert(name);
 
 	for(auto& port_pair : DataPorts)
-		if(created_or_change.find(port_pair.first) != created_or_change.end())
+		if(created_or_changeIOHs.find(port_pair.first) != created_or_changeIOHs.end())
 			port_pair.second->Build();
 
 	for(auto& conn_pair : DataConnectors)
-		if(created_or_change.find(conn_pair.first) != created_or_change.end())
+		if(created_or_changeIOHs.find(conn_pair.first) != created_or_changeIOHs.end())
 			conn_pair.second->Build();
+
+	RefreshIUIResponders();
+	for(auto& ui_pair : Interfaces)
+	{
+		if(created_or_changeIUIs.find(ui_pair.first) != created_or_changeIUIs.end())
+		{
+			PrepInterface(ui_pair.second);
+			ui_pair.second->Build();
+		}
+		else
+		{
+			ui_pair.second->SetResponders(RespondersMasterCopy);
+		}
+	}
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->critical("Reloaded config applied.");
@@ -1231,18 +1310,22 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 	parking = false;
 
 	for(auto& conn_pair : DataConnectors)
-		if(created_or_change.find(conn_pair.first) != created_or_change.end())
+		if(created_or_changeIOHs.find(conn_pair.first) != created_or_changeIOHs.end())
 			EnableIOHandler(conn_pair.second);
 
 	for(auto& port_pair : DataPorts)
-		if(created_or_change.find(port_pair.first) != created_or_change.end())
+		if(created_or_changeIOHs.find(port_pair.first) != created_or_changeIOHs.end())
 			EnableIOHandler(port_pair.second);
 
 	for(auto enable : reenable)
 		IOHandler::GetIOHandlers().at(enable)->Enable();
 
+	//enable all interfaces because we disabled them all above
+	for(auto& ui_pair : Interfaces)
+		EnableIUI(ui_pair.second);
+
 	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Enabled (not including configured delays) {} objects affected by reload.",created_or_change.size()+reenable.size());
+		log->info("Enabled {} objects affected by reload.",created_or_changeIUIs.size()+created_or_changeIOHs.size()+reenable.size());
 
 	return true;
 }

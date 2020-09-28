@@ -391,7 +391,7 @@ TEST_CASE("TestForcedPoint")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "12345.6789");
 		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
@@ -428,7 +428,7 @@ TEST_CASE("TestReleasePoint")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "");
 		Json::Value value = resp->ExecuteCommand("ReleasePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
@@ -466,7 +466,7 @@ TEST_CASE("TestAnalogEventToAll")
 		while(!sim_port->Enabled())
 			;
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", ".*", "12345.6789");
 		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
@@ -504,7 +504,7 @@ TEST_CASE("TestBinaryEventToAll")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
@@ -542,7 +542,7 @@ TEST_CASE("TestBinaryEventQuality")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
@@ -580,7 +580,7 @@ TEST_CASE("TestAnalogEventQuality")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
@@ -618,7 +618,7 @@ TEST_CASE("TestBinaryEventTimestamp")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		char buf[64] = {0};
 		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
@@ -663,7 +663,7 @@ TEST_CASE("TestAnalogEventTimestamp")
 		sim_port->Build();
 		sim_port->Enable();
 
-		std::shared_ptr<IUIResponder> resp = std::get<1>(sim_port->GetUIResponder());
+		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		char buf[64] = {0};
 		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));

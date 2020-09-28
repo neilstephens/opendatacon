@@ -49,7 +49,7 @@ public:
 	void ProcessElements(const Json::Value& json_root) final;
 	void Event(std::shared_ptr<const odc::EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
 
-	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
+	std::pair<std::string,const IUIResponder*> GetUIResponder() final;
 
 	//Implement ODC::DataPort functions for UI
 	const Json::Value GetCurrentState() const override;

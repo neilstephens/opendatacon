@@ -41,6 +41,7 @@
 #include <opendatacon/IUI.h>
 #include <opendatacon/asio.h>
 #include <unordered_map>
+#include <set>
 
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
@@ -61,10 +62,17 @@ private:
 	void ProcessConnectors(const Json::Value& Connectors);
 	void ProcessPlugins(const Json::Value& Plugins);
 	void EnableIOHandler(std::shared_ptr<IOHandler> ioh);
+	void EnableIUI(std::shared_ptr<IUI> iui);
+	void PrepInterface(std::shared_ptr<IUI> interface);
+	void RefreshIUIResponders();
+	Json::Value FindChangedConfs(const std::string& collection_name, std::unordered_map<std::string,std::shared_ptr<Json::Value>>& old_file_confs,
+		const Json::Value &old_main_conf, const Json::Value &new_main_conf,
+		std::set<std::string> &created, std::set<std::string> &changed, std::set<std::string> &deleted);
 
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
 	InterfaceCollection Interfaces;
+	std::unordered_map<std::string,const IUIResponder*> RespondersMasterCopy;
 
 	std::shared_ptr<odc::asio_service> pIOS;
 	std::shared_ptr<asio::io_service::work> ios_working;

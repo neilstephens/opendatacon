@@ -49,7 +49,6 @@ public:
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override final;
-	void AddResponder(const std::string& name, const IUIResponder& pResponder) override;
 	void Build() override;
 	void Enable() override;
 	void Disable() override final;
@@ -63,9 +62,6 @@ private:
 	std::map<std::string,std::function<void (std::stringstream&)> > mCmds;
 	std::map<std::string,std::string> mDescriptions;
 	std::string help_intro;
-
-	/* UI response handlers */
-	std::unordered_map<std::string, const IUIResponder*> Responders;
 
 	/* Internal functions */
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);

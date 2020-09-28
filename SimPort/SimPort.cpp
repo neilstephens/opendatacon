@@ -134,9 +134,9 @@ void SimPort::PublishBinaryEvents(const std::vector<std::size_t>& indexes, const
 	}
 }
 
-std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
+std::pair<std::string, const IUIResponder *> SimPort::GetUIResponder()
 {
-	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
+	return std::pair<std::string,const SimPortCollection*>("SimControl",this->SimCollection.get());
 }
 
 const Json::Value SimPort::GetCurrentState() const
