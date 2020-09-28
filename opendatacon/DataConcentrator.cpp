@@ -377,12 +377,19 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 	ReloadLogSinks(LogSinks);
 }
 
-void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
+std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator::ConfigureLogSinks(const Json::Value& JSONRoot)
 {
-	if(!JSONRoot.isObject())
-		throw std::runtime_error("No valid JSON config object");
-
-	odc::SetConfigVersion(JSONRoot.isMember("Version") ? JSONRoot["Version"].asString() : "No Version Available");
+	//delete old ones in case this is a re-load
+	LogSinks.erase("tcp");
+	LogSinks.erase("syslog");
+	LogSinks.erase("file");
+	LogSinks.erase("console");
+	ReloadLogSinks(LogSinks);
+	auto tcp_buf_it = TCPbufs.find("tcp");
+	if(tcp_buf_it != TCPbufs.end())
+		tcp_buf_it->second.DeInit();
+	pTCPostreams.erase("tcp");
+	TCPbufs.erase("tcp");
 
 	//setup log sinks
 	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;
@@ -402,74 +409,89 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		log_level = spdlog::level::info;
 	if(console_level == spdlog::level::off && console_level_name != "off")
 		console_level = spdlog::level::err;
+
+	auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_name, log_size_kb*1024, log_num);
+	auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+	file->set_level(log_level);
+	console->set_level(console_level);
+
+	LogSinks["file"] = file;
+	LogSinks["console"] = console;
+
+	//TODO: document these config options
+	if(JSONRoot.isMember("SyslogLog"))
+	{
+		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+		auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
+
+		auto SyslogJSON = JSONRoot["SyslogLog"];
+		if(!SyslogJSON.isMember("Host"))
+		{
+			temp_logger->error("Invalid SyslogLog config: need at least 'Host': \n'{}\n' : ignoring", SyslogJSON.toStyledString());
+		}
+		else
+		{
+			auto host = SyslogJSON["Host"].asString();
+			auto port = SyslogJSON.isMember("Port") ? SyslogJSON["Port"].asString() : "514";
+			auto local_host = SyslogJSON.isMember("LocalHost") ? SyslogJSON["LocalHost"].asString() : "-";
+			auto app = SyslogJSON.isMember("AppName") ? SyslogJSON["AppName"].asString() : "opendatacon";
+			auto category = SyslogJSON.isMember("MsgCategory") ? SyslogJSON["MsgCategory"].asString() : "-";
+
+			auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
+				*pIOS,host,port,1,local_host,app,category);
+			syslog_sink->set_level(log_level);
+			LogSinks["syslog"] = syslog_sink;
+		}
+	}
+
+	//TODO: document these config options
+	if(JSONRoot.isMember("TCPLog"))
+	{
+		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+		auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
+
+		auto TCPLogJSON = JSONRoot["TCPLog"];
+		if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
+		{
+			temp_logger->error("Invalid TCPLog config: need at least IP, Port, TCPClientServer: \n'{}\n' : ignoring", TCPLogJSON.toStyledString());
+		}
+		else
+		{
+			bool isServer = true;
+
+			if(TCPLogJSON["TCPClientServer"].asString() == "CLIENT")
+				isServer = false;
+			else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
+				temp_logger->error("Invalid TCPLog TCPClientServer setting '{}'. Choose CLIENT or SERVER. Defaulting to SERVER.", TCPLogJSON["TCPClientServer"].asString());
+
+			TCPbufs["tcp"].Init(pIOS, isServer, TCPLogJSON["IP"].asString(), TCPLogJSON["Port"].asString());
+			pTCPostreams["tcp"] = std::make_unique<std::ostream>(&TCPbufs["tcp"]);
+		}
+	}
+
+	if(pTCPostreams.find("tcp") != pTCPostreams.end())
+	{
+		auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams["tcp"], true);
+		tcp->set_level(log_level);
+		LogSinks["tcp"] = tcp;
+	}
+
+	ReloadLogSinks(LogSinks);
+	return {log_level,console_level};
+}
+
+void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
+{
+	if(!JSONRoot.isObject())
+		throw std::runtime_error("No valid JSON config object");
+
+	odc::SetConfigVersion(JSONRoot.isMember("Version") ? JSONRoot["Version"].asString() : "No Version Available");
+
+	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> levels;
 	try
 	{
-		auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_name, log_size_kb*1024, log_num);
-		auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-
-		file->set_level(log_level);
-		console->set_level(console_level);
-
-		LogSinks["file"] = file;
-		LogSinks["console"] = console;
-
-		//TODO: document these config options
-		if(JSONRoot.isMember("SyslogLog"))
-		{
-			const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
-			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
-
-			auto SyslogJSON = JSONRoot["SyslogLog"];
-			if(!SyslogJSON.isMember("Host"))
-			{
-				temp_logger->error("Invalid SyslogLog config: need at least 'Host': \n'{}\n' : ignoring", SyslogJSON.toStyledString());
-			}
-			else
-			{
-				auto host = SyslogJSON["Host"].asString();
-				auto port = SyslogJSON.isMember("Port") ? SyslogJSON["Port"].asString() : "514";
-				auto local_host = SyslogJSON.isMember("LocalHost") ? SyslogJSON["LocalHost"].asString() : "-";
-				auto app = SyslogJSON.isMember("AppName") ? SyslogJSON["AppName"].asString() : "opendatacon";
-				auto category = SyslogJSON.isMember("MsgCategory") ? SyslogJSON["MsgCategory"].asString() : "-";
-
-				auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
-					*pIOS,host,port,1,local_host,app,category);
-				syslog_sink->set_level(log_level);
-				LogSinks["syslog"] = syslog_sink;
-			}
-		}
-
-		//TODO: document these config options
-		if(JSONRoot.isMember("TCPLog"))
-		{
-			const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
-			auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
-
-			auto TCPLogJSON = JSONRoot["TCPLog"];
-			if(!TCPLogJSON.isMember("IP") || !TCPLogJSON.isMember("Port") || !TCPLogJSON.isMember("TCPClientServer"))
-			{
-				temp_logger->error("Invalid TCPLog config: need at least IP, Port, TCPClientServer: \n'{}\n' : ignoring", TCPLogJSON.toStyledString());
-			}
-			else
-			{
-				bool isServer = true;
-
-				if(TCPLogJSON["TCPClientServer"].asString() == "CLIENT")
-					isServer = false;
-				else if(TCPLogJSON["TCPClientServer"].asString() != "SERVER")
-					temp_logger->error("Invalid TCPLog TCPClientServer setting '{}'. Choose CLIENT or SERVER. Defaulting to SERVER.", TCPLogJSON["TCPClientServer"].asString());
-
-				TCPbufs["tcp"].Init(pIOS, isServer, TCPLogJSON["IP"].asString(), TCPLogJSON["Port"].asString());
-				pTCPostreams["tcp"] = std::make_unique<std::ostream>(&TCPbufs["tcp"]);
-			}
-		}
-
-		if(pTCPostreams.find("tcp") != pTCPostreams.end())
-		{
-			auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams["tcp"], true);
-			tcp->set_level(log_level);
-			LogSinks["tcp"] = tcp;
-		}
+		levels = ConfigureLogSinks(JSONRoot);
 
 		odc::spdlog_init_thread_pool(4096,3);
 		AddLogger("opendatacon", LogSinks);
@@ -484,8 +506,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
 	log->critical("This is opendatacon version '{}'", ODC_VERSION_STRING);
-	log->critical("Log level set to {}", spdlog::level::level_string_views[log_level]);
-	log->critical("Console level set to {}", spdlog::level::level_string_views[console_level]);
+	log->critical("Log level set to {}", spdlog::level::level_string_views[levels.first]);
+	log->critical("Console level set to {}", spdlog::level::level_string_views[levels.second]);
 	log->info("Loading configuration... ");
 
 	//Configure the user interface
@@ -1051,23 +1073,6 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		changed_confs["Ports"] = FindChangedConfs("Ports",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
 		changed_confs["Connectors"] = FindChangedConfs("Connectors",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
 		changed_confs["Plugins"] = FindChangedConfs("Plugins",old_file_confs,*old_main_conf,*new_main_conf,createdIUIs,changedIUIs,deletedIUIs);
-
-		//change log levels before anything else
-		std::stringstream ss;
-		if(new_main_conf->isMember("LogLevel") && (*old_main_conf)["LogLevel"] != (*new_main_conf)["LogLevel"])
-		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Changing LogLevel from {} to {}",(*old_main_conf)["LogLevel"].asString(), (*new_main_conf)["LogLevel"].asString());
-			ss<<"file "<<(*new_main_conf)["LogLevel"].asString();
-			SetLogLevel(ss);
-		}
-		if(new_main_conf->isMember("ConsoleLevel") && (*old_main_conf)["ConsoleLevel"] != (*new_main_conf)["ConsoleLevel"])
-		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Changing ConsoleLevel from {} to {}",(*old_main_conf)["ConsoleLevel"].asString(), (*new_main_conf)["ConsoleLevel"].asString());
-			ss.clear(); ss<<"console "<<(*new_main_conf)["ConsoleLevel"].asString();
-			SetLogLevel(ss);
-		}
 	}
 	catch(std::exception& e)
 	{
@@ -1094,6 +1099,28 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 			log->info("Deleted UI: '{}'",del);
 	}
 
+	//do log sinks first
+	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> levels;
+	try
+	{
+		levels = ConfigureLogSinks(*new_main_conf);
+		if(auto log = odc::spdlog_get("opendatacon"))
+		{
+			log->critical("Log level set to {}", spdlog::level::level_string_views[levels.first]);
+			log->critical("Console level set to {}", spdlog::level::level_string_views[levels.second]);
+		}
+	}
+	catch(std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("DataConcentrator::ReloadConfig() Failed : '{}'",e.what());
+		ConfigureLogSinks(*old_main_conf);
+		ConfigParser::JSONFileCache = old_file_confs;
+		ConfFilename = old_ConfFilename;
+		return false;
+	}
+
+	//if nothig else has changed, we're done
 	if(createdIOHs.size()+changedIOHs.size()+deletedIOHs.size()
 	   +createdIUIs.size()+changedIUIs.size()+deletedIUIs.size() == 0)
 	{

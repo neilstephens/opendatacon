@@ -58,6 +58,7 @@ public:
 	bool isShutDown();
 
 private:
+	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> ConfigureLogSinks(const Json::Value& JSONRoot);
 	void ProcessPorts(const Json::Value& Ports);
 	void ProcessConnectors(const Json::Value& Connectors);
 	void ProcessPlugins(const Json::Value& Plugins);
