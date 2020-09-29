@@ -112,6 +112,22 @@ int main(int argc, char* argv[])
 					   {
 						   TheDataConcentrator->Shutdown();
 					   };
+		auto reload_func = [] (int signum)
+					 {
+						 std::thread([]()
+							 {
+								 try
+								 {
+								       TheDataConcentrator->ReloadConfig();
+								 }
+								 catch(const std::exception& e)
+								 {
+								       if(auto log = odc::spdlog_get("opendatacon"))
+										 log->critical("Shutting down due to exception in config reload: {}", e.what());
+								       TheDataConcentrator->Shutdown();
+								 }
+							 }).detach();
+					 };
 		auto ignore_func = [] (int signum)
 					 {
 						 std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
@@ -120,13 +136,14 @@ int main(int argc, char* argv[])
 					 };
 
 		for (auto SIG : SIG_SHUTDOWN)
-		{
 			::signal(SIG,shutdown_func);
-		}
+
 		for (auto SIG : SIG_IGNORE)
-		{
 			::signal(SIG,ignore_func);
-		}
+
+		if (Args.DaemonArg.isSet())
+			for (auto SIG : SIG_RELOAD)
+				::signal(SIG,reload_func);
 
 		// Start opendatacon, returns after a clean shutdown
 		auto run_thread = std::thread([]()

@@ -1683,10 +1683,9 @@ void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
 }
 
 // UI Handlers
-std::pair<std::string, std::shared_ptr<IUIResponder>> MD3OutstationPort::GetUIResponder()
+std::pair<std::string, const IUIResponder *> MD3OutstationPort::GetUIResponder()
 {
-	return std::pair<std::string, std::shared_ptr<MD3OutstationPortCollection>>("MD3OutstationPortControl", this->MD3OutstationCollection);
-	// 	return std::pair<std::string, std::shared_ptr<SimPortCollection>>("SimControl", this->SimCollection);
+	return std::pair<std::string, const MD3OutstationPortCollection*>("MD3OutstationPortControl", this->MD3OutstationCollection.get());
 }
 
 bool MD3OutstationPort::UIFailControl(const std::string& active)

@@ -41,9 +41,13 @@
 #include <opendatacon/IUI.h>
 #include <opendatacon/asio.h>
 #include <unordered_map>
+#include <set>
+
+class TestHook;
 
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
+	friend class TestHook;
 public:
 	DataConcentrator(const std::string& FileName);
 	~DataConcentrator() override;
@@ -51,14 +55,28 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void Build();
 	void Run();
+	bool ReloadConfig(const std::string& filename = "", const size_t disable_delay = 5);
 	void Shutdown();
 	bool isShuttingDown();
 	bool isShutDown();
 
 private:
+	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> ConfigureLogSinks(const Json::Value& JSONRoot);
+	void ProcessPorts(const Json::Value& Ports);
+	void ProcessConnectors(const Json::Value& Connectors);
+	void ProcessPlugins(const Json::Value& Plugins);
+	void EnableIOHandler(std::shared_ptr<IOHandler> ioh);
+	void EnableIUI(std::shared_ptr<IUI> iui);
+	void PrepInterface(std::shared_ptr<IUI> interface);
+	void RefreshIUIResponders();
+	Json::Value FindChangedConfs(const std::string& collection_name, std::unordered_map<std::string,std::shared_ptr<Json::Value>>& old_file_confs,
+		const Json::Value &old_main_conf, const Json::Value &new_main_conf,
+		std::set<std::string> &created, std::set<std::string> &changed, std::set<std::string> &deleted);
+
 	DataPortCollection DataPorts;
 	DataConnectorCollection DataConnectors;
 	InterfaceCollection Interfaces;
+	std::unordered_map<std::string,const IUIResponder*> RespondersMasterCopy;
 
 	std::shared_ptr<odc::asio_service> pIOS;
 	std::shared_ptr<asio::io_service::work> ios_working;
@@ -78,6 +96,10 @@ private:
 	void AddLogSink(std::stringstream& ss);
 	void DeleteLogSink(std::stringstream& ss);
 
+	void ParkThread();
+	bool ParkThreads();
+	std::atomic_bool parking = false;
+	std::atomic<size_t> num_parked_threads = 0;
 	std::vector<std::thread> threads;
 };
 

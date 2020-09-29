@@ -47,7 +47,7 @@ public:
 
 	virtual void Enable() override =0;
 	virtual void Disable() override =0;
-	virtual void Build()=0;
+	virtual void Build() = 0;
 	virtual void ProcessElements(const Json::Value& JSONRoot) override =0;
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
@@ -56,11 +56,11 @@ public:
 		MuxConnectionEvents(state, SenderName);
 	}
 
-	virtual std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder()
+	virtual std::pair<std::string,const IUIResponder*> GetUIResponder()
 	{
-		std::shared_ptr<IUIResponder> pR(nullptr);
+		IUIResponder* pR(nullptr);
 		std::string s = "";
-		std::pair<std::string,std::shared_ptr<IUIResponder>> pair(s,pR);
+		std::pair<std::string,const IUIResponder*> pair(s,pR);
 		return pair;
 	}
 

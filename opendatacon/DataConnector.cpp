@@ -55,19 +55,13 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 		{
 			try
 			{
-				if(!JConnections[n].isMember("Name") || !JConnections[n].isMember("Port1") || !JConnections[n].isMember("Port2"))
+				if(!JConnections[n].isMember("Port1") || !JConnections[n].isMember("Port2"))
 				{
 					if(auto log = odc::spdlog_get("Connectors"))
-						log->error("Invalid Connection config: need at least Name, From and To: \n'{}\n' : ignoring", JConnections[n].toStyledString());
+						log->error("Invalid Connection config: need at least Port1 and Port2: \n'{}\n' : ignoring", JConnections[n].toStyledString());
 					continue;
 				}
 				auto ConName = JConnections[n]["Name"].asString();
-				if(Connections.count(ConName))
-				{
-					if(auto log = odc::spdlog_get("Connectors"))
-						log->error("Invalid Connection config: Duplicate Name: \n'{}\n' : ignoring", JConnections[n].toStyledString());
-					continue;
-				}
 				auto ConPort1 = JConnections[n]["Port1"].asString();
 				auto ConPort2 = JConnections[n]["Port2"].asString();
 				if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
@@ -76,13 +70,12 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 						log->error("Invalid port on connection '{}' skipping...", ConName);
 					continue;
 				}
-				Connections[ConName] = std::make_pair(GetIOHandlers()[ConPort1], GetIOHandlers()[ConPort2]);
+				//insert the connections in both directions
+				SenderConnections.insert({ConPort1, std::make_pair(ConPort2, GetIOHandlers()[ConPort2])});
+				SenderConnections.insert({ConPort2, std::make_pair(ConPort1, GetIOHandlers()[ConPort1])});
 				//Subscribe to recieve events for the connection
 				GetIOHandlers()[ConPort1]->Subscribe(this, this->Name);
 				GetIOHandlers()[ConPort2]->Subscribe(this, this->Name);
-				//Add to the lookup table
-				SenderConnectionsLookup.insert(std::make_pair(ConPort1, ConName));
-				SenderConnectionsLookup.insert(std::make_pair(ConPort2, ConName));
 			}
 			catch (std::exception& e)
 			{
@@ -110,37 +103,37 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 				if(Transforms[n]["Type"].asString() == "IndexOffset")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexOffsetTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexOffsetTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "IndexMap")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexMapTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexMapTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "Threshold")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new ThresholdTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new ThresholdTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "Rand")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RandTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RandTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "RateLimit")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RateLimitTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RateLimitTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "LogicInv")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new LogicInvTransform    (Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new LogicInvTransform    (Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if (Transforms[n]["Type"].asString() == "BlackHole")
 				{
-					ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new BlackHoleTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new BlackHoleTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 
@@ -212,7 +205,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 							};
 
 				//call the creation function and wrap the returned pointer
-				ConnectionTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new_tx_func(Transforms[n]["Params"].asString()),tx_cleanup));
+				SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new_tx_func(Transforms[n]["Params"].asString()),tx_cleanup));
 			}
 			catch (std::exception& e)
 			{
@@ -223,22 +216,24 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
+//If the datacon re-creates a port with a new address,
+//	it calls this so we can update our records
+void DataConnector::ReplaceAddress(std::string PortName, IOHandler* Addr)
+{
+	for(auto& connection : SenderConnections)
+	{
+		if(connection.second.first == PortName)
+			connection.second.second = Addr;
+	}
+}
+
 void DataConnector::Event(ConnectState state, const std::string& SenderName)
 {
 	if(MuxConnectionEvents(state, SenderName))
 	{
-		auto bounds = SenderConnectionsLookup.equal_range(SenderName);
+		auto bounds = SenderConnections.equal_range(SenderName);
 		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
-		{
-			//guess which one is the sendee
-			IOHandler* pSendee = Connections[aMatch_it->second].second;
-
-			//check if we were right and correct if need be
-			if(pSendee->GetName() == SenderName)
-				pSendee = Connections[aMatch_it->second].first;
-
-			pSendee->Event(state, Name);
-		}
+			aMatch_it->second.second->Event(state, Name);
 	}
 }
 
@@ -250,14 +245,14 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 		return;
 	}
 
-	auto connection_count = SenderConnectionsLookup.count(SenderName);
+	auto connection_count = SenderConnections.count(SenderName);
 	//Do we have a connection for this sender?
 	if(connection_count > 0)
 	{
 		auto new_event_obj = std::make_shared<EventInfo>(*event);
-		if(ConnectionTransforms.count(SenderName))
+		if(SenderTransforms.count(SenderName))
 		{
-			for(auto& Transform : ConnectionTransforms[SenderName])
+			for(auto& Transform : SenderTransforms[SenderName])
 			{
 				if(!Transform->Event(new_event_obj))
 				{
@@ -275,20 +270,13 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 		}
 
 		auto multi_callback = SyncMultiCallback(connection_count,pStatusCallback);
-		auto bounds = SenderConnectionsLookup.equal_range(SenderName);
+		auto bounds = SenderConnections.equal_range(SenderName);
 		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 		{
-			//guess which one is the sendee
-			IOHandler* pSendee = Connections[aMatch_it->second].second;
-
-			//check if we were right and correct if need be
-			if(pSendee->GetName() == SenderName)
-				pSendee = Connections[aMatch_it->second].first;
-
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->trace("{} {} Payload {} Event {} => {}", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name, pSendee->GetName());
+				log->trace("{} {} Payload {} Event {} => {}", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name, aMatch_it->second.second->GetName());
 
-			pSendee->Event(new_event_obj, this->Name, multi_callback);
+			aMatch_it->second.second->Event(new_event_obj, this->Name, multi_callback);
 		}
 		return;
 	}

@@ -238,15 +238,35 @@ void tinyConsole::run ()
 	// grab input
 	for (;;)
 	{
+		if(prompt_anchor)
+		{
+			//Re-print the line in case logging as clobbered it
+			//This 'anchors' it to the bottom of the console
+			for(auto i = _prompt.size()+buffer.size();i>0;i--)
+				std::cout<<"\b \b";
+			std::cout<<_prompt;
+			for(auto b : buffer)
+				std::cout<<b;
+			for (size_t i = 0; i < buffer.size()-line_pos; i++)
+				std::cout<<"\b";
+			std::cout<<std::flush;
+		}
+
+
 		if(_quit)break;
-		c = GetCharTimeout(5);
+		c = GetCharTimeout(1);
 		if(c == 0)continue;
 		if(!hotkeys(c))
 		switch (c)
 		{
 			case ESC:
 				//FIXME: escape is only detected if double-pressed.
-				std::cout << "(Esc)"<< std::flush;
+				prompt_anchor = !prompt_anchor;
+				std::cout << "(Esc)Prompt anchor ";
+				if(prompt_anchor)
+					std::cout<<"on\n"<<std::flush;
+				else
+					std::cout<<"off\n"<<std::flush;
 				break;
 			case KEY_CTRL1: // look for arrow keys
 				switch (c = GetCharTimeout(5))

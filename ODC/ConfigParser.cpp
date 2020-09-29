@@ -29,7 +29,7 @@
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/util.h>
 
-std::unordered_map<std::string,Json::Value> ConfigParser::JSONCache;
+std::unordered_map<std::string,std::shared_ptr<Json::Value>> ConfigParser::JSONFileCache;
 
 ConfigParser::ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ConfFilename(aConfFilename),
@@ -38,11 +38,10 @@ ConfigParser::ConfigParser(const std::string& aConfFilename, const Json::Value& 
 
 void ConfigParser::ProcessInherits(const std::string& FileName)
 {
-	Json::Value* pJSONRoot;
-	pJSONRoot = RecallOrCreate(FileName);
-	if(pJSONRoot != nullptr)
+	auto pJSONRoot = RecallOrCreate(FileName);
+	if(pJSONRoot)
 	{
-		if(!(*pJSONRoot)["Inherits"].isNull())
+		if(pJSONRoot->isMember("Inherits") && (*pJSONRoot)["Inherits"].isArray())
 			for(Json::ArrayIndex n=0; n<(*pJSONRoot)["Inherits"].size(); n++)
 				ProcessInherits((*pJSONRoot)["Inherits"][n].asString());
 		ProcessElements(*pJSONRoot);
@@ -57,9 +56,12 @@ void ConfigParser::ProcessFile()
 		ProcessElements(ConfOverrides);
 }
 
-Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
+//static
+std::shared_ptr<const Json::Value> ConfigParser::RecallOrCreate(const std::string& FileName)
 {
-	if(!(JSONCache.count(FileName))) //not cached - read it in
+	if(FileName.empty())
+		return std::make_shared<Json::Value>();
+	if(JSONFileCache.find(FileName) == JSONFileCache.end()) //not cached - read it in
 	{
 		std::ifstream fin(FileName);
 		if (fin.fail())
@@ -69,11 +71,12 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 				log->error(msg);
 			else
 				std::cerr << "ERROR: " << msg << std::endl;
-			return nullptr;
+			return std::make_shared<Json::Value>();
 		}
 		Json::CharReaderBuilder JSONReader;
 		std::string err_str;
-		bool parse_success = Json::parseFromStream(JSONReader,fin, &JSONCache[FileName], &err_str);
+		JSONFileCache[FileName] = std::make_shared<Json::Value>();
+		bool parse_success = Json::parseFromStream(JSONReader,fin, JSONFileCache[FileName].get(), &err_str);
 		if (!parse_success)
 		{
 			std::string msg("Failed to parse configuration from '" + FileName + "' : " + err_str);
@@ -81,44 +84,39 @@ Json::Value* ConfigParser::RecallOrCreate(const std::string& FileName)
 				log->error(msg);
 			else
 				std::cerr << "ERROR: " << msg <<std::endl;
-			return nullptr;
+			return std::make_shared<Json::Value>();
 		}
 	}
-	return &JSONCache[FileName];
+	return JSONFileCache[FileName];
 }
 
-const Json::Value ConfigParser::GetConfiguration(const std::string& pFileName)
-{
-	if(JSONCache.count(pFileName))
-	{
-		return JSONCache[pFileName];
-	}
-
-	return Json::Value();
-}
-
+//static
 void ConfigParser::AddInherits(Json::Value& JSONRoot, const Json::Value& Inherits)
 {
 	for(auto& InheritFile : Inherits)
 	{
-		Json::Value InheritRoot = ConfigParser::GetConfiguration(InheritFile.asString());
-		JSONRoot[InheritFile.asString()] = InheritRoot;
-		if (InheritRoot.isMember("Inherits"))
-		{
-			AddInherits(JSONRoot, InheritRoot["Inherits"]);
-		}
+		auto Filename = InheritFile.asString();
+		JSONRoot[Filename] = *RecallOrCreate(Filename);
+		if (JSONRoot[Filename].isMember("Inherits"))
+			AddInherits(JSONRoot, JSONRoot[Filename]["Inherits"]);
 	}
 }
 
-const Json::Value ConfigParser::GetConfiguration() const
+//static
+Json::Value ConfigParser::GetConfiguration(const std::string& aConfFilename, const Json::Value& aConfOverrides)
 {
 	Json::Value JSONRoot;
-	JSONRoot[ConfFilename] = GetConfiguration(ConfFilename);
-	if(JSONRoot[ConfFilename].isMember("Inherits"))
+	JSONRoot[aConfFilename] = *RecallOrCreate(aConfFilename);
+	if(JSONRoot[aConfFilename].isMember("Inherits"))
 	{
-		AddInherits(JSONRoot, JSONRoot[ConfFilename]["Inherits"]);
+		AddInherits(JSONRoot, JSONRoot[aConfFilename]["Inherits"]);
 	}
-	JSONRoot["ConfigOverrides"] = ConfOverrides;
+	JSONRoot["ConfOverrides"] = aConfOverrides;
 
 	return JSONRoot;
+}
+
+Json::Value ConfigParser::GetConfiguration() const
+{
+	return GetConfiguration(ConfFilename, ConfOverrides);
 }

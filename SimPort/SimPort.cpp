@@ -86,20 +86,16 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	ProcessFile();
 }
 
-SimPort::~SimPort()
-{
-	if(!httpServerToken.ServerID.empty())
-		HttpServerManager::StopConnection(httpServerToken);
-}
-
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([this]()
 		{
 			if(!enabled)
 			{
-			      enabled = true;
 			      PortUp();
+			      enabled = true;
+			      if(!httpServerToken.ServerID.empty())
+					HttpServerManager::StartConnection(httpServerToken);
 			}
 		});
 }
@@ -112,6 +108,8 @@ void SimPort::Disable()
 			{
 			      enabled = false;
 			      PortDown();
+			      if(!httpServerToken.ServerID.empty())
+					HttpServerManager::StopConnection(httpServerToken);
 			}
 		});
 }
@@ -136,9 +134,9 @@ void SimPort::PublishBinaryEvents(const std::vector<std::size_t>& indexes, const
 	}
 }
 
-std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
+std::pair<std::string, const IUIResponder *> SimPort::GetUIResponder()
 {
-	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
+	return std::pair<std::string,const SimPortCollection*>("SimControl",this->SimCollection.get());
 }
 
 const Json::Value SimPort::GetCurrentState() const

@@ -17,9 +17,11 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(SimPort_tests)
+project(Integration_tests)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ../ThreadPool.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
+
+add_definitions(-DCONF_PATH="${CMAKE_SOURCE_DIR}/example/ConfigReload/")
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${DL})

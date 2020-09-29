@@ -150,7 +150,7 @@ public:
 	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
 
 	// UI Interactions
-	std::pair<std::string, std::shared_ptr<IUIResponder>> GetUIResponder() final;
+	std::pair<std::string, const IUIResponder*> GetUIResponder() final;
 	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
 

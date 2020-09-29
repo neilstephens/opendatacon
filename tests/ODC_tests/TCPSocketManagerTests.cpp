@@ -25,6 +25,7 @@
  */
 
 #include "TestODCHelpers.h"
+#include "../ThreadPool.h"
 #include <opendatacon/TCPSocketManager.h>
 #include <opendatacon/util.h>
 #include <catch.hpp>
@@ -158,24 +159,33 @@ TEST_CASE(SUITE("SimpleStrings"))
 	pSockMan1.reset();
 	pSockMan2.reset();
 
+	//make sure work is all done
+	odc::asio_service::Get()->run();
+
 	TestTearDown();
 }
 
-void interrupt(std::unique_ptr<TCPSocketManager>& sock, std::atomic_bool& open, std::unique_ptr<asio::steady_timer>& timer, const std::atomic_bool& stop)
+void interrupt(const std::string& description, std::unique_ptr<TCPSocketManager>& sock, std::atomic_bool& open, std::unique_ptr<asio::steady_timer>& timer, const std::atomic_bool& stop)
 {
 	thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
 	open = !open;
 	if(open)
+	{
+		odc::spdlog_get("opendatacon")->info("{}: Interrupt timer Open()",description);
 		sock->Open();
+	}
 	else
+	{
+		odc::spdlog_get("opendatacon")->info("{}: Interrupt timer Close()",description);
 		sock->Close();
+	}
 	timer->expires_from_now(std::chrono::milliseconds(std::uniform_int_distribution<uint16_t>(70,200)(RandNumGenerator)));
 	timer->async_wait([&](const asio::error_code& err)
 		{
 			if(err || stop)
-				odc::spdlog_get("opendatacon")->debug("Interrupt timer stop: {}",err.message());
+				odc::spdlog_get("opendatacon")->debug("Interrupt timer info: {}",err.message());
 			else
-				interrupt(sock,open,timer,stop);
+				interrupt(description,sock,open,timer,stop);
 		});
 }
 
@@ -239,9 +249,7 @@ TEST_CASE(SUITE("ManyStrings"))
 		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->debug("[{}] Sock2: {}",level,msg);});
 	//use debug for logs - we force lots of errors
 
-	auto work = odc::asio_service::Get()->make_work();
-	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
-		std::thread([](){odc::asio_service::Get()->run();}).detach();
+	auto pThreadPool = std::make_unique<ThreadPool>(std::thread::hardware_concurrency());
 
 	//make a timer to stop the run
 	std::atomic_bool stop = false;
@@ -255,8 +263,9 @@ TEST_CASE(SUITE("ManyStrings"))
 	auto interrupt_timer1 = odc::asio_service::Get()->make_steady_timer();
 	auto interrupt_timer2 = odc::asio_service::Get()->make_steady_timer();
 	//kick off the interruptions
-	interrupt(pSockMan1, s1_open, interrupt_timer1,stop);
-	interrupt(pSockMan2, s2_open, interrupt_timer2,stop);
+	const std::string s1 = "Sock1"; const std::string s2 = "Sock2";
+	interrupt(s1,pSockMan1, s1_open, interrupt_timer1,stop);
+	interrupt(s2,pSockMan2, s2_open, interrupt_timer2,stop);
 
 	//write a bunch of data while the connections are going up and down
 	while(!stop)
@@ -274,8 +283,9 @@ TEST_CASE(SUITE("ManyStrings"))
 		pSockMan2->Write(std::string(std::move(data2)));
 	}
 
-	interrupt_timer1->cancel();
-	interrupt_timer2->cancel();
+	interrupt_timer1.reset();
+	interrupt_timer2.reset();
+	stop_timer.reset();
 
 	//final open to make sure all the writes get a chance
 	pSockMan1->Open();
@@ -288,13 +298,9 @@ TEST_CASE(SUITE("ManyStrings"))
 	pSockMan2->Close();
 	pSockMan1.reset();
 	pSockMan2.reset();
-	work.reset();
+	pThreadPool.reset();
 
 	odc::spdlog_get("opendatacon")->info("send_count1:{}, recv_count2:{}, send_count2:{}, recv_count1:{}",send_count1,recv_count2,send_count2,recv_count1);
 	odc::spdlog_get("opendatacon")->info("Interruption count: {}", interrupt_count);
-
-	//make sure work is all done
-	odc::asio_service::Get()->run();
-
 	TestTearDown();
 }

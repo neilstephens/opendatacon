@@ -1,0 +1,154 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * IntegrationTests.cpp
+ *
+ *  Created on: 29/09/2020
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
+#include "IntegrationTests.h"
+#include "../opendatacon/DataConcentrator.cpp"
+#include "../opendatacon/DataConnector.cpp"
+#include "../ConsoleUI/ConsoleUI.h"
+#include <catch.hpp>
+
+#define SUITE(name) "IntegrationTestSuite - " name
+
+class TestHook
+{
+public:
+	static ConsoleUI* GetDataconConsole(std::shared_ptr<DataConcentrator> DC)
+	{
+		auto smart = std::static_pointer_cast<ConsoleUI>(DC->Interfaces.at("ConsoleUI-1"));
+		return smart.get();
+	}
+	static std::unordered_map<std::string, spdlog::sink_ptr>* GetLogSinks(std::shared_ptr<DataConcentrator> DC)
+	{
+		return &DC->LogSinks;
+	}
+};
+
+TEST_CASE(SUITE("ReloadConfig"))
+{
+	std::cout<<CONF_PATH<<std::endl;
+	ChangeWorkingDir(CONF_PATH);
+	auto TheDataConcentrator = std::make_shared<DataConcentrator>("opendatacon.conf");
+	REQUIRE(TheDataConcentrator);
+	TheDataConcentrator->Build();
+	auto run_thread = std::thread([=](){TheDataConcentrator->Run();});
+
+	AddLogger("TestHarness",*TestHook::GetLogSinks(TheDataConcentrator));
+	auto log = odc::spdlog_get("TestHarness");
+	REQUIRE(log);
+
+	auto pConsole = TestHook::GetDataconConsole(TheDataConcentrator);
+	REQUIRE(pConsole);
+
+	std::string cmd = "set_loglevel console "+level_str+"\n";
+	std::cout<<cmd<<std::flush;
+	pConsole->trigger(cmd);
+
+	log->critical("ReloadConfig: no change");
+	REQUIRE(TheDataConcentrator->ReloadConfig());
+	//TODO: check the stream of events coming out of JSON port
+
+	log->critical("ReloadConfig: bogus config");
+	REQUIRE_FALSE(TheDataConcentrator->ReloadConfig("bogus"));
+	//TODO: check the stream of events coming out of JSON port
+
+	log->critical("ReloadConfig: dangling connector");
+	REQUIRE_FALSE(TheDataConcentrator->ReloadConfig("opendatacon_dangling.conf"));
+	//TODO: check the stream of events coming out of JSON port
+
+	log->critical("ReloadConfig: changed port");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_changed_port.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: reset");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: changed connector");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_changed_conn.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: reset");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: removed port");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_removed_port.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: reset");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: removed connector");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_removed_conn.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: reset");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: removed plugin");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_removed_plugin.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: reset");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: change everything");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_change_everything.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log->critical("ReloadConfig: reset");
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	//TODO: check the stream of events coming out of JSON port
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	cmd = "shutdown\n";
+	std::cout<<cmd<<std::flush;
+	pConsole->trigger(cmd);
+
+
+	//Shutting down - give some time for clean shutdown
+	unsigned int i=0;
+	while(!TheDataConcentrator->isShutDown() && i++ < 150)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	REQUIRE(TheDataConcentrator->isShutDown());
+
+	odc::spdlog_shutdown();
+	run_thread.join();
+}
