@@ -1115,12 +1115,28 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> levels;
 	try
 	{
-		levels = ConfigureLogSinks(*new_main_conf);
-		if(auto log = odc::spdlog_get("opendatacon"))
+		Json::Value copy_old = *old_main_conf;
+		Json::Value copy_new = *new_main_conf;
+		for(Json::Value* conf_copy : {&copy_new,&copy_old})
 		{
-			log->critical("Log level set to {}", spdlog::level::level_string_views[levels.first]);
-			log->critical("Console level set to {}", spdlog::level::level_string_views[levels.second]);
+			(*conf_copy)["Ports"] = Json::Value::nullSingleton();
+			(*conf_copy)["Connectors"] = Json::Value::nullSingleton();
+			(*conf_copy)["Plugins"] = Json::Value::nullSingleton();
 		}
+		//all that's left in the copied confs should be logging config
+		if(copy_old != copy_new)
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->info("Logging config changed - reloading log sinks");
+			levels = ConfigureLogSinks(*new_main_conf);
+			if(auto log = odc::spdlog_get("opendatacon"))
+			{
+				log->critical("Log level set to {}", spdlog::level::level_string_views[levels.first]);
+				log->critical("Console level set to {}", spdlog::level::level_string_views[levels.second]);
+			}
+		}
+		else if(auto log = odc::spdlog_get("opendatacon"))
+			log->info("Logging config didn't change - not reloading log sinks");
 	}
 	catch(std::exception& e)
 	{
