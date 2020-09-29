@@ -390,6 +390,8 @@ TEST_CASE("TestForcedPoint")
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "12345.6789");
@@ -427,6 +429,8 @@ TEST_CASE("TestReleasePoint")
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "");
@@ -503,10 +507,12 @@ TEST_CASE("TestBinaryEventToAll")
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
-		Json::Value value = resp->ExecuteCommand("SendEvent", params);
+		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
 		REQUIRE(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
 			REQUIRE(sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)] == "1");
@@ -541,6 +547,8 @@ TEST_CASE("TestBinaryEventQuality")
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
@@ -579,6 +587,8 @@ TEST_CASE("TestAnalogEventQuality")
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
@@ -617,6 +627,8 @@ TEST_CASE("TestBinaryEventTimestamp")
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -662,6 +674,8 @@ TEST_CASE("TestAnalogEventTimestamp")
 
 		sim_port->Build();
 		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
