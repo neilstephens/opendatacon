@@ -249,11 +249,12 @@ void WebUI::Enable()
 
 void WebUI::Disable()
 {
+	if(pSockMan)
+		pSockMan->Close();
+
 	if (d == nullptr) return;
 	MHD_stop_daemon(d);
 	d = nullptr;
-	if(pSockMan)
-		pSockMan->Close();
 }
 
 void WebUI::HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb)
