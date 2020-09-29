@@ -374,7 +374,7 @@ void SimPort::PortUp()
 			ptimer->async_wait([=](asio::error_code err_code)
 				{
 					if(enabled && !err_code)
-						SpawnEvent(event, time_offset);
+						SpawnEvent(event, ptimer, time_offset);
 					//else - break timer cycle
 				});
 
@@ -491,7 +491,7 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	event->SetTimestamp(msSinceEpoch()+random_interval);
 }
 
-void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
+void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTimer, int64_t time_offset)
 {
 	//deep copy event to modify as next event
 	auto next_event = std::make_shared<EventInfo>(*event);
@@ -501,7 +501,6 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		PostPublishEvent(event);
 	}
 
-	auto ptimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
 	PopulateNextEvent(next_event, time_offset);
 	auto now = msSinceEpoch();
 	msSinceEpoch_t delta;
@@ -509,14 +508,15 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		delta = 0;
 	else
 		delta = next_event->GetTimestamp() - now;
-	ptimer->expires_from_now(std::chrono::milliseconds(delta));
+	pTimer->expires_from_now(std::chrono::milliseconds(delta));
 	//wait til next time
-	ptimer->async_wait([=](asio::error_code err_code)
-		{
-			if(enabled && !err_code)
-				SpawnEvent(next_event, time_offset);
-			//else - break timer cycle
-		});
+	if(enabled)
+		pTimer->async_wait([=](asio::error_code err_code)
+			{
+				if(enabled && !err_code)
+					SpawnEvent(next_event, pTimer, time_offset);
+				//else - break timer cycle
+			});
 }
 
 /*
