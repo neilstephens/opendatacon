@@ -16,11 +16,15 @@
  #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
- #
-add_subdirectory(ODC_tests)
-add_subdirectory(DNP3Port_tests)
-add_subdirectory(MD3Port_tests)
-add_subdirectory(CBPort_tests)
-add_subdirectory(PyPort_tests)
-add_subdirectory(SimPort_tests)
-add_subdirectory(Integration_tests)
+ # 
+project(Integration_tests)
+
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
+
+add_definitions(-DCONF_PATH="${CMAKE_SOURCE_DIR}/example/ConfigReload/")
+
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC ${DL})
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)

@@ -1042,7 +1042,7 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 	return changed_confs;
 }
 
-bool DataConcentrator::ReloadConfig(const std::string &filename)
+bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t disable_delay)
 {
 	static std::mutex mtx;
 	std::unique_lock<std::mutex> lock(mtx, std::try_to_lock);
@@ -1220,7 +1220,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename)
 		log->info("Disabled {} objects affected by reload.",Interfaces.size()+delete_or_changeIOHs.size()+reenable.size());
 
 	//wait a while to make sure disable events flow through
-	for(auto& t : {5,4,3,2,1})
+	for(auto t = disable_delay; t>0; t--)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
 			log->info("{} seconds until reload...",t);

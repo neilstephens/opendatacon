@@ -43,8 +43,11 @@
 #include <unordered_map>
 #include <set>
 
+class TestHook;
+
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
+	friend class TestHook;
 public:
 	DataConcentrator(const std::string& FileName);
 	~DataConcentrator() override;
@@ -52,7 +55,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void Build();
 	void Run();
-	bool ReloadConfig(const std::string& filename = "");
+	bool ReloadConfig(const std::string& filename = "", const size_t disable_delay = 5);
 	void Shutdown();
 	bool isShuttingDown();
 	bool isShutDown();
