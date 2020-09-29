@@ -37,16 +37,20 @@ int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 {
 	static const size_t secinaday = 10*60*60*24;
 	static size_t err_backoff = timeout_tenths_of_seconds;
-	static const auto err = [](const std::string& msg)
+	static auto last_error_time = odc::msSinceEpoch();
+	static const auto err = [timeout_tenths_of_seconds](const std::string& msg)
 	{
-		if(auto log = odc::spdlog_get("ConsoleUI"))
-			log->error("{}. Sleeping for {} ms", msg, 100*err_backoff);
-		std::this_thread::sleep_for(std::chrono::milliseconds(100*err_backoff));
-
-		if(err_backoff < secinaday)
-			err_backoff *= 2;
-		else if(err_backoff > secinaday)
-			err_backoff = secinaday;
+		auto now = odc::msSinceEpoch();
+		if(now >= last_error_time+100*err_backoff)
+		{
+			if(auto log = odc::spdlog_get("ConsoleUI"))
+				log->error("{}. Supressing next error for {} ms", msg, 100*err_backoff);
+			if(err_backoff < secinaday)
+				err_backoff *= 2;
+			else if(err_backoff > secinaday)
+				err_backoff = secinaday;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(100*timeout_tenths_of_seconds));
 	};
 
 	struct termios oldt{}, newt{};
