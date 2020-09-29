@@ -1269,6 +1269,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	}
 
 	//delete old objects
+	std::vector<std::shared_ptr<void>> to_delete;
 	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
 	std::map<std::string,std::map<std::string,bool>> old_demands;
 	std::multimap<std::string,DataConnector*> needs_new_addr;
@@ -1289,11 +1290,23 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 
 		//FIXME: backup OnDemand state??? anything else stateful???
 		IOHandler::GetIOHandlers().erase(name);
+		if(DataPorts.find(name) != DataPorts.end())
+			to_delete.push_back(DataPorts.at(name));
+		if(DataConnectors.find(name) != DataConnectors.end())
+			to_delete.push_back(DataConnectors.at(name));
 		DataPorts.erase(name);
 		DataConnectors.erase(name);
 	}
 	for(auto name : delete_or_changeIUIs)
+	{
+		if(Interfaces.find(name) != Interfaces.end())
+			to_delete.push_back(Interfaces.at(name));
 		Interfaces.erase(name);
+	}
+
+	//make another thread run the destructors
+	//just in case they block on anything posted to asio (which is paused)
+	std::thread([d{std::move(to_delete)}](){}).detach();
 
 	//create replacements and new
 	ProcessPorts(changed_confs["Ports"]);
