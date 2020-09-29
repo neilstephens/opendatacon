@@ -1242,6 +1242,14 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			log->info("{} seconds until reload...",t);
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
+	//post a task and wait for it, just in case it's all backed up
+	std::promise<char> result_prom;
+	auto result = result_prom.get_future();
+	pIOS->post([&result_prom]()
+		{
+			result_prom.set_value(0);
+		});
+	result.get(); //wait
 
 	///////////// PARK THREADS ///////////////
 	if(!ParkThreads()) //This should only return false if we're shutting down, so no cleanup required
