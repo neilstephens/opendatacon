@@ -996,8 +996,20 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 							 if(!pOld)
 								 pOld = std::make_shared<Json::Value>();
 
-							 if(*pOld != *RecallOrCreate(new_object["ConfFilename"].asString()))
+							 auto pNew = RecallOrCreate(new_object["ConfFilename"].asString());
+
+							 if(*pOld != *pNew)
 								 return true;
+
+							 if(pNew->isMember("Inherits") && (*pNew)["Inherits"].isArray())
+								 for(Json::ArrayIndex n = 0; n < (*pNew)["Inherits"].size(); ++n)
+								 {
+									 auto filename = (*pNew)["Inherits"][n].asString();
+									 auto pOldInherit = old_file_confs[filename];
+									 auto pNewInherit = RecallOrCreate(filename);
+									 if(pOldInherit && pNewInherit && *pOldInherit != *pNewInherit)
+										 return true;
+								 }
 
 							 return false;
 						 };
