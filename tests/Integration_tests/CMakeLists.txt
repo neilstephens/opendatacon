@@ -22,6 +22,7 @@ project(Integration_tests)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
 
 add_definitions(-DCONF_PATH="${CMAKE_SOURCE_DIR}/example/ConfigReload/")
+add_definitions(-DMAIN_EXE)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${DL})
