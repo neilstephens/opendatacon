@@ -204,6 +204,7 @@ script:
   - $RUN install/bin/MD3Port_tests $LOG_LVL -d yes
   - $RUN install/bin/CBPort_tests $LOG_LVL -d yes
   - $RUN install/bin/PyPort_tests $LOG_LVL -d yes
+  - $RUN install/bin/Integration_tests $LOG_LVL -d yes
   - $STOP
 
 deploy:

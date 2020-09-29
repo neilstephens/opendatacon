@@ -82,6 +82,7 @@ test_script:
 - cmd: '%cmake_builddir%\install\MD3Port_tests.exe %LOG_LVL% -d yes'
 - cmd: '%cmake_builddir%\install\CBPort_tests.exe %LOG_LVL% -d yes'
 - cmd: '%cmake_builddir%\install\PyPort_tests.exe %LOG_LVL% -d yes'
+- cmd: '%cmake_builddir%\install\Integration_tests.exe %LOG_LVL% -d yes'
 
 # Capture the log file outputs so we can debug failed tests.
 on_finish:
