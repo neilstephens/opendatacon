@@ -48,17 +48,22 @@ public:
 
 TEST_CASE(SUITE("ReloadConfig"))
 {
-	std::cout<<CONF_PATH<<std::endl;
+	std::cout<<"Working directory: "<<CONF_PATH<<std::endl;
 	REQUIRE_FALSE(ChangeWorkingDir(CONF_PATH));
+	std::cout<<"Constructing TheDataConcentrator"<<std::endl;
 	auto TheDataConcentrator = std::make_shared<DataConcentrator>("opendatacon.conf");
 	REQUIRE(TheDataConcentrator);
+	std::cout<<"Building TheDataConcentrator"<<std::endl;
 	TheDataConcentrator->Build();
+	std::cout<<"Running TheDataConcentrator"<<std::endl;
 	auto run_thread = std::thread([=](){TheDataConcentrator->Run();});
 
+	std::cout<<"Adding 'TestHarness' logger"<<std::endl;
 	AddLogger("TestHarness",*TestHook::GetLogSinks(TheDataConcentrator));
 	auto log = odc::spdlog_get("TestHarness");
 	REQUIRE(log);
 
+	std::cout<<"Hooking into the console"<<std::endl;
 	auto pConsole = TestHook::GetDataconConsole(TheDataConcentrator);
 	REQUIRE(pConsole);
 
@@ -155,7 +160,6 @@ TEST_CASE(SUITE("ReloadConfig"))
 	cmd = "shutdown\n";
 	std::cout<<cmd<<std::flush;
 	pConsole->trigger(cmd);
-
 
 	//Shutting down - give some time for clean shutdown
 	unsigned int i=0;
