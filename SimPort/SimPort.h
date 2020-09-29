@@ -68,7 +68,7 @@ private:
 
 	void NextEventFromDB(const std::shared_ptr<odc::EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset);
-	void SpawnEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset = 0);
+	void SpawnEvent(const std::shared_ptr<odc::EventInfo>& event, ptimer_t pTimer, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<odc::EventInfo> event)
 	{
 		double mean = pSimConf->StartValue(odc::EventType::Analog, event->GetIndex());
@@ -88,13 +88,15 @@ private:
 	{
 		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Analog,index,Name);
 		RandomiseAnalog(event);
-		SpawnEvent(event);
+		auto pTimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
+		SpawnEvent(event, pTimer);
 	}
 	inline void StartAnalogEvents(size_t index, double val)
 	{
 		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Analog,index,Name);
 		event->SetPayload<odc::EventType::Analog>(std::move(val));
-		SpawnEvent(event);
+		auto pTimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
+		SpawnEvent(event, pTimer);
 	}
 	inline void StartBinaryEvents(size_t index)
 	{
@@ -106,7 +108,8 @@ private:
 	{
 		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Binary,index,Name);
 		event->SetPayload<odc::EventType::Binary>(std::move(val));
-		SpawnEvent(event);
+		auto pTimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
+		SpawnEvent(event, pTimer);
 	}
 	void PortUp();
 	void PortDown();
