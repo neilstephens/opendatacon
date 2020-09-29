@@ -108,6 +108,7 @@ install:
         cp -a /lib* /mnt/build/sysroot/
       '
       # make symlink so absolute paths work within docker
+      sudo chmod -R 777 $SRC_DIR
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # replace ldd with docker wrapper (so BundleUtilities might work)
@@ -182,6 +183,7 @@ install:
       '
       sudo chown -R $USER.$USER sysroot
       # make symlink so absolute paths work within docker
+      sudo chmod -R 777 $SRC_DIR
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # replace ldd with docker wrapper (so BundleUtilities might work)
