@@ -751,7 +751,7 @@ void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
 		//Our API says the library should export a creation function: IUI* new_<Type>Plugin(Name, Filename, Overrides)
 		//it should return a pointer to a heap allocated instance of a descendant of IUI
 		std::string new_funcname = "new_"+Plugins[n]["Type"].asString()+"Plugin";
-		auto new_plugin_func = reinterpret_cast<IUI*(*)(std::string, std::string, const Json::Value)>(LoadSymbol(pluginlib, new_funcname));
+		auto new_plugin_func = reinterpret_cast<IUI*(*)(const std::string&, const std::string&, const Json::Value&)>(LoadSymbol(pluginlib, new_funcname));
 
 		std::string delete_funcname = "delete_"+Plugins[n]["Type"].asString()+"Plugin";
 		auto delete_plugin_func = reinterpret_cast<void (*)(IUI*)>(LoadSymbol(pluginlib, delete_funcname));
