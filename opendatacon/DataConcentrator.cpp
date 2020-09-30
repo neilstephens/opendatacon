@@ -1187,16 +1187,21 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		delete_or_changeIUIs.insert(name);
 
 	//check to make sure IUIs really got constructed, not just in the config
+	not_found.clear();
 	for(auto name : delete_or_changeIUIs)
 		if(Interfaces.find(name) == Interfaces.end())
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->warn("UI '{}' from old config not found.",name);
-			delete_or_changeIUIs.erase(name);
-			deletedIUIs.erase(name);
-			if(changedIUIs.erase(name))
-				createdIUIs.insert(name);
+			not_found.insert(name);
 		}
+	for(auto& name : not_found)
+	{
+		delete_or_changeIUIs.erase(name);
+		deletedIUIs.erase(name);
+		if(changedIUIs.erase(name))
+			createdIUIs.insert(name);
+	}
 
 	//check for connections that would be left dangling by deleted ports before we do anything
 	for(auto name : deletedIOHs)
