@@ -88,7 +88,7 @@ install:
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
-      DOCK=$(docker run -d -v $SRC_DIR:$SRC_DIR -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster bash)
+      DOCK=$(docker run -d -v $SRC_DIR:/mnt -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster bash)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.7 python3.7-dev" 
@@ -107,11 +107,14 @@ install:
         cp -a /usr/lib /mnt/build/sysroot/usr/
         cp -a /lib* /mnt/build/sysroot/
       '
+      # make symlink so absolute paths work within docker
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # replace ldd with docker wrapper (so BundleUtilities might work)
       sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd) 
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
-      export RUN="docker exec --interactive --workdir $SRC_DIR/build $DOCK"
+      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
@@ -159,7 +162,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo apt-get update
       sudo apt-get install -y g++-7-i686-linux-gnu
-      DOCK=$(docker run -d -v $SRC_DIR:$SRC_DIR --rm -ti i386/ubuntu:bionic)
+      DOCK=$(docker run -d -v $SRC_DIR:/mnt --rm -ti i386/ubuntu:bionic)
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.6 python3.6-dev" 
       mkdir sysroot
@@ -178,11 +181,14 @@ install:
         cp -a /lib* /mnt/build/sysroot/
       '
       sudo chown -R $USER.$USER sysroot
+      # make symlink so absolute paths work within docker
+      docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
+      docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # replace ldd with docker wrapper (so BundleUtilities might work)
       sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd) 
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
-      export RUN="docker exec --interactive --workdir $SRC_DIR/build $DOCK"
+      export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
       export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
     fi
