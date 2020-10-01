@@ -1,4 +1,18 @@
-opendatacon version 1.4.0
+opendatacon version 1.5.0
+
+1.5.0
+	-Reload config on the fly
+		- if running as a daemon, SIGHUP triggers a config reload
+		- "reload_config" ConsoleUI command
+		- Detects Added, Removed or changed objects, and logger configuration
+		- Only interupts operation of changed items, apart from a small synchronisation bump 
+	-SimPort stores the latest Payload, Quality and Timstamp for displaying current state in:
+		- Web UI
+		- Console UI
+		- Simport RESTFUL HTTP interface
+	-ConsoleUI
+		- 'Anchor' the prompt at the bottom of the console (toggle with (Esc))
+			so you can still see what you're typing even if log messages are printing
 
 1.4.0
 	- C++17
