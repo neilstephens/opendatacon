@@ -55,7 +55,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 	void Build();
 	void Run();
-	bool ReloadConfig(const std::string& filename = "", const size_t disable_delay = 5);
+	bool ReloadConfig(const std::string& filename = "", const size_t disable_delay = reload_disable_delay_s);
 	void Shutdown();
 	bool isShuttingDown();
 	bool isShutDown();
@@ -84,6 +84,7 @@ private:
 	std::once_flag shutdown_flag;
 	std::atomic_bool shutting_down;
 	std::atomic_bool shut_down;
+	static size_t reload_disable_delay_s;
 
 	//ostream for spdlog logging sink
 	std::unordered_map<std::string, TCPstringbuf> TCPbufs;

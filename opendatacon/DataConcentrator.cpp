@@ -39,6 +39,8 @@
 #include <thread>
 #include <set>
 
+size_t DataConcentrator::reload_disable_delay_s = 5;
+
 /*
    Whenever needed we will ask for all the Sinks present,
    I don't like this personally, but due to the limitations with spdlogs,
@@ -136,9 +138,20 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 			std::string filename;
 			if(!(ss >> filename))
 				filename = "";
-			std::thread([this,f{std::move(filename)}](){this->ReloadConfig(f);}).detach();
+			size_t reload_delay;
+			bool delay = false;
+			if(ss >> reload_delay)
+				delay = true;
+
+			std::thread([this,filename,delay,reload_delay]()
+				{
+					if(delay)
+						this->ReloadConfig(filename,reload_delay);
+					else
+						this->ReloadConfig(filename);
+				}).detach();
 		}
-		,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename>]");
+		,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename> <optional_delay_override>]");
 	interface->AddCommand("version",[] (std::stringstream& ss)
 		{
 			std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
@@ -495,6 +508,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		throw std::runtime_error("No valid JSON config object");
 
 	odc::SetConfigVersion(JSONRoot.isMember("Version") ? JSONRoot["Version"].asString() : "No Version Available");
+	if(JSONRoot.isMember("ReloadDelaySecs"))
+		reload_disable_delay_s = JSONRoot["ReloadDelaySecs"].asUInt();
 
 	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> levels;
 	try
@@ -1163,6 +1178,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		if(auto log = odc::spdlog_get("opendatacon"))
 			log->info("No changed objects - reload finished.");
 		odc::SetConfigVersion(new_main_conf->isMember("Version") ? (*new_main_conf)["Version"].asString() : "No Version Available");
+		if(new_main_conf->isMember("ReloadDelaySecs"))
+			reload_disable_delay_s = (*new_main_conf)["ReloadDelaySecs"].asUInt();
 		return true;
 	}
 
@@ -1394,6 +1411,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	}
 
 	odc::SetConfigVersion(new_main_conf->isMember("Version") ? (*new_main_conf)["Version"].asString() : "No Version Available");
+	if(new_main_conf->isMember("ReloadDelaySecs"))
+		reload_disable_delay_s = (*new_main_conf)["ReloadDelaySecs"].asUInt();
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->critical("Reloaded config applied.");
