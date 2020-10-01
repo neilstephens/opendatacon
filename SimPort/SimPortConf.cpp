@@ -101,6 +101,11 @@ std::shared_ptr<odc::EventInfo> SimPortConf::Event(odc::EventType type, std::siz
 	return m_pport_data->Event(type, index);
 }
 
+void SimPortConf::SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index)
+{
+	m_pport_data->SetCurrentBinaryControl(event, index);
+}
+
 void SimPortConf::Payload(odc::EventType type, std::size_t index, double payload)
 {
 	m_pport_data->Payload(type, index, payload);
@@ -471,5 +476,5 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		lower_limit = feedback_position["LowerLimit"].asUInt();
 	if (feedback_position.isMember("RaiseLimit"))
 		raise_limit = feedback_position["RaiseLimit"].asUInt();
-	m_pport_data->CreateBinaryPosition(index, type, indexes, action, lower_limit, raise_limit);
+	m_pport_data->CreateBinaryPosition(index, m_name, type, indexes, action, lower_limit, raise_limit);
 }

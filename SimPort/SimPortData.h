@@ -48,6 +48,7 @@ public:
 		odc::QualityFlags flag, double std_dev, std::size_t update_interal, double value);
 	void Event(std::shared_ptr<odc::EventInfo> event);
 	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index) const;
+	void SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index);
 	void ForcedState(odc::EventType type, std::size_t index, bool state);
 	bool ForcedState(odc::EventType type, std::size_t) const;
 	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
@@ -77,6 +78,7 @@ public:
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
 
 	void CreateBinaryPosition(std::size_t index,
+		const std::string& port_source,
 		odc::FeedbackType type,
 		const std::vector<std::size_t>& indexes,
 		const std::vector<odc::PositionAction>& action,
