@@ -599,6 +599,11 @@ void SimPort::Build()
 				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Analog);
 				            result = pSimConf->CurrentState(EventType::Analog, indexes);
 					}
+				      if (to_lower(type) == "control")
+				      {
+				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::ControlRelayOutputBlock);
+				            result = pSimConf->CurrentState(EventType::ControlRelayOutputBlock, indexes);
+					}
 				}
 				if (result.length() != 0)
 				{
@@ -725,9 +730,15 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 		index = event->GetIndex();
 		auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 		auto feedbacks = pSimConf->BinaryFeedbacks(index);
+
+		auto payload = command;
+		std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
+		control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
+		control_event->SetTimestamp(event->GetTimestamp());
 		if (!feedbacks.empty())
 		{
 			status = HandleBinaryFeedback(feedbacks, index, command, message);
+			pSimConf->SetCurrentBinaryControl(control_event, index);
 		}
 		else
 		{
@@ -735,6 +746,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 			if (bp != nullptr)
 			{
 				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
+				pSimConf->SetCurrentBinaryControl(control_event, index);
 			}
 			else
 			{

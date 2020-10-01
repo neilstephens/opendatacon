@@ -138,6 +138,15 @@ public:
 	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index);
 
 	/*
+	  function         : SetCurrrentBinaryControl
+	  description      : this function will set the current binary control event
+	  param event      : the event info which holds the event information
+	  param event      : the index of the binary control
+	  return           : void
+	 */
+	void SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index);
+
+	/*
 	  function         : ForcedState
 	  description      : this function will set the forced state
 	  param type       : the event type
@@ -269,6 +278,7 @@ public:
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index);
 
 	void CreateBinaryPosition(std::size_t index,
+		const std::string& port_source,
 		odc::FeedbackType type,
 		const std::vector<std::size_t>& indexes,
 		const std::vector<odc::PositionAction>& action,
@@ -280,11 +290,14 @@ private:
 	std::shared_timed_mutex feedback_mutex;
 	std::shared_timed_mutex position_mutex;
 	std::shared_timed_mutex timer_mutex;
+	std::unordered_map<std::size_t, std::shared_ptr<odc::EventInfo>> m_current_control;
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
 	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
 	std::unordered_map<std::string, ptimer_t> m_timers;
+
+	inline bool m_IsDataPoint(odc::EventType type);
 };
 
 #endif // SIMPORTPOINTDATA_H
