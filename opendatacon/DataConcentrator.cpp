@@ -92,6 +92,7 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 		{
 			Json::Value result;
 			result["version"] = ODC_VERSION_STRING;
+			result["config version"] = odc::GetConfigVersion();
 			return result;
 		},"Return the version information of opendatacon.");
 
@@ -142,7 +143,8 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 		{
 			std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
 			         <<"Submodules:"<<std::endl
-			         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl;
+			         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl
+			         <<"Running config: "<<odc::GetConfigVersion()<<std::endl;
 
 		},"Print version information");
 	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss)
@@ -1160,6 +1162,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
 			log->info("No changed objects - reload finished.");
+		odc::SetConfigVersion(new_main_conf->isMember("Version") ? (*new_main_conf)["Version"].asString() : "No Version Available");
 		return true;
 	}
 
@@ -1389,6 +1392,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			ui_pair.second->SetResponders(RespondersMasterCopy);
 		}
 	}
+
+	odc::SetConfigVersion(new_main_conf->isMember("Version") ? (*new_main_conf)["Version"].asString() : "No Version Available");
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->critical("Reloaded config applied.");
