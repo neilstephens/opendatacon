@@ -1317,7 +1317,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 
 	//make another thread run the destructors
 	//just in case they block on anything posted to asio (which is paused)
-	std::thread([d{std::move(to_delete)}](){}).detach();
+	std::thread delete_thread([d{std::move(to_delete)}](){});
 
 	//create replacements and new
 	ProcessPorts(changed_confs["Ports"]);
@@ -1395,6 +1395,19 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 
 	////////////// UNPARK THREADS ////////////
 	parking = false;
+
+	//wait for delete thread, or detach it if it takes too long
+	size_t wait_count = 0;
+	while(!delete_thread.joinable() && wait_count++ < 200)
+		pIOS->run_one_for(std::chrono::milliseconds(5));
+	if(delete_thread.joinable())
+		delete_thread.join();
+	else
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->warn("Reload cleanup thread taking too long - detaching");
+		delete_thread.detach();
+	}
 
 	for(auto& conn_pair : DataConnectors)
 		if(created_or_changeIOHs.find(conn_pair.first) != created_or_changeIOHs.end())

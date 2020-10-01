@@ -60,6 +60,7 @@ public:
 	using asio::io_service::poll;
 	using asio::io_service::poll_one;
 	using asio::io_service::run_one;
+	using asio::io_service::run_one_for;
 	using asio::io_service::post;
 	using asio::io_service::dispatch;
 	using asio::io_service::stopped;
