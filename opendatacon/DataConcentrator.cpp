@@ -294,7 +294,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 							if(ss>>app)
 								ss>>category;
 
-					auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
+					auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink_mt>(
 						*pIOS,host,port,1,local_host,app,category);
 					syslog_sink->set_level(spdlog::level::off);
 					LogSinks[sinkname] = syslog_sink;
@@ -437,10 +437,16 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 			auto local_host = SyslogJSON.isMember("LocalHost") ? SyslogJSON["LocalHost"].asString() : "-";
 			auto app = SyslogJSON.isMember("AppName") ? SyslogJSON["AppName"].asString() : "opendatacon";
 			auto category = SyslogJSON.isMember("MsgCategory") ? SyslogJSON["MsgCategory"].asString() : "-";
+			auto syslog_level_name = SyslogJSON.isMember("LogLevel") ? SyslogJSON["LogLevel"].asString() : "";
 
-			auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink>(
+			auto syslog_level = spdlog::level::from_str(syslog_level_name);
+			//check for no match and set defaults
+			if(syslog_level == spdlog::level::off && syslog_level_name != "off")
+				syslog_level = log_level;
+
+			auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink_mt>(
 				*pIOS,host,port,1,local_host,app,category);
-			syslog_sink->set_level(log_level);
+			syslog_sink->set_level(syslog_level);
 			LogSinks["syslog"] = syslog_sink;
 		}
 	}
