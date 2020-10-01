@@ -21,17 +21,17 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 ChannelHandler::~ChannelHandler()
 {
 	//re-assign these because they hold shared pointers to the handler tracker
-	StateListener = nullptr;
-	LinkDown = nullptr;
-	LinkUp = nullptr;
-	SetLinkStatus = nullptr;
+	StateListener = [](opendnp3::ChannelState){};
+	LinkDown = [](){};
+	LinkUp = [](){};
+	SetLinkStatus = [](opendnp3::LinkStatus){};
 
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
 	//now the only tracker shared pointers will be in actual outstanding handlers
 
 	//wait til they're all gone, or harmless
-	while(!tracker.expired() && !pIOS->stopped())
+	while(!tracker.expired() && !pIOS->stopped() && !pSyncStrand->running_in_this_thread())
 		pIOS->poll_one();
 }
 
