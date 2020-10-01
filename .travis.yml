@@ -88,7 +88,7 @@ install:
       # Run the docker image and keep the returned container name for use in exec calls.
       # Run detatched, the volume command is -v hostdir:containerdir, -rm indicates cleanup on exit unnamed vols, 
       # -ti maintain a terminal, the docker image is jessie:latest
-      DOCK=$(docker run -d -v $(pwd):/mnt/build -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster bash)
+      DOCK=$(docker run -d -v $SRC_DIR:/mnt -v /usr/bin/qemu-arm-static:/usr/bin/qemu-arm-static --rm -ti 2000cubits/raspbian:buster bash)
       # Install the arm versions of dependencies into the QEMU user image
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.7 python3.7-dev" 
@@ -162,7 +162,7 @@ install:
     if [ "$DOCKER_BUILD" == "i386" ]; then
       sudo apt-get update
       sudo apt-get install -y g++-7-i686-linux-gnu
-      DOCK=$(docker run -d -v $(pwd):/mnt/build --rm -ti i386/ubuntu:bionic)
+      DOCK=$(docker run -d -v $SRC_DIR:/mnt --rm -ti i386/ubuntu:bionic)
       docker exec -i $DOCK sh -c "apt-get update && apt-get install -y libmodbus-dev libmicrohttpd-dev socat psmisc libc6-dev openssl libssl-dev" 
       docker exec -i $DOCK sh -c "apt-get install -y python3.6 python3.6-dev" 
       mkdir sysroot
@@ -204,6 +204,7 @@ script:
   - $RUN install/bin/MD3Port_tests $LOG_LVL -d yes
   - $RUN install/bin/CBPort_tests $LOG_LVL -d yes
   - $RUN install/bin/PyPort_tests $LOG_LVL -d yes
+  - $RUN install/bin/Integration_tests $LOG_LVL -d yes
   - $STOP
 
 deploy:

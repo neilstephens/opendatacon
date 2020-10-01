@@ -41,7 +41,7 @@ namespace odc
  * manages the lifetime of a single shared resource using smart pointers and atomic_flag
  * avoids the perils of non-trivial statics that a typical singleton pattern uses
  */
-std::shared_ptr<asio_service> asio_service::Get()
+std::shared_ptr<asio_service> asio_service::Get(int concurrency_hint)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<asio_service> weak_service;
@@ -51,11 +51,15 @@ std::shared_ptr<asio_service> asio_service::Get()
 	//if the init flag isn't set, we need to initialise the service
 	if(!init_flag.test_and_set(std::memory_order_acquire))
 	{
+		if(concurrency_hint < 1)
+			concurrency_hint = 1;
+
 		//make a custom deleter that will also clear the init flag
 		auto deinit_del = [](asio_service* service_ptr)
-					{init_flag.clear(); delete service_ptr;};
-		shared_service = std::shared_ptr<asio_service>(new asio_service(std::thread::hardware_concurrency()+2), deinit_del);
+					{init_flag.clear(std::memory_order_release); delete service_ptr;};
+		shared_service = std::shared_ptr<asio_service>(new asio_service(concurrency_hint+2), deinit_del);
 		weak_service = shared_service;
+		shared_service->concurrency = concurrency_hint;
 	}
 	//otherwise just make sure it's finished initialising and take a shared_ptr
 	else
@@ -110,6 +114,21 @@ std::unique_ptr<asio::ip::udp::resolver> asio_service::make_udp_resolver()
 std::unique_ptr<asio::ip::udp::socket> asio_service::make_udp_socket()
 {
 	return std::make_unique<asio::ip::udp::socket>(*unwrap_this);
+}
+std::unordered_set<std::thread::id> asio_service::threads_in_pool;
+std::mutex asio_service::threads_in_pool_mtx;
+void asio_service::run()
+{
+	{ //lock scope
+		std::lock_guard lock(threads_in_pool_mtx);
+		threads_in_pool.insert(std::this_thread::get_id());
+	}
+	asio::io_service::run();
+}
+bool asio_service::current_thread_in_pool()
+{
+	std::lock_guard lock(threads_in_pool_mtx);
+	return (threads_in_pool.find(std::this_thread::get_id()) != threads_in_pool.end());
 }
 
 } //namespace odc

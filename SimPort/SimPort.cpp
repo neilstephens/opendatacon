@@ -69,7 +69,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	{
 		//make a custom deleter for the DNP3Manager that will also clear the init flag
 		auto deinit_del = [](SimPortCollection* collection_ptr)
-					{init_flag.clear(); delete collection_ptr;};
+					{init_flag.clear(std::memory_order_release); delete collection_ptr;};
 		this->SimCollection = std::shared_ptr<SimPortCollection>(new SimPortCollection(), deinit_del);
 		weak_collection = this->SimCollection;
 	}
@@ -86,20 +86,16 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	ProcessFile();
 }
 
-SimPort::~SimPort()
-{
-	if(!httpServerToken.ServerID.empty())
-		HttpServerManager::StopConnection(httpServerToken);
-}
-
 void SimPort::Enable()
 {
 	pEnableDisableSync->post([this]()
 		{
 			if(!enabled)
 			{
-			      enabled = true;
 			      PortUp();
+			      enabled = true;
+			      if(!httpServerToken.ServerID.empty())
+					HttpServerManager::StartConnection(httpServerToken);
 			}
 		});
 }
@@ -112,6 +108,8 @@ void SimPort::Disable()
 			{
 			      enabled = false;
 			      PortDown();
+			      if(!httpServerToken.ServerID.empty())
+					HttpServerManager::StopConnection(httpServerToken);
 			}
 		});
 }
@@ -136,9 +134,9 @@ void SimPort::PublishBinaryEvents(const std::vector<std::size_t>& indexes, const
 	}
 }
 
-std::pair<std::string, std::shared_ptr<IUIResponder> > SimPort::GetUIResponder()
+std::pair<std::string, const IUIResponder *> SimPort::GetUIResponder()
 {
-	return std::pair<std::string,std::shared_ptr<SimPortCollection>>("SimControl",this->SimCollection);
+	return std::pair<std::string,const SimPortCollection*>("SimControl",this->SimCollection.get());
 }
 
 const Json::Value SimPort::GetCurrentState() const
@@ -376,7 +374,7 @@ void SimPort::PortUp()
 			ptimer->async_wait([=](asio::error_code err_code)
 				{
 					if(enabled && !err_code)
-						SpawnEvent(event, time_offset);
+						SpawnEvent(event, ptimer, time_offset);
 					//else - break timer cycle
 				});
 
@@ -493,7 +491,7 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	event->SetTimestamp(msSinceEpoch()+random_interval);
 }
 
-void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
+void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTimer, int64_t time_offset)
 {
 	//deep copy event to modify as next event
 	auto next_event = std::make_shared<EventInfo>(*event);
@@ -503,7 +501,6 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		PostPublishEvent(event);
 	}
 
-	auto ptimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
 	PopulateNextEvent(next_event, time_offset);
 	auto now = msSinceEpoch();
 	msSinceEpoch_t delta;
@@ -511,14 +508,15 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, int64_t time_o
 		delta = 0;
 	else
 		delta = next_event->GetTimestamp() - now;
-	ptimer->expires_from_now(std::chrono::milliseconds(delta));
+	pTimer->expires_from_now(std::chrono::milliseconds(delta));
 	//wait til next time
-	ptimer->async_wait([=](asio::error_code err_code)
-		{
-			if(enabled && !err_code)
-				SpawnEvent(next_event, time_offset);
-			//else - break timer cycle
-		});
+	if(enabled)
+		pTimer->async_wait([=](asio::error_code err_code)
+			{
+				if(enabled && !err_code)
+					SpawnEvent(next_event, pTimer, time_offset);
+				//else - break timer cycle
+			});
 }
 
 /*
@@ -600,6 +598,11 @@ void SimPort::Build()
 				      {
 				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Analog);
 				            result = pSimConf->CurrentState(EventType::Analog, indexes);
+					}
+				      if (to_lower(type) == "control")
+				      {
+				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::ControlRelayOutputBlock);
+				            result = pSimConf->CurrentState(EventType::ControlRelayOutputBlock, indexes);
 					}
 				}
 				if (result.length() != 0)
@@ -727,9 +730,15 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 		index = event->GetIndex();
 		auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 		auto feedbacks = pSimConf->BinaryFeedbacks(index);
+
+		auto payload = command;
+		std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
+		control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
+		control_event->SetTimestamp(event->GetTimestamp());
 		if (!feedbacks.empty())
 		{
 			status = HandleBinaryFeedback(feedbacks, index, command, message);
+			pSimConf->SetCurrentBinaryControl(control_event, index);
 		}
 		else
 		{
@@ -737,6 +746,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 			if (bp != nullptr)
 			{
 				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
+				pSimConf->SetCurrentBinaryControl(control_event, index);
 			}
 			else
 			{

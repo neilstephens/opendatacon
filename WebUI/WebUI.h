@@ -44,7 +44,6 @@ public:
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
-	void AddResponder(const std::string& name, const IUIResponder& pResponder) override;
 	void Build() override;
 	void Enable() override;
 	void Disable() override;

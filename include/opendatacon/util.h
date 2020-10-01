@@ -48,7 +48,7 @@ bool extract_delimited_string(std::istream& ist, std::string& extracted);
 bool extract_delimited_string(const std::string& delims, std::istream& ist, std::string& extracted);
 std::string to_lower(const std::string& str);
 std::string GetConfigVersion();
-void SetConfigVersion(std::string Version);
+void SetConfigVersion(const std::string& Version);
 std::size_t to_decimal(const std::string& binary);
 std::string to_binary(std::size_t n, std::size_t size);
 std::size_t bcd_encoded_to_decimal(const std::string& str);
@@ -60,6 +60,8 @@ inline msSinceEpoch_t msSinceEpoch()
 	return std::chrono::duration_cast<std::chrono::milliseconds>
 		       (std::chrono::system_clock::now().time_since_epoch()).count();
 }
+
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds);
 
 } //namspace odc
 

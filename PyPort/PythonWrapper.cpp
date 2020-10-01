@@ -544,7 +544,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	{
 		//make a custom deleter for the PythonInitWrapper that will also clear the init flag
 		auto deinit_del = [](PythonInitWrapper* mgr_ptr)
-					{init_flag.clear(); delete mgr_ptr; };
+					{init_flag.clear(std::memory_order_release); delete mgr_ptr; };
 		this->PyMgr = std::shared_ptr<PythonInitWrapper>(
 			new PythonInitWrapper(GlobalUseSystemPython),
 			deinit_del);

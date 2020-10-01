@@ -82,6 +82,11 @@ void SimPortData::Event(std::shared_ptr<odc::EventInfo> event)
 	m_ppoint_data->Event(event);
 }
 
+void SimPortData::SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index)
+{
+	m_ppoint_data->SetCurrentBinaryControl(event, index);
+}
+
 std::shared_ptr<odc::EventInfo> SimPortData::Event(odc::EventType type, std::size_t index) const
 {
 	return m_ppoint_data->Event(type, index);
@@ -182,12 +187,13 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortData::BinaryFeedbacks(std::s
 }
 
 void SimPortData::CreateBinaryPosition(std::size_t index,
+	const std::string& port_source,
 	odc::FeedbackType type,
 	const std::vector<std::size_t>& indexes,
 	const std::vector<odc::PositionAction>& action,
 	std::size_t lower_limit, std::size_t raise_limit)
 {
-	m_ppoint_data->CreateBinaryPosition(index, type, indexes, action, lower_limit, raise_limit);
+	m_ppoint_data->CreateBinaryPosition(index, port_source, type, indexes, action, lower_limit, raise_limit);
 }
 
 std::shared_ptr<BinaryPosition> SimPortData::GetBinaryPosition(std::size_t index) const

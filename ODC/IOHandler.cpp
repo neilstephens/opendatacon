@@ -50,6 +50,10 @@ void IOHandler::Subscribe(IOHandler* pIOHandler, const std::string& aName)
 {
 	this->Subscribers[aName] = pIOHandler;
 }
+void IOHandler::UnSubscribe(const std::string& aName)
+{
+	this->Subscribers.erase(aName);
+}
 
 bool DemandMap::InDemand()
 {
@@ -78,6 +82,12 @@ bool DemandMap::MuxConnectionEvents(ConnectState state, const std::string& Sende
 		return new_demand;
 	}
 	return true;
+}
+
+std::map<std::string,bool> DemandMap::GetDemands()
+{
+	std::lock_guard<std::mutex> lck (mtx);
+	return connection_demands;
 }
 
 void IOHandler::Event(ConnectState state, const std::string& SenderName)

@@ -146,11 +146,6 @@ void WebUI::AddCommand(const std::string& name, std::function<void (std::strings
 	RootCommands[name] = callback;
 }
 
-void WebUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
-{
-	Responders["/" + name] = &pResponder;
-}
-
 /* HTTP access handler call back */
 int WebUI::http_ahc(void *cls,
 	struct MHD_Connection *connection,
@@ -254,11 +249,12 @@ void WebUI::Enable()
 
 void WebUI::Disable()
 {
+	if(pSockMan)
+		pSockMan->Close();
+
 	if (d == nullptr) return;
 	MHD_stop_daemon(d);
 	d = nullptr;
-	if(pSockMan)
-		pSockMan->Close();
 }
 
 void WebUI::HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb)
@@ -268,7 +264,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 	std::string command;
 	ParseURL(url, responder, command, iss);
 
-	if (responder == "/WebUICommand")
+	if (responder == "WebUICommand")
 	{
 		if (command == "tcp_logs_on")
 		{
@@ -299,7 +295,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 				});
 		}
 	}
-	else if (responder == "/RootCommand")
+	else if (responder == "RootCommand")
 	{
 		Json::Value value;
 		if (RootCommands.find(command) == RootCommands.end())
@@ -323,16 +319,14 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 
 std::string WebUI::InitCommand(const std::string& url)
 {
-	Json::Value return_data;
-	std::atomic_bool executed(false);
-	HandleCommand(url, [&executed,&return_data](const Json::Value& data)
+	std::promise<Json::Value> result_prom;
+	auto result = result_prom.get_future();
+	HandleCommand(url, [&result_prom](const Json::Value&& data)
 		{
-			return_data = std::move(data);
-			executed = true;
+			result_prom.set_value(data);
 		});
 	//OK to block this thread because it's a callback from MHD
-	while(!executed)
-		pIOS->poll_one();
+	auto return_data = result.get();
 
 	Json::StreamWriterBuilder wbuilder;
 	wbuilder["commentStyle"] = "None";
@@ -487,6 +481,7 @@ Json::Value WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
 void WebUI::ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss)
 {
 	std::stringstream iss(url);
+	iss.get(); //throw away leading '/'
 	iss >> responder;
 	iss >> command;
 	std::string params;
@@ -506,11 +501,12 @@ bool WebUI::IsCommand(const std::string& url)
 	std::stringstream iss(url);
 	std::string responder;
 	std::string command;
+	iss.get(); //throw away leading '/'
 	iss >> responder >> command;
 	bool result = false;
 	if ((Responders.find(responder) != Responders.end()) ||
 	    (RootCommands.find(command) != RootCommands.end()) ||
-	    responder == "/WebUICommand")
+	    responder == "WebUICommand")
 	{
 		result = true;
 	}

@@ -36,6 +36,7 @@
 #define ASIO_HAS_CHRONO
 
 #include <asio.hpp>
+#include <unordered_set>
 
 //use these to suppress warnings
 typedef struct
@@ -58,13 +59,13 @@ class asio_service: private asio::io_service
 public:
 	using asio::io_service::poll;
 	using asio::io_service::poll_one;
-	using asio::io_service::run;
 	using asio::io_service::run_one;
+	using asio::io_service::run_one_for;
 	using asio::io_service::post;
 	using asio::io_service::dispatch;
 	using asio::io_service::stopped;
 
-	static std::shared_ptr<asio_service> Get();
+	static std::shared_ptr<asio_service> Get(int concurrency_hint = std::thread::hardware_concurrency());
 
 	std::unique_ptr<asio::io_service::work> make_work();
 	std::unique_ptr<asio::io_service::strand> make_strand();
@@ -77,6 +78,10 @@ public:
 	std::unique_ptr<asio::ip::tcp::acceptor> make_tcp_acceptor();
 	std::unique_ptr<asio::ip::udp::resolver> make_udp_resolver();
 	std::unique_ptr<asio::ip::udp::socket> make_udp_socket();
+	void run();
+	bool current_thread_in_pool();
+
+	inline int GetConcurrency(){return concurrency;}
 
 private:
 	asio_service():
@@ -86,7 +91,10 @@ private:
 		asio::io_service(concurrency_hint)
 	{}
 
+	int concurrency;
 	asio::io_service* const unwrap_this = static_cast<asio::io_service*>(this);
+	static std::mutex threads_in_pool_mtx;
+	static std::unordered_set<std::thread::id> threads_in_pool;
 };
 
 } //namespace odc

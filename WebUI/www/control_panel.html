@@ -45,31 +45,51 @@
       <div class="alert alert-info clearfix">
         <button type="button" class="btn btn-primary btn-lg btn-block" onclick="go_to_command_control()">Command Control</button>
       </div>
-      <br><br><br>
+    </div>
+    <br>
 
+    <div class="container">
       <div class="row">
-        <div class="col-sm-4">
-          <div class="list-group" id="opendatacon_list">
-            <div id="opendatacon_commands"></div>
-          </div>
-          </br>
-          <div class="col-sm-12 text-center">
-            <button id="execute_opendatacon_button" class="btn btn-primary btn-lg" onclick="execute_opendatacon_command()">Execute</button>
-          </div>
+        <div class="alert alert-info clearfix">
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary" onclick="execute_opendatacon_command('set_loglevel')">set_loglevel</button>&nbsp;
+              <button type="button" class="btn btn-primary" onclick="execute_opendatacon_command('shutdown')">shutdown</button>&nbsp;
+              <button type="button" class="btn btn-primary" onclick="execute_opendatacon_command('version')">version</button>
+            </div>
         </div>
-
-          <div class="col-sm-12 text-center">
-            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="init_tcp()">Connect    to TCP logs</button>
+        <div class="alert alert-info clearfix">
+          <div class="btn-group">
+            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="init_tcp()">Connect to TCP logs</button>&nbsp;
             <button id="tcp_on" class="btn btn-primary btn-lg" onclick="deinit_tcp()">Disconnect to TCP logs</button>
           </div>
         </div>
       </div>
     </div>
+    <br>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label for="text_reload_conf">Reload Configuration File:</label>
+            <input type="text" class="form-control" id="text_reload_conf" name="reload_conf">
+          </div>
+        </div>
+        <br>
+        <div class="col-sm-4">
+          <button id="tcp_on" class="btn btn-primary btn-lg" onclick="execute_reload_config()">Reload</button>&nbsp;
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-success" id="alert_command">
+      <strong>
+        <div id="alert_message"></div>
+      </strong>
+    </div>
 
 
     <script>
-      var opendatacon_command = null;
-
       function go_to_tabular() {
           window.location.href="index.html"
       }
@@ -78,33 +98,25 @@
           const is_tcp = window.localStorage.getItem("is_tcp_on");
           if (is_tcp != "ready")
               window.localStorage.setItem("is_tcp_on", "not_ready");
-          const commands = ["add_logsink", "del_logsink", "ls_logsink", "set_loglevel", "shutdown", "version"];
-          commands.forEach(function(value, index) {
-              const item = '<a href="javascript:void(0);" class="list-group-item list-group-item-action" onclick="set_opendatacon_command(\'' + value + '\');">' + value + '</a>'
-              $('#opendatacon_list').append(item);
-          });
+          $("#alert_command").hide();
       });
 
-      function set_opendatacon_command(command) {
-          opendatacon_command = command;
-      }
-
-      function execute_opendatacon_command() {
-          if (opendatacon_command == null) {
+      function execute_opendatacon_command(cmd) {
+          if (cmd == null) {
               document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
               document.getElementById("short_text_modal_data").innerHTML="Please select from the opendatacon commands to execute";
               $('#short_text_modal').modal('show');
-          } else if (opendatacon_command == "shutdown") {
+          } else if (cmd == "shutdown") {
               document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
               document.getElementById("short_text_modal_data").innerHTML="System is going to shutdown";
               $('#short_text_modal').modal('show');
 
-              const url = "/RootCommand " + opendatacon_command;
+              const url = "/RootCommand " + cmd;
               $.post(url, {})
                   .done(function(data) {
                   });
-          } else if (opendatacon_command == "version") {
-              const url = "/OpenDataCon " + opendatacon_command;
+          } else if (cmd == "version") {
+              const url = "/OpenDataCon " + cmd;
               $.post(url, {})
                   .done(function(data) {
                       var result = '';
@@ -146,6 +158,21 @@
           $("#command_control_modal").on("hidden.bs.modal", function () {
               location.reload();
           });
+      }
+
+      function execute_reload_config() {
+          const file_name = document.getElementById("text_reload_conf").value;
+          var url = "RootCommand reload_config ";
+          if (file_name)
+              url += file_name;
+          $.post(url, {})
+              .done(function(data) {
+                  document.getElementById("alert_message").innerHTML = data["Result"];
+                  $("#alert_command").show();
+                  $("#alert_command").fadeTo(3000, 500).slideUp(500, function() {
+                      $("#alert_command").slideUp(500);
+                  });
+              });
       }
 
       $('.list-group').on('click','> a', function() {

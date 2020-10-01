@@ -34,7 +34,7 @@ ConsoleUI::ConsoleUI():
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
 		  "the first argument is taken as a regex to match which items in the collection the "
 		  "command will run for. The remainer of the arguments should be parameter Name/Value pairs."
-		  "Eg. Loggers ignore \".*\" filter \"[Aa]n{2}oying\\smessage\"");
+		  "Eg. Collection Dosomething \".*OnlyAFewMatch.*\" arg_to_dosomething ...");
 	AddCommand("help",[this](std::stringstream& LineStream)
 		{
 			std::string arg;
@@ -216,12 +216,6 @@ int ConsoleUI::hotkeys(char c)
 	return 0;
 }
 
-
-void ConsoleUI::AddResponder(const std::string& name, const IUIResponder& pResponder)
-{
-	Responders[ name ] = &pResponder;
-}
-
 void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
 {
 	ParamCollection params;
@@ -319,7 +313,9 @@ void ConsoleUI::PrintMatches(const std::string& cmd, const std::string& sub_cmd,
 			 * This line is to clear the current line so we can make the new prompt
 			 * It is easy to make the prompt than adding or not.
 			 */
-			printf("%c[2K\r", 27); std::cout << _prompt << std::flush;
+			for(auto i = _prompt.size()+buffer.size(); i>0; i--)
+				std::cout<<"\b \b";
+			std::cout << _prompt << std::flush;
 			prompt = matches[0] + " ";
 			if (matches[0].find(" ") == std::string::npos && !sub_cmd.empty())
 				prompt += sub_cmd + " ";

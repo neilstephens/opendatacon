@@ -200,7 +200,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						  return val;
 					  };
 
-		msSinceEpoch_t timestamp = 0;
+		msSinceEpoch_t timestamp = msSinceEpoch();
 		if(!pConf->pPointConf->TimestampPath.isNull())
 		{
 			try

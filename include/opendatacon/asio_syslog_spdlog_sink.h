@@ -21,13 +21,14 @@
 #define ASIO_SYSLOG_SPDLOG_SINK_H
 
 #include <opendatacon/asio.h>
-#include <spdlog/sinks/sink.h>
+#include <spdlog/sinks/base_sink.h>
 #include <sstream>
 #include <iomanip>
 
 namespace odc
 {
-class asio_syslog_spdlog_sink: public spdlog::sinks::sink
+template<typename Mutex>
+class asio_syslog_spdlog_sink: public spdlog::sinks::base_sink<Mutex>
 {
 public:
 	asio_syslog_spdlog_sink(
@@ -49,7 +50,7 @@ public:
 		//use formatter pattern to do everything except <8*Facility+Severity>
 		std::string pattern = "1 %Y-%m-%dT%T.%e%z " + local_host + " " + app + " %P " + category +
 		                      " [%n] [%l] %v";
-		formatter_ = spdlog::details::make_unique<spdlog::pattern_formatter>(pattern);
+		set_pattern(pattern);
 
 		severities[static_cast<size_t>(spdlog::level::trace)] = 7;
 		severities[static_cast<size_t>(spdlog::level::debug)] = 7;
@@ -60,26 +61,25 @@ public:
 		severities[static_cast<size_t>(spdlog::level::off)] = 6;
 	}
 
-	void log(const spdlog::details::log_msg &msg) override
+	void sink_it_(const spdlog::details::log_msg &msg) final
 	{
 		//build full syslog datagram in here
 		//TODO: probably a more efficient way using formatter append instead of ss
 		std::stringstream msg_ss;
 		msg_ss << "<" << facility_*8+severities[static_cast<size_t>(msg.level)] << ">";
 
-		fmt::memory_buffer formatted;
+		spdlog::memory_buf_t formatted;
 		formatter_->format(msg, formatted);
 		msg_ss.write(formatted.data(), static_cast<std::streamsize>(formatted.size()));
 
 		socket->send_to(asio::buffer(msg_ss.str().c_str(),msg_ss.str().size()), endpoint);
 	}
 
-
-	void flush() override {}
-	void set_pattern(const std::string &pattern) override {}
-	void set_formatter(std::unique_ptr<spdlog::formatter> sink_formatter) override {}
+	void flush_() final {};
 
 private:
+	using spdlog::sinks::base_sink<Mutex>::set_pattern;
+	using spdlog::sinks::base_sink<Mutex>::formatter_;
 	std::unique_ptr<asio::ip::udp::resolver> resolver;
 	asio::ip::udp::resolver::query query;
 	asio::ip::udp::endpoint endpoint;
@@ -87,6 +87,11 @@ private:
 	std::array<int, 7> severities;
 	int facility_;
 };
+
+#include "spdlog/details/null_mutex.h"
+#include <mutex>
+using asio_syslog_spdlog_sink_mt = asio_syslog_spdlog_sink<std::mutex>;
+using asio_syslog_spdlog_sink_st = asio_syslog_spdlog_sink<spdlog::details::null_mutex>;
 
 } // namespace odc
 

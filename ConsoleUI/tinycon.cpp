@@ -37,16 +37,20 @@ int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 {
 	static const size_t secinaday = 10*60*60*24;
 	static size_t err_backoff = timeout_tenths_of_seconds;
-	static const auto err = [](const std::string& msg)
+	static auto last_error_time = odc::msSinceEpoch();
+	static const auto err = [timeout_tenths_of_seconds](const std::string& msg)
 	{
-		if(auto log = odc::spdlog_get("ConsoleUI"))
-			log->error("{}. Sleeping for {} ms", msg, 100*err_backoff);
-		std::this_thread::sleep_for(std::chrono::milliseconds(100*err_backoff));
-
-		if(err_backoff < secinaday)
-			err_backoff *= 2;
-		else if(err_backoff > secinaday)
-			err_backoff = secinaday;
+		auto now = odc::msSinceEpoch();
+		if(now >= last_error_time+100*err_backoff)
+		{
+			if(auto log = odc::spdlog_get("ConsoleUI"))
+				log->error("{}. Supressing next error for {} ms", msg, 100*err_backoff);
+			if(err_backoff < secinaday)
+				err_backoff *= 2;
+			else if(err_backoff > secinaday)
+				err_backoff = secinaday;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(100*timeout_tenths_of_seconds));
 	};
 
 	struct termios oldt{}, newt{};
@@ -238,15 +242,35 @@ void tinyConsole::run ()
 	// grab input
 	for (;;)
 	{
+		if(prompt_anchor)
+		{
+			//Re-print the line in case logging as clobbered it
+			//This 'anchors' it to the bottom of the console
+			for(auto i = _prompt.size()+buffer.size();i>0;i--)
+				std::cout<<"\b \b";
+			std::cout<<_prompt;
+			for(auto b : buffer)
+				std::cout<<b;
+			for (size_t i = 0; i < buffer.size()-line_pos; i++)
+				std::cout<<"\b";
+			std::cout<<std::flush;
+		}
+
+
 		if(_quit)break;
-		c = GetCharTimeout(5);
+		c = GetCharTimeout(1);
 		if(c == 0)continue;
 		if(!hotkeys(c))
 		switch (c)
 		{
 			case ESC:
 				//FIXME: escape is only detected if double-pressed.
-				std::cout << "(Esc)"<< std::flush;
+				prompt_anchor = !prompt_anchor;
+				std::cout << "(Esc)Prompt anchor ";
+				if(prompt_anchor)
+					std::cout<<"on\n"<<std::flush;
+				else
+					std::cout<<"off\n"<<std::flush;
 				break;
 			case KEY_CTRL1: // look for arrow keys
 				switch (c = GetCharTimeout(5))

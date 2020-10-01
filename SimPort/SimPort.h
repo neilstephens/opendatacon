@@ -43,13 +43,13 @@ class SimPort: public DataPort
 public:
 	//Implement DataPort interface
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
-	~SimPort();
 	void Enable() final;
 	void Disable() final;
 	void Build() final;
 	void ProcessElements(const Json::Value& json_root) final;
 	void Event(std::shared_ptr<const odc::EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) final;
-	std::pair<std::string,std::shared_ptr<IUIResponder>> GetUIResponder() final;
+
+	std::pair<std::string,const IUIResponder*> GetUIResponder() final;
 
 	//Implement ODC::DataPort functions for UI
 	const Json::Value GetCurrentState() const override;
@@ -68,7 +68,7 @@ private:
 
 	void NextEventFromDB(const std::shared_ptr<odc::EventInfo>& event);
 	void PopulateNextEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset);
-	void SpawnEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset = 0);
+	void SpawnEvent(const std::shared_ptr<odc::EventInfo>& event, ptimer_t pTimer, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<odc::EventInfo> event)
 	{
 		double mean = pSimConf->StartValue(odc::EventType::Analog, event->GetIndex());
@@ -88,13 +88,15 @@ private:
 	{
 		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Analog,index,Name);
 		RandomiseAnalog(event);
-		SpawnEvent(event);
+		auto pTimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
+		SpawnEvent(event, pTimer);
 	}
 	inline void StartAnalogEvents(size_t index, double val)
 	{
 		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Analog,index,Name);
 		event->SetPayload<odc::EventType::Analog>(std::move(val));
-		SpawnEvent(event);
+		auto pTimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
+		SpawnEvent(event, pTimer);
 	}
 	inline void StartBinaryEvents(size_t index)
 	{
@@ -106,7 +108,8 @@ private:
 	{
 		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Binary,index,Name);
 		event->SetPayload<odc::EventType::Binary>(std::move(val));
-		SpawnEvent(event);
+		auto pTimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
+		SpawnEvent(event, pTimer);
 	}
 	void PortUp();
 	void PortDown();
