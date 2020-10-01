@@ -658,23 +658,27 @@ void DataConcentrator::ProcessPorts(const Json::Value& Ports)
 		if(delete_port_func == nullptr)
 			log->info("{} : Failed to load symbol '{}' from library '{}' - {}", Ports[n]["Name"].asString(), delete_funcname, libfilename, LastSystemError());
 
-		if(new_port_func == nullptr || delete_port_func == nullptr)
+		try
 		{
-			log->error("{} : Failed to load port, mapping to NullPort...", Ports[n]["Name"].asString());
+			if(new_port_func == nullptr || delete_port_func == nullptr)
+				throw std::runtime_error("Symbol lookup failed");
+
+			auto port_cleanup = [=](DataPort* port)
+						  {
+							  delete_port_func(port);
+							  UnLoadModule(portlib);
+						  };
+
+			//call the creation function and wrap the returned pointer to a new port
+			DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
+			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+		}
+		catch(std::exception& e)
+		{
+			log->error("{} : Failed to load port ({}), mapping to NullPort...", Ports[n]["Name"].asString(), e.what());
 			DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new NullPort(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]),[](DataPort* pDP){delete pDP;}));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
-			continue;
 		}
-
-		auto port_cleanup = [=](DataPort* port)
-					  {
-						  delete_port_func(port);
-						  UnLoadModule(portlib);
-					  };
-
-		//call the creation function and wrap the returned pointer to a new port
-		DataPorts.emplace(Ports[n]["Name"].asString(), std::shared_ptr<DataPort>(new_port_func(Ports[n]["Name"].asString(), Ports[n]["ConfFilename"].asString(), Ports[n]["ConfOverrides"]), port_cleanup));
-		set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 	}
 }
 
@@ -815,7 +819,14 @@ void DataConcentrator::Build()
 		log->info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
-		Name_n_Port.second->Build();
+		try
+		{
+			Name_n_Port.second->Build();
+		}
+		catch(std::exception& e)
+		{
+			throw std::runtime_error("Port '"+Name_n_Port.first+"' Build() threw exception: " + e.what());
+		}
 	}
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Initialising DataConnectors...");
