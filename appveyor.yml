@@ -59,9 +59,9 @@ before_build:
 - cmd: cd C:\projects\opendatacon
 - ps: >-
         If ($env:Platform -Match "64") {
-            $env:GEN_PLAT="-A x64"
+            $env:GEN_PLAT="-Ax64"
         } Else {
-            $env:GEN_PLAT="-A Win32"
+            $env:GEN_PLAT="-AWin32"
             Remove-Item 'C:/OpenSSL-Win64' -Recurse
         }
         If (-not (Test-Path env:LOG_LVL)) {
