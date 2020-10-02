@@ -6,7 +6,7 @@
 ChannelHandler::ChannelHandler(DNP3Port *p):
 	pIOS(odc::asio_service::Get()),
 	pSyncStrand(pIOS->make_strand()),
-	handler_tracker(std::make_shared<char>()),
+	handler_tracker(odc::make_shared<char>()),
 	SetLinkStatus(pSyncStrand->wrap([this,h {handler_tracker}](opendnp3::LinkStatus status){SetLinkStatus_(status);})),
 	LinkUp(pSyncStrand->wrap([this,h{handler_tracker}](){LinkUp_();})),
 	LinkDown(pSyncStrand->wrap([this,h{handler_tracker}](){LinkDown_();})),
@@ -119,7 +119,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	//Create a channel listener that will subscribe this port to channel updates
 	//if we're the first port on the channel, this listener will get passed to the dnp3 stack below
 	//otherwise it can be destroyed, still leaving this port subscribed.
-	auto listener = std::make_shared<ChannelListener>(ChannelID,this);
+	auto listener = odc::make_shared<ChannelListener>(ChannelID,this);
 
 	//if there's already a channel, just take some pointers and return
 	if(Channels.count(ChannelID))
@@ -209,7 +209,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 			}
 		}
 	}
-	pWatchdog = std::make_shared<ChannelLinksWatchdog>();
+	pWatchdog = odc::make_shared<ChannelLinksWatchdog>();
 	Channels[ChannelID] = {pChannel,pWatchdog};
 	return pChannel;
 }

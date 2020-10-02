@@ -61,7 +61,7 @@ void DNP3MasterPort::Enable()
 		return;
 	}
 	if(!pCommsRideThroughTimer)
-		pCommsRideThroughTimer = std::make_shared<CommsRideThroughTimer>(*pIOS,pConf->pPointConf->CommsPointRideThroughTimems,[this](){SetCommsGood();},[this](){SetCommsFailed();});
+		pCommsRideThroughTimer = odc::make_shared<CommsRideThroughTimer>(*pIOS,pConf->pPointConf->CommsPointRideThroughTimems,[this](){SetCommsGood();},[this](){SetCommsFailed();});
 
 	enabled = true;
 

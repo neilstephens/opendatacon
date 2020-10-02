@@ -97,6 +97,20 @@ private:
 	static std::unordered_set<std::thread::id> threads_in_pool;
 };
 
+/*
+ * Here is a wrapper for std::make_shared
+ * It must be used if code in a dynamic module wants to post shared/weak ptrs
+ * to the odc::asio_service if there's any possibility of the module being unloaded
+ * during the lifetime of the post.
+ * This counts for weak ptrs too, because it's the allocation of the control block we
+ * must ensure happens on this side of the memory boundry.
+ */
+template<typename T, class ... Args>
+std::shared_ptr<T> make_shared(Args&& ... args)
+{
+	return std::make_shared<T>(std::forward<Args>(args)...);
+}
+
 } //namespace odc
 
 #endif // ASIO_H
