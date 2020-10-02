@@ -19,7 +19,7 @@
  # 
 project(Integration_tests)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp ../../opendatacon/DataConnector.cpp)
 
 add_definitions(-DCONF_PATH="${CMAKE_SOURCE_DIR}/example/ConfigReload/")
 add_definitions(-DMAIN_EXE)

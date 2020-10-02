@@ -7,7 +7,7 @@ branches:
   - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
   - /^feature\/.*$/
   
-os: Visual Studio 2017
+os: Visual Studio 2019
 
 
 #---------------------------------#
@@ -59,14 +59,15 @@ before_build:
 - cmd: cd C:\projects\opendatacon
 - ps: >-
         If ($env:Platform -Match "64") {
-            $env:GEN_PLAT=" Win64"
+            $env:GEN_PLAT="-Ax64"
         } Else {
-            $env:GEN_PLAT=""
+            $env:GEN_PLAT="-AWin32"
+            Remove-Item 'C:/OpenSSL-Win64' -Recurse
         }
         If (-not (Test-Path env:LOG_LVL)) {
             $env:LOG_LVL="error"
         }
-- cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 15 2017%GEN_PLAT%" -DFULL=ON -DCMAKE_CONFIGURATION_TYPES=%configuration% -DCMAKE_INSTALL_PREFIX=%cmake_builddir%\install -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits% -DPYTHON_HOME=%python_inst% -DOPENSSL_ROOT_DIR=C:\OpenSSL-v111-Win%cpu_bits%'
+- cmd: 'cmake . -B%cmake_builddir% -G"Visual Studio 16 2019" %GEN_PLAT% -DFULL=ON -DCMAKE_CONFIGURATION_TYPES=%configuration% -DCMAKE_INSTALL_PREFIX=%cmake_builddir%\install -DMODBUS_HOME=c:\libmodbus\libmodbus\windows%cpu_bits% -DMICROHTTPD_HOME=C:\libmicrohttpd\libmicrohttpd-0.9.17-w%cpu_bits% -DPYTHON_HOME=%python_inst% -DOPENSSL_ROOT_DIR=C:\OpenSSL-v111-Win%cpu_bits%'
 #build:
 #  parallel: true                  # enable MSBuild parallel builds
 #  project: build-win32\opendatacon_suite.sln      # path to Visual Studio solution or project
