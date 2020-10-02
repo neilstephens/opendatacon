@@ -43,8 +43,11 @@
 #include <unordered_map>
 #include <set>
 
-class TestHook;
+std::vector<spdlog::sink_ptr> GetAllSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks);
+void AddLogger(const std::string& name, const std::unordered_map<std::string, spdlog::sink_ptr>& sinks);
+void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks);
 
+class TestHook;
 class DataConcentrator: public ConfigParser, public IUIResponder
 {
 	friend class TestHook;

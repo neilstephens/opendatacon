@@ -25,9 +25,8 @@
  */
 
 #include "IntegrationTests.h"
-#include "../opendatacon/DataConcentrator.cpp"
-#include "../opendatacon/DataConnector.cpp"
 #include "../ConsoleUI/ConsoleUI.h"
+#include "../opendatacon/DataConcentrator.h"
 #include <catch.hpp>
 
 #define SUITE(name) "IntegrationTestSuite - " name
