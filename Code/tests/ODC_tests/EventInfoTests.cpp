@@ -25,7 +25,7 @@
  */
 
 #include "TestODCHelpers.h"
-#include "../opendatacon/DataConnector.h"
+#include "../../../opendatacon/DataConnector.h"
 #include "TestPorts.h"
 #include <atomic>
 #include <catch.hpp>

@@ -111,12 +111,12 @@ install:
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # replace ldd with docker wrapper (so BundleUtilities might work)
-      sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd) 
+      sudo ln -sf $SRC_DIR/Code/scripts/lddrunwrapper.pl $(which ldd) 
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../Code/cmake/rpi-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/Code/scripts/runwrapper"
     fi
   - |
     if [ "$DOCKER_BUILD" == "OEL" ]; then
@@ -185,12 +185,12 @@ install:
       docker exec -i $DOCK mkdir -p $(dirname $SRC_DIR)
       docker exec -i $DOCK ln -s /mnt $SRC_DIR
       # replace ldd with docker wrapper (so BundleUtilities might work)
-      sudo ln -sf $SRC_DIR/lddrunwrapper.pl $(which ldd) 
+      sudo ln -sf $SRC_DIR/Code/scripts/lddrunwrapper.pl $(which ldd) 
       # Export a bunch of defines to travis to use in the build and run phases of the script section
       export SYSROOT=$(pwd)/sysroot/
       export RUN="docker exec --interactive --workdir /mnt/build $DOCK"
       export STOP="docker stop $DOCK"
-      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/runwrapper"
+      export TOOLCHAIN_OPT="-DCMAKE_TOOLCHAIN_FILE=../Code/cmake/i386-toolchain.cmake -DCMAKE_CROSSCOMPILING_EMULATOR=$SRC_DIR/Code/scripts/runwrapper"
     fi
 
 script:

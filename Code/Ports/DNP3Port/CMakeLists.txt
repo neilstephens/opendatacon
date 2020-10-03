@@ -36,8 +36,8 @@ if(DNP3_TLS)
 endif()
 
 if(USE_DNP3_SUBMODULE)
-	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/submodules/dnp3")
-	set(DNP3_BUILD "${CMAKE_BINARY_DIR}/submodules/dnp3")
+	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/dnp3")
+	set(DNP3_BUILD "${CMAKE_BINARY_DIR}/Code/submodules/dnp3")
 	mark_as_advanced(FORCE DNP3_SOURCE)
 	mark_as_advanced(FORCE DNP3_BUILD)
 	set(DNP3_HOME "${DNP3_BUILD}/install" CACHE PATH ${DNP3_HOME_INSTRUCTIONS} FORCE)
@@ -56,7 +56,7 @@ if(USE_DNP3_SUBMODULE)
 		CACHE STRING "cmake options to use when building DNP3 submodule"
 	)
 	if(NOT EXISTS "${DNP3_SOURCE}/.git")
-		execute_process(COMMAND git submodule update --init -- submodules/dnp3
+		execute_process(COMMAND git submodule update --init -- Code/submodules/dnp3
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()
 	if(NOT EXISTS "${DNP3_BUILD}")

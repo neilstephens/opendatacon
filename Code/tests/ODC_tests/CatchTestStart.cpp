@@ -22,7 +22,7 @@
 
 #define CATCH_CONFIG_RUNNER
 
-#include "../opendatacon/DataConnector.cpp"
+#include "../../../opendatacon/DataConnector.cpp"
 #include <opendatacon/util.h>
 #include <catch.hpp>
 

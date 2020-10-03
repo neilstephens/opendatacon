@@ -32,9 +32,9 @@ option(USE_TCLAP_SUBMODULE "Use git submodule to download tclap header library" 
 
 set(TCLAP_HOME_INSTRUCTIONS "Choose the location of tclap header library: where it was installed - there should be an include directory within")
 if(USE_TCLAP_SUBMODULE)
-	set(TCLAP_HOME "${CMAKE_SOURCE_DIR}/submodules/tclap" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS} FORCE)
+	set(TCLAP_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/tclap" CACHE PATH ${TCLAP_HOME_INSTRUCTIONS} FORCE)
 	if(NOT EXISTS "${TCLAP_HOME}/.git")
-		execute_process(COMMAND git submodule update --init -- submodules/tclap
+		execute_process(COMMAND git submodule update --init -- Code/submodules/tclap
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()
 else()
@@ -49,7 +49,7 @@ add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST})
 target_include_directories(${PROJECT_NAME} PRIVATE "${TCLAP_HOME}/include")
 target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
-install(DIRECTORY "../include/opendatacon" DESTINATION ${INSTALLDIR_INCLUDES})
+install(DIRECTORY "../../include/opendatacon" DESTINATION ${INSTALLDIR_INCLUDES})
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER bins)
 

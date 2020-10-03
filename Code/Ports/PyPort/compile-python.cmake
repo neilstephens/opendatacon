@@ -1,6 +1,6 @@
 if(USE_PYTHON_SUBMODULE)
-	set(PYTHON_SOURCE "${CMAKE_SOURCE_DIR}/submodules/python-cmake-buildsystem")
-	set(PYTHON_BUILD "${CMAKE_BINARY_DIR}/submodules/python-cmake-buildsystem")
+	set(PYTHON_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/python-cmake-buildsystem")
+	set(PYTHON_BUILD "${CMAKE_BINARY_DIR}/Code/submodules/python-cmake-buildsystem")
 	mark_as_advanced(FORCE PYTHON_SOURCE)
 	mark_as_advanced(FORCE PYTHON_BUILD)
 	set(PYTHON_HOME "${PYTHON_BUILD}/install" CACHE PATH ${PYTHON_HOME_INSTRUCTIONS} FORCE)
@@ -20,7 +20,7 @@ if(USE_PYTHON_SUBMODULE)
 		CACHE STRING "cmake options to use when building using submodule to build Python"
 	)
 	if(NOT EXISTS "${PYTHON_SOURCE}/.git")
-		execute_process(COMMAND git submodule update --init -- submodules/python-cmake-buildsystem
+		execute_process(COMMAND git submodule update --init -- Code/submodules/python-cmake-buildsystem
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()
 	if(NOT EXISTS "${PYTHON_BUILD}")
