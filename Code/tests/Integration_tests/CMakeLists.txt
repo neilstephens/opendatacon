@@ -19,9 +19,17 @@
  # 
 project(Integration_tests)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp ../../opendatacon/DataConnector.cpp)
+set(CONF_PATH "${CMAKE_SOURCE_DIR}/ExampleConfig/ConfigReload")
+file(GLOB CONF_FILES ${CONF_PATH}/*.conf)
+foreach(CONF_FILE ${CONF_FILES})
+	get_filename_component(NOEXT ${CONF_FILE} NAME_WE)
+	set(VAR_NAME ${NOEXT}_conf)
+	message("Reading ${CONF_FILE} into ${VAR_NAME}")
+	file(READ ${CONF_FILE} ${VAR_NAME} PARENT_SCOPE)
+endforeach()
+configure_file(ConfStrings.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/ConfStrings.cpp)
 
-add_definitions(-DCONF_PATH="${CMAKE_SOURCE_DIR}/example/ConfigReload/")
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp ../../opendatacon/DataConnector.cpp)
 add_definitions(-DMAIN_EXE)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})

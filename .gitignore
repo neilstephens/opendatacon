@@ -1,4 +1,5 @@
 ExampleConfig/*
+Code/tests/Integration_tests/ConfStrings.cpp
 include/opendatacon/Version.h
 _site/*
 .directory
