@@ -36,7 +36,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
 
 #macro for resolving chain of symlinks into a list
-include(file_w_symlinks.cmake)
+include(Code/cmake/file_w_symlinks.cmake)
 
 install(FILES "LICENSE.txt" DESTINATION ".")
 install(FILES "NOTICE.txt" DESTINATION ".")
@@ -47,17 +47,17 @@ install(DIRECTORY "install/init" DESTINATION ".")
 install(DIRECTORY install/systemd DESTINATION ".")
 
 #Deploy git workflow hook scripts
-include(git-hooks.cmake)
+include(Code/cmake/git-hooks.cmake)
 
 #This will run on every build, because output is never actually produced.
 add_custom_command(OUTPUT always_rebuild COMMAND ${CMAKE_COMMAND} -E echo)
 
 #Generate version info now, and set to generate on every build
-include(version.cmake)
+include(Code/cmake/version.cmake)
 add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	OUTPUT "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
-	COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -DCURRENT_CONFIG=$<CONFIG> -P "version.cmake"
+	COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -DCURRENT_CONFIG=$<CONFIG> -P "Code/cmake/version.cmake"
 	DEPENDS always_rebuild
 )
 #version info target that our other targets can have a dependance on
@@ -299,9 +299,9 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an asio/include path within")
 if(USE_ASIO_SUBMODULE)
-	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/submodules/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
+	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
 	if(NOT EXISTS "${ASIO_HOME}/.git")
-		execute_process(COMMAND git submodule update --init -- submodules/asio
+		execute_process(COMMAND git submodule update --init -- Code/submodules/asio
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()
 else()
@@ -314,9 +314,9 @@ endif()
 
 set(SPDLOG_HOME_INSTRUCTIONS "Choose the location of spdlog header library: where it was installed - there should be an include directory within")
 if(USE_SPDLOG_SUBMODULE)
-	set(SPDLOG_HOME "${CMAKE_SOURCE_DIR}/submodules/spdlog" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS} FORCE)
+	set(SPDLOG_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/spdlog" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS} FORCE)
 	if(NOT EXISTS "${SPDLOG_HOME}/.git")
-		execute_process(COMMAND git submodule update --init -- submodules/spdlog
+		execute_process(COMMAND git submodule update --init -- Code/submodules/spdlog
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 	endif()
 else()
@@ -328,55 +328,55 @@ else()
 endif()
 
 message("add subdir JSON")
-add_subdirectory(JSON)
+add_subdirectory(Code/Libs/JSON)
 message("add subdir ODC")
-add_subdirectory(ODC)
+add_subdirectory(Code/Libs/ODC)
 if(PYPORT OR SIMPORT)
 	message("add subdir HTTP")
-	add_subdirectory(HTTP)
+	add_subdirectory(Code/Libs/HTTP)
 endif()
 message("add subdir opendatacon")
-add_subdirectory(opendatacon)
+add_subdirectory(Code/opendatacon)
 if(DNP3PORT)
 	message("add subdir DNP3Port")
-	add_subdirectory(DNP3Port)
+	add_subdirectory(Code/Ports/DNP3Port)
 endif()
 if(JSONPORT)
 	message("add subdir JSONPort")
-	add_subdirectory(JSONPort)
+	add_subdirectory(Code/Ports/JSONPort)
 endif()
 if(PYPORT)
 	message("add subdir PyPort")
-	add_subdirectory(PyPort)
+	add_subdirectory(Code/Ports/PyPort)
 endif()
 if(WEBUI)
 	message("add subdir WebUI")
-	add_subdirectory(WebUI)
+	add_subdirectory(Code/Plugins/WebUI)
 endif()
 if(CONSOLEUI)
 	message("add subdir ConsoleUI")
-	add_subdirectory(ConsoleUI)
+	add_subdirectory(Code/Plugins/ConsoleUI)
 endif()
 if(MODBUSPORT)
 	message("add subdir ModbusPort")
-	add_subdirectory(ModbusPort)
+	add_subdirectory(Code/Ports/ModbusPort)
 endif()
 if(SIMPORT)
 	message("add subdir SimPort")
-	add_subdirectory(SimPort)
+	add_subdirectory(Code/Ports/SimPort)
 endif()	
 if(MD3PORT)
 	message("add subdir MD3Port")
-	add_subdirectory(MD3Port)
+	add_subdirectory(Code/Ports/MD3Port)
 endif()
 if(CBPORT)
 	message("add subdir CBPort")
-	add_subdirectory(CBPort)
+	add_subdirectory(Code/Ports/CBPort)
 endif()
 if(TESTS)
 	message("add subdir tests")
 	enable_testing()
-	add_subdirectory(tests)
+	add_subdirectory(Code/tests)
 	add_test(DNP3Port_tests DNP3Port_tests)
 	add_test(ODC_tests ODC_tests)
 	add_test(MD3_tests MD3_tests)

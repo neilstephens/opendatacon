@@ -19,13 +19,13 @@
  # 
 project(ODC)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def ../include/opendatacon/*.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def ${CMAKE_SOURCE_DIR}/include/opendatacon/*.h)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
 add_dependencies(${PROJECT_NAME} version) #make sure version info is up-to-date first
 target_include_directories(${PROJECT_NAME} PUBLIC
 	"../JSON"
-	"../include"
+	"${CMAKE_SOURCE_DIR}/include"
 	"${SPDLOG_HOME}/include"
 	"${ASIO_HOME}/asio/include")
 

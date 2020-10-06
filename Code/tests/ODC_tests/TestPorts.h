@@ -27,7 +27,7 @@
 #ifndef TESTPORTS_H_
 #define TESTPORTS_H_
 
-#include "../opendatacon/NullPort.h"
+#include "../../../opendatacon/NullPort.h"
 
 namespace odc
 {

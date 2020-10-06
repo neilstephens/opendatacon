@@ -36,12 +36,12 @@ if(GIT_FOUND)
 		((${CMAKE_MATCH_1} EQUAL 2) AND (${CMAKE_MATCH_2} GREATER 8)))
 		message("Setting hooks directory")
 		execute_process(
-			COMMAND git config core.hooksPath git-hooks
+			COMMAND git config core.hooksPath Code/scripts/git-hooks
 			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		)
 	else()
 		message("Copying hook scripts")
-		configure_file ("${CMAKE_SOURCE_DIR}/git-hooks/pre-commit" "${CMAKE_SOURCE_DIR}/.git/hooks/pre-commit" COPYONLY)
+		configure_file ("${CMAKE_SOURCE_DIR}/Code/scripts/git-hooks/pre-commit" "${CMAKE_SOURCE_DIR}/.git/hooks/pre-commit" COPYONLY)
 	endif()
 
 	#git version 2.14 can keep submodules updated

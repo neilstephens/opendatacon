@@ -25,11 +25,13 @@
  */
 
 #include "IntegrationTests.h"
-#include "../ConsoleUI/ConsoleUI.h"
-#include "../opendatacon/DataConcentrator.h"
+#include "../Code/Plugins/ConsoleUI/ConsoleUI.h"
+#include "../../../opendatacon/DataConcentrator.h"
 #include <catch.hpp>
 
 #define SUITE(name) "IntegrationTestSuite - " name
+
+void PrepConfFiles(bool init);
 
 class TestHook
 {
@@ -47,8 +49,7 @@ public:
 
 TEST_CASE(SUITE("ReloadConfig"))
 {
-	std::cout<<"Working directory: "<<CONF_PATH<<std::endl;
-	REQUIRE_FALSE(ChangeWorkingDir(CONF_PATH));
+	PrepConfFiles(true);
 	std::cout<<"Constructing TheDataConcentrator"<<std::endl;
 	auto TheDataConcentrator = std::make_shared<DataConcentrator>("opendatacon.conf");
 	REQUIRE(TheDataConcentrator);
@@ -171,4 +172,6 @@ TEST_CASE(SUITE("ReloadConfig"))
 
 	odc::spdlog_shutdown();
 	run_thread.join();
+
+	PrepConfFiles(false);
 }
