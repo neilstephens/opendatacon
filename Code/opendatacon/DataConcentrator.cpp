@@ -1348,7 +1348,25 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 
 	//make another thread run the destructors
 	//just in case they block on anything posted to asio (which is paused)
-	std::thread delete_thread([d{std::move(to_delete)}](){});
+	auto del_done = std::make_shared<std::atomic_bool>(false);
+	std::thread delete_thread( [d{std::move(to_delete)},&del_done]() mutable
+		{
+			d.clear();
+			*del_done=true;
+		});
+
+	//give some time now for the thread to either complete or get blocked
+	//we don't want to be constructing things if it's actually running
+	size_t wait_count = 0;
+	while(!*del_done && wait_count++ < 200)
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	if(auto log = odc::spdlog_get("opendatacon"))
+	{
+		if(*del_done)
+			log->info("Old config objects deleted within {}ms",wait_count*5);
+		else
+			log->warn("Old config objects not deleted after {}ms - may be blocked. Trying again after asio un-parked",wait_count*5);
+	}
 
 	//create replacements and new
 	ProcessPorts(changed_confs["Ports"]);
@@ -1432,15 +1450,15 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	parking = false;
 
 	//wait for delete thread, or detach it if it takes too long
-	size_t wait_count = 0;
-	while(!delete_thread.joinable() && wait_count++ < 200)
+	wait_count = 0;
+	while(!*del_done && wait_count++ < 200)
 		pIOS->run_one_for(std::chrono::milliseconds(5));
-	if(delete_thread.joinable())
+	if(*del_done)
 		delete_thread.join();
 	else
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
-			log->warn("Reload cleanup thread taking too long - detaching");
+			log->error("Reload cleanup thread taking too long - detaching");
 		delete_thread.detach();
 	}
 
