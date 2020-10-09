@@ -60,6 +60,82 @@ void require_equal(const T& thing1, const T& thing2)
 	REQUIRE(thing1 == thing2);
 }
 
+TEST_CASE(SUITE("ListenClose"))
+{
+	TestSetup();
+
+	auto ReadHandler = [&](odc::buf_t&){};
+	auto StateHandler = [&](bool){};
+
+	odc::spdlog_get("opendatacon")->debug("Creating Sock");
+	auto pSockMan = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
+		true,"127.0.0.1","22222",ReadHandler,StateHandler,10,true,0,
+		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
+
+	auto pThreadPool = std::make_unique<ThreadPool>(2);
+
+	pSockMan->Open();
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	pSockMan->Close();
+	pSockMan.reset();
+
+	pThreadPool.reset();
+
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("OpenClose"))
+{
+	TestSetup();
+
+	std::atomic_bool state1 = false;
+	std::atomic_bool state2 = false;
+
+
+	auto ReadHandler = [&](bool, odc::buf_t&){};
+	auto StateHandler = [&](bool sock1, bool state)
+				  {
+					  auto& sockstate = sock1 ? state1 : state2;
+					  sockstate = state;
+					  odc::spdlog_get("opendatacon")->debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
+				  };
+
+	auto ReadHandler1 = std::bind(ReadHandler,true,std::placeholders::_1);
+	auto ReadHandler2 = std::bind(ReadHandler,false,std::placeholders::_1);
+	auto StateHandler1 = std::bind(StateHandler,true,std::placeholders::_1);
+	auto StateHandler2 = std::bind(StateHandler,false,std::placeholders::_1);
+
+	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
+	auto pSockMan1 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
+		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,10,true,0,
+		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
+
+	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
+	auto pSockMan2 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
+		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,10,true,0,
+		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock2: {}",msg);});
+
+	pSockMan1->Open();
+	pSockMan2->Open();
+	//wait for open
+	require_equal(state1,std::atomic_bool(true));
+	require_equal(state2,std::atomic_bool(true));
+
+	pSockMan1->Close();
+	pSockMan2->Close();
+	//wait for close
+	require_equal(state1,std::atomic_bool(false));
+	require_equal(state2,std::atomic_bool(false));
+
+	pSockMan1.reset();
+	pSockMan2.reset();
+
+	//make sure work is all done
+	odc::asio_service::Get()->run();
+
+	TestTearDown();
+}
+
 TEST_CASE(SUITE("SimpleStrings"))
 {
 	TestSetup();
