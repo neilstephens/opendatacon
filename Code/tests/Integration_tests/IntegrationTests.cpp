@@ -162,9 +162,20 @@ TEST_CASE(SUITE("ReloadConfig"))
 	pConsole->trigger(cmd);
 
 	//Shutting down - give some time for clean shutdown
-	unsigned int i=0;
+	unsigned int i=0; std::atomic_bool wakeup_called = false;
 	while(!TheDataConcentrator->isShutDown() && i++ < 150)
+	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		if(i == 140)
+			odc::asio_service::Get()->post([log,&wakeup_called]
+				{
+					log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
+					wakeup_called = true;
+				});
+	}
+
+	log->flush();
+
 	REQUIRE(TheDataConcentrator->isShutDown());
 
 	log.reset();

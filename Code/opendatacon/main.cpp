@@ -166,7 +166,16 @@ int main(int argc, char* argv[])
 		//Shutting down - give some time for clean shutdown
 		unsigned int i=0;
 		while(!TheDataConcentrator->isShutDown() && i++ < 150)
+		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			//as a last ditch effort to break the 'soft deadlock' asio can get into
+			if(i == 140)
+				odc::asio_service::Get()->post([]
+					{
+						if(auto log = odc::spdlog_get("opendatacon"))
+							log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
+					});
+		}
 
 		std::string msg("opendatacon version '" ODC_VERSION_STRING);
 		if(TheDataConcentrator->isShutDown())
