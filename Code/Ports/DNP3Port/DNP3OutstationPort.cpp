@@ -105,6 +105,8 @@ void DNP3OutstationPort::OnKeepAliveFailure()
 //	if there hasn't been a fail in longer than the configured keepalive period, we're back up.
 void DNP3OutstationPort::LinkUpCheck()
 {
+	if(!enabled)
+		return;
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkUpCheck() called.", Name);
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
