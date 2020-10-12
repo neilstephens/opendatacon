@@ -1,4 +1,9 @@
-# opendatacon version 1.5.1
+# opendatacon version 1.5.2
+
+## 1.5.2
+  * Directory structure of code changed to be a bit neater
+  * Periodic log flushing is optional now, for backwards compat. with older behaviour
+  * Workaround for asio shutdown bug and opendnp3 startup bug
 
 ## 1.5.1
   * Asio was updated to latest in 1.5.0, but was causing shutdown to hang or crash under windows
