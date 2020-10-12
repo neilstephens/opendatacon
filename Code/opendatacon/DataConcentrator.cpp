@@ -65,7 +65,7 @@ inline void AddLogger(const std::string& name, const std::unordered_map<std::str
 
 //Drop and reload all the loggers
 //This may cause some log messages to be lost...
-inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks)
+inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks, size_t flush_period_s)
 {
 	std::vector<std::string> lognames;
 	odc::spdlog_apply_all([&lognames](std::shared_ptr<spdlog::logger> log)
@@ -76,7 +76,8 @@ inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_pt
 	for(const auto& name : lognames)
 		AddLogger(name, sinks);
 
-	odc::spdlog_flush_every(std::chrono::seconds(60));
+	if(flush_period_s > 0)
+		odc::spdlog_flush_every(std::chrono::seconds(flush_period_s));
 }
 
 DataConcentrator::DataConcentrator(const std::string& FileName):
@@ -219,7 +220,7 @@ DataConcentrator::~DataConcentrator()
 		}
 	}
 
-	ReloadLogSinks(LogSinks);
+	ReloadLogSinks(LogSinks,0);
 
 	// Wait for all the sinks to be destroyed
 	for (auto weak_sink : weak_sinks)
@@ -365,7 +366,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 		std::cout << "Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
 	}
 
-	ReloadLogSinks(LogSinks);
+	ReloadLogSinks(LogSinks,log_flush_period);
 }
 
 void DataConcentrator::DeleteLogSink(std::stringstream& ss)
@@ -389,7 +390,7 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 		std::cout << "Usage: del_logsink <sinkname>" << std::endl;
 	}
 
-	ReloadLogSinks(LogSinks);
+	ReloadLogSinks(LogSinks,log_flush_period);
 }
 
 std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator::ConfigureLogSinks(const Json::Value& JSONRoot)
@@ -498,7 +499,12 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 		LogSinks["tcp"] = tcp;
 	}
 
-	ReloadLogSinks(LogSinks);
+	if(JSONRoot.isMember("PeriodicLogFlushSecs"))
+	{
+		log_flush_period = JSONRoot["PeriodicLogFlushSecs"].asUInt();
+	}
+
+	ReloadLogSinks(LogSinks,log_flush_period);
 	return {log_level,console_level};
 }
 
@@ -547,7 +553,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		ProcessConnectors(JSONRoot["Connectors"]);
 	}
 
-	odc::spdlog_flush_every(std::chrono::seconds(60));
+	if(log_flush_period > 0)
+		odc::spdlog_flush_every(std::chrono::seconds(log_flush_period));
 }
 
 void DataConcentrator::ProcessPorts(const Json::Value& Ports)

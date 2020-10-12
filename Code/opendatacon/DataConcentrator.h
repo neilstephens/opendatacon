@@ -45,7 +45,7 @@
 
 std::vector<spdlog::sink_ptr> GetAllSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks);
 void AddLogger(const std::string& name, const std::unordered_map<std::string, spdlog::sink_ptr>& sinks);
-void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks);
+void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks, size_t flush_period_s = 0);
 
 class TestHook;
 class DataConcentrator: public ConfigParser, public IUIResponder
@@ -99,6 +99,7 @@ private:
 	void SetLogLevel(std::stringstream& ss);
 	void AddLogSink(std::stringstream& ss);
 	void DeleteLogSink(std::stringstream& ss);
+	size_t log_flush_period = 0;
 
 	void ParkThread();
 	bool ParkThreads();
