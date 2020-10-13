@@ -157,6 +157,8 @@ TEST_CASE(SUITE("ReloadConfig"))
 	//TODO: check the stream of events coming out of JSON port
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+	log.reset();
+
 	cmd = "shutdown\n";
 	std::cout<<cmd<<std::flush;
 	pConsole->trigger(cmd);
@@ -167,18 +169,16 @@ TEST_CASE(SUITE("ReloadConfig"))
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		if(i == 140)
-			odc::asio_service::Get()->post([log,&wakeup_called]
+			odc::asio_service::Get()->post([&wakeup_called]
 				{
-					log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
 					wakeup_called = true;
 				});
 	}
 
-	log->flush();
-
 	REQUIRE(TheDataConcentrator->isShutDown());
 
-	log.reset();
 	TheDataConcentrator.reset();
 
 	odc::spdlog_drop_all();
