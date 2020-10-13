@@ -1309,6 +1309,12 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->critical("Applying reloaded config.");
 
+	////////////////// Failues beyond this point are terminal because we're about to start breaking connections and delteing stuff //////////
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Clearing copy of old file cache - unneeded cache items will be deleted.");
+	old_file_confs.clear();
+
 	//Unsubscribe conns to be deleted (from thier ports)
 	for(auto name : delete_or_changeIOHs)
 	{
@@ -1318,6 +1324,9 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	}
 
 	//delete old objects
+	//a bit of stuff to backup first
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Preparing to delete old config objects.");
 	std::vector<std::shared_ptr<void>> to_delete;
 	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
 	std::map<std::string,std::map<std::string,bool>> old_demands;
@@ -1353,6 +1362,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		Interfaces.erase(name);
 	}
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Deleting old config objects.");
 	//make another thread run the destructors
 	//just in case they block on anything posted to asio (which is paused)
 	auto del_done = std::make_shared<std::atomic_bool>(false);
@@ -1376,6 +1387,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	}
 
 	//create replacements and new
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Creating new and replacement Ports.");
 	ProcessPorts(changed_confs["Ports"]);
 	for(auto name : changedIOHs)
 	{
@@ -1395,6 +1408,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			}
 	}
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Creating new and replacement Connectors.");
 	ProcessConnectors(changed_confs["Connectors"]);
 	for(auto name : changedIOHs)
 	{
@@ -1414,6 +1429,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		}
 	}
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Creating new and replacement Plugins.");
 	ProcessPlugins(changed_confs["Plugins"]);
 
 	//superset for all changed and new
@@ -1424,14 +1441,20 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	for(auto name : changedIUIs)
 		created_or_changeIUIs.insert(name);
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Building new and replacement Ports.");
 	for(auto& port_pair : DataPorts)
 		if(created_or_changeIOHs.find(port_pair.first) != created_or_changeIOHs.end())
 			port_pair.second->Build();
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Building new and replacement Connectors.");
 	for(auto& conn_pair : DataConnectors)
 		if(created_or_changeIOHs.find(conn_pair.first) != created_or_changeIOHs.end())
 			conn_pair.second->Build();
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Building new and replacement Plugins.");
 	RefreshIUIResponders();
 	for(auto& ui_pair : Interfaces)
 	{
@@ -1468,6 +1491,9 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			log->error("Reload cleanup thread taking too long - detaching");
 		delete_thread.detach();
 	}
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("Enabling objects after reload.");
 
 	for(auto& conn_pair : DataConnectors)
 		if(created_or_changeIOHs.find(conn_pair.first) != created_or_changeIOHs.end())
