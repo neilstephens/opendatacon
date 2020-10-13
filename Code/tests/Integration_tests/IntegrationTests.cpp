@@ -181,6 +181,7 @@ TEST_CASE(SUITE("ReloadConfig"))
 	log.reset();
 	TheDataConcentrator.reset();
 
+	odc::spdlog_drop_all();
 	odc::spdlog_shutdown();
 	run_thread.join();
 
