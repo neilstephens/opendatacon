@@ -178,12 +178,20 @@ TEST_CASE(SUITE("ReloadConfig"))
 	}
 
 	REQUIRE(TheDataConcentrator->isShutDown());
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->critical("Shutdown cleanly");
+
+	run_thread.join();
+	std::cout<<"Run thread joined"<<std::endl;
 
 	TheDataConcentrator.reset();
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->critical("Destroyed");
 
 	odc::spdlog_drop_all();
 	odc::spdlog_shutdown();
-	run_thread.join();
+	std::cout<<"Logging shutdown"<<std::endl;
 
 	PrepConfFiles(false);
+	std::cout<<"Temp files deleted"<<std::endl;
 }
