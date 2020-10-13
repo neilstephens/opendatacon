@@ -1367,7 +1367,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	//make another thread run the destructors
 	//just in case they block on anything posted to asio (which is paused)
 	auto del_done = std::make_shared<std::atomic_bool>(false);
-	std::thread delete_thread( [d{std::move(to_delete)},&del_done]() mutable
+	std::thread delete_thread( [d{std::move(to_delete)},del_done]() mutable
 		{
 			d.clear();
 			*del_done=true;
