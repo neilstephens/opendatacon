@@ -198,13 +198,16 @@ script:
   - $BUILDRUN sh -c "$PRESOURCE make -j3"
   - $BUILDRUN sh -c "$PRESOURCE make package"
   - $BUILDRUN sh -c "$PRESOURCE make install"
-  - $RUN install/bin/ODC_tests $LOG_LVL -d yes
-  - $RUN install/bin/DNP3Port_tests $LOG_LVL -d yes
-  - $RUN install/bin/SimPort_tests -d yes
-  - $RUN install/bin/MD3Port_tests $LOG_LVL -d yes
-  - $RUN install/bin/CBPort_tests $LOG_LVL -d yes
-  - $RUN install/bin/PyPort_tests $LOG_LVL -d yes
-  - $RUN install/bin/Integration_tests $LOG_LVL -d yes
+  #tagged builds are redundant for running tests - they run on branch builds anyway
+  #so skip running them on tags to speed up deploy
+  - function if_notag { if [ -z "$TRAVIS_TAG" ]; then $1; fi }
+  - if_notag "$RUN install/bin/ODC_tests $LOG_LVL -d yes"
+  - if_notag "$RUN install/bin/DNP3Port_tests $LOG_LVL -d yes"
+  - if_notag "$RUN install/bin/SimPort_tests -d yes"
+  - if_notag "$RUN install/bin/MD3Port_tests $LOG_LVL -d yes"
+  - if_notag "$RUN install/bin/CBPort_tests $LOG_LVL -d yes"
+  - if_notag "$RUN install/bin/PyPort_tests $LOG_LVL -d yes"
+  - if_notag "$RUN install/bin/Integration_tests $LOG_LVL -d yes"
   - $STOP
 
 deploy:
