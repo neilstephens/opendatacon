@@ -59,6 +59,9 @@ void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 
 void ChannelHandler::SetLinkStatus_(opendnp3::LinkStatus status)
 {
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: LinkStatus {}.", pPort->Name, opendnp3::LinkStatusSpec::to_human_string(status));
+
 	link_status = status;
 	auto previous_deadness = link_deadness.load();
 
