@@ -82,14 +82,14 @@ public:
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
 	static void AddOutstation(const ConnectionTokenType &ConnectionTok,
 		uint8_t StationAddress, // For message routing, OutStation identification
-		const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+		const std::function<void(MD3Message_t&& MD3Message)>& aReadCallback,
 		const std::function<void(bool)>& aStateCallback); // Check that we dont have different devices on the one connection!
 
 	static void RemoveOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress);
 
 	static void AddMaster(const ConnectionTokenType &ConnectionTok,
 		uint8_t TargetStationAddress,
-		const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+		const std::function<void(MD3Message_t&& MD3Message)>& aReadCallback,
 		const std::function<void(bool)>& aStateCallback); // Check that we dont have different devices on the one connection!
 
 	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);
@@ -135,7 +135,7 @@ private:
 	std::function<void(std::string)> SendTCPDataFn = nullptr; // nullptr normally. Set to hook function for testing
 
 	// Need maps for these two...
-	std::unordered_map<uint8_t, std::function<void(MD3Message_t &MD3Message)>> ReadCallbackMap;
+	std::unordered_map<uint8_t, std::function<void(MD3Message_t&& MD3Message)>> ReadCallbackMap;
 	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
 	std::shared_ptr<TCPSocketManager> pSockMan;
@@ -148,7 +148,7 @@ private:
 	void Open();
 	void Close();
 	void Write(std::string &msg);
-	void RouteMD3Message(MD3Message_t &CompleteCBMessage);
+	void RouteMD3Message(MD3Message_t&& CompleteCBMessage);
 	void SocketStateHandler(bool state);
 
 	// We need one read completion handler hooked to each address/port combination. This method is re-entrant,

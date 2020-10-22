@@ -30,7 +30,6 @@
 #include "MD3PortConf.h"
 #include "MD3Utility.h"
 #include "MD3Connection.h"
-#include "StrandProtectedQueue.h"
 #include <unordered_map>
 #include <vector>
 #include <functional>
