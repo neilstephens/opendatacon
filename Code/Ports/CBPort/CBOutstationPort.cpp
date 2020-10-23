@@ -148,7 +148,7 @@ void CBOutstationPort::Build()
 	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
 
-	std::function<void(CBMessage_t &CBMessage)> aReadCallback = std::bind(&CBOutstationPort::ProcessCBMessage, this, std::placeholders::_1);
+	std::function<void(CBMessage_t &&CBMessage)> aReadCallback = std::bind(&CBOutstationPort::ProcessCBMessage, this, std::placeholders::_1);
 	std::function<void(bool)> aStateCallback = std::bind(&CBOutstationPort::SocketStateHandler, this, std::placeholders::_1);
 
 	CBConnection::AddOutstation(pConnection,MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback, MyPointConf->IsBakerDevice);
@@ -245,10 +245,21 @@ CommandStatus CBOutstationPort::Perform(const std::shared_ptr<EventInfo>& event,
 
 #pragma region DataEvents
 #endif
+
+//Synchronise processing the events with the protocol messages
+void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	EventSyncExecutor->post([this,event,pStatusCallback,SenderName]()
+		{
+			Event_(event,SenderName,pStatusCallback);
+		});
+}
+
 // We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
 // for a group or individually on our TCP connection.
 // What we return here is not used in anyway that I can see.
-void CBOutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+// Should only be called from sync'd fuction above
+void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
 	{

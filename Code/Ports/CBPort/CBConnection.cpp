@@ -119,7 +119,7 @@ ConnectionTokenType CBConnection::AddConnection
 }
 
 void CBConnection::AddOutstation(const ConnectionTokenType &ConnectionTok, uint8_t StationAddress, // For message routing, OutStation identification
-	const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+	const std::function<void(CBMessage_t &&CBMessage)>& aReadCallback,
 	const std::function<void(bool)>& aStateCallback,
 	bool isbakerdevice)
 {
@@ -160,7 +160,7 @@ void CBConnection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, ui
 }
 
 void CBConnection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
-	const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+	const std::function<void(CBMessage_t &&CBMessage)>& aReadCallback,
 	const std::function<void(bool)>& aStateCallback,
 	bool isbakerdevice)
 {
@@ -459,13 +459,13 @@ void CBConnection::RouteCBMessage(CBMessage_t &CompleteCBMessage)
 		// Most zero station address functions do not send a response
 		LOGDEBUG("Received a zero station address routing to all outstations - {}", CBMessageAsString(CompleteCBMessage));
 		for (auto it = ReadCallbackMap.begin(); it != ReadCallbackMap.end(); ++it)
-			it->second(CompleteCBMessage);
+			it->second(CBMessage_t(CompleteCBMessage));
 	}
 	else if (ReadCallbackMap.count(StationAddress) != 0)
 	{
 		// We have found a matching outstation, do read callback
 		LOGDEBUG("Routing Message to station - {} Message - {}",std::to_string(StationAddress),CBMessageAsString(CompleteCBMessage));
-		ReadCallbackMap.at(StationAddress)(CompleteCBMessage);
+		ReadCallbackMap.at(StationAddress)(std::move(CompleteCBMessage));
 	}
 	else
 	{
