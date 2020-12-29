@@ -147,13 +147,13 @@ TEST_CASE(SUITE("ReloadConfig"))
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	log->critical("ReloadConfig: change everything");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_change_everything.conf",1));
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_change_everything.conf",2));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",2));
 	//TODO: check the stream of events coming out of JSON port
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
@@ -187,10 +187,7 @@ TEST_CASE(SUITE("ReloadConfig"))
 	std::cout<<"Run thread joined"<<std::endl;
 
 	TheDataConcentrator.reset();
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->critical("Destroyed");
-	//time for async log write
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	std::cout<<"TheDataConcentrator has been destroyed"<<std::endl;
 
 	odc::spdlog_drop_all();
 	odc::spdlog_shutdown();
