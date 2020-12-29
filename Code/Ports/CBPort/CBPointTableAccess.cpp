@@ -343,12 +343,14 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 			AddToDigitalEvents(*ODCPointMapIter->second, meas, eventtime); // Don't store if master - we just fire off ODC events.
 
 		// Now check that the data we want to set is actually newer than (or equal to) the current point information. i.e. dont go backwards!
-		if (eventtime > ODCPointMapIter->second->GetChangedTime())
+		if (eventtime >= ODCPointMapIter->second->GetChangedTime())
 		{
 			ODCPointMapIter->second->SetBinary(meas, eventtime);
 		}
-		//	else
-		//		LOGDEBUG("Received a SetBinaryValue command that is older than the current binary data {}, {}", ODCPointMapIter->second->GetChangedTime(), eventtime);
+		else
+		{
+			LOGDEBUG("Received a SetBinaryValue command that is older than the current binary data {}, {}", ODCPointMapIter->second->GetChangedTime(), eventtime);
+		}
 		return true;
 	}
 	return false;
