@@ -334,7 +334,7 @@ void MD3MasterPort::ClearMD3CommandQueue()
 // but then the actual reply might be in the following message and we would never re-sync.
 // If we timeout on (some) commands, we can ask the OutStation to resend the last command response.
 // We would have to limit how many times we could do this without giving up.
-void MD3MasterPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
+void MD3MasterPort::ProcessMD3Message(MD3Message_t&& CompleteMD3Message)
 {
 	if (!enabled.load()) return; // Port Disabled so dont process
 

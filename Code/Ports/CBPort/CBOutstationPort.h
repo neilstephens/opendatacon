@@ -123,7 +123,7 @@ public:
 	{
 		SendCBMessage(LastSentCBMessage);
 	}
-	void ProcessCBMessage(CBMessage_t &CompleteCBMessage);
+	void ProcessCBMessage(CBMessage_t &&CompleteCBMessage);
 
 	// Response to PendingCommand Methods
 	void ScanRequest(CBBlockData &Header);
@@ -161,8 +161,14 @@ public:
 	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed
 	int GetSOEOffsetMinutes() { return SOETimeOffsetMinutes; }
 private:
-
 	std::shared_ptr<CBOutstationPortCollection> CBOutstationCollection;
+
+	//Unsynchronised version of their public counterpart
+	//The public interface synchronises access to these using the strand below
+	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void ProcessCBMessage_(CBMessage_t &&CompleteCBMessage);
+	//Strand to sync access to the above functions
+	std::unique_ptr<asio::io_service::strand> EventSyncExecutor = odc::asio_service::Get()->make_strand();
 
 	// UI Testing flags to cause misbehaviour
 	bool FailControlResponse = false;

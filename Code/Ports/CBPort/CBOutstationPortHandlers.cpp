@@ -39,8 +39,17 @@
 #include <iostream>
 #include <regex>
 
+//Synchronise processing the messages with the internal events
+void CBOutstationPort::ProcessCBMessage(CBMessage_t &&CompleteCBMessage)
+{
+	EventSyncExecutor->post([this,msg{std::move(CompleteCBMessage)}]() mutable
+		{
+			ProcessCBMessage_(std::move(msg));
+		});
+}
 
-void CBOutstationPort::ProcessCBMessage(CBMessage_t &CompleteCBMessage)
+//this should only be called by sync'd function above
+void CBOutstationPort::ProcessCBMessage_(CBMessage_t &&CompleteCBMessage)
 {
 	if (!enabled.load()) return; // Port Disabled so dont process
 

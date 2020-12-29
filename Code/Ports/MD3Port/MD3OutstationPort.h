@@ -104,7 +104,7 @@ public:
 
 	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 	MD3Message_t CorruptMD3Message(const MD3Message_t& CompleteMD3Message);
-	void ProcessMD3Message(MD3Message_t &CompleteMD3Message);
+	void ProcessMD3Message(MD3Message_t&& CompleteMD3Message);
 
 	// Analog
 	void DoAnalogUnconditional(MD3BlockFormatted &Header);
@@ -160,6 +160,13 @@ public:
 
 private:
 	std::shared_ptr<MD3OutstationPortCollection> MD3OutstationCollection;
+
+	//Unsynchronised version of their public counterpart
+	//The public interface synchronises access to these using the strand below
+	void Event_(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback);
+	void ProcessMD3Message_(MD3Message_t&& CompleteMD3Message);
+	//Strand to sync access to the above functions
+	std::unique_ptr<asio::io_service::strand> EventSyncExecutor = odc::asio_service::Get()->make_strand();
 
 	// UI Testing flags to cause misbehaviour
 	bool FailControlResponse = false;

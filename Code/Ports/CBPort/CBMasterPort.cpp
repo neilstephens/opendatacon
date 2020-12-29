@@ -350,7 +350,7 @@ void CBMasterPort::ClearCBCommandQueue()
 // but then the actual reply might be in the following message and we would never re-sync.
 // If we timeout on (some) commands, we can ask the OutStation to resend the last command response.
 // We would have to limit how many times we could do this without giving up.
-void CBMasterPort::ProcessCBMessage(CBMessage_t& CompleteCBMessage)
+void CBMasterPort::ProcessCBMessage(CBMessage_t &&CompleteCBMessage)
 {
 	// We know that the address matches in order to get here, and that we are in the correct INSTANCE of this class.
 
@@ -511,8 +511,8 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 			      if (pt.GetChannel() == 1)
 					analogvalue = (data >> 6) & 0x3F; // Top 6 bits only.
 			      else
-					analogvalue &= 0x3F; // Bottom 6 bits only.
-				  analogvalue = 63 - analogvalue;	// ANA6 Are Inverted
+					analogvalue &= 0x3F;      // Bottom 6 bits only.
+			      analogvalue = 63 - analogvalue; // ANA6 Are Inverted
 			}
 
 			pt.SetAnalog(analogvalue, now);

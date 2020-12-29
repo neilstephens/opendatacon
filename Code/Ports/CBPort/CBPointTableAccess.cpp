@@ -36,8 +36,9 @@ void CBPointTableAccess::Build(const std::string& _Name, const bool isoutstation
 	Name = _Name;
 	IsOutstation = isoutstation;
 	// Setup TimeTagged event queue.
-	// The size (default 500) does not consume memory, just sets an upper limit to the number of items in the queue.
-	pBinaryTimeTaggedEventQueue = std::make_shared<StrandProtectedQueue<CBBinaryPoint>>(IOS, SOEQueueSize, SOEBufferOverflowFlag);
+	// The size (default 500) does not pre-allocate memory, just sets an upper limit to the number of items in the queue.
+	BinaryTimeTaggedEventQueueSize = SOEQueueSize;
+	pSOEBufferOverflowFlag = SOEBufferOverflowFlag;
 }
 
 #ifdef _MSC_VER
@@ -342,12 +343,14 @@ bool CBPointTableAccess::SetBinaryValueUsingODCIndex(const size_t index, const u
 			AddToDigitalEvents(*ODCPointMapIter->second, meas, eventtime); // Don't store if master - we just fire off ODC events.
 
 		// Now check that the data we want to set is actually newer than (or equal to) the current point information. i.e. dont go backwards!
-		if (eventtime > ODCPointMapIter->second->GetChangedTime())
+		if (eventtime >= ODCPointMapIter->second->GetChangedTime())
 		{
 			ODCPointMapIter->second->SetBinary(meas, eventtime);
 		}
-		//	else
-		//		LOGDEBUG("Received a SetBinaryValue command that is older than the current binary data {}, {}", ODCPointMapIter->second->GetChangedTime(), eventtime);
+		else
+		{
+			LOGDEBUG("Received a SetBinaryValue command that is older than the current binary data {}, {}", ODCPointMapIter->second->GetChangedTime(), eventtime);
+		}
 		return true;
 	}
 	return false;
@@ -376,33 +379,55 @@ void CBPointTableAccess::AddToDigitalEvents(const CBBinaryPoint &inpt, const uin
 		// Set the queue point value, just so we can set the time. The value does not matter.
 		queuefullpt.SetBinary(1, CBNowUTC());
 
-		pBinaryTimeTaggedEventQueue->async_push(pt, queuefullpt, odc::spdlog_get("CBPort"));
+		// If more than one space available, proceed as normal.
+		if (BinaryTimeTaggedEventQueue.size() < (BinaryTimeTaggedEventQueueSize - 1))
+		{
+			BinaryTimeTaggedEventQueue.push(pt);
+		}
+		// If there is only one space left, we need to push the overflow event into the queue.
+		else if (BinaryTimeTaggedEventQueue.size() < BinaryTimeTaggedEventQueueSize)
+		{
+			BinaryTimeTaggedEventQueue.push(queuefullpt);
+			pSOEBufferOverflowFlag->set(true);
+			LOGDEBUG("Outstation SOE Queue Overflow - Overflow pont (127) added to the queue");
+		}
+		else
+		{
+			// No space - dump
+			LOGDEBUG("Outstation SOE Queue Overflow - Point dumped");
+		}
+
 		LOGDEBUG("{} Outstation Added Binary Event to SOE Queue - ODCIndex {}, Value {}",Name, pt.GetIndex(),pt.GetBinary());
 	}
 }
 bool CBPointTableAccess::PeekNextTaggedEventPoint(CBBinaryPoint &pt)
 {
-	return pBinaryTimeTaggedEventQueue->sync_front(pt);
+	if(BinaryTimeTaggedEventQueue.empty())
+		return false;
+	pt = BinaryTimeTaggedEventQueue.front();
+	return true;
 }
 bool CBPointTableAccess::PopNextTaggedEventPoint( )
 {
-	return pBinaryTimeTaggedEventQueue->sync_pop();
+	if(BinaryTimeTaggedEventQueue.empty())
+		return false;
+	BinaryTimeTaggedEventQueue.pop();
+	return true;
 }
 bool CBPointTableAccess::TimeTaggedDataAvailable()
 {
-	return !pBinaryTimeTaggedEventQueue->sync_empty();
+	return !BinaryTimeTaggedEventQueue.empty();
 }
 // Dumps the points out in a list, only used for UnitTests
 std::vector<CBBinaryPoint> CBPointTableAccess::DumpTimeTaggedPointList( )
 {
-	CBBinaryPoint CurrentPoint;
 	std::vector<CBBinaryPoint> PointList;
 	PointList.reserve(50);
 
-	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
+	while (TimeTaggedDataAvailable())
 	{
-		PointList.emplace_back(CurrentPoint);
-		pBinaryTimeTaggedEventQueue->sync_pop();
+		PointList.emplace_back(BinaryTimeTaggedEventQueue.front());
+		BinaryTimeTaggedEventQueue.pop();
 	}
 
 	return PointList;

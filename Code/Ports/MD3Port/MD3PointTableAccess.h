@@ -28,12 +28,12 @@
 #define MD3POINTTABLEACCESS_H_
 #include "MD3.h"
 #include "MD3PointConf.h"
-#include <unordered_map>
-#include <vector>
-#include <functional>
 //#include "MD3PortConf.h"
 #include "MD3Utility.h"
-#include "StrandProtectedQueue.h"
+#include <unordered_map>
+#include <vector>
+#include <queue>
+#include <functional>
 
 using namespace odc;
 
@@ -124,7 +124,8 @@ protected:
 	bool NewDigitalCommands = true;
 
 	// Only used in outstation
-	std::shared_ptr<StrandProtectedQueue<MD3BinaryPoint>> pBinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
+	std::queue<MD3BinaryPoint> BinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
+	const size_t BinaryTimeTaggedEventQueueSize = 256;
 };
 
 #endif

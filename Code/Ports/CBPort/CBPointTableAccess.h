@@ -28,9 +28,9 @@
 #define CBPOINTTABLEACCESS_H_
 #include "CB.h"
 #include "CBUtility.h"
-#include "StrandProtectedQueue.h"
 #include <unordered_map>
 #include <vector>
+#include <queue>
 #include <functional>
 
 using namespace odc;
@@ -129,7 +129,9 @@ protected:
 
 	bool IsOutstation = true;
 	std::string Name;
-	std::shared_ptr<StrandProtectedQueue<CBBinaryPoint>> pBinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
+	std::queue<CBBinaryPoint> BinaryTimeTaggedEventQueue; // Separate queue for time tagged binary events.
+	size_t BinaryTimeTaggedEventQueueSize = 500;
+	std::shared_ptr<protected_bool> pSOEBufferOverflowFlag = std::make_shared<protected_bool>(false);
 	// Define the special SOE buffer overflow point, so that it can be added to the SOE queue if the buffer overflows. The only thing that gets changed is the time.
 	CBBinaryPoint queuefullpt = CBBinaryPoint(0, 0, 1, PayloadLocationType(), BinaryPointType::DIG, true, 127);
 };

@@ -35,7 +35,6 @@ void MD3PointTableAccess::Build(const bool isoutstation, const bool newdigitalco
 {
 	IsOutstation = isoutstation;
 	NewDigitalCommands = newdigitalcommands;
-	pBinaryTimeTaggedEventQueue = std::make_unique<StrandProtectedQueue<MD3BinaryPoint>>(IOS, 256);
 }
 
 #ifdef _MSC_VER
@@ -437,7 +436,8 @@ void MD3PointTableAccess::AddToDigitalEvents(MD3BinaryPoint &inpt)
 			pt.SetModuleBinarySnapShot(wordres);
 		}
 		// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
-		pBinaryTimeTaggedEventQueue->async_push(pt);
+		if(BinaryTimeTaggedEventQueue.size() < BinaryTimeTaggedEventQueueSize)
+			BinaryTimeTaggedEventQueue.push(pt);
 	}
 }
 uint16_t MD3PointTableAccess::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool &ModuleFailed)
@@ -531,28 +531,33 @@ bool MD3PointTableAccess::GetAnalogControlMD3IndexUsingODCIndex(const size_t ind
 // Dumps the points out in a list, only used for UnitTests
 std::vector<MD3BinaryPoint> MD3PointTableAccess::DumpTimeTaggedPointList()
 {
-	MD3BinaryPoint CurrentPoint;
 	std::vector<MD3BinaryPoint> PointList(50);
 
-	while (pBinaryTimeTaggedEventQueue->sync_front(CurrentPoint))
+	while (!BinaryTimeTaggedEventQueue.empty())
 	{
-		PointList.emplace_back(CurrentPoint);
-		pBinaryTimeTaggedEventQueue->sync_pop();
+		PointList.emplace_back(BinaryTimeTaggedEventQueue.front());
+		BinaryTimeTaggedEventQueue.pop();
 	}
 
 	return PointList;
 }
 bool MD3PointTableAccess::PeekNextTaggedEventPoint(MD3BinaryPoint &pt)
 {
-	return pBinaryTimeTaggedEventQueue->sync_front(pt);
+	if(BinaryTimeTaggedEventQueue.empty())
+		return false;
+	pt = BinaryTimeTaggedEventQueue.front();
+	return true;
 }
 bool MD3PointTableAccess::PopNextTaggedEventPoint()
 {
-	return pBinaryTimeTaggedEventQueue->sync_pop();
+	if(BinaryTimeTaggedEventQueue.empty())
+		return false;
+	BinaryTimeTaggedEventQueue.pop();
+	return true;
 }
 bool MD3PointTableAccess::TimeTaggedDataAvailable()
 {
-	return !pBinaryTimeTaggedEventQueue->sync_empty();
+	return !BinaryTimeTaggedEventQueue.empty();
 }
 
 void MD3PointTableAccess::ForEachBinaryPoint(const std::function<void(MD3BinaryPoint &pt)>& fn)

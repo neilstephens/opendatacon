@@ -148,7 +148,7 @@ void MD3OutstationPort::Build()
 
 	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
 
-	std::function<void(MD3Message_t &MD3Message)> aReadCallback = std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1);
+	std::function<void(MD3Message_t&& MD3Message)> aReadCallback = std::bind(&MD3OutstationPort::ProcessMD3Message, this, std::placeholders::_1);
 	std::function<void(bool)> aStateCallback = std::bind(&MD3OutstationPort::SocketStateHandler, this, std::placeholders::_1);
 
 	MD3Connection::AddOutstation(pConnection, MyConf->mAddrConf.OutstationAddr, aReadCallback, aStateCallback);
@@ -254,9 +254,19 @@ CommandStatus MD3OutstationPort::Perform(const std::shared_ptr<EventInfo>& event
 #pragma region DataEvents
 #endif
 
+//Synchronise processing the events with the protocol messages
+void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	EventSyncExecutor->post([this,event,pStatusCallback]()
+		{
+			Event_(event,pStatusCallback);
+		});
+}
+
 // We received a change in data from an Event (from the opendatacon Connector) now store it so that it can be produced when the Scada master polls us
 // for a group or individually on our TCP connection.
-void MD3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+// This should only be called by the synchronisation wrapper above
+void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
 	{
