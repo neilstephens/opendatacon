@@ -246,8 +246,8 @@ void tinyConsole::run ()
 		{
 			//Re-print the line in case logging as clobbered it
 			//This 'anchors' it to the bottom of the console
-			for(auto i = _prompt.size()+buffer.size();i>0;i--)
-				std::cout<<"\b \b";
+			for(auto i = _prompt.size()+line_pos;i>0;i--)
+				std::cout<<"\b";
 			std::cout<<_prompt;
 			for(auto b : buffer)
 				std::cout<<b;
