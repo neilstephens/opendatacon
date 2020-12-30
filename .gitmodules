@@ -13,3 +13,6 @@
 [submodule "submodules/python-cmake-buildsystem"]
 	path = Code/submodules/python-cmake-buildsystem
 	url = https://github.com/python-cmake-buildsystem/python-cmake-buildsystem.git
+[submodule "Code/submodules/Simple-Web-Server"]
+	path = Code/submodules/Simple-Web-Server
+	url = https://gitlab.com/eidheim/Simple-Web-Server.git
