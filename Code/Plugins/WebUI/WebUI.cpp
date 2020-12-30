@@ -45,8 +45,7 @@ void WebUI::AddCommand(const std::string& name, std::function<void (std::strings
 	RootCommands[name] = callback;
 }
 
-void WebUI::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
-	std::shared_ptr<WebServer::Request> request)
+void WebUI::LoadRequestParams(std::shared_ptr<WebServer::Request> request)
 {
 	params.clear();
 	if(request->method == "POST" && request->content.size() > 0)
@@ -66,9 +65,26 @@ void WebUI::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
 				std::string err_str;
 				Json::Value Payload;
 				bool parse_success = Json::parseFromStream(JSONReader,request->content, &Payload, &err_str);
-				if (!parse_success)
-					if(auto log = odc::spdlog_get("WebUI"))
-						log->error("Failed to parse POST paylod as JSON: {}",err_str);
+				if (parse_success)
+				{
+					try
+					{
+						if(Payload.isObject())
+						{
+							for(auto& membername : Payload.getMemberNames())
+								params[membername] = Payload[membername].asString();
+						}
+						else
+							throw std::runtime_error("Payload isn't object");
+					}
+					catch(std::exception& e)
+					{
+						if(auto log = odc::spdlog_get("WebUI"))
+							log->error("JSON POST paylod not suitable: {} : '{}'",e.what(),Payload.toStyledString());
+					}
+				}
+				else if(auto log = odc::spdlog_get("WebUI"))
+					log->error("Failed to parse POST payload as JSON: {}",err_str);
 			}
 			else if(auto log = odc::spdlog_get("WebUI"))
 				log->error("unsupported POST 'Content-Type' : '{}'", type_pair_it->second);
@@ -76,13 +92,27 @@ void WebUI::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
 		else if(auto log = odc::spdlog_get("WebUI"))
 			log->error("POST has no 'Content-Type'");
 	}
+}
+
+void WebUI::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
+	std::shared_ptr<WebServer::Request> request)
+{
+	LoadRequestParams(request);
 
 	auto raw_path = SimpleWeb::Percent::decode(request->path);
 	if (IsCommand(raw_path))
 	{
-		SimpleWeb::CaseInsensitiveMultimap header;
-		header.emplace("Content-Type", "application/json");
-		response->write(InitCommand(raw_path),header);
+		HandleCommand(raw_path,[response](const Json::Value&& json_resp)
+			{
+				SimpleWeb::CaseInsensitiveMultimap header;
+				header.emplace("Content-Type", "application/json");
+
+				Json::StreamWriterBuilder wbuilder;
+				wbuilder["commentStyle"] = "None";
+				auto str_resp = Json::writeString(wbuilder, json_resp);
+
+				response->write(str_resp,header);
+			});
 	}
 	else
 	{
@@ -128,6 +158,9 @@ void WebUI::Build()
 {
 	WebSrv.config.port = port;
 
+	//TODO: we could use non-default resources to regex match the URL
+	// then we could get rid of the URL parsing code in the handler
+	// in favour of the regex match groups, and call the ultimate handlers directly
 	WebSrv.default_resource["GET"] =
 		[this](std::shared_ptr<WebServer::Response> response,
 		       std::shared_ptr<WebServer::Request> request)
@@ -142,7 +175,7 @@ void WebUI::Build()
 		};
 
 	const std::string url = "/RootCommand add_logsink tcp_web_ui trace TCP localhost " + tcp_port + " SERVER";
-	InitCommand(url);
+	HandleCommand(url,[](const Json::Value&&){});
 }
 
 void WebUI::Enable()
@@ -150,11 +183,16 @@ void WebUI::Enable()
 	std::thread server_thread([this]()
 		{
 			// Start server
-			WebSrv.start();
+			WebSrv.start([](unsigned short port)
+				{
+					if (auto log = odc::spdlog_get("WebUI"))
+						log->info("Simple Web Server listening on port {}.",port);
+				});
 		});
+
+	//TODO/FIXME: make thread a member, so we can join it on disable/shutdown
+	//detaching not so bad for the moment
 	server_thread.detach();
-	if (auto log = odc::spdlog_get("WebUI"))
-		log->info("Simple Web Server started.");
 }
 
 void WebUI::Disable()
@@ -223,22 +261,6 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 		value["Result"] = "Responder not available.";
 		result_cb(std::move(value));
 	}
-}
-
-std::string WebUI::InitCommand(const std::string& url)
-{
-	std::promise<Json::Value> result_prom;
-	auto result = result_prom.get_future();
-	HandleCommand(url, [&result_prom](const Json::Value&& data)
-		{
-			result_prom.set_value(data);
-		});
-	//OK to block this thread because it's a callback from MHD
-	auto return_data = result.get();
-
-	Json::StreamWriterBuilder wbuilder;
-	wbuilder["commentStyle"] = "None";
-	return Json::writeString(wbuilder, return_data);
 }
 
 void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb)

@@ -49,6 +49,7 @@ public:
 	void Disable() override;
 
 private:
+	void LoadRequestParams(std::shared_ptr<WebServer::Request> request);
 	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
 		std::shared_ptr<WebServer::Request> request);
 	void ReturnFile(std::shared_ptr<WebServer::Response> response,
@@ -76,7 +77,6 @@ private:
 	ParamCollection params;
 	/* UI response handlers */
 	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
-	std::string InitCommand(const std::string& url);
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb);
 	void HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb);
 	void ConnectToTCPServer();
