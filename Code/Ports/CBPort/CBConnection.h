@@ -85,7 +85,7 @@ public:
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
 	static void AddOutstation(const ConnectionTokenType &pConnection,
 		uint8_t StationAddress, // For message routing, OutStation identification
-		const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+		const std::function<void(CBMessage_t &&CBMessage)>& aReadCallback,
 		const std::function<void(bool)>& aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
@@ -93,7 +93,7 @@ public:
 
 	static void AddMaster(const ConnectionTokenType &ConnectionTok,
 		uint8_t TargetStationAddress,
-		const std::function<void(CBMessage_t &CBMessage)>& aReadCallback,
+		const std::function<void(CBMessage_t &&CBMessage)>& aReadCallback,
 		const std::function<void(bool)>& aStateCallback,
 		bool isbakerdevice); // Check that we dont have different devices on the one connection!
 
@@ -145,7 +145,7 @@ private:
 
 	// Need maps for these two...
 	//TODO: Callbacks - how do we prevent calling them during shutdown? Need protection around checking they are valid and using them, from removal during use. If the port is disabled - should ne no traffic.
-	std::unordered_map<uint8_t, std::function<void(CBMessage_t &CBMessage)>> ReadCallbackMap;
+	std::unordered_map<uint8_t, std::function<void(CBMessage_t &&CBMessage)>> ReadCallbackMap;
 	std::unordered_map<uint8_t, std::function<void(bool)>> StateCallbackMap;
 
 	std::shared_ptr<TCPSocketManager> pSockMan;

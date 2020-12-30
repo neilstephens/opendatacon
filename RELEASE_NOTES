@@ -1,4 +1,10 @@
-# opendatacon version 1.5.2
+# opendatacon version 1.6.0
+
+## 1.6.0
+  * Replaced libmicrohttpd with Simple-Web-Server
+  * Stability fix for Conitel/Baker and MD3 on OEL
+  * Console prompt anchoring had a bug on some terminals when reversing the cursor
+  * Other minor bug fixes
 
 ## 1.5.2
   * Directory structure of code changed to be a bit neater

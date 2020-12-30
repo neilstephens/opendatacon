@@ -27,7 +27,7 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
-#include "MhdWrapper.h"
+#include "WebHelpers.h"
 #include <opendatacon/IUI.h>
 #include <opendatacon/TCPSocketManager.h>
 #include <regex>
@@ -40,7 +40,7 @@ const char ROOTPAGE[] = "/index.html";
 class WebUI: public IUI
 {
 public:
-	WebUI(uint16_t port, const std::string& web_root, const std::string& tcp_port, size_t log_q_size);
+	WebUI(uint16_t port, const std::string& web_root, const std::string& web_crt, const std::string& web_key, const std::string& tcp_port, size_t log_q_size);
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
@@ -48,18 +48,13 @@ public:
 	void Enable() override;
 	void Disable() override;
 
-	/* HTTP response handler call back */
-	int http_ahc(void *cls,
-		struct MHD_Connection *connection,
-		const std::string& url,
-		const std::string& method,
-		const std::string& version,
-		const std::string& upload_data,
-		size_t& upload_data_size,
-		void **ptr);
-
 private:
-	struct MHD_Daemon * d;
+	void LoadRequestParams(std::shared_ptr<WebServer::Request> request);
+	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
+		std::shared_ptr<WebServer::Request> request);
+	void ReturnFile(std::shared_ptr<WebServer::Response> response,
+		std::shared_ptr<WebServer::Request> request);
+	WebServer WebSrv;
 	const int port;
 	std::string cert_pem;
 	std::string key_pem;
@@ -78,13 +73,10 @@ private:
 	size_t log_q_size;
 	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
 
-	bool useSSL = false;
 	/*Param Collection with POST from client side*/
 	ParamCollection params;
 	/* UI response handlers */
-	std::unordered_map<std::string, const IUIResponder*> Responders;
 	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
-	std::string InitCommand(const std::string& url);
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb);
 	void HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb);
 	void ConnectToTCPServer();

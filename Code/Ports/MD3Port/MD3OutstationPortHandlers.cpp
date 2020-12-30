@@ -73,7 +73,18 @@ LOW_RES_EVENTS_LIST_SCAN = 60
 
 */
 
-void MD3OutstationPort::ProcessMD3Message(MD3Message_t &CompleteMD3Message)
+
+//Synchronise processing the messages with the internal events
+void MD3OutstationPort::ProcessMD3Message(MD3Message_t&& CompleteMD3Message)
+{
+	EventSyncExecutor->post([this,msg{std::move(CompleteMD3Message)}]() mutable
+		{
+			ProcessMD3Message_(std::move(msg));
+		});
+}
+
+//This should only be called by the synchronisation wrapper above
+void MD3OutstationPort::ProcessMD3Message_(MD3Message_t&& CompleteMD3Message)
 {
 	if (!enabled.load()) return; // Port Disabled so dont process
 

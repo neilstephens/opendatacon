@@ -117,7 +117,7 @@ private:
 	CBMessage_t GetResendMessage();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
 	void ClearCBCommandQueue();
-	void ProcessCBMessage(CBMessage_t& CompleteCBMessage);
+	void ProcessCBMessage(CBMessage_t&& CompleteCBMessage);
 
 	bool ProcessScanRequestReturn(const CBMessage_t & CompleteCBMessage);
 	void ProccessScanPayload(uint16_t data, uint8_t group, PayloadLocationType payloadlocation);

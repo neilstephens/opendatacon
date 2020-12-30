@@ -112,7 +112,7 @@ ConnectionTokenType MD3Connection::AddConnection
 
 void MD3Connection::AddOutstation(const ConnectionTokenType &ConnectionTok,
 	uint8_t StationAddress, // For message routing, OutStation identification
-	const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+	const std::function<void(MD3Message_t&& MD3Message)>& aReadCallback,
 	const std::function<void(bool)>& aStateCallback)
 {
 
@@ -142,7 +142,7 @@ void MD3Connection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, u
 }
 
 void MD3Connection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t TargetStationAddress, // For message routing, Master is expecting replies from what Outstation?
-	const std::function<void(MD3Message_t &MD3Message)>& aReadCallback,
+	const std::function<void(MD3Message_t&& MD3Message)>& aReadCallback,
 	const std::function<void(bool)>& aStateCallback)
 {
 	if (auto pConnection = ConnectionTok.pConnection)
@@ -371,8 +371,12 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 			if (ReadCompletionHandlerMD3block.IsEndOfMessageBlock() && (MD3Message.size() != 0))
 			{
 				// Once we have the last block, then hand off MD3Message to process.
-				RouteMD3Message(MD3Message);
-				MD3Message.clear(); // Empty message block queue
+				MD3Message_t msg;
+				//move the elements out
+				std::move(MD3Message.begin(), MD3Message.end(), std::back_inserter(msg));
+				MD3Message.clear();
+
+				RouteMD3Message(std::move(msg));
 			}
 
 			// We have got a valid block, so empty the collection block so we can get the next one.
@@ -384,7 +388,7 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 		}
 	}
 }
-void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)
+void MD3Connection::RouteMD3Message(MD3Message_t&& CompleteMD3Message)
 {
 	// Only passing in the variable to make unit testing simpler.
 	// We have a full set of MD3 message blocks from a minimum of 1.
@@ -398,13 +402,13 @@ void MD3Connection::RouteMD3Message(MD3Message_t &CompleteMD3Message)
 		// Most zero station address functions do not send a response - the SystemSignOnMessage is an exception.
 		LOGDEBUG("MD3 Received a zero station address routing to all outstations - " + MD3MessageAsString(CompleteMD3Message));
 		for (auto it = ReadCallbackMap.begin(); it != ReadCallbackMap.end(); ++it)
-			it->second(CompleteMD3Message);
+			it->second(MD3Message_t(CompleteMD3Message));
 	}
 	else if (ReadCallbackMap.count(StationAddress) != 0)
 	{
 		// We have found a matching outstation, do read callback
 		LOGDEBUG("MD3 Routing Message to station - {} Message - {}",StationAddress, MD3MessageAsString(CompleteMD3Message));
-		ReadCallbackMap.at(StationAddress)(CompleteMD3Message);
+		ReadCallbackMap.at(StationAddress)(std::move(CompleteMD3Message));
 	}
 	else
 	{

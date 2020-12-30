@@ -118,7 +118,7 @@ private:
 	void SendNextMasterCommand();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
 	void ClearMD3CommandQueue();
-	void ProcessMD3Message(MD3Message_t& CompleteMD3Message);
+	void ProcessMD3Message(MD3Message_t&& CompleteMD3Message);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);

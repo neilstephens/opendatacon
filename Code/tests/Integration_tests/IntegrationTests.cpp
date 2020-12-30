@@ -147,15 +147,17 @@ TEST_CASE(SUITE("ReloadConfig"))
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	log->critical("ReloadConfig: change everything");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_change_everything.conf",1));
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_change_everything.conf",2));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",2));
 	//TODO: check the stream of events coming out of JSON port
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	log.reset();
 
 	cmd = "shutdown\n";
 	std::cout<<cmd<<std::flush;
@@ -167,22 +169,30 @@ TEST_CASE(SUITE("ReloadConfig"))
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		if(i == 140)
-			odc::asio_service::Get()->post([log,&wakeup_called]
+			odc::asio_service::Get()->post([&wakeup_called]
 				{
-					log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
 					wakeup_called = true;
 				});
 	}
 
-	log->flush();
-
 	REQUIRE(TheDataConcentrator->isShutDown());
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->critical("Shutdown cleanly");
+	//time for async log write
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-	log.reset();
-	TheDataConcentrator.reset();
-
-	odc::spdlog_shutdown();
 	run_thread.join();
+	std::cout<<"Run thread joined"<<std::endl;
+
+	TheDataConcentrator.reset();
+	std::cout<<"TheDataConcentrator has been destroyed"<<std::endl;
+
+	odc::spdlog_drop_all();
+	odc::spdlog_shutdown();
+	std::cout<<"spdlog has been shutdown"<<std::endl;
 
 	PrepConfFiles(false);
+	std::cout<<"Temp files deleted"<<std::endl;
 }

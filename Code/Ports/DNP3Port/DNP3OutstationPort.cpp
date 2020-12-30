@@ -116,15 +116,21 @@ void DNP3OutstationPort::LinkUpCheck()
 		auto ms_required = pConf->pPointConf->LinkKeepAlivems + pConf->pPointConf->LinkTimeoutms;
 		if(ms_since_down >= ms_required)
 		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->debug("{}: LinkUpCheck() success - link is back up.", Name);
 			pChanH->LinkUp();
 			return;
 		}
 
 		auto ms_left = ms_required - ms_since_down;
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->debug("{}: LinkUpCheck() failure - link is still down. {}ms until next check.", Name, ms_left);
 		pLinkUpCheckTimer->expires_from_now(std::chrono::milliseconds(ms_left));
 		pLinkUpCheckTimer->async_wait([this](asio::error_code err)
 			{
-				if(!err)
+				//if the channel went down in the mean time, timer would be cancelled
+				//double check LinkDeadness in case handler was already Q'd
+				if(!err && pChanH->GetLinkDeadness() == LinkDeadness::LinkDownChannelUp)
 					LinkUpCheck();
 			});
 	}
