@@ -28,6 +28,7 @@
 #ifndef __opendatacon__WebHelpers__
 #define __opendatacon__WebHelpers__
 
+#include <opendatacon/asio.h>
 #include <opendatacon/util.h>
 #include <opendatacon/ParamCollection.h>
 #ifdef USE_HTTPS
