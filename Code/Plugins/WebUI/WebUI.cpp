@@ -192,6 +192,9 @@ void WebUI::Enable()
 	//TODO/FIXME: make thread a member, so we can join it on disable/shutdown
 	//detaching not so bad for the moment
 	server_thread.detach();
+
+	if(pSockMan)
+		pSockMan->Open();
 }
 
 void WebUI::Disable()
