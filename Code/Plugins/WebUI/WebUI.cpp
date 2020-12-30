@@ -158,21 +158,20 @@ void WebUI::Build()
 {
 	WebSrv.config.port = port;
 
+	//make a handler that simply posts the work and returns
+	// we don't want the web server thread doing any actual work
+	// because ODC needs full control via the main thread pool
+	auto request_handler = [this](std::shared_ptr<WebServer::Response> response,
+	                              std::shared_ptr<WebServer::Request> request)
+				     {
+					     pIOS->post([this,response,request](){DefaultRequestHandler(response,request);});
+				     };
+
 	//TODO: we could use non-default resources to regex match the URL
 	// then we could get rid of the URL parsing code in the handler
-	// in favour of the regex match groups, and call the ultimate handlers directly
-	WebSrv.default_resource["GET"] =
-		[this](std::shared_ptr<WebServer::Response> response,
-		       std::shared_ptr<WebServer::Request> request)
-		{
-			DefaultRequestHandler(response,request);
-		};
-	WebSrv.default_resource["POST"] =
-		[this](std::shared_ptr<WebServer::Response> response,
-		       std::shared_ptr<WebServer::Request> request)
-		{
-			DefaultRequestHandler(response,request);
-		};
+	// in favour of the regex match groups, and post the ultimate handlers directly
+	WebSrv.default_resource["GET"] = request_handler;
+	WebSrv.default_resource["POST"] = request_handler;
 
 	const std::string url = "/RootCommand add_logsink tcp_web_ui trace TCP localhost " + tcp_port + " SERVER";
 	HandleCommand(url,[](const Json::Value&&){});
