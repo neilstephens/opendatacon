@@ -30,12 +30,20 @@
 
 #include <opendatacon/util.h>
 #include <opendatacon/ParamCollection.h>
+#ifdef USE_HTTPS
+#include <server_https.hpp>
+using WebServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
+#define OPTIONAL_CERTS web_crt, web_key
+#else
 #include <server_http.hpp>
+using WebServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+#define OPTIONAL_CERTS
+#endif
 #include <fstream>
 #include <string>
 #include <unordered_map>
 
 const std::string& GetMimeType(const std::string& rUrl);
-void read_and_send(const std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response, const std::shared_ptr<std::ifstream> ifs, const std::shared_ptr<std::vector<char>> buffer);
+void read_and_send(const std::shared_ptr<WebServer::Response> response, const std::shared_ptr<std::ifstream> ifs, const std::shared_ptr<std::vector<char>> buffer);
 
 #endif /* defined(__opendatacon__WebHelpers__) */

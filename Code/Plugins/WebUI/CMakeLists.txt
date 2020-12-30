@@ -29,10 +29,11 @@ set(SIMPLEWEB_SSL OFF CACHE BOOL "Build SSL client/server support in Simple-Web-
 if(FULL)
 	set(SIMPLEWEB_SSL ON CACHE BOOL "Build SSL client/server support in Simple-Web-Server (requires ODC_ASIO_SSL)" FORCE)
 endif()
-if(SWS_SSL)
+if(SIMPLEWEB_SSL)
 	if(NOT ODC_ASIO_SSL)
 		message(FATAL_ERROR "SIMPLEWEB_SSL requires ODC_ASIO_SSL. Enable that option first")
 	endif()
+	add_definitions(-DUSE_HTTPS)
 endif()
 
 if(USE_SIMPLEWEB_SUBMODULE)

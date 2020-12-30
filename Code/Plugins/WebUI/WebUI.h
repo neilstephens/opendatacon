@@ -27,9 +27,9 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
+#include "WebHelpers.h"
 #include <opendatacon/IUI.h>
 #include <opendatacon/TCPSocketManager.h>
-#include <server_http.hpp>
 #include <regex>
 #include <shared_mutex>
 #include <queue>
@@ -40,7 +40,7 @@ const char ROOTPAGE[] = "/index.html";
 class WebUI: public IUI
 {
 public:
-	WebUI(uint16_t port, const std::string& web_root, const std::string& tcp_port, size_t log_q_size);
+	WebUI(uint16_t port, const std::string& web_root, const std::string& web_crt, const std::string& web_key, const std::string& tcp_port, size_t log_q_size);
 
 	/* Implement IUI interface */
 	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
@@ -49,11 +49,11 @@ public:
 	void Disable() override;
 
 private:
-	void DefaultRequestHandler(std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
-		std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request);
-	void ReturnFile(std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
-		std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request);
-	SimpleWeb::Server<SimpleWeb::HTTP> WebServer;
+	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
+		std::shared_ptr<WebServer::Request> request);
+	void ReturnFile(std::shared_ptr<WebServer::Response> response,
+		std::shared_ptr<WebServer::Request> request);
+	WebServer WebSrv;
 	const int port;
 	std::string cert_pem;
 	std::string key_pem;
@@ -72,7 +72,6 @@ private:
 	size_t log_q_size;
 	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
 
-	bool useSSL = false;
 	/*Param Collection with POST from client side*/
 	ParamCollection params;
 	/* UI response handlers */

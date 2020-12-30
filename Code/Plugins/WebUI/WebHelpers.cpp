@@ -51,7 +51,7 @@ const std::string& GetMimeType(const std::string& rUrl)
 	return MimeTypeMap.at("default");
 }
 
-void read_and_send(const std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response, const std::shared_ptr<std::ifstream> ifs, const std::shared_ptr<std::vector<char>> buffer)
+void read_and_send(const std::shared_ptr<WebServer::Response> response, const std::shared_ptr<std::ifstream> ifs, const std::shared_ptr<std::vector<char>> buffer)
 {
 	std::streamsize read_length;
 	if((read_length = ifs->read(buffer->data(), static_cast<std::streamsize>(buffer->size())).gcount()) > 0)
