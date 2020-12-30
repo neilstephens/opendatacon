@@ -21,45 +21,48 @@ project(WebUI)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-set(MICROHTTPD_HOME_INSTRUCTIONS "Choose the location of libmicrohttpd: where it was installed - there should be lib and include directories within")
-if(DEFINED MICROHTTPD_HOME)
-	set(MICROHTTPD_HOME ${MICROHTTPD_HOME} CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
-else()
-	set(MICROHTTPD_HOME "/usr" CACHE PATH ${MICROHTTPD_HOME_INSTRUCTIONS})
+# Locate Simple Web Server
+option(USE_SIMPLEWEB_SUBMODULE "Use git submodule to download Simple-Web-Server source" ON)
+set(SIMPLEWEB_HOME_INSTRUCTIONS "Choose the location of Simple-Web-Server source: there should be the main CMakeLists.txt within")
+
+set(SIMPLEWEB_SSL OFF CACHE BOOL "Build SSL client/server support in Simple-Web-Server (requires ODC_ASIO_SSL)")
+if(FULL)
+	set(SIMPLEWEB_SSL ON CACHE BOOL "Build SSL client/server support in Simple-Web-Server (requires ODC_ASIO_SSL)" FORCE)
 endif()
-
-#find microhttpd headers
-find_path(HTTPD_INCLUDE_PATH microhttpd.h
-	PATHS ${MICROHTTPD_HOME}/include ${MICROHTTPD_HOME}/local/include
-	NO_DEFAULT_PATH
-	CMAKE_FIND_ROOT_PATH_BOTH)
-mark_as_advanced(FORCE HTTPD_INCLUDE_PATH)
-
-#import the microhttpd lib
-find_library(HTTPD_LIB NAMES microhttpd libmicrohttpd
-	PATHS ${MICROHTTPD_HOME}/lib ${MICROHTTPD_HOME}/local/lib
-	PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
-	NO_DEFAULT_PATH
-	CMAKE_FIND_ROOT_PATH_BOTH)
-add_library(httpd_target UNKNOWN IMPORTED)
-set_property(TARGET httpd_target PROPERTY IMPORTED_LOCATION "${HTTPD_LIB}")
-
-#hide (in non-advanced mode) the library path in cmake guis since it's derrived
-mark_as_advanced(FORCE HTTPD_LIB)
-
-#include in install/packaging
-option(PACKAGE_LIBMICROHTTPD "Package libmicrohttpd in c-pack installer" ON)
-if(PACKAGE_LIBMICROHTTPD)
-	set(PACK_NAMES microhttpd libmicrohttpd gcrypt gnutls gpg)
-	if(WIN32)
-		get_filename_component(HTTPD_LIB_DIR ${HTTPD_LIB} DIRECTORY)
-		set(HTTP_DLL_DIR ${MICROHTTPD_HOME}/bin)
+if(SWS_SSL)
+	if(NOT ODC_ASIO_SSL)
+		message(FATAL_ERROR "SIMPLEWEB_SSL requires ODC_ASIO_SSL. Enable that option first")
 	endif()
 endif()
 
+if(USE_SIMPLEWEB_SUBMODULE)
+	set(SIMPLEWEB_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/Simple-Web-Server")
+	if(NOT EXISTS "${SIMPLEWEB_HOME}/.git")
+		execute_process(COMMAND git submodule update --init -- Code/submodules/Simple-Web-Server
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
+else()
+	if(DEFINED SIMPLEWEB_HOME)
+		set(SIMPLEWEB_HOME ${SIMPLEWEB_HOME} CACHE PATH ${SIMPLEWEB_HOME_INSTRUCTIONS})
+	else()
+		set(SIMPLEWEB_HOME "/usr/local/src/Simple-Web-Server" CACHE PATH ${SIMPLEWEB_HOME_INSTRUCTIONS})
+	endif()
+endif()
+
+option(USE_OPENSSL "" SIMPLEWEB_SSL)
+option(USE_STANDALONE_ASIO "" ON)
+set(ASIO_PATH "${ASIO_HOME}/asio/include" CACHE PATH "")
+add_subdirectory(${SIMPLEWEB_HOME} Simple-Web-Server)
+#hide third party cmake options as advanced
+mark_as_advanced(FORCE Boost_INCLUDE_DIR)
+mark_as_advanced(FORCE BUILD_FUZZING)
+mark_as_advanced(FORCE BUILD_TESTING)
+mark_as_advanced(FORCE ASIO_PATH)
+mark_as_advanced(FORCE USE_OPENSSL)
+mark_as_advanced(FORCE USE_STANDALONE_ASIO)
+
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_include_directories(${PROJECT_NAME} PRIVATE "${HTTPD_INCLUDE_PATH}")
-target_link_libraries(${PROJECT_NAME} ODC httpd_target)
+target_link_libraries(${PROJECT_NAME} ODC simple-web-server)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
@@ -70,11 +73,5 @@ install(CODE
 "
 	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
 		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-	)
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-	set(BUNDLE_DEPS_DIRS \${BUNDLE_DEPS_DIRS}
-		${HTTP_DLL_DIR}
 	)
 ")

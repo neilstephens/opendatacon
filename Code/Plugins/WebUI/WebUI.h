@@ -27,9 +27,9 @@
 
 #ifndef __opendatacon__WebUI__
 #define __opendatacon__WebUI__
-#include "MhdWrapper.h"
 #include <opendatacon/IUI.h>
 #include <opendatacon/TCPSocketManager.h>
+#include <server_http.hpp>
 #include <regex>
 #include <shared_mutex>
 #include <queue>
@@ -48,18 +48,12 @@ public:
 	void Enable() override;
 	void Disable() override;
 
-	/* HTTP response handler call back */
-	int http_ahc(void *cls,
-		struct MHD_Connection *connection,
-		const std::string& url,
-		const std::string& method,
-		const std::string& version,
-		const std::string& upload_data,
-		size_t& upload_data_size,
-		void **ptr);
-
 private:
-	struct MHD_Daemon * d;
+	void DefaultRequestHandler(std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
+		std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request);
+	void ReturnFile(std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
+		std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request);
+	SimpleWeb::Server<SimpleWeb::HTTP> WebServer;
 	const int port;
 	std::string cert_pem;
 	std::string key_pem;
@@ -82,7 +76,6 @@ private:
 	/*Param Collection with POST from client side*/
 	ParamCollection params;
 	/* UI response handlers */
-	std::unordered_map<std::string, const IUIResponder*> Responders;
 	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
 	std::string InitCommand(const std::string& url);
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb);

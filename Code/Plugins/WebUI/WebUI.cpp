@@ -26,6 +26,7 @@
 //
 
 #include "WebUI.h"
+#include "WebHelpers.h"
 #include <opendatacon/util.h>
 #include <opendatacon/asio.h>
 
@@ -83,42 +84,8 @@ DE+cahwFk7x5dZ28WePVnm/QqIFdyq3g9MliQrlIGVbbn3DtvVVBT5cc2/NPDnHN\
 9Ew4HhHIV+smoLTlGglfrlCuHXcrEzK5l5AMy9gD62OnhR3b3y0o4g==\
 -----END RSA PRIVATE KEY-----";
 
-/* response handler callback wrapper */
-static int ahc(void *cls,
-	struct MHD_Connection *connection,
-	const char *url,
-	const char *method,
-	const char *version,
-	const char *upload_data,
-	size_t *upload_data_size,
-	void **ptr)
-{
-	auto test = reinterpret_cast<WebUI*>(cls);
-	std::string upload_data_str;
-	if (*upload_data_size > 0)
-	{
-		upload_data_str = upload_data;
-	}
-	return test->http_ahc(cls, connection, url, method, version, upload_data_str, *upload_data_size, ptr);
-}
-
-static
-std::string load_key(const char *filename)
-{
-	std::ifstream in;
-	in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-	in.open(filename, std::ios::in | std::ios::binary);
-	std::string contents;
-	in.seekg(0, std::ios::end);
-	contents.resize(in.tellg());
-	in.seekg(0, std::ios::beg);
-	in.read(&contents[0], contents.size());
-	in.close();
-	return(contents);
-}
-
 WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp_port, size_t log_q_size):
-	d(nullptr),
+	WebServer(),
 	port(pPort),
 	web_root(web_root),
 	tcp_port(tcp_port),
@@ -127,13 +94,9 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& tcp
 	pLogRegex(nullptr),
 	log_q_size(log_q_size)
 {
-	try
+	if(useSSL)
 	{
-		key_pem = load_key("server.key");
-		cert_pem = load_key("server.pem");
-	}
-	catch (std::exception& e)
-	{
+		//TODO: read in certificates (when https is implememnted)
 		if(auto log = odc::spdlog_get("WebUI"))
 			log->warn("WebUI port {}: The key/certificate files could not be read. Reverting to default certificate.", pPort);
 		cert_pem = default_cert_pem;
@@ -146,105 +109,116 @@ void WebUI::AddCommand(const std::string& name, std::function<void (std::strings
 	RootCommands[name] = callback;
 }
 
-/* HTTP access handler call back */
-int WebUI::http_ahc(void *cls,
-	struct MHD_Connection *connection,
-	const std::string& url,
-	const std::string& method,
-	const std::string& version,
-	const std::string& upload_data,
-	size_t& upload_data_size,
-	void **con_cls)
+void WebUI::DefaultRequestHandler(std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
+	std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request)
 {
 	params.clear();
-	struct connection_info_struct *con_info;
-
-	//
-	if(nullptr == *con_cls)
+	if(request->method == "POST" && request->content.size() > 0)
 	{
-		return CreateNewRequest(cls,
-			connection,
-			url,
-			method,
-			version,
-			upload_data,
-			upload_data_size,
-			con_cls);
+		auto type_pair_it = request->header.find("Content-Type");
+		if(type_pair_it != request->header.end())
+		{
+			if(type_pair_it->second.find("application/x-www-form-urlencoded") != type_pair_it->second.npos)
+			{
+				auto content = SimpleWeb::QueryString::parse(request->content.string());
+				for(auto& content_pair : content)
+					params[content_pair.first] = content_pair.second;
+			}
+			else if(type_pair_it->second.find("application/json") != type_pair_it->second.npos)
+			{
+				Json::CharReaderBuilder JSONReader;
+				std::string err_str;
+				Json::Value Payload;
+				bool parse_success = Json::parseFromStream(JSONReader,request->content, &Payload, &err_str);
+				if (!parse_success)
+					if(auto log = odc::spdlog_get("WebUI"))
+						log->error("Failed to parse POST paylod as JSON: {}",err_str);
+			}
+			else if(auto log = odc::spdlog_get("WebUI"))
+				log->error("unsupported POST 'Content-Type' : '{}'", type_pair_it->second);
+		}
+		else if(auto log = odc::spdlog_get("WebUI"))
+			log->error("POST has no 'Content-Type'");
 	}
 
-	if (method == "POST")
+	auto raw_path = SimpleWeb::Percent::decode(request->path);
+	if (IsCommand(raw_path))
 	{
-		con_info = reinterpret_cast<connection_info_struct*>(*con_cls);
-
-		if (upload_data_size > 0)
-		{
-			MHD_post_process(con_info->postprocessor, upload_data.c_str(), upload_data_size);
-			upload_data_size = 0;
-
-			return MHD_YES;
-		}
-		if (con_info)
-		{
-			params = con_info->PostValues;
-		}
-	}
-
-	if (IsCommand(url))
-	{
-		return ReturnJSON(connection, InitCommand(url));
+		SimpleWeb::CaseInsensitiveMultimap header;
+		header.emplace("Content-Type", "application/json");
+		response->write(InitCommand(raw_path),header);
 	}
 	else
 	{
-		if (url == "/")
-			return ReturnFile(connection, web_root + "/" + ROOTPAGE);
-		return ReturnFile(connection, web_root + "/" + url);
+		ReturnFile(response,request);
+	}
+}
+
+void WebUI::ReturnFile(std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
+	std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request)
+{
+	std::string filepath;
+	if (request->path == "/")
+		filepath = web_root + "/" + ROOTPAGE;
+	else
+		filepath = web_root + "/" + SimpleWeb::Percent::decode(request->path);
+
+	auto ifs = std::make_shared<std::ifstream>();
+	ifs->open(filepath, std::ifstream::in | std::ios::binary | std::ios::ate);
+	if(!(*ifs))
+	{
+		const std::string msg = "Could not open path ("+ filepath +"): file open failed";
+		response->write(SimpleWeb::StatusCode::client_error_bad_request, msg);
+		if (auto log = odc::spdlog_get("WebUI"))
+			log->error(msg);
+	}
+	else
+	{
+		//put length in the header
+		SimpleWeb::CaseInsensitiveMultimap header;
+		auto length = ifs->tellg();
+		ifs->seekg(0, std::ios::beg);
+		header.emplace("Content-Length", to_string(length));
+		header.emplace("Content-Type", GetMimeType(request->path));
+		response->write(header);
+
+		// Read and send 128 KB at a time
+		auto buffer = std::make_shared<std::vector<char>>(131072);
+		read_and_send(response, ifs, buffer);
 	}
 }
 
 void WebUI::Build()
 {
+	WebServer.config.port = port;
+
+	WebServer.default_resource["GET"] =
+		[this](std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
+		       std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request)
+		{
+			DefaultRequestHandler(response,request);
+		};
+	WebServer.default_resource["POST"] =
+		[this](std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Response> response,
+		       std::shared_ptr<SimpleWeb::Server<SimpleWeb::HTTP>::Request> request)
+		{
+			DefaultRequestHandler(response,request);
+		};
+
 	const std::string url = "/RootCommand add_logsink tcp_web_ui trace TCP localhost " + tcp_port + " SERVER";
 	InitCommand(url);
 }
 
 void WebUI::Enable()
 {
-	if (useSSL)
-	{
-		//TODO: suppress warning on later versions of libmicrohttpd by using MHD_USE_INTERNAL_POLLING_THREAD
-		// For now, the CI version is old (Xenial), so we can't use it.
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION /*| MHD_USE_INTERNAL_POLLING_THREAD*/ | MHD_USE_DEBUG | MHD_USE_SSL,
-			port,                                                  // Port to bind to
-			nullptr,                                               // callback to call to check which clients allowed to connect
-			nullptr,                                               // extra argument to apc
-			reinterpret_cast<MHD_AccessHandlerCallback>(&ahc),     // handler called for all requests
-			this,                                                  // extra argument to dh
-			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
-			MHD_OPTION_CONNECTION_TIMEOUT, 256,
-			MHD_OPTION_HTTPS_MEM_KEY, key_pem.c_str(),
-			MHD_OPTION_HTTPS_MEM_CERT, cert_pem.c_str(),
-			MHD_OPTION_END);
-	}
-	else
-	{
-		//TODO: suppress warning on later versions of libmicrohttpd by using MHD_USE_INTERNAL_POLLING_THREAD
-		// For now, the CI version is old (Xenial), so we can't use it.
-		d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION /*| MHD_USE_INTERNAL_POLLING_THREAD*/ | MHD_USE_DEBUG,
-			port,                                                  // Port to bind to
-			nullptr,                                               // callback to call to check which clients allowed to connect
-			nullptr,                                               // extra argument to apc
-			reinterpret_cast<MHD_AccessHandlerCallback> (&ahc),    // handler called for all requests
-			this,                                                  // extra argument to dh
-			MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this, // completed handler and extra argument
-			MHD_OPTION_CONNECTION_TIMEOUT, 256,
-			MHD_OPTION_END);
-	}
-
-	if (d == nullptr)
-	{
-		if (auto log = odc::spdlog_get("WebUI"))
-			log->error("Failed to start microhttpd daemon. MHD_start_daemon() returned nullptr");
-	}
+	std::thread server_thread([this]()
+		{
+			// Start server
+			WebServer.start();
+		});
+	server_thread.detach();
+	if (auto log = odc::spdlog_get("WebUI"))
+		log->info("Simple Web Server started.");
 }
 
 void WebUI::Disable()
@@ -252,9 +226,7 @@ void WebUI::Disable()
 	if(pSockMan)
 		pSockMan->Close();
 
-	if (d == nullptr) return;
-	MHD_stop_daemon(d);
-	d = nullptr;
+	WebServer.stop();
 }
 
 void WebUI::HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb)
