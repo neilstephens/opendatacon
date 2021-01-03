@@ -1,5 +1,9 @@
-# opendatacon version 1.6.0
+# opendatacon version 1.6.1
 
+## 1.6.1
+  * WebUI uses html files from the install dir by default now
+  * Fixed console prompt anchoring the rest of the way (avoid reverse wrap around in some terminals)
+  
 ## 1.6.0
   * Replaced libmicrohttpd with Simple-Web-Server
   * Stability fix for Conitel/Baker and MD3 on OEL
