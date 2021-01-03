@@ -173,7 +173,7 @@ void WebUI::Build()
 	WebSrv.default_resource["GET"] = request_handler;
 	WebSrv.default_resource["POST"] = request_handler;
 
-	const std::string url = "/RootCommand add_logsink tcp_web_ui trace TCP localhost " + tcp_port + " SERVER";
+	const std::string url = "/RootCommand add_logsink tcp_web_ui info TCP localhost " + tcp_port + " SERVER";
 	HandleCommand(url,[](const Json::Value&&){});
 }
 

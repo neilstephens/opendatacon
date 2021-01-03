@@ -26,6 +26,7 @@
 //
 
 #include "WebUI.h"
+#include <whereami++.h>
 #include <fstream>
 
 /* Test Certificate */
@@ -133,6 +134,12 @@ extern "C" WebUI* new_WebUIPlugin(const std::string& Name, const std::string& Fi
 	std::string ip = "0.0.0.0";
 	uint16_t port = 443;
 	std::string web_root = "www";
+	std::string alt_root_1 = whereami::getModulePath().dirname()+"/www";
+	std::string alt_root_2 = whereami::getModulePath().dirname()+"/../www";
+	if(file_exists(alt_root_1+"/index.html"))
+		web_root = alt_root_1;
+	else if(file_exists(alt_root_2+"/index.html"))
+		web_root = alt_root_2;
 	std::string web_crt = "server.crt";
 	std::string web_key = "server.key";
 	std::string tcp_port = "10593";
