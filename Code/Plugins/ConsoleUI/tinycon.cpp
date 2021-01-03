@@ -234,6 +234,16 @@ void tinyConsole::setBuffer (std::string s)
 	line_pos = buffer.size();
 }
 
+void tinyConsole::reprint_prompt_buffer()
+{
+	std::cout<<"\r"<<_prompt;
+	for(auto b : buffer)
+		std::cout<<b;
+	for (size_t i = 0; i < buffer.size()-line_pos; i++)
+		std::cout<<"\b";
+	std::cout<<std::flush;
+}
+
 void tinyConsole::run ()
 {
 	//show prompt
@@ -246,14 +256,7 @@ void tinyConsole::run ()
 		{
 			//Re-print the line in case logging as clobbered it
 			//This 'anchors' it to the bottom of the console
-			for(auto i = _prompt.size()+line_pos;i>0;i--)
-				std::cout<<"\b";
-			std::cout<<_prompt;
-			for(auto b : buffer)
-				std::cout<<b;
-			for (size_t i = 0; i < buffer.size()-line_pos; i++)
-				std::cout<<"\b";
-			std::cout<<std::flush;
+			reprint_prompt_buffer();
 		}
 
 
@@ -268,9 +271,10 @@ void tinyConsole::run ()
 				prompt_anchor = !prompt_anchor;
 				std::cout << "(Esc)Prompt anchor ";
 				if(prompt_anchor)
-					std::cout<<"on\n"<<std::flush;
+					std::cout<<"on\n";
 				else
-					std::cout<<"off\n"<<std::flush;
+					std::cout<<"off\n";
+				reprint_prompt_buffer();
 				break;
 			case KEY_CTRL1: // look for arrow keys
 				switch (c = GetCharTimeout(5))

@@ -70,6 +70,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
 
 install(DIRECTORY "www" DESTINATION ".")
 
+add_custom_target(copy-www-files ALL
+	COMMAND cmake -E copy_directory "${CMAKE_SOURCE_DIR}/Code/Plugins/WebUI/www" ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/www
+)
+
 install(CODE
 "
 	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
