@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenDataCon</title>
+
+    <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+
+    <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
+    <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <style>
+      a.list-group-item:hover {
+          background:#00BFFF;
+      }
+
+      .modal.opendatacon .modal-dialog {
+          width:1240px;
+          /* For responsive */
+          max-width:100%;
+          max-height:100%;
+      }
+    </style>
+
+    <script>
+      $(function() {
+          $("#common_content").load("common.html");
+      });
+    </script>
+  </head>
+
+  <body>
+    <!-- html section -->
+    <div id="common_content"></div>
+
+    <div class="alert alert-info clearfix">
+      <a href="#" class="alert-link"></a>
+      <button type="button" class="btn btn-primary float-right" onclick="go_to_tabular()">Tabular</button>
+    </div>
+
+    <div class="container">
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="go_to_command_control()">Command Control</button>
+      </div>
+    </div>
+    <br>
+
+    <div class="container">
+      <div class="row">
+        <div class="alert alert-info clearfix">
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary" onclick="execute_opendatacon_command('set_loglevel')">set_loglevel</button>&nbsp;
+              <button type="button" class="btn btn-primary" onclick="execute_opendatacon_command('shutdown')">shutdown</button>&nbsp;
+              <button type="button" class="btn btn-primary" onclick="execute_opendatacon_command('version')">version</button>
+            </div>
+        </div>
+        <div class="alert alert-info clearfix">
+          <div class="btn-group">
+            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="init_tcp()">Connect to TCP logs</button>&nbsp;
+            <button id="tcp_on" class="btn btn-primary btn-lg" onclick="deinit_tcp()">Disconnect to TCP logs</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <br>
+
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="form-group">
+            <label for="text_reload_conf">Reload Configuration File:</label>
+            <input type="text" class="form-control" id="text_reload_conf" name="reload_conf">
+          </div>
+        </div>
+        <br>
+        <div class="col-sm-4">
+          <button id="tcp_on" class="btn btn-primary btn-lg" onclick="execute_reload_config()">Reload</button>&nbsp;
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-success" id="alert_command">
+      <strong>
+        <div id="alert_message"></div>
+      </strong>
+    </div>
+
+
+    <script>
+      function go_to_tabular() {
+          window.location.href="index.html"
+      }
+
+      $(document).ready(function() {
+          const is_tcp = window.localStorage.getItem("is_tcp_on");
+          if (is_tcp != "ready")
+              window.localStorage.setItem("is_tcp_on", "not_ready");
+          $("#alert_command").hide();
+      });
+
+      function execute_opendatacon_command(cmd) {
+          if (cmd == null) {
+              document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+              document.getElementById("short_text_modal_data").innerHTML="Please select from the opendatacon commands to execute";
+              $('#short_text_modal').modal('show');
+          } else if (cmd == "shutdown") {
+              document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+              document.getElementById("short_text_modal_data").innerHTML="System is going to shutdown";
+              $('#short_text_modal').modal('show');
+
+              const url = "/RootCommand " + cmd;
+              $.post(url, {})
+                  .done(function(data) {
+                  });
+          } else if (cmd == "version") {
+              const url = "/OpenDataCon " + cmd;
+              $.post(url, {})
+                  .done(function(data) {
+                      var result = '';
+                      for (const [key, value] of Object.entries(data)) {
+                          result += key + ' : ' + value + '<br>';
+                      }
+
+                      document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+                      document.getElementById("short_text_modal_data").innerHTML=result;
+                      $('#short_text_modal').modal('show');
+                  });
+          } else {
+              $('#log_levels_modal').modal('show');
+
+              $("#log_levels_modal").on("hidden.bs.modal", function () {
+                  var log_level = window.localStorage.getItem("log_level");
+                  const url = "/RootCommand set_loglevel tcp_web_ui " + log_level;
+                  $.post(url, {})
+                      .done(function(data) {
+                          console.log("Set log level success for == " + url);
+                      });
+              });
+          }
+      }
+
+      function init_tcp() {
+          window.localStorage.setItem("is_tcp_on", "ready");
+      }
+
+      function deinit_tcp() {
+          window.localStorage.setItem("is_tcp_on", "not_ready");
+      }
+
+      function go_to_command_control() {
+          document.getElementById("command_control_src").src = "command_control.html";
+          document.getElementById("command_control_modal_title").innerHTML="Command Control";
+          $('#command_control_modal').modal('show');
+
+          $("#command_control_modal").on("hidden.bs.modal", function () {
+              location.reload();
+          });
+      }
+
+      function execute_reload_config() {
+          const file_name = document.getElementById("text_reload_conf").value;
+          var url = "RootCommand reload_config ";
+          if (file_name)
+              url += file_name;
+          $.post(url, {})
+              .done(function(data) {
+                  document.getElementById("alert_message").innerHTML = data["Result"];
+                  $("#alert_command").show();
+                  $("#alert_command").fadeTo(3000, 500).slideUp(500, function() {
+                      $("#alert_command").slideUp(500);
+                  });
+              });
+      }
+
+      $('.list-group').on('click','> a', function() {
+          var $this = $(this);
+          $('.list-group').find('.active').removeClass('active');
+          $this.addClass('active');
+      });
+      </script>
+  </body>
+</html>

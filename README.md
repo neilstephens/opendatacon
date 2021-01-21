@@ -196,16 +196,16 @@ make package
 ## Basic components
 Here are some examples utilising the basic components for configuring opendatacon, to show how they fit together.
 
-![one_to_one](images/one_to_one.PNG)
+![one_to_one](https://github.com/neilstephens/wikiimages/raw/master/one_to_one.PNG)
 Port 1 and port 2 are subscribed to each other by a single connection.
 
-![one_to_two](images/one_to_two.PNG)
+![one_to_two](https://github.com/neilstephens/wikiimages/raw/master/one_to_two.PNG)
 Port 1 and port 2 are subscribed to each other. Port 1 and port 3 are also subscribed. Each has its own connection.
 
-![one_to_one_transform](images/one_to_one_transform.PNG)
+![one_to_one_transform](https://github.com/neilstephens/wikiimages/raw/master/one_to_one_transform.PNG)
 Port 1 and port 2 are subscribed to each other by a single connection. There is a unidirectional transform affecting the data sent from port 1 to port 2.
 
-![one_to_two_transform](images/one_to_two_transform.PNG)
+![one_to_two_transform](https://github.com/neilstephens/wikiimages/raw/master/one_to_two_transform.PNG)
 Port 1 and port 2 are subscribed to each other. Port 1 and port 3 are also subscribed. There is a unidirectional transform affecting the data sent from port 1 to port 2 and port 3. There is also a unidirectional transform affecting the data sent from port 2 to port 1.
 
 ### Ports

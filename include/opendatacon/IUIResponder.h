@@ -28,11 +28,12 @@
 #ifndef __opendatacon__IUIResponder__
 #define __opendatacon__IUIResponder__
 
+#include <opendatacon/ParamCollection.h>
+#include <opendatacon/asio.h>
+#include <json/json.h>
 #include <iostream>
 #include <functional>
 #include <unordered_map>
-#include <json/json.h>
-#include <opendatacon/ParamCollection.h>
 
 typedef std::function<Json::Value(const ParamCollection& params)> UIFunction;
 
@@ -53,10 +54,11 @@ public:
 
 	virtual Json::Value GetCommandList() const;
 	virtual std::string GetCommandDescription(const std::string& acmd) const;
-	virtual Json::Value ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const;
+	Json::Value ExecuteCommand(const std::string& arCommandName, const ParamCollection& params) const;
 	void AddCommand(const std::string& arCommandName, const UIFunction& arCommand, const std::string& desc = "", const bool hide = false);
 
 private:
+	const std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 	std::unordered_map<std::string, UICommand> commands;
 };
 

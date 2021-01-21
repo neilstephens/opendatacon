@@ -53,6 +53,14 @@ stop() {
         [ $RETVAL -eq 0 ] && rm -f $lockfile
         return $RETVAL
 }
+reload() {
+        echo -n $"Sending reload signal to opendatacon daemon: "
+        killproc -p "$PIDFILE" $exec -SIGHUP
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && rm -f $lockfile
+        return $RETVAL
+}
 rhstatus() {
         status -p "$PIDFILE" -l $prog $exec
 }
@@ -72,7 +80,7 @@ case "$1" in
         restart
         ;;
   reload)
-        exit 3
+        reload
         ;;
   force-reload)
         restart

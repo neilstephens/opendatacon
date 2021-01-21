@@ -37,12 +37,20 @@ class IUI
 public:
 	virtual ~IUI(){}
 	virtual void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") = 0;
-	virtual void AddResponder(const std::string& name, const IUIResponder& pResponder) = 0;
 	virtual void Build() = 0;
 	virtual void Enable() = 0;
 	virtual void Disable() = 0;
+
+	//non-re-entrant functions only to be used when the  IUI is Disabled
+	//UI should not access Responers when disabled
+	inline void SetResponders(const std::unordered_map<std::string, const IUIResponder*>& aResponders)
+	{
+		Responders = aResponders;
+	}
+
 protected:
 	const std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
+	std::unordered_map<std::string, const IUIResponder*> Responders;
 };
 
 

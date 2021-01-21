@@ -1,0 +1,38 @@
+
+#include <catch.hpp>
+#include <map>
+#include <fstream>
+
+void PrepConfFiles(bool init)
+{
+	static std::map<const char*,const char*> conf_map;
+
+	conf_map["DNP3_A.conf"] =  R"001(@DNP3_A_conf@)001";
+	conf_map["DNP3_B.conf"] =  R"001(@DNP3_B_conf@)001";
+	conf_map["extra_points.conf"] =  R"001(@extra_points_conf@)001";
+	conf_map["offsets.conf"] =  R"001(@offsets_conf@)001";
+	conf_map["opendatacon_changed_conn.conf"] =  R"001(@opendatacon_changed_conn_conf@)001";
+	conf_map["opendatacon_changed_port.conf"] =  R"001(@opendatacon_changed_port_conf@)001";
+	conf_map["opendatacon_change_everything.conf"] =  R"001(@opendatacon_change_everything_conf@)001";
+	conf_map["opendatacon.conf"] =  R"001(@opendatacon_conf@)001";
+	conf_map["opendatacon_dangling.conf"] =  R"001(@opendatacon_dangling_conf@)001";
+	conf_map["opendatacon_removed_conn.conf"] =  R"001(@opendatacon_removed_conn_conf@)001";
+	conf_map["opendatacon_removed_plugin.conf"] =  R"001(@opendatacon_removed_plugin_conf@)001";
+	conf_map["opendatacon_removed_port.conf"] =  R"001(@opendatacon_removed_port_conf@)001";
+	conf_map["points.conf"] =  R"001(@points_conf@)001";
+
+	if(init)
+	{
+		for(auto conf_pair : conf_map)
+		{
+			std::ofstream fconf(conf_pair.first);
+			REQUIRE_FALSE(fconf.fail());
+			fconf << conf_pair.second;
+			fconf.close();
+		}
+	}
+	else
+		for(auto conf_pair : conf_map)
+			std::remove(conf_pair.first);
+}
+

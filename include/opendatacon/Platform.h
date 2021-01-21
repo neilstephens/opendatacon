@@ -104,6 +104,12 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 }
 static constexpr const char* OSPATHSEP = ";";
 
+#ifdef MAIN_EXE
+#define DllImport   __declspec( dllimport )
+#else
+#define DllImport
+#endif
+
 #else
 #include <dlfcn.h>
 static const char* DYNLIBPRE = "lib";
@@ -153,6 +159,7 @@ inline void PlatformSetEnv(const char* var, const char* val, int overwrite)
 	setenv(var, val, overwrite);
 }
 static constexpr const char* OSPATHSEP = ":";
+#define DllImport
 
 #endif
 
@@ -201,9 +208,11 @@ inline char* strerror_rp(int therr, char* buf, size_t len)
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 const auto SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGBREAK };
 const auto SIG_IGNORE = { SIGINT };
+decltype (SIG_IGNORE) SIG_RELOAD = {  };
 #else
 static const std::initializer_list<u_int8_t> SIG_SHUTDOWN = { SIGTERM, SIGABRT, SIGQUIT };
 static const std::initializer_list<u_int8_t> SIG_IGNORE = { SIGINT, SIGTSTP };
+static const std::initializer_list<u_int8_t> SIG_RELOAD = { SIGHUP };
 #endif
 
 /// Platform specific socket options

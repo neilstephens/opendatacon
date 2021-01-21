@@ -48,6 +48,7 @@ class DemandMap
 public:
 	bool InDemand();
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
+	std::map<std::string,bool> GetDemands();
 private:
 	std::map<std::string,bool> connection_demands;
 	std::mutex mtx;
@@ -71,6 +72,9 @@ public:
 	virtual void Disable() = 0;
 
 	void Subscribe(IOHandler* pIOHandler, const std::string& aName);
+	void UnSubscribe(const std::string& aName);
+	inline const std::unordered_map<std::string,IOHandler*>& GetSubscribers(){return Subscribers;}
+	inline std::map<std::string,bool> GetDemands(){return mDemandMap.GetDemands();}
 
 	inline const std::string& GetName(){return Name;}
 	inline const bool Enabled(){return enabled;}

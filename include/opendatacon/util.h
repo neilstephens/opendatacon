@@ -61,6 +61,8 @@ inline msSinceEpoch_t msSinceEpoch()
 		       (std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds);
+
 } //namspace odc
 
 #endif //UTIL_H
