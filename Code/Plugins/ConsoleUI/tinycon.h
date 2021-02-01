@@ -65,6 +65,7 @@ protected:
 public:
 	tinyConsole();
 	tinyConsole(std::string);
+	void reprint_prompt_buffer();
 	void run();
 	void setPrompt(std::string);
 	virtual int trigger(const std::string &);
