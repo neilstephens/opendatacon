@@ -263,7 +263,7 @@ public:
 	  param index      : index
 	  return           : is index exist or not
 	*/
-	bool IsIndex(odc::EventType type, std::size_t index);
+	bool IsIndex(odc::EventType type, std::size_t index, odc::ControlType control_type);
 
 	// ---------------------------------------------------------------------- //
 	//  These all funtions are for Binary Control manipulations
@@ -296,8 +296,6 @@ private:
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
 	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
 	std::unordered_map<std::string, ptimer_t> m_timers;
-
-	inline bool m_IsDataPoint(odc::EventType type);
 };
 
 #endif // SIMPORTPOINTDATA_H

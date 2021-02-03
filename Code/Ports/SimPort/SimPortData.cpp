@@ -167,9 +167,9 @@ void SimPortData::CancelTimers()
 	m_ppoint_data->CancelTimers();
 }
 
-bool SimPortData::IsIndex(odc::EventType type, std::size_t index) const
+bool SimPortData::IsIndex(odc::EventType type, std::size_t index, odc::ControlType control_type) const
 {
-	return m_ppoint_data->IsIndex(type, index);
+	return m_ppoint_data->IsIndex(type, index, control_type);
 }
 
 void SimPortData::CreateBinaryFeedback(std::size_t index,

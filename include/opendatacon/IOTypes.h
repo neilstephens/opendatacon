@@ -39,7 +39,7 @@ namespace odc
 //enumerate all the different type of events that can pass through opendatacon
 //As a starting point, define values to correspond with the previously used dnp3 measurment and output types, and some extras
 // that way it should be easy to migrate from using actual opendnp3 library types
-enum class EventType: uint8_t
+enum class EventType : uint8_t
 {
 	//Used to start iteration
 	//Must be first value
@@ -137,6 +137,13 @@ enum class CommandStatus : uint8_t
 	UNDEFINED = 127
 };
 
+enum class ControlType : uint8_t
+{
+	FEEDBACK = 1,
+	POSITION = 2,
+	UNDEFINED = 3
+};
+
 enum class ControlCode : uint8_t
 {
 	NUL = 1,
@@ -191,6 +198,14 @@ inline std::string ToString(const CommandStatus cc)
 	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_FAIL)
 	ENUMSTRING(cc, CommandStatus,NON_PARTICIPATING)
 	ENUMSTRING(cc, CommandStatus,UNDEFINED)
+	return "<no_string_representation>";
+}
+
+inline std::string ToString(const ControlType ct)
+{
+	ENUMSTRING(ct,ControlType,FEEDBACK             )
+	ENUMSTRING(ct,ControlType,POSITION             )
+	ENUMSTRING(ct,ControlType,UNDEFINED            )
 	return "<no_string_representation>";
 }
 
@@ -267,7 +282,7 @@ inline std::string ToString(const FeedbackType type)
 
 //Quatilty flags that can be used for any EventType
 //Start with a superset of all the dnp3 type qualities
-enum class QualityFlags: uint16_t
+enum class QualityFlags : uint16_t
 {
 	NONE              = 0,
 	ONLINE            = 1<<0,

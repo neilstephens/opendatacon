@@ -231,12 +231,12 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 			auto val = m_current_control[index]->GetPayload<odc::EventType::ControlRelayOutputBlock>();
 			state[std::to_string(index)][odc::ToString(type)+"Payload"] = odc::ToString(val.functionCode);
 		}
-		if (m_IsDataPoint(type))
+		if (type == odc::EventType::Binary || type == odc::EventType::Analog)
 		{
 			state[std::to_string(index)][odc::ToString(type)+"Quality"] = odc::ToString(m_points[type][index]->event->GetQuality());
 			state[std::to_string(index)][odc::ToString(type)+"Timestamp"] = odc::since_epoch_to_datetime(m_points[type][index]->event->GetTimestamp());
 		}
-		else
+		if (type == odc::EventType::ControlRelayOutputBlock)
 		{
 			state[std::to_string(index)][odc::ToString(type)+"Quality"] = odc::ToString(m_current_control[index]->GetQuality());
 			state[std::to_string(index)][odc::ToString(type)+"Timestamp"] = odc::since_epoch_to_datetime(m_current_control[index]->GetTimestamp());
@@ -268,20 +268,17 @@ void SimPortPointData::CancelTimers()
 	m_timers.clear();
 }
 
-bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
+bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index, odc::ControlType control_type)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
-	if (m_IsDataPoint(type))
-	{
-		return m_points[type].find(index) != m_points[type].end();
-	}
+	if (control_type == odc::ControlType::FEEDBACK)
+		return m_binary_feedbacks.find(index) != m_binary_feedbacks.end();
+	else if (control_type == odc::ControlType::POSITION)
+		return m_binary_positions.find(index) != m_binary_positions.end();
 	else
-	{
-		if (m_binary_feedbacks.find(index) != m_binary_feedbacks.end() ||
-		    m_binary_positions.find(index) != m_binary_positions.end())
-			return true;
-	}
-	return false;
+		return m_points[type].find(index) != m_points[type].end() ||
+		       m_binary_feedbacks.find(index) != m_binary_feedbacks.end() ||
+		       m_binary_positions.find(index) != m_binary_positions.end();
 }
 
 void SimPortPointData::CreateBinaryFeedback(std::size_t index,
@@ -335,7 +332,3 @@ std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t 
 		return m_binary_positions[index];
 }
 
-inline bool SimPortPointData::m_IsDataPoint(odc::EventType type)
-{
-	return type == odc::EventType::Analog || type == odc::EventType::Binary;
-}
