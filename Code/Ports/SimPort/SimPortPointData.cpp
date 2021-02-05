@@ -271,14 +271,8 @@ void SimPortPointData::CancelTimers()
 bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index, odc::ControlType control_type)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
-	if (control_type == odc::ControlType::FEEDBACK)
-		return m_binary_feedbacks.find(index) != m_binary_feedbacks.end();
-	else if (control_type == odc::ControlType::POSITION)
-		return m_binary_positions.find(index) != m_binary_positions.end();
-	else
-		return m_points[type].find(index) != m_points[type].end() ||
-		       m_binary_feedbacks.find(index) != m_binary_feedbacks.end() ||
-		       m_binary_positions.find(index) != m_binary_positions.end();
+	// rakesh
+	return true;
 }
 
 void SimPortPointData::CreateBinaryFeedback(std::size_t index,
@@ -296,14 +290,26 @@ void SimPortPointData::CreateBinaryFeedback(std::size_t index,
 	control_event->SetTimestamp(0);
 
 	std::shared_ptr<BinaryFeedback> bf = std::make_shared<BinaryFeedback>(on, off, mode, update_interval, control_event);
-	m_binary_feedbacks[index].emplace_back(bf);
+
+	if (m_binary_controls.find(index) == m_binary_controls.end())
+	{
+		std::vector<std::shared_ptr<BinaryFeedback>> feedback;
+		feedback.emplace_back(bf);
+		m_binary_controls[index] = std::make_shared<std::vector<std::shared_ptr<BinaryFeedback>>>(feedback);
+	}
+	else
+	{
+		(*std::static_pointer_cast<std::shared_ptr<std::vector<std::shared_ptr<BinaryFeedback>>>>(m_binary_controls[index]))->emplace_back(bf);
+	}
 	m_current_control[index] = control_event;
 }
 
 std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(feedback_mutex);
-	return m_binary_feedbacks[index];
+	// rakesh
+	std::vector<std::shared_ptr<BinaryFeedback>> feedback;
+	return feedback;
 }
 
 void SimPortPointData::CreateBinaryPosition(std::size_t index,
