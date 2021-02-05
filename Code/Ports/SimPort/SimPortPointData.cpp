@@ -288,14 +288,15 @@ void SimPortPointData::CreateBinaryFeedback(std::size_t index,
 	std::size_t update_interval)
 {
 	std::unique_lock<std::shared_timed_mutex> lck(feedback_mutex);
-	std::shared_ptr<BinaryFeedback> bf = std::make_shared<BinaryFeedback>(on, off, mode, update_interval);
-	m_binary_feedbacks[index].emplace_back(bf);
 
 	odc::EventTypePayload<odc::EventType::ControlRelayOutputBlock>::type payload;
 	payload.functionCode = odc::ControlCode::NUL;
 	std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, on->GetSourcePort(), odc::QualityFlags::COMM_LOST);
 	control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
 	control_event->SetTimestamp(0);
+
+	std::shared_ptr<BinaryFeedback> bf = std::make_shared<BinaryFeedback>(on, off, mode, update_interval, control_event);
+	m_binary_feedbacks[index].emplace_back(bf);
 	m_current_control[index] = control_event;
 }
 
@@ -313,13 +314,12 @@ void SimPortPointData::CreateBinaryPosition(std::size_t index,
 	std::size_t lower_limit, std::size_t raise_limit)
 {
 	std::unique_lock<std::shared_timed_mutex> lck(position_mutex);
-	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, lower_limit, raise_limit);
-
 	odc::EventTypePayload<odc::EventType::ControlRelayOutputBlock>::type payload;
 	payload.functionCode = odc::ControlCode::NUL;
 	std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, port_source, odc::QualityFlags::COMM_LOST);
 	control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
 	control_event->SetTimestamp(0);
+	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, lower_limit, raise_limit, control_event);
 	m_current_control[index] = control_event;
 }
 

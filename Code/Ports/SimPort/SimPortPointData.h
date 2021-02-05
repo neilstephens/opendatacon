@@ -70,15 +70,18 @@ struct BinaryFeedback
 	std::shared_ptr<odc::EventInfo> off_value;
 	FeedbackMode mode;
 	std::size_t update_interval;
+	std::shared_ptr<odc::EventInfo> event;
 
 	BinaryFeedback(const std::shared_ptr<odc::EventInfo>& on,
 		const std::shared_ptr<odc::EventInfo>& off,
 		FeedbackMode amode,
-		std::size_t u_interval):
+		std::size_t u_interval,
+		const std::shared_ptr<odc::EventInfo>& evt):
 		on_value(on),
 		off_value(off),
 		mode(amode),
-		update_interval(u_interval) {}
+		update_interval(u_interval),
+		event(evt) {}
 };
 
 struct BinaryPosition
@@ -86,14 +89,16 @@ struct BinaryPosition
 	BinaryPosition(odc::FeedbackType feedback_type,
 		const std::vector<odc::PositionAction>& an,
 		const std::vector<std::size_t>& index,
-		std::size_t l_limit, std::size_t r_limit):
-		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit) {}
+		std::size_t l_limit, std::size_t r_limit,
+		const std::shared_ptr<odc::EventInfo>& evt):
+		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit), event(evt) {}
 
 	odc::FeedbackType type;
 	std::vector<odc::PositionAction> action;
 	std::vector<std::size_t> indexes;
 	std::size_t lower_limit;
 	std::size_t raise_limit;
+	std::shared_ptr<odc::EventInfo> event;
 };
 
 class SimPortPointData
