@@ -325,16 +325,15 @@ void SimPortPointData::CreateBinaryPosition(std::size_t index,
 	std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, port_source, odc::QualityFlags::COMM_LOST);
 	control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
 	control_event->SetTimestamp(0);
-	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, lower_limit, raise_limit, control_event);
+	m_binary_controls[index] = std::make_shared<BinaryPosition>(type, action, indexes, lower_limit, raise_limit, control_event);
 	m_current_control[index] = control_event;
 }
 
 std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(position_mutex);
-	if (m_binary_positions.find(index) == m_binary_positions.end())
-		return nullptr;
-	else
-		return m_binary_positions[index];
+	std::shared_ptr<BinaryPosition> bp;
+	//rakesh
+	return bp;
 }
 

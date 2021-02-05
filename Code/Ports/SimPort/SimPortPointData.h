@@ -298,7 +298,6 @@ private:
 	std::unordered_map<std::size_t, std::shared_ptr<odc::EventInfo>> m_current_control;
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;
-	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
 	std::unordered_map<std::size_t, std::shared_ptr<void>> m_binary_controls;
 	std::unordered_map<std::string, ptimer_t> m_timers;
 };
