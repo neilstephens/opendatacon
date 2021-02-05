@@ -177,7 +177,7 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 				continue;
 			}
 			{
-				if(pSimConf->IsIndex(type, idx, odc::ControlType::UNDEFINED))
+				if(pSimConf->IsIndex(type, idx))
 					indexes.emplace_back(idx);
 			}
 		}
@@ -730,7 +730,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 		bool valid_control_event = false;
 		index = event->GetIndex();
 
-		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index, odc::ControlType::FEEDBACK))
+		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index))
 		{
 			auto feedbacks = pSimConf->BinaryFeedbacks(index);
 			if (feedbacks.empty())
@@ -746,7 +746,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 			}
 
 		}
-		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index, odc::ControlType::POSITION))
+		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index))
 		{
 
 			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
@@ -887,7 +887,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary position control is not supported";
 	const std::size_t index = binary_position->indexes[0];
-	if (pSimConf->IsIndex(odc::EventType::Analog, index, odc::ControlType::UNDEFINED))
+	if (pSimConf->IsIndex(odc::EventType::Analog, index))
 	{
 		if (!pSimConf->ForcedState(odc::EventType::Analog, index))
 		{
@@ -947,7 +947,7 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 	std::string binary;
 	for (std::size_t index : binary_position->indexes)
 	{
-		if (!pSimConf->IsIndex(odc::EventType::Binary, index, odc::ControlType::UNDEFINED))
+		if (!pSimConf->IsIndex(odc::EventType::Binary, index))
 			return status;
 		if (pSimConf->ForcedState(odc::EventType::Binary, index))
 		{
@@ -1003,7 +1003,7 @@ CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPo
 	std::string bcd_binary;
 	for (std::size_t index : binary_position->indexes)
 	{
-		if (!pSimConf->IsIndex(odc::EventType::Binary, index, odc::ControlType::UNDEFINED))
+		if (!pSimConf->IsIndex(odc::EventType::Binary, index))
 			return status;
 		if (pSimConf->ForcedState(odc::EventType::Binary, index))
 		{

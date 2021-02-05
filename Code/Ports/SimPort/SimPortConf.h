@@ -100,7 +100,7 @@ public:
 	void Timer(const std::string& name, ptimer_t ptr);
 	ptimer_t Timer(const std::string& name) const;
 	void CancelTimers();
-	bool IsIndex(odc::EventType type, std::size_t index, odc::ControlType control_type) const;
+	bool IsIndex(odc::EventType type, std::size_t index) const;
 	std::vector<std::size_t> Indexes(odc::EventType type) const;
 
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;

@@ -268,7 +268,7 @@ public:
 	  param index      : index
 	  return           : is index exist or not
 	*/
-	bool IsIndex(odc::EventType type, std::size_t index, odc::ControlType control_type);
+	bool IsIndex(odc::EventType type, std::size_t index);
 
 	// ---------------------------------------------------------------------- //
 	//  These all funtions are for Binary Control manipulations
