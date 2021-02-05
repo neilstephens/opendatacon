@@ -137,13 +137,6 @@ enum class CommandStatus : uint8_t
 	UNDEFINED = 127
 };
 
-enum class ControlType : uint8_t
-{
-	FEEDBACK = 1,
-	POSITION = 2,
-	UNDEFINED = 3
-};
-
 enum class ControlCode : uint8_t
 {
 	NUL = 1,
@@ -198,14 +191,6 @@ inline std::string ToString(const CommandStatus cc)
 	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_FAIL)
 	ENUMSTRING(cc, CommandStatus,NON_PARTICIPATING)
 	ENUMSTRING(cc, CommandStatus,UNDEFINED)
-	return "<no_string_representation>";
-}
-
-inline std::string ToString(const ControlType ct)
-{
-	ENUMSTRING(ct,ControlType,FEEDBACK             )
-	ENUMSTRING(ct,ControlType,POSITION             )
-	ENUMSTRING(ct,ControlType,UNDEFINED            )
 	return "<no_string_representation>";
 }
 

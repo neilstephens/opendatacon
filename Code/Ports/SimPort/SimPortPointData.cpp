@@ -268,11 +268,13 @@ void SimPortPointData::CancelTimers()
 	m_timers.clear();
 }
 
-bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index, odc::ControlType control_type)
+bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
-	// rakesh
-	return true;
+	if (type == odc::EventType::ControlRelayOutputBlock)
+		return m_binary_controls.find(index) != m_binary_controls.end();
+	else
+		return m_points[type].find(index) != m_points[type].end();
 }
 
 void SimPortPointData::CreateBinaryFeedback(std::size_t index,
@@ -307,9 +309,8 @@ void SimPortPointData::CreateBinaryFeedback(std::size_t index,
 std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(feedback_mutex);
-	// rakesh
-	std::vector<std::shared_ptr<BinaryFeedback>> feedback;
-	return feedback;
+	std::vector<std::shared_ptr<BinaryFeedback>> feedbacks = *(*std::static_pointer_cast<std::shared_ptr<std::vector<std::shared_ptr<BinaryFeedback>>>>(m_binary_controls[index]));
+	return feedbacks;
 }
 
 void SimPortPointData::CreateBinaryPosition(std::size_t index,
@@ -332,8 +333,9 @@ void SimPortPointData::CreateBinaryPosition(std::size_t index,
 std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(position_mutex);
-	std::shared_ptr<BinaryPosition> bp;
-	//rakesh
-	return bp;
+	if (m_binary_controls.find(index) == m_binary_controls.end())
+		return nullptr;
+	else
+		return *std::static_pointer_cast<std::shared_ptr<BinaryPosition>>(m_binary_controls[index]);
 }
 
