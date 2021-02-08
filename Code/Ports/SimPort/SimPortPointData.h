@@ -28,15 +28,7 @@
 #ifndef SIMPORTPOINTDATA_H
 #define SIMPORTPOINTDATA_H
 
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/asio.h>
-#include <json/json.h>
-#include <vector>
-#include <memory>
-#include <shared_mutex>
-#include <unordered_map>
-
-enum class FeedbackMode { PULSE, LATCH };
+#include "BinaryControl.h"
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> ptimer_t;
@@ -59,47 +51,6 @@ struct Point
 	bool forced_state;
 };
 
-//DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
-//We can generalise, and come up with a simpler superset:
-//	-have an arbitrary length list of outputs
-//	-arbitrary on/off values for each output
-//	-each output either pulsed or latched
-struct BinaryFeedback
-{
-	std::shared_ptr<odc::EventInfo> on_value;
-	std::shared_ptr<odc::EventInfo> off_value;
-	FeedbackMode mode;
-	std::size_t update_interval;
-	std::shared_ptr<odc::EventInfo> event;
-
-	BinaryFeedback(const std::shared_ptr<odc::EventInfo>& on,
-		const std::shared_ptr<odc::EventInfo>& off,
-		FeedbackMode amode,
-		std::size_t u_interval,
-		const std::shared_ptr<odc::EventInfo>& evt):
-		on_value(on),
-		off_value(off),
-		mode(amode),
-		update_interval(u_interval),
-		event(evt) {}
-};
-
-struct BinaryPosition
-{
-	BinaryPosition(odc::FeedbackType feedback_type,
-		const std::vector<odc::PositionAction>& an,
-		const std::vector<std::size_t>& index,
-		std::size_t l_limit, std::size_t r_limit,
-		const std::shared_ptr<odc::EventInfo>& evt):
-		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit), event(evt) {}
-
-	odc::FeedbackType type;
-	std::vector<odc::PositionAction> action;
-	std::vector<std::size_t> indexes;
-	std::size_t lower_limit;
-	std::size_t raise_limit;
-	std::shared_ptr<odc::EventInfo> event;
-};
 
 class SimPortPointData
 {
@@ -292,13 +243,10 @@ public:
 
 private:
 	std::shared_timed_mutex point_mutex;
-	std::shared_timed_mutex feedback_mutex;
-	std::shared_timed_mutex position_mutex;
 	std::shared_timed_mutex timer_mutex;
-	std::unordered_map<std::size_t, std::shared_ptr<odc::EventInfo>> m_current_control;
 	using Points = std::unordered_map<std::size_t, std::shared_ptr<Point>>;
 	std::unordered_map<odc::EventType, Points> m_points;
-	std::unordered_map<std::size_t, std::shared_ptr<void>> m_binary_controls;
+	BinaryControl m_binary_control;
 	std::unordered_map<std::string, ptimer_t> m_timers;
 };
 
