@@ -277,13 +277,13 @@ bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 		return m_binary_control.IsIndex(index);
 }
 
-void SimPortPointData::CreateBinaryFeedback(std::size_t index,
+void SimPortPointData::CreateBinaryControl(std::size_t index,
 	const std::shared_ptr<odc::EventInfo>& on,
 	const std::shared_ptr<odc::EventInfo>& off,
 	FeedbackMode mode,
 	std::size_t update_interval)
 {
-	m_binary_control.CreateBinaryFeedback(index, on, off, mode, update_interval);
+	m_binary_control.CreateBinaryControl(index, on, off, mode, update_interval);
 }
 
 std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(std::size_t index)
@@ -291,14 +291,14 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(s
 	return m_binary_control.BinaryFeedbacks(index);
 }
 
-void SimPortPointData::CreateBinaryPosition(std::size_t index,
+void SimPortPointData::CreateBinaryControl(std::size_t index,
 	const std::string& port_source,
 	odc::FeedbackType type,
 	const std::vector<std::size_t>& indexes,
 	const std::vector<odc::PositionAction>& action,
 	std::size_t lower_limit, std::size_t raise_limit)
 {
-	m_binary_control.CreateBinaryPosition(index, port_source, type, indexes, action, lower_limit, raise_limit);
+	m_binary_control.CreateBinaryControl(index, port_source, type, indexes, action, lower_limit, raise_limit);
 }
 
 std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t index)
@@ -306,3 +306,7 @@ std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t 
 	return m_binary_control.GetBinaryPosition(index);
 }
 
+void SimPortPointData::CreateBinaryControl(std::size_t index)
+{
+	m_binary_control.CreateBinaryControl(index);
+}

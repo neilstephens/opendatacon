@@ -27,7 +27,7 @@
 
 #include "BinaryControl.h"
 
-void BinaryControl::CreateBinaryFeedback(std::size_t index,
+void BinaryControl::CreateBinaryControl(std::size_t index,
 	const std::shared_ptr<odc::EventInfo>& on,
 	const std::shared_ptr<odc::EventInfo>& off,
 	FeedbackMode mode,
@@ -40,7 +40,7 @@ void BinaryControl::CreateBinaryFeedback(std::size_t index,
 	control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
 	control_event->SetTimestamp(0);
 	m_binary_feedbacks[index].emplace_back(std::make_shared<BinaryFeedback>(on, off, mode, update_interval));
-	m_current_binary[index] = control_event;
+	m_current_binary_events[index] = control_event;
 }
 
 std::vector<std::shared_ptr<BinaryFeedback>> BinaryControl::BinaryFeedbacks(std::size_t index)
@@ -49,7 +49,7 @@ std::vector<std::shared_ptr<BinaryFeedback>> BinaryControl::BinaryFeedbacks(std:
 	return m_binary_feedbacks[index];
 }
 
-void BinaryControl::CreateBinaryPosition(std::size_t index,
+void BinaryControl::CreateBinaryControl(std::size_t index,
 	const std::string& port_source,
 	odc::FeedbackType type,
 	const std::vector<std::size_t>& indexes,
@@ -63,13 +63,18 @@ void BinaryControl::CreateBinaryPosition(std::size_t index,
 	control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
 	control_event->SetTimestamp(0);
 	m_binary_positions[index] = std::make_shared<BinaryPosition>(type, action, indexes, lower_limit, raise_limit);
-	m_current_binary[index] = control_event;
+	m_current_binary_events[index] = control_event;
 }
 
 std::shared_ptr<BinaryPosition> BinaryControl::GetBinaryPosition(std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(position_mutex);
 	return m_binary_positions[index];
+}
+
+void BinaryControl::CreateBinaryControl(std::size_t index)
+{
+	m_current_binary_events[index] = nullptr;
 }
 
 bool BinaryControl::IsIndex(std::size_t index)
@@ -81,12 +86,12 @@ bool BinaryControl::IsIndex(std::size_t index)
 void BinaryControl::SetCurrentBinaryEvent(const std::shared_ptr<odc::EventInfo>& event, std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(current_mutex);
-	m_current_binary[index] = event;
+	m_current_binary_events[index] = event;
 }
 
 std::shared_ptr<odc::EventInfo> BinaryControl::GetCurrentBinaryEvent(std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(current_mutex);
-	return m_current_binary[index];
+	return m_current_binary_events[index];
 }
 

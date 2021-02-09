@@ -78,21 +78,22 @@ struct BinaryPosition
 class BinaryControl
 {
 public:
-	void CreateBinaryFeedback(std::size_t index,
+	void CreateBinaryControl(std::size_t index,
 		const std::shared_ptr<odc::EventInfo>& on,
 		const std::shared_ptr<odc::EventInfo>& off,
 		FeedbackMode mode,
 		std::size_t update_interval);
-
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index);
 
-	void CreateBinaryPosition(std::size_t index,
+	void CreateBinaryControl(std::size_t index,
 		const std::string& port_source,
 		odc::FeedbackType type,
 		const std::vector<std::size_t>& indexes,
 		const std::vector<odc::PositionAction>& action,
 		std::size_t lower_limit, std::size_t raise_limit);
 	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index);
+
+	void CreateBinaryControl(std::size_t index);
 
 	bool IsIndex(std::size_t index);
 
@@ -106,7 +107,7 @@ private:
 
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
 	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
-	std::unordered_map<std::size_t, std::shared_ptr<odc::EventInfo>> m_current_binary;
+	std::unordered_map<std::size_t, std::shared_ptr<odc::EventInfo>> m_current_binary_events;
 };
 
 #endif // BINARYCONTROL_H

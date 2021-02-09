@@ -70,20 +70,22 @@ public:
 
 	bool IsIndex(odc::EventType type, std::size_t index) const;
 
-	void CreateBinaryFeedback(std::size_t index,
+	void CreateBinaryControl(std::size_t index,
 		const std::shared_ptr<odc::EventInfo>& on,
 		const std::shared_ptr<odc::EventInfo>& off,
 		FeedbackMode mode,
 		std::size_t update_interval);
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
 
-	void CreateBinaryPosition(std::size_t index,
+	void CreateBinaryControl(std::size_t index,
 		const std::string& port_source,
 		odc::FeedbackType type,
 		const std::vector<std::size_t>& indexes,
 		const std::vector<odc::PositionAction>& action,
 		std::size_t lower_limit, std::size_t raise_limit);
 	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index) const;
+
+	void CreateBinaryControl(std::size_t index);
 
 private:
 	std::string m_http_addr;
