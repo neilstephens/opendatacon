@@ -311,8 +311,10 @@ void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)
 				update_interval = binary_controls[n]["Intervalms"].asUInt();
 			if (binary_controls[n].isMember("FeedbackBinaries"))
 				m_ProcessFeedbackBinaries(binary_controls[n]["FeedbackBinaries"], index, update_interval);
-			if (binary_controls[n].isMember("FeedbackPosition"))
+			else if (binary_controls[n].isMember("FeedbackPosition"))
 				m_ProcessFeedbackPosition(binary_controls[n]["FeedbackPosition"], index);
+			else
+				m_pport_data->CreateBinaryControl(index);
 		}
 	}
 }
@@ -440,7 +442,7 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 		on->SetPayload<EventType::Binary>(std::move(on_val));
 		auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, m_name, off_qual);
 		off->SetPayload<EventType::Binary>(std::move(off_val));
-		m_pport_data->CreateBinaryFeedback(index, on, off, mode, update_interval);
+		m_pport_data->CreateBinaryControl(index, on, off, mode, update_interval);
 	}
 }
 
@@ -476,5 +478,5 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		lower_limit = feedback_position["LowerLimit"].asUInt();
 	if (feedback_position.isMember("RaiseLimit"))
 		raise_limit = feedback_position["RaiseLimit"].asUInt();
-	m_pport_data->CreateBinaryPosition(index, m_name, type, indexes, action, lower_limit, raise_limit);
+	m_pport_data->CreateBinaryControl(index, m_name, type, indexes, action, lower_limit, raise_limit);
 }
