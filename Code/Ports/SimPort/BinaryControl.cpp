@@ -34,13 +34,16 @@ void BinaryControl::CreateBinaryControl(std::size_t index,
 	std::size_t update_interval)
 {
 	std::unique_lock<std::shared_timed_mutex> lck(feedback_mutex);
-	odc::EventTypePayload<odc::EventType::ControlRelayOutputBlock>::type payload;
-	payload.functionCode = odc::ControlCode::NUL;
-	std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, on->GetSourcePort(), odc::QualityFlags::COMM_LOST);
-	control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
-	control_event->SetTimestamp(0);
 	m_binary_feedbacks[index].emplace_back(std::make_shared<BinaryFeedback>(on, off, mode, update_interval));
-	m_current_binary_events[index] = control_event;
+	if (m_current_binary_events.find(index) == m_current_binary_events.end())
+	{
+		odc::EventTypePayload<odc::EventType::ControlRelayOutputBlock>::type payload;
+		payload.functionCode = odc::ControlCode::NUL;
+		std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, on->GetSourcePort(), odc::QualityFlags::COMM_LOST);
+		control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
+		control_event->SetTimestamp(0);
+		m_current_binary_events[index] = control_event;
+	}
 }
 
 std::vector<std::shared_ptr<BinaryFeedback>> BinaryControl::BinaryFeedbacks(std::size_t index)
