@@ -727,43 +727,30 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
-		bool valid_control_event = false;
+		bool is_empty_binary_control = true;
 		index = event->GetIndex();
-
 		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index))
 		{
 			auto feedbacks = pSimConf->BinaryFeedbacks(index);
-			if (feedbacks.empty())
+			if (!feedbacks.empty())
 			{
-				status = odc::CommandStatus::SUCCESS;
-				message = "No binary feedback present for this Binary Control";
-			}
-			else
-			{
-				valid_control_event = true;
+				is_empty_binary_control = false;
 				auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 				status = HandleBinaryFeedback(feedbacks, index, command, message);
 			}
 
-		}
-		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index))
-		{
-
 			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
-			if (bp == nullptr)
+			if (bp)
 			{
-				status = odc::CommandStatus::SUCCESS;
-				message = "No binary position present for this Binary Control";
-			}
-			else
-			{
-				valid_control_event = true;
+				is_empty_binary_control = false;
 				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
 			}
-		}
 
-		if (valid_control_event)
-		{
+			if (is_empty_binary_control)
+			{
+				status = odc::CommandStatus::SUCCESS;
+			}
+
 			auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 			auto payload = command;
 			std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
