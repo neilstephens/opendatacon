@@ -1952,3 +1952,37 @@ TEST_CASE("EmptyBinaryContol")
 	TestTearDown();
 }
 
+/*
+  function     : TEST_CASE
+  description  : tests invalid index binary control hanlding
+  param        : EmptyBinaryContol, name of the test case
+  return       : NA
+*/
+TEST_CASE("InvalidIndexForBinaryControl")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		for (int i = 0; i < 2; ++i)
+		{
+			SendEvent(odc::ControlCode::LATCH_ON, 99, sim_port, odc::CommandStatus::NOT_SUPPORTED);
+		}
+		sim_port->Disable();
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
