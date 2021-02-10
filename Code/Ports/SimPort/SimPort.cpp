@@ -727,14 +727,13 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
-		bool is_empty_binary_control = true;
 		index = event->GetIndex();
 		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index))
 		{
+			status = odc::CommandStatus::SUCCESS;
 			auto feedbacks = pSimConf->BinaryFeedbacks(index);
 			if (!feedbacks.empty())
 			{
-				is_empty_binary_control = false;
 				auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
 				status = HandleBinaryFeedback(feedbacks, index, command, message);
 			}
@@ -742,13 +741,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
 			if (bp)
 			{
-				is_empty_binary_control = false;
 				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
-			}
-
-			if (is_empty_binary_control)
-			{
-				status = odc::CommandStatus::SUCCESS;
 			}
 
 			auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
