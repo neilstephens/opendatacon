@@ -181,7 +181,10 @@ inline Json::Value GetTestConfigJSON()
                                        "OffAction":"RAISE",
                                        "RaiseLimit":10,
                                        "LowerLimit":0}
-			}
+            },
+            {
+                "Index" : 12
+            }
 		]
 	})001";
 
@@ -1907,6 +1910,41 @@ TEST_CASE("OnOffTestBCDTapChangerRandomWithClose")
 			}
 			SendEvent(TRIP_CODES[index], 11, sim_port, status);
 			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+		}
+		sim_port->Disable();
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests empty binary controls
+  param        : EmptyBinaryContol, name of the test case
+  return       : NA
+*/
+TEST_CASE("EmptyBinaryContol")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		for (int i = 0; i < 2; ++i)
+		{
+			CommandStatus status = CommandStatus::SUCCESS;
+			SendEvent(TRIP_CODES[i], 12, sim_port, status);
 		}
 		sim_port->Disable();
 	}
