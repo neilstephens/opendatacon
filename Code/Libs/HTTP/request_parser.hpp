@@ -11,6 +11,7 @@
 #ifndef HTTP_REQUEST_PARSER_HPP
 #define HTTP_REQUEST_PARSER_HPP
 
+#include <cstddef>
 #include <tuple>
 
 namespace http
