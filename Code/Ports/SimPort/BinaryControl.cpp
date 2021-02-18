@@ -90,8 +90,15 @@ std::shared_ptr<BinaryPosition> BinaryControl::GetBinaryPosition(std::size_t ind
 
 void BinaryControl::CreateBinaryControl(std::size_t index)
 {
-	std::unique_lock<std::shared_timed_mutex> lck(current_mutex);
-	m_current_binary_events[index] = nullptr;
+	odc::EventTypePayload<odc::EventType::ControlRelayOutputBlock>::type payload;
+	payload.functionCode = odc::ControlCode::NUL;
+	std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, "NULL", odc::QualityFlags::COMM_LOST);
+	control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
+	control_event->SetTimestamp(0);
+	{ // scope of the lock
+		std::unique_lock<std::shared_timed_mutex> lck(current_mutex);
+		m_current_binary_events[index] = control_event;
+	}
 }
 
 bool BinaryControl::IsIndex(std::size_t index)
