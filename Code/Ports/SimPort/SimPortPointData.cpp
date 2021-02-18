@@ -273,8 +273,14 @@ bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
 	if (type == odc::EventType::Analog || type == odc::EventType::Binary)
 		return m_points[type].find(index) != m_points[type].end();
-	else
+	else if (type == odc::EventType::ControlRelayOutputBlock)
 		return m_binary_control.IsIndex(index);
+	else
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->error("IsIndex() called for unsupported event type '{}'", ToString(type));
+		return false;
+	}
 }
 
 void SimPortPointData::CreateBinaryControl(std::size_t index,
