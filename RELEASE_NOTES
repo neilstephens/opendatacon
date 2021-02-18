@@ -1,4 +1,9 @@
-# opendatacon version 1.6.1
+# opendatacon version 1.6.2
+
+## 1.6.2
+  * Hotfix for SimPort control feedback
+    * fix regression in support of control without feedback
+    * fix RESTFUL interface crash when requesting status of control without feeback
 
 ## 1.6.1
   * WebUI uses html files from the install dir by default now
