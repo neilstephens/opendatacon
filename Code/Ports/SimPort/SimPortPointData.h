@@ -100,7 +100,7 @@ public:
 	  param event      : the index of the binary control
 	  return           : void
 	 */
-	void SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index);
+	void SetLatestControlEvent(std::shared_ptr<odc::EventInfo> event, std::size_t index);
 
 	/*
 	  function         : ForcedState
@@ -238,7 +238,7 @@ public:
 		const std::vector<std::size_t>& indexes,
 		const std::vector<odc::PositionAction>& action,
 		std::size_t lower_limit, std::size_t raise_limit);
-	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index);
+	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index);
 
 	void CreateBinaryControl(std::size_t index);
 

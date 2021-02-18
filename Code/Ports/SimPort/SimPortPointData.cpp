@@ -80,10 +80,10 @@ void SimPortPointData::Event(std::shared_ptr<odc::EventInfo> event)
 	m_points[event->GetEventType()][event->GetIndex()]->event = event;
 }
 
-void SimPortPointData::SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index)
+void SimPortPointData::SetLatestControlEvent(std::shared_ptr<odc::EventInfo> event, std::size_t index)
 {
 	std::unique_lock<std::shared_timed_mutex> lck(point_mutex);
-	m_binary_control.SetCurrentBinaryEvent(event, index);
+	m_binary_control.SetLatestControlEvent(event, index);
 }
 
 void SimPortPointData::ForcedState(odc::EventType type, std::size_t index, bool state)
@@ -307,9 +307,9 @@ void SimPortPointData::CreateBinaryControl(std::size_t index,
 	m_binary_control.CreateBinaryControl(index, port_source, type, indexes, action, lower_limit, raise_limit);
 }
 
-std::shared_ptr<BinaryPosition> SimPortPointData::GetBinaryPosition(std::size_t index)
+std::shared_ptr<PositionFeedback> SimPortPointData::GetPositionFeedback(std::size_t index)
 {
-	return m_binary_control.GetBinaryPosition(index);
+	return m_binary_control.GetPositionFeedback(index);
 }
 
 void SimPortPointData::CreateBinaryControl(std::size_t index)

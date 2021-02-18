@@ -82,9 +82,9 @@ void SimPortData::Event(std::shared_ptr<odc::EventInfo> event)
 	m_ppoint_data->Event(event);
 }
 
-void SimPortData::SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index)
+void SimPortData::SetLatestControlEvent(std::shared_ptr<odc::EventInfo> event, std::size_t index)
 {
-	m_ppoint_data->SetCurrentBinaryControl(event, index);
+	m_ppoint_data->SetLatestControlEvent(event, index);
 }
 
 std::shared_ptr<odc::EventInfo> SimPortData::Event(odc::EventType type, std::size_t index) const
@@ -196,9 +196,9 @@ void SimPortData::CreateBinaryControl(std::size_t index,
 	m_ppoint_data->CreateBinaryControl(index, port_source, type, indexes, action, lower_limit, raise_limit);
 }
 
-std::shared_ptr<BinaryPosition> SimPortData::GetBinaryPosition(std::size_t index) const
+std::shared_ptr<PositionFeedback> SimPortData::GetPositionFeedback(std::size_t index) const
 {
-	return m_ppoint_data->GetBinaryPosition(index);
+	return m_ppoint_data->GetPositionFeedback(index);
 }
 
 void SimPortData::CreateBinaryControl(std::size_t index)

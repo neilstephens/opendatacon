@@ -738,10 +738,10 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 				status = HandleBinaryFeedback(feedbacks, index, command, message);
 			}
 
-			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
+			std::shared_ptr<PositionFeedback> bp = pSimConf->GetPositionFeedback(index);
 			if (bp)
 			{
-				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
+				status = HandlePositionFeedback(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
 			}
 
 			auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
@@ -749,7 +749,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 			std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
 			control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
 			control_event->SetTimestamp(event->GetTimestamp());
-			pSimConf->SetCurrentBinaryControl(control_event, index);
+			pSimConf->SetLatestControlEvent(control_event, index);
 		}
 	}
 	EventResponse(message, index, pStatusCallback, status);
@@ -849,20 +849,20 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedback(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "This binary position point is not supported";
 	if (binary_position->type == odc::FeedbackType::ANALOG)
-		status = HandleBinaryPositionForAnalog(binary_position, command, message);
+		status = HandlePositionFeedbackForAnalog(binary_position, command, message);
 	else if (binary_position->type == odc::FeedbackType::BINARY)
-		status = HandleBinaryPositionForBinary(binary_position, command, message);
+		status = HandlePositionFeedbackForBinary(binary_position, command, message);
 	else if (binary_position->type == odc::FeedbackType::BCD)
-		status = HandleBinaryPositionForBCD(binary_position, command, message);
+		status = HandlePositionFeedbackForBCD(binary_position, command, message);
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary position control is not supported";
@@ -918,7 +918,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary control position is not supported";
@@ -976,7 +976,7 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary control position is not supported for bcd type";

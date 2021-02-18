@@ -60,9 +60,9 @@ struct BinaryFeedback
 		update_interval(u_interval) {}
 };
 
-struct BinaryPosition
+struct PositionFeedback
 {
-	BinaryPosition(odc::FeedbackType feedback_type,
+	PositionFeedback(odc::FeedbackType feedback_type,
 		const std::vector<odc::PositionAction>& an,
 		const std::vector<std::size_t>& index,
 		std::size_t l_limit, std::size_t r_limit):
@@ -91,13 +91,13 @@ public:
 		const std::vector<std::size_t>& indexes,
 		const std::vector<odc::PositionAction>& action,
 		std::size_t lower_limit, std::size_t raise_limit);
-	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index);
+	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index);
 
 	void CreateBinaryControl(std::size_t index);
 
 	bool IsIndex(std::size_t index);
 
-	void SetCurrentBinaryEvent(const std::shared_ptr<odc::EventInfo>& event, std::size_t index);
+	void SetLatestControlEvent(const std::shared_ptr<odc::EventInfo>& event, std::size_t index);
 	std::shared_ptr<odc::EventInfo> GetCurrentBinaryEvent(std::size_t index);
 
 private:
@@ -106,8 +106,8 @@ private:
 	std::shared_timed_mutex current_mutex;
 
 	std::unordered_map<std::size_t, std::vector<std::shared_ptr<BinaryFeedback>>> m_binary_feedbacks;
-	std::unordered_map<std::size_t, std::shared_ptr<BinaryPosition>> m_binary_positions;
-	std::unordered_map<std::size_t, std::shared_ptr<odc::EventInfo>> m_current_binary_events;
+	std::unordered_map<std::size_t, std::shared_ptr<PositionFeedback>> m_position_feedbacks;
+	std::unordered_map<std::size_t, std::shared_ptr<odc::EventInfo>> m_latest_control_events;
 };
 
 #endif // BINARYCONTROL_H

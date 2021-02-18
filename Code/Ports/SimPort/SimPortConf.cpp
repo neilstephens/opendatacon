@@ -101,9 +101,9 @@ std::shared_ptr<odc::EventInfo> SimPortConf::Event(odc::EventType type, std::siz
 	return m_pport_data->Event(type, index);
 }
 
-void SimPortConf::SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index)
+void SimPortConf::SetLatestControlEvent(std::shared_ptr<odc::EventInfo> event, std::size_t index)
 {
-	m_pport_data->SetCurrentBinaryControl(event, index);
+	m_pport_data->SetLatestControlEvent(event, index);
 }
 
 void SimPortConf::Payload(odc::EventType type, std::size_t index, double payload)
@@ -181,9 +181,9 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortConf::BinaryFeedbacks(std::s
 	return m_pport_data->BinaryFeedbacks(index);
 }
 
-std::shared_ptr<BinaryPosition> SimPortConf::GetBinaryPosition(std::size_t index) const
+std::shared_ptr<PositionFeedback> SimPortConf::GetPositionFeedback(std::size_t index) const
 {
-	return m_pport_data->GetBinaryPosition(index);
+	return m_pport_data->GetPositionFeedback(index);
 }
 
 bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const
