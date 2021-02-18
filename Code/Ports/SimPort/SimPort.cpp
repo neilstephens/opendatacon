@@ -728,31 +728,28 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
 		index = event->GetIndex();
-		auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
-		auto feedbacks = pSimConf->BinaryFeedbacks(index);
+		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index))
+		{
+			status = odc::CommandStatus::SUCCESS;
+			auto feedbacks = pSimConf->BinaryFeedbacks(index);
+			if (!feedbacks.empty())
+			{
+				auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
+				status = HandleBinaryFeedback(feedbacks, index, command, message);
+			}
 
-		auto payload = command;
-		std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
-		control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
-		control_event->SetTimestamp(event->GetTimestamp());
-		if (!feedbacks.empty())
-		{
-			status = HandleBinaryFeedback(feedbacks, index, command, message);
-			pSimConf->SetCurrentBinaryControl(control_event, index);
-		}
-		else
-		{
 			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
-			if (bp != nullptr)
+			if (bp)
 			{
 				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
-				pSimConf->SetCurrentBinaryControl(control_event, index);
 			}
-			else
-			{
-				message = "No feedback positions point configured";
-				status = CommandStatus::NOT_SUPPORTED;
-			}
+
+			auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
+			auto payload = command;
+			std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
+			control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
+			control_event->SetTimestamp(event->GetTimestamp());
+			pSimConf->SetCurrentBinaryControl(control_event, index);
 		}
 	}
 	EventResponse(message, index, pStatusCallback, status);
