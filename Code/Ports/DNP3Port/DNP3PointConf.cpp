@@ -49,6 +49,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	// Master Station configuration
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	LANModeTimeSync(false),        /// If true, the master will use the LAN time sync mode
 	DoUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
 	CommsPointRideThroughTimems(0),
@@ -193,6 +194,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
 	if (JSONRoot.isMember("MasterRespondTimeSync"))
 		MasterRespondTimeSync = JSONRoot["MasterRespondTimeSync"].asBool();
+	if (JSONRoot.isMember("LANModeTimeSync"))
+		LANModeTimeSync = JSONRoot["LANModeTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
 	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
