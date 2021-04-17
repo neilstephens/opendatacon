@@ -401,8 +401,15 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 				log->error("An 'Index' is required for Binary feedback : '{}'", feedback_binaries[fbn].toStyledString());
 			continue;
 		}
-
 		auto fb_index = feedback_binaries[fbn]["Index"].asUInt();
+
+		if(!IsIndex(EventType::Binary,fb_index))
+		{
+			if (auto log = odc::spdlog_get("SimPort"))
+				log->error("Invalid 'Index' for Binary feedback (it must be a configured binary index) : '{}'", feedback_binaries[fbn].toStyledString());
+			continue;
+		}
+
 		auto on_qual = QualityFlags::ONLINE;
 		auto off_qual = QualityFlags::ONLINE;
 		bool on_val = true;
@@ -460,9 +467,12 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index)
 {
 	odc::FeedbackType type = odc::FeedbackType::UNDEFINED;
-	std::vector<odc::PositionAction> action(2, odc::PositionAction::UNDEFINED);
+	std::vector<odc::PositionAction> actions(2, odc::PositionAction::UNDEFINED);
 	std::vector<std::size_t> indexes;
-	std::size_t lower_limit = 0, raise_limit = 0;
+
+	//FIXME: should allow negative limits
+	std::size_t lower_limit = 0, raise_limit = std::numeric_limits<size_t>::max();
+
 	if (feedback_position.isMember("Type"))
 		type = ToFeedbackType(feedback_position["Type"].asString());
 	if (feedback_position.isMember("Index"))
@@ -471,12 +481,47 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		for (Json::ArrayIndex i = 0; i < feedback_position["Indexes"].size(); ++i)
 			indexes.emplace_back(feedback_position["Indexes"][i].asUInt());
 	if (feedback_position.isMember("OffAction"))
-		action[OFF] = ToPositionAction(feedback_position["OffAction"].asString());
+		actions[OFF] = ToPositionAction(feedback_position["OffAction"].asString());
 	if (feedback_position.isMember("OnAction"))
-		action[ON] = ToPositionAction(feedback_position["OnAction"].asString());
+		actions[ON] = ToPositionAction(feedback_position["OnAction"].asString());
 	if (feedback_position.isMember("LowerLimit"))
 		lower_limit = feedback_position["LowerLimit"].asUInt();
 	if (feedback_position.isMember("RaiseLimit"))
 		raise_limit = feedback_position["RaiseLimit"].asUInt();
-	m_pport_data->CreateBinaryControl(index, m_name, type, indexes, action, lower_limit, raise_limit);
+
+	bool valid_params = true;
+
+	EventType fb_type;
+	switch(type)
+	{
+		case FeedbackType::BCD:
+		case FeedbackType::BINARY:
+			fb_type = EventType::Binary;
+			break;
+		case FeedbackType::ANALOG:
+			fb_type = EventType::Analog;
+			break;
+		default:
+			if (auto log = odc::spdlog_get("SimPort"))
+				log->error("Invalid 'Type' for Postion feedback : '{}'", feedback_position.toStyledString());
+			valid_params = false;
+			break;
+	}
+
+	for(const auto& fb_index : indexes)
+		if(!IsIndex(fb_type,fb_index))
+		{
+			if (auto log = odc::spdlog_get("SimPort"))
+				log->error("Invalid 'Index(es)' for Postion feedback (they must be configured points) : '{}'", feedback_position.toStyledString());
+			valid_params = false;
+			break;
+		}
+
+	//warn if there's not at least one action
+	if(actions[ON] == PositionAction::UNDEFINED && actions[OFF] == PositionAction::UNDEFINED)
+		if (auto log = odc::spdlog_get("SimPort"))
+			log->warn("No valid actions defined for Postion feedback : '{}'", feedback_position.toStyledString());
+
+	if(valid_params)
+		m_pport_data->CreateBinaryControl(index, m_name, type, indexes, actions, lower_limit, raise_limit);
 }
