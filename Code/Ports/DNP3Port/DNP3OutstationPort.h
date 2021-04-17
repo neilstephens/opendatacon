@@ -29,7 +29,7 @@
 #include "DNP3Port.h"
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
-#include <opendnp3/outstation/ApplicationIIN.h>
+#include <opendnp3/util/UTCTimestamp.h>
 
 class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
 {
@@ -60,6 +60,12 @@ protected:
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
+	// Support for master setting time reference for events
+	inline bool SupportsWriteAbsoluteTime() override
+	{
+		return true;
+	}
+	bool WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp) override;
 
 	void LinkUpCheck();
 	std::shared_ptr<asio::steady_timer> pLinkUpCheckTimer = pIOS->make_steady_timer();
@@ -86,6 +92,7 @@ private:
 	Json::Value state;
 	std::unique_ptr<asio::io_service::strand> pStateSync;
 	std::shared_ptr<opendnp3::IOutstation> pOutstation;
+	int64_t master_time_offset;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
 	template<typename T> void EventT(T meas, uint16_t index);

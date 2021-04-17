@@ -38,10 +38,12 @@
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <opendnp3/logging/LogLevels.h>
 #include <regex>
+#include <limits>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
-	pOutstation(nullptr)
+	pOutstation(nullptr),
+	master_time_offset(0)
 {}
 
 DNP3OutstationPort::~DNP3OutstationPort()
@@ -178,6 +180,34 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: KeepAliveSuccess() called.", Name);
 	pChanH->LinkUp();
+}
+
+// Called by OpenDNP3 Thread Pool
+bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp)
+{
+	auto now = msSinceEpoch();
+	const auto& master_time = timestamp.msSinceEpoch;
+	bool ret = true;
+
+	//take care because we're using unsigned types - get the absolute offset
+	auto offset = (master_time > now) ? (master_time - now) : (now - master_time);
+
+	if(offset > std::numeric_limits<decltype(master_time_offset)>::max())
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->error("{}: Time offset overflow - using max offset", Name);
+		offset = std::numeric_limits<decltype(master_time_offset)>::max();
+		//also make sure the stack responds with param error
+		ret = false;
+	}
+	master_time_offset = offset;
+
+	//master_time_offset is signed
+	//it's a negative offset if the master time is in the past
+	if(now > master_time)
+		master_time_offset *= -1;
+
+	return ret;
 }
 
 TCPClientServer DNP3OutstationPort::ClientOrServer()
@@ -378,24 +408,40 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		return;
 	}
 
+	auto ts = event->GetTimestamp();
+
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if (
+		(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0))
+		)
+	{
+		ts = msSinceEpoch()+master_time_offset;
+	}
+	const auto timestamp = odc::since_epoch_to_datetime(ts);
+
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
 			SetState("BinaryCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
 			SetState("BinaryQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
+			SetState("BinaryTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
 			SetState("AnalogCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
 			SetState("AnalogQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
+			SetState("AnalogTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
 			SetState("BinaryQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("BinaryTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
 			SetState("AnalogQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("AnalogTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
@@ -425,7 +471,7 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0))
 		)
 	{
-		meas.time = opendnp3::DNPTime(msSinceEpoch());
+		meas.time = opendnp3::DNPTime(msSinceEpoch()+master_time_offset);
 	}
 
 	opendnp3::UpdateBuilder builder;
