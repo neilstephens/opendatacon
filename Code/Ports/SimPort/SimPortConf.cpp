@@ -489,7 +489,10 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 	if (feedback_position.isMember("RaiseLimit"))
 		raise_limit = feedback_position["RaiseLimit"].asUInt();
 
-	bool valid_params = true;
+	//warn if there's not at least one action
+	if(actions[ON] == PositionAction::UNDEFINED && actions[OFF] == PositionAction::UNDEFINED)
+		if (auto log = odc::spdlog_get("SimPort"))
+			log->warn("No valid actions defined for Postion feedback : '{}'", feedback_position.toStyledString());
 
 	EventType fb_type;
 	switch(type)
@@ -504,8 +507,7 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		default:
 			if (auto log = odc::spdlog_get("SimPort"))
 				log->error("Invalid 'Type' for Postion feedback : '{}'", feedback_position.toStyledString());
-			valid_params = false;
-			break;
+			return;
 	}
 
 	for(const auto& fb_index : indexes)
@@ -513,15 +515,8 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		{
 			if (auto log = odc::spdlog_get("SimPort"))
 				log->error("Invalid 'Index(es)' for Postion feedback (they must be configured points) : '{}'", feedback_position.toStyledString());
-			valid_params = false;
-			break;
+			return;
 		}
 
-	//warn if there's not at least one action
-	if(actions[ON] == PositionAction::UNDEFINED && actions[OFF] == PositionAction::UNDEFINED)
-		if (auto log = odc::spdlog_get("SimPort"))
-			log->warn("No valid actions defined for Postion feedback : '{}'", feedback_position.toStyledString());
-
-	if(valid_params)
-		m_pport_data->CreateBinaryControl(index, m_name, type, indexes, actions, lower_limit, raise_limit);
+	m_pport_data->CreateBinaryControl(index, m_name, type, indexes, actions, lower_limit, raise_limit);
 }
