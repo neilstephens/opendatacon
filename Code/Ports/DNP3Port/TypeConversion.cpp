@@ -24,6 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 #include "TypeConversion.h"
+#include "AppIINFlags.h"
 #include <opendatacon/IOTypes.h>
 #include <opendnp3/app/AnalogOutput.h>
 #include <opendnp3/app/ControlRelayOutputBlock.h>
@@ -175,6 +176,23 @@ opendnp3::CommandStatus FromODC(const CommandStatus stat)
 			dnp3 = opendnp3::CommandStatus::UNDEFINED;
 			break;
 	}
+	return dnp3;
+}
+
+opendnp3::ApplicationIIN FromODC(const AppIINFlags iin)
+{
+	opendnp3::ApplicationIIN dnp3;
+	if((iin & AppIINFlags::NEED_TIME) != AppIINFlags::NONE)
+		dnp3.needTime = true;
+	if((iin & AppIINFlags::LOCAL_CONTROL) != AppIINFlags::NONE)
+		dnp3.localControl = true;
+	if((iin & AppIINFlags::CONFIG_CORRUPT) != AppIINFlags::NONE)
+		dnp3.configCorrupt = true;
+	if((iin & AppIINFlags::DEVICE_TROUBLE) != AppIINFlags::NONE)
+		dnp3.deviceTrouble = true;
+	if((iin & AppIINFlags::EVENT_BUFFER_OVERFLOW) != AppIINFlags::NONE)
+		dnp3.eventBufferOverflow = true;
+
 	return dnp3;
 }
 

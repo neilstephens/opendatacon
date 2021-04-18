@@ -98,6 +98,8 @@ public:
 	uint32_t SolConfirmTimeoutms;   /// Timeout for solicited confirms
 	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
 	bool WaitForCommandResponses;   // when responding to a command, wait for downstream command responses, otherwise returns success
+	bool TimeSyncOnStart;
+	uint64_t TimeSyncPeriodms;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;

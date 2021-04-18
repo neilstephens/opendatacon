@@ -17,6 +17,13 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
+/*
+ *	ChannelStateSubscriber.h
+ *
+ *  Created on: 2018-11-20
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
 #ifndef COMMSRIDETHROUGHTIMER_H
 #define COMMSRIDETHROUGHTIMER_H
 
