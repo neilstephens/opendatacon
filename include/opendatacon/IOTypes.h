@@ -430,6 +430,8 @@ inline PositionAction ToPositionAction(const std::string& str_action)
 		action = PositionAction::RAISE;
 	else if (to_lower(str_action) == "lower")
 		action = PositionAction::LOWER;
+	else if (auto log = odc::spdlog_get("SimPort"))
+		log->error("Invalid action for Postion feedback (use 'RAISE' or 'LOWER') : '{}'", str_action);
 	return action;
 }
 

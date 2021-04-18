@@ -67,6 +67,7 @@ public:
 	// Master Station configuration
 	uint32_t MasterResponseTimeoutms;     /// Application layer response timeout
 	bool MasterRespondTimeSync;           /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	bool LANModeTimeSync;                 /// If true, the master will use the LAN time sync mode
 	bool DoUnsolOnStartup;                /// If true, the master will enable unsol on startup
 	bool SetQualityOnLinkStatus;          /// Whether to set point quality to COMM_LOST when link down
 	uint32_t CommsPointRideThroughTimems; /// How long to wait before admitting the link is down
@@ -97,6 +98,8 @@ public:
 	uint32_t SolConfirmTimeoutms;   /// Timeout for solicited confirms
 	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
 	bool WaitForCommandResponses;   // when responding to a command, wait for downstream command responses, otherwise returns success
+	bool TimeSyncOnStart;
+	uint64_t TimeSyncPeriodms;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;

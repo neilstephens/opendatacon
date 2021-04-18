@@ -24,7 +24,8 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include <memory>
+#include "AppIINFlags.h"
+#include <opendatacon/IOTypes.h>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/ControlRelayOutputBlock.h>
 #include <opendnp3/app/AnalogOutput.h>
@@ -32,7 +33,8 @@
 #include <opendnp3/app/AnalogCommandEvent.h>
 #include <opendnp3/app/OctetString.h>
 #include <opendnp3/app/DNPTime.h>
-#include <opendatacon/IOTypes.h>
+#include <opendnp3/outstation/ApplicationIIN.h>
+#include <memory>
 
 
 
@@ -41,6 +43,8 @@ namespace odc
 
 CommandStatus ToODC(const opendnp3::CommandStatus dnp3);
 opendnp3::CommandStatus FromODC(const CommandStatus stat);
+
+opendnp3::ApplicationIIN FromODC(const AppIINFlags iin);
 
 std::shared_ptr<EventInfo> ToODC(const opendnp3::Binary& dnp3, const size_t ind = 0, const std::string& source = "");
 std::shared_ptr<EventInfo> ToODC(const opendnp3::DoubleBitBinary& dnp3, const size_t ind = 0, const std::string& source = "");

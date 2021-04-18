@@ -27,6 +27,7 @@
 #include "ChannelStateSubscriber.h"
 #include "DNP3OutstationPort.h"
 #include "DNP3PortConf.h"
+#include "DNP3OutstationPortCollection.h"
 #include "OpenDNP3Helpers.h"
 #include "TypeConversion.h"
 #include <opendnp3/outstation/UpdateBuilder.h>
@@ -38,11 +39,36 @@
 #include <opendnp3/outstation/IOutstationApplication.h>
 #include <opendnp3/logging/LogLevels.h>
 #include <regex>
+#include <limits>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides),
-	pOutstation(nullptr)
-{}
+	pOutstation(nullptr),
+	master_time_offset(0),
+	IINFlags(AppIINFlags::NONE),
+	last_time_sync(msSinceEpoch()),
+	PeerCollection(nullptr)
+{
+	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
+	static std::weak_ptr<DNP3OutstationPortCollection> weak_collection;
+
+	//if we're the first/only one on the scene,
+	// init the PortCollection
+	if(!init_flag.test_and_set(std::memory_order_acquire))
+	{
+		//make a custom deleter that will also clear the init flag
+		auto deinit_del = [](DNP3OutstationPortCollection* collection_ptr)
+					{init_flag.clear(std::memory_order_release); delete collection_ptr;};
+		this->PeerCollection = std::shared_ptr<DNP3OutstationPortCollection>(new DNP3OutstationPortCollection(), deinit_del);
+		weak_collection = this->PeerCollection;
+	}
+	//otherwise just make sure it's finished initialising and take a shared_ptr
+	else
+	{
+		while (!(this->PeerCollection = weak_collection.lock()))
+		{} //init happens very seldom, so spin lock is good
+	}
+}
 
 DNP3OutstationPort::~DNP3OutstationPort()
 {
@@ -66,6 +92,9 @@ void DNP3OutstationPort::Enable()
 
 		return;
 	}
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->pPointConf->TimeSyncOnStart)
+		SetIINFlags(AppIINFlags::NEED_TIME);
 	pOutstation->Enable();
 	enabled = true;
 
@@ -180,6 +209,51 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 	pChanH->LinkUp();
 }
 
+// Called by OpenDNP3 Thread Pool
+bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp)
+{
+	auto now = msSinceEpoch();
+	const auto& master_time = timestamp.msSinceEpoch;
+
+	bool ret = true;
+	int64_t new_master_offset;
+
+	//take care because we're using unsigned types - get the absolute offset
+	auto offset = (master_time > now) ? (master_time - now) : (now - master_time);
+
+	if(offset > std::numeric_limits<int64_t>::max())
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->error("{}: Time offset overflow - using max offset", Name);
+		offset = std::numeric_limits<int64_t>::max();
+		//also make sure the stack responds with param error
+		ret = false;
+	}
+	new_master_offset = offset;
+
+	//master_time_offset is signed
+	//it's a negative offset if the master time is in the past
+	if(now > master_time)
+		new_master_offset *= -1;
+
+	master_time_offset = new_master_offset;
+	last_time_sync = msSinceEpoch();
+	ClearIINFlags(AppIINFlags::NEED_TIME);
+
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->info("{}: Time offset from master = {}ms", Name, new_master_offset);
+
+	return ret;
+}
+
+opendnp3::ApplicationIIN DNP3OutstationPort::GetApplicationIIN() const
+{
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->pPointConf->TimeSyncPeriodms > 0 && (msSinceEpoch() - last_time_sync) > pConf->pPointConf->TimeSyncPeriodms)
+		SetIINFlags(AppIINFlags::NEED_TIME);
+	return FromODC(IINFlags);
+}
+
 TCPClientServer DNP3OutstationPort::ClientOrServer()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -190,6 +264,9 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 
 void DNP3OutstationPort::Build()
 {
+	auto shared_this = std::static_pointer_cast<DNP3OutstationPort>(shared_from_this());
+	this->PeerCollection->Add(shared_this,this->Name);
+
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 	if (!pChanH->SetChannel())
@@ -257,6 +334,11 @@ void DNP3OutstationPort::Build()
 	}
 
 	pStateSync = pIOS->make_strand();
+}
+
+std::pair<std::string, const IUIResponder *> DNP3OutstationPort::GetUIResponder()
+{
+	return std::pair<std::string,const DNP3OutstationPortCollection*>("DNP3OutstationControl",this->PeerCollection.get());
 }
 
 //DataPort function for UI
@@ -378,24 +460,40 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		return;
 	}
 
+	auto ts = event->GetTimestamp();
+
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if (
+		(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
+		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0))
+		)
+	{
+		ts = msSinceEpoch()+master_time_offset;
+	}
+	const auto timestamp = odc::since_epoch_to_datetime(ts);
+
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
 			SetState("BinaryCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
 			SetState("BinaryQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
+			SetState("BinaryTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
 			SetState("AnalogCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
 			SetState("AnalogQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
+			SetState("AnalogTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
 			SetState("BinaryQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("BinaryTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
 			SetState("AnalogQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
+			SetState("AnalogTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
@@ -425,7 +523,7 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0))
 		)
 	{
-		meas.time = opendnp3::DNPTime(msSinceEpoch());
+		meas.time = opendnp3::DNPTime(msSinceEpoch()+master_time_offset);
 	}
 
 	opendnp3::UpdateBuilder builder;
@@ -439,4 +537,29 @@ inline void DNP3OutstationPort::SetState(const std::string& type, const std::str
 		{
 			state[type][index] = payload;
 		});
+}
+
+inline void DNP3OutstationPort::SetIINFlags(const AppIINFlags& flags) const
+{
+	AppIINFlags ExIINs, OldIINs = IINFlags;
+	if((OldIINs & flags) != flags) //only set if we have to
+		//check that IINs didn't get changed in the mean time to setting the flags
+		while(OldIINs != (ExIINs = IINFlags.exchange(OldIINs | flags)))
+			OldIINs = ExIINs;
+}
+inline void DNP3OutstationPort::SetIINFlags(const std::string& flags) const
+{
+	SetIINFlags(FromString(flags));
+}
+inline void DNP3OutstationPort::ClearIINFlags(const AppIINFlags& flags) const
+{
+	AppIINFlags ExIINs, OldIINs = IINFlags;
+	if((OldIINs & flags) != AppIINFlags::NONE) //only clear if we have to
+		//check that IINs didn't get changed in the mean time to clearing the flags
+		while(OldIINs != (ExIINs = IINFlags.exchange(OldIINs ^ flags)))
+			OldIINs = ExIINs;
+}
+inline void DNP3OutstationPort::ClearIINFlags(const std::string& flags) const
+{
+	ClearIINFlags(FromString(flags));
 }

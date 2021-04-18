@@ -27,12 +27,17 @@
 #ifndef DNP3SERVERPORT_H_
 #define DNP3SERVERPORT_H_
 #include "DNP3Port.h"
+#include "AppIINFlags.h"
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
 #include <opendnp3/outstation/ApplicationIIN.h>
+#include <opendnp3/util/UTCTimestamp.h>
+
+class DNP3OutstationPortCollection;
 
 class DNP3OutstationPort: public DNP3Port, public opendnp3::ICommandHandler, public opendnp3::IOutstationApplication
 {
+	friend class DNP3OutstationPortCollection;
 public:
 	DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~DNP3OutstationPort() override;
@@ -49,6 +54,8 @@ protected:
 	void ChannelWatchdogTrigger(bool on) override;
 	std::atomic<msSinceEpoch_t> last_link_down_time = msSinceEpoch();
 
+	std::pair<std::string,const IUIResponder*> GetUIResponder() final;
+
 	/// Implement ODC::DataPort functions for UI
 	const Json::Value GetCurrentState() const override;
 	const Json::Value GetStatistics() const override;
@@ -60,6 +67,13 @@ protected:
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
+	// Support for master setting time reference for events
+	inline bool SupportsWriteAbsoluteTime() override
+	{
+		return true;
+	}
+	bool WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp) override;
+	opendnp3::ApplicationIIN GetApplicationIIN() const override;
 
 	void LinkUpCheck();
 	std::shared_ptr<asio::steady_timer> pLinkUpCheckTimer = pIOS->make_steady_timer();
@@ -86,6 +100,10 @@ private:
 	Json::Value state;
 	std::unique_ptr<asio::io_service::strand> pStateSync;
 	std::shared_ptr<opendnp3::IOutstation> pOutstation;
+	std::atomic<int64_t> master_time_offset;
+	mutable std::atomic<AppIINFlags> IINFlags;
+	std::atomic<msSinceEpoch_t> last_time_sync;
+	std::shared_ptr<DNP3OutstationPortCollection> PeerCollection;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
 	template<typename T> void EventT(T meas, uint16_t index);
@@ -95,6 +113,10 @@ private:
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 
 	void SetState(const std::string& type, const std::string& index, const std::string& payload);
+	void SetIINFlags(const AppIINFlags& flags) const;
+	void SetIINFlags(const std::string& flags) const;
+	void ClearIINFlags(const AppIINFlags& flags) const;
+	void ClearIINFlags(const std::string& flags) const;
 };
 
 #endif /* DNP3SERVERPORT_H_ */

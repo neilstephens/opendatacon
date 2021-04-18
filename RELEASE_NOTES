@@ -1,4 +1,11 @@
-# opendatacon version 1.6.2
+# opendatacon version 1.6.3
+
+## 1.6.3
+  * DNP3OutstationPort support for requesting and accepting time sync from master
+  * DNP3OutstationPort commands to set application level IIN flags
+  * DNP3Masterstation support for 'LAN' time sync mode
+  * Another fix for SimPort control feedback
+    * validate feedback indexes
 
 ## 1.6.2
   * Hotfix for SimPort control feedback

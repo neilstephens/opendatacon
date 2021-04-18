@@ -49,6 +49,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	// Master Station configuration
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	LANModeTimeSync(false),        /// If true, the master will use the LAN time sync mode
 	DoUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
 	CommsPointRideThroughTimems(0),
@@ -75,6 +76,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	SolConfirmTimeoutms(5000),
 	UnsolConfirmTimeoutms(5000),
 	WaitForCommandResponses(false),
+	TimeSyncOnStart(false),
+	TimeSyncPeriodms(0),
 	// Default Static Variations
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
@@ -193,6 +196,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
 	if (JSONRoot.isMember("MasterRespondTimeSync"))
 		MasterRespondTimeSync = JSONRoot["MasterRespondTimeSync"].asBool();
+	if (JSONRoot.isMember("LANModeTimeSync"))
+		LANModeTimeSync = JSONRoot["LANModeTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
 	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
@@ -287,6 +292,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
 	if (JSONRoot.isMember("WaitForCommandResponses"))
 		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
+	if (JSONRoot.isMember("TimeSyncOnStart"))
+		TimeSyncOnStart = JSONRoot["TimeSyncOnStart"].asBool();
+	if (JSONRoot.isMember("TimeSyncPeriodms"))
+		TimeSyncPeriodms = JSONRoot["TimeSyncPeriodms"].asUInt64();
 
 	// Default Static Variations
 	if (JSONRoot.isMember("StaticBinaryResponse"))
