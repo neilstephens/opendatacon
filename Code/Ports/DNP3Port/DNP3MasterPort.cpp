@@ -123,6 +123,14 @@ void DNP3MasterPort::SetCommsGood()
 		commsUpEvent->SetPayload<EventType::Binary>(!failed_val);
 		PublishEvent(commsUpEvent);
 	}
+
+	if(pConf->pPointConf->SetQualityOnLinkStatus)
+	{
+		// Trigger integrity scan to get point quality
+		// Only way to get true state upstream
+		// Can't just reset quality, because it would make new events for old values
+		IntegrityScan->Demand();
+	}
 }
 
 void DNP3MasterPort::SetCommsFailed()
@@ -192,17 +200,6 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Notify subscribers that a connect event has occured
 		PublishEvent(ConnectState::CONNECTED);
 
-		//if it was just a link layer interruption, we might need an integrity scan
-		if(channel_stayed_up)
-		{
-			if(pConf->pPointConf->SetQualityOnLinkStatus)
-			{
-				// Trigger integrity scan to get point quality
-				// Only way to get true state upstream
-				// Can't just reset quality, because it would make new events for old values
-				IntegrityScan->Demand();
-			}
-		}
 		return;
 	}
 
@@ -302,7 +299,10 @@ void DNP3MasterPort::Build()
 	                                  : opendnp3::TimeSyncMode::None;
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask();
+
+	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
+	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
+
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
@@ -323,9 +323,9 @@ void DNP3MasterPort::Build()
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
+		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
 	else
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), opendnp3::TimeDuration::Minutes(600000000),ISOEHandle); //ten million hours
+		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Minutes(600000000),ISOEHandle); //ten million hours
 	if(pConf->pPointConf->EventClass1ScanRatems > 0)
 		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class1), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass2ScanRatems > 0)
