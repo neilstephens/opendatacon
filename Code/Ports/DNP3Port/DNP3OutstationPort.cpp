@@ -513,6 +513,32 @@ inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index, opendnp3::FlagsTy
 	pOutstation->Apply(builder.Build());
 }
 
+template<>
+inline void DNP3OutstationPort::EventQ<opendnp3::BinaryQuality>(opendnp3::BinaryQuality qual, uint16_t index, opendnp3::FlagsType FT)
+{
+	//FIXME: this is a horribly inefficient hack
+	//The Json state is not intended to be used like this. It's meant for low-frequecny UI calls
+	//This should be replaced by a more efficient point value cache, or fix opendnp3 so that modifying binary quality doesn't change the value
+	//What's more, this isn't sync'd with EventT or the Outstation itself, so the value might change out from under us
+	//, but it's better than nothing in the absence of being able to properly access the outstation db (like in previous opendnp3)
+	pStateSync->post([this,qual,index,FT]()
+		{
+			bool prev_state = false;
+			if(state.isObject() && state.isMember("BinaryCurrent"))
+			{
+			      auto ind_str = std::to_string(index);
+			      if(state["BinaryCurrent"].isMember(ind_str))
+					prev_state = state["BinaryCurrent"][ind_str].asBool();
+			}
+			uint8_t qual_w_val = prev_state ? (static_cast<uint8_t>(qual) | static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
+			                     : static_cast<uint8_t>(qual);
+
+			opendnp3::UpdateBuilder builder;
+			builder.Modify(FT, index, index, qual_w_val);
+			pOutstation->Apply(builder.Build());
+		});
+}
+
 template<typename T>
 inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 {
