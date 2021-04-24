@@ -53,7 +53,10 @@ std::shared_ptr<const EventInfo> EventDB::Swap(std::shared_ptr<const EventInfo> 
 	if(old_it == PointEvents.end())
 		return nullptr;
 
-	std::shared_ptr<const EventInfo> old_evt = *old_it;
+	//cast away the constness of the iterator element
+	//this is OK, because we know we're not changing its hash
+	auto& old_evt = const_cast<std::shared_ptr<const EventInfo>&>(*old_it);
+
 	return std::atomic_exchange(&old_evt,event);
 }
 
