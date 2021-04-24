@@ -27,7 +27,7 @@
 #ifndef EVENTDB_H
 #define EVENTDB_H
 
-#include <opendatacon/IOTypes.h>
+#include "IOTypes.h"
 #include <unordered_set>
 #include <memory>
 

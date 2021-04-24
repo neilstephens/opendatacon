@@ -125,6 +125,23 @@ void JSONPort::Build()
 		           1000,
 		           true,
 		           pConf->retry_time_ms);
+
+	std::vector<std::shared_ptr<const EventInfo>> init_events
+		(pConf->pPointConf->Analogs.size()+
+		pConf->pPointConf->Binaries.size()+
+		pConf->pPointConf->Controls.size()+
+		pConf->pPointConf->AnalogControls.size());
+
+	for(const auto& point : pConf->pPointConf->Analogs)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,point.first,"",QualityFlags::NONE,0));
+	for(const auto& point : pConf->pPointConf->Binaries)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,point.first,"",QualityFlags::NONE,0));
+	for(const auto& point : pConf->pPointConf->Controls)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,point.first,"",QualityFlags::NONE,0));
+	for(const auto& point : pConf->pPointConf->AnalogControls)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputDouble64,point.first,"",QualityFlags::NONE,0));
+
+	pDB = std::make_unique<EventDB>(init_events);
 }
 
 void JSONPort::ReadCompletionHandler(buf_t& readbuf)
