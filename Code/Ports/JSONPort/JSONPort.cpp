@@ -126,8 +126,8 @@ void JSONPort::Build()
 		           true,
 		           pConf->retry_time_ms);
 
-	std::vector<std::shared_ptr<const EventInfo>> init_events
-		(pConf->pPointConf->Analogs.size()+
+	std::vector<std::shared_ptr<const EventInfo>> init_events;
+	init_events.reserve(pConf->pPointConf->Analogs.size()+
 		pConf->pPointConf->Binaries.size()+
 		pConf->pPointConf->Controls.size()+
 		pConf->pPointConf->AnalogControls.size());

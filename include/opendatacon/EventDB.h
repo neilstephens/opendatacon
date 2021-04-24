@@ -30,6 +30,7 @@
 #include "IOTypes.h"
 #include <unordered_set>
 #include <memory>
+#include <limits>
 
 namespace odc
 {
@@ -38,7 +39,20 @@ struct EventPointHash
 {
 	size_t operator()(const std::shared_ptr<const EventInfo>& evt) const
 	{
+		if(!evt)
+			return std::numeric_limits<size_t>::max();
 		return (evt->GetIndex() << (sizeof(EventType)<<3)) + static_cast<size_t>(evt->GetEventType());
+	}
+};
+
+struct EventPointEq
+{
+	bool operator()(const std::shared_ptr<const EventInfo>& lhs,
+		const std::shared_ptr<const EventInfo>& rhs) const
+	{
+		if(!lhs && !rhs) return true;
+		if(!lhs || !rhs) return false;
+		return (lhs->GetIndex() == rhs->GetIndex() && lhs->GetEventType() == rhs->GetEventType());
 	}
 };
 
@@ -53,7 +67,7 @@ public:
 	std::shared_ptr<const EventInfo> Get(const EventType event_type, const size_t index) const;
 
 private:
-	std::unordered_set<std::shared_ptr<const EventInfo>,EventPointHash> PointEvents;
+	std::unordered_set<std::shared_ptr<const EventInfo>,EventPointHash,EventPointEq> PointEvents;
 };
 
 } //namespace odc
