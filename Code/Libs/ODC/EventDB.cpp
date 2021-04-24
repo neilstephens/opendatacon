@@ -25,11 +25,52 @@
  */
 
 #include <opendatacon/EventDB.h>
+#include <atomic>
 
 namespace odc
 {
 
-EventDB::EventDB()
+EventDB::EventDB(const std::vector<std::shared_ptr<const EventInfo>>& init_events):
+	PointEvents(init_events.begin(),init_events.end())
 {}
+
+bool EventDB::Set(std::shared_ptr<const EventInfo> event)
+{
+	auto old_it = PointEvents.find(event);
+
+	if(old_it == PointEvents.end())
+		return false;
+
+	std::shared_ptr<const EventInfo> old_evt = *old_it;
+	std::atomic_store(&old_evt,event);
+	return true;
+}
+
+std::shared_ptr<const EventInfo> EventDB::Swap(std::shared_ptr<const EventInfo> event)
+{
+	auto old_it = PointEvents.find(event);
+
+	if(old_it == PointEvents.end())
+		return nullptr;
+
+	std::shared_ptr<const EventInfo> old_evt = *old_it;
+	return std::atomic_exchange(&old_evt,event);
+}
+
+std::shared_ptr<const EventInfo> EventDB::Get(const std::shared_ptr<const EventInfo>& event) const
+{
+	auto old_it = PointEvents.find(event);
+
+	if(old_it == PointEvents.end())
+		return nullptr;
+
+	return *old_it;
+}
+
+std::shared_ptr<const EventInfo> EventDB::Get(const EventType event_type, const size_t index) const
+{
+	auto lookup_evt = std::make_shared<const EventInfo>(event_type, index, "", QualityFlags::NONE, 0);
+	return Get(lookup_evt);
+}
 
 } //namespace odc

@@ -27,13 +27,33 @@
 #ifndef EVENTDB_H
 #define EVENTDB_H
 
+#include <opendatacon/IOTypes.h>
+#include <unordered_set>
+#include <memory>
+
 namespace odc
 {
+
+struct EventPointHash
+{
+	size_t operator()(const std::shared_ptr<const EventInfo>& evt) const
+	{
+		return (evt->GetIndex() << (sizeof(EventType)<<3)) + static_cast<size_t>(evt->GetEventType());
+	}
+};
 
 class EventDB
 {
 public:
-	EventDB();
+	EventDB() = delete;
+	EventDB(const std::vector<std::shared_ptr<const EventInfo>>& init_events);
+	bool Set(std::shared_ptr<const EventInfo> event);
+	std::shared_ptr<const EventInfo> Swap(std::shared_ptr<const EventInfo> event);
+	std::shared_ptr<const EventInfo> Get(const std::shared_ptr<const EventInfo>& event) const;
+	std::shared_ptr<const EventInfo> Get(const EventType event_type, const size_t index) const;
+
+private:
+	std::unordered_set<std::shared_ptr<const EventInfo>,EventPointHash> PointEvents;
 };
 
 } //namespace odc
