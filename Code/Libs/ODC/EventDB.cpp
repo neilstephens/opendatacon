@@ -41,8 +41,11 @@ bool EventDB::Set(std::shared_ptr<const EventInfo> event)
 	if(old_it == PointEvents.end())
 		return false;
 
-	std::shared_ptr<const EventInfo> old_evt = *old_it;
-	std::atomic_store(&old_evt,event);
+	//cast away the constness of the iterator element
+	//this is OK, because we know we're not changing its hash
+	auto old_evt_addr = &const_cast<std::shared_ptr<const EventInfo>&>(*old_it);
+
+	std::atomic_store(old_evt_addr,event);
 	return true;
 }
 
@@ -55,9 +58,9 @@ std::shared_ptr<const EventInfo> EventDB::Swap(std::shared_ptr<const EventInfo> 
 
 	//cast away the constness of the iterator element
 	//this is OK, because we know we're not changing its hash
-	auto& old_evt = const_cast<std::shared_ptr<const EventInfo>&>(*old_it);
+	auto old_evt_addr = &const_cast<std::shared_ptr<const EventInfo>&>(*old_it);
 
-	return std::atomic_exchange(&old_evt,event);
+	return std::atomic_exchange(old_evt_addr,event);
 }
 
 std::shared_ptr<const EventInfo> EventDB::Get(const std::shared_ptr<const EventInfo>& event) const
@@ -67,7 +70,9 @@ std::shared_ptr<const EventInfo> EventDB::Get(const std::shared_ptr<const EventI
 	if(old_it == PointEvents.end())
 		return nullptr;
 
-	return *old_it;
+	auto old_evt = std::atomic_load(&(*old_it));
+
+	return old_evt;
 }
 
 std::shared_ptr<const EventInfo> EventDB::Get(const EventType event_type, const size_t index) const
