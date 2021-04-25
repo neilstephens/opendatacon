@@ -519,13 +519,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	}
 }
 
-void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, const std::string& SenderName) const
 {
-	if(!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-	}
-
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 	auto i = event->GetIndex();
@@ -538,7 +533,13 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	{
 		case EventType::Analog:
 		{
-			auto v = event->GetPayload<EventType::Analog>();
+			typename EventTypePayload<EventType::Analog>::type v;
+			try
+			{
+				v = event->GetPayload<EventType::Analog>();
+			}
+			catch(std::runtime_error&)
+			{}
 			auto& m = pConf->pPointConf->Analogs;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
@@ -547,7 +548,13 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		}
 		case EventType::Binary:
 		{
-			auto v = event->GetPayload<EventType::Binary>();
+			typename EventTypePayload<EventType::Binary>::type v;
+			try
+			{
+				v = event->GetPayload<EventType::Binary>();
+			}
+			catch(std::runtime_error&)
+			{}
 			auto& m = pConf->pPointConf->Binaries;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
@@ -556,7 +563,13 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		}
 		case EventType::ControlRelayOutputBlock:
 		{
-			auto v = std::string(event->GetPayload<EventType::ControlRelayOutputBlock>());
+			std::string v = "";
+			try
+			{
+				v = event->GetPayloadString();
+			}
+			catch(std::runtime_error&)
+			{}
 			auto& m = pConf->pPointConf->Controls;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
@@ -564,15 +577,28 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			break;
 		}
 		default:
-			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-			return;
+			return Json::Value::null;
 	}
+	return output;
+}
+
+void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	if(!enabled)
+	{
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+	}
+	pDB->Set(event);
+
+	auto output = ToJSON(event,SenderName);
 
 	if(output.isNull())
 	{
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 		return;
 	}
+
+	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 	//TODO: make this writer reusable (class member)
 	//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
@@ -586,4 +612,26 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	pSockMan->Write(oss.str());
 
 	(*pStatusCallback)(CommandStatus::SUCCESS);
+}
+
+const Json::Value JSONPort::GetCurrentState() const
+{
+	if(!pDB)
+		return Json::Value();
+
+	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
+
+	Json::Value ret;
+	auto& arr = ret[since_epoch_to_datetime(msSinceEpoch())] = Json::arrayValue;
+
+	for(const auto& point : pConf->pPointConf->Analogs)
+		arr.append(ToJSON(pDB->Get(EventType::Analog,point.first)));
+	for(const auto& point : pConf->pPointConf->Binaries)
+		arr.append(ToJSON(pDB->Get(EventType::Binary,point.first)));
+	for(const auto& point : pConf->pPointConf->Controls)
+		arr.append(ToJSON(pDB->Get(EventType::ControlRelayOutputBlock,point.first)));
+	for(const auto& point : pConf->pPointConf->AnalogControls)
+		arr.append(ToJSON(pDB->Get(EventType::AnalogOutputDouble64,point.first)));
+
+	return ret;
 }

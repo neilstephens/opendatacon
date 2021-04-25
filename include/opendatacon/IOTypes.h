@@ -659,7 +659,7 @@ public:
 	const typename EventTypePayload<t>::type& GetPayload() const
 	{
 		if(t != Type)
-			throw std::runtime_error("Wrong payload type requested for selected odc::EventInfo");
+			throw std::logic_error("Wrong payload type requested for selected odc::EventInfo");
 		if(!pPayload)
 			throw std::runtime_error("Called GetPayload on uninitialised odc::EventInfo payload");
 		return *static_cast<typename EventTypePayload<t>::type*>(pPayload);
