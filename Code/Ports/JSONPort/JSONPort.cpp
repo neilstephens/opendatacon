@@ -621,17 +621,21 @@ const Json::Value JSONPort::GetCurrentState() const
 
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
+	auto time_str = since_epoch_to_datetime(msSinceEpoch());
 	Json::Value ret;
-	auto& arr = ret[since_epoch_to_datetime(msSinceEpoch())] = Json::arrayValue;
+	ret[time_str]["Analogs"] = Json::arrayValue;
+	ret[time_str]["Binaries"] = Json::arrayValue;
+	ret[time_str]["Controls"] = Json::arrayValue;
+	ret[time_str]["AnalogControls"] = Json::arrayValue;
 
 	for(const auto& point : pConf->pPointConf->Analogs)
-		arr.append(ToJSON(pDB->Get(EventType::Analog,point.first)));
+		ret[time_str]["Analogs"].append(ToJSON(pDB->Get(EventType::Analog,point.first)));
 	for(const auto& point : pConf->pPointConf->Binaries)
-		arr.append(ToJSON(pDB->Get(EventType::Binary,point.first)));
+		ret[time_str]["Binaries"].append(ToJSON(pDB->Get(EventType::Binary,point.first)));
 	for(const auto& point : pConf->pPointConf->Controls)
-		arr.append(ToJSON(pDB->Get(EventType::ControlRelayOutputBlock,point.first)));
+		ret[time_str]["Controls"].append(ToJSON(pDB->Get(EventType::ControlRelayOutputBlock,point.first)));
 	for(const auto& point : pConf->pPointConf->AnalogControls)
-		arr.append(ToJSON(pDB->Get(EventType::AnalogOutputDouble64,point.first)));
+		ret[time_str]["AnalogControls"].append(ToJSON(pDB->Get(EventType::AnalogOutputDouble64,point.first)));
 
 	return ret;
 }
