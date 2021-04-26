@@ -312,6 +312,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		//Publish any analog and binary events from above
 		for(auto& event : events)
 		{
+			pDB->Set(event);
 			PublishEvent(event);
 		}
 		//We'll publish any controls separately below, because they each have a callback
@@ -442,6 +443,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							pSockMan->Write(oss.str());
 						});
 				event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(command));
+				pDB->Set(event);
 				PublishEvent(event,pStatusCallback);
 			}
 		}
@@ -507,7 +509,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							pWriter->write(result, &oss); oss << std::endl;
 							pSockMan->Write(oss.str());
 						});
-
+				pDB->Set(event);
 				PublishEvent(event, pStatusCallback);
 			}
 		}
