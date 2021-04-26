@@ -129,7 +129,8 @@ void DNP3MasterPort::SetCommsGood()
 		// Trigger integrity scan to get point quality
 		// Only way to get true state upstream
 		// Can't just reset quality, because it would make new events for old values
-		IntegrityScan->Demand();
+		if(IntegrityScan)
+			IntegrityScan->Demand();
 	}
 }
 
@@ -401,7 +402,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		auto state = event->GetPayload<EventType::ConnectState>();
 
 		// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
-		if (stack_enabled && state == ConnectState::PORT_UP)
+		if (stack_enabled && state == ConnectState::PORT_UP && IntegrityScan)
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
 				log->info("{}: Upstream port enabled, performing integrity scan.", Name);
