@@ -28,7 +28,7 @@
 #define EVENTDB_H
 
 #include "IOTypes.h"
-#include <unordered_set>
+#include <unordered_map>
 #include <memory>
 #include <limits>
 
@@ -37,22 +37,9 @@ namespace odc
 
 struct EventPointHash
 {
-	size_t operator()(const std::shared_ptr<const EventInfo>& evt) const
+	size_t operator()(const std::pair<EventType,size_t>& point) const
 	{
-		if(!evt)
-			return std::numeric_limits<size_t>::max();
-		return (evt->GetIndex() << (sizeof(EventType)<<3)) + static_cast<size_t>(evt->GetEventType());
-	}
-};
-
-struct EventPointEq
-{
-	bool operator()(const std::shared_ptr<const EventInfo>& lhs,
-		const std::shared_ptr<const EventInfo>& rhs) const
-	{
-		if(!lhs && !rhs) return true;
-		if(!lhs || !rhs) return false;
-		return (lhs->GetIndex() == rhs->GetIndex() && lhs->GetEventType() == rhs->GetEventType());
+		return (point.second << (sizeof(EventType)<<3)) + static_cast<size_t>(point.first);
 	}
 };
 
@@ -61,13 +48,13 @@ class EventDB
 public:
 	EventDB() = delete;
 	EventDB(const std::vector<std::shared_ptr<const EventInfo>>& init_events);
-	bool Set(std::shared_ptr<const EventInfo> event);
-	std::shared_ptr<const EventInfo> Swap(std::shared_ptr<const EventInfo> event);
+	bool Set(const std::shared_ptr<const EventInfo> event);
+	std::shared_ptr<const EventInfo> Swap(const std::shared_ptr<const EventInfo> event);
 	std::shared_ptr<const EventInfo> Get(const std::shared_ptr<const EventInfo>& event) const;
 	std::shared_ptr<const EventInfo> Get(const EventType event_type, const size_t index) const;
 
 private:
-	std::unordered_set<std::shared_ptr<const EventInfo>,EventPointHash,EventPointEq> PointEvents;
+	std::unordered_map<std::pair<EventType,size_t>,std::shared_ptr<const EventInfo>,EventPointHash> PointEvents;
 };
 
 } //namespace odc

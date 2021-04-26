@@ -30,55 +30,49 @@
 namespace odc
 {
 
-EventDB::EventDB(const std::vector<std::shared_ptr<const EventInfo>>& init_events):
-	PointEvents(init_events.begin(),init_events.end())
-{}
-
-bool EventDB::Set(std::shared_ptr<const EventInfo> event)
+EventDB::EventDB(const std::vector<std::shared_ptr<const EventInfo>>& init_events)
 {
-	auto old_it = PointEvents.find(event);
+	for(const auto& event : init_events)
+		PointEvents[{event->GetEventType(),event->GetIndex()}] = event;
+}
+
+bool EventDB::Set(const std::shared_ptr<const EventInfo> event)
+{
+	const auto old_it = PointEvents.find({event->GetEventType(),event->GetIndex()});
 
 	if(old_it == PointEvents.end())
 		return false;
 
-	//cast away the constness of the iterator element
-	//this is OK, because we know we're not changing its hash
-	auto old_evt_addr = &const_cast<std::shared_ptr<const EventInfo>&>(*old_it);
-
+	const auto old_evt_addr = &(old_it->second);
 	std::atomic_store(old_evt_addr,event);
 	return true;
 }
 
-std::shared_ptr<const EventInfo> EventDB::Swap(std::shared_ptr<const EventInfo> event)
+std::shared_ptr<const EventInfo> EventDB::Swap(const std::shared_ptr<const EventInfo> event)
 {
-	auto old_it = PointEvents.find(event);
+	const auto old_it = PointEvents.find({event->GetEventType(),event->GetIndex()});
 
 	if(old_it == PointEvents.end())
 		return nullptr;
 
-	//cast away the constness of the iterator element
-	//this is OK, because we know we're not changing its hash
-	auto old_evt_addr = &const_cast<std::shared_ptr<const EventInfo>&>(*old_it);
-
+	const auto old_evt_addr = &(old_it->second);
 	return std::atomic_exchange(old_evt_addr,event);
 }
 
 std::shared_ptr<const EventInfo> EventDB::Get(const std::shared_ptr<const EventInfo>& event) const
 {
-	auto old_it = PointEvents.find(event);
-
-	if(old_it == PointEvents.end())
-		return nullptr;
-
-	auto old_evt = std::atomic_load(&(*old_it));
-
-	return old_evt;
+	return Get(event->GetEventType(),event->GetIndex());
 }
 
 std::shared_ptr<const EventInfo> EventDB::Get(const EventType event_type, const size_t index) const
 {
-	auto lookup_evt = std::make_shared<const EventInfo>(event_type, index, "", QualityFlags::NONE, 0);
-	return Get(lookup_evt);
+	const auto old_it = PointEvents.find({event_type,index});
+
+	if(old_it == PointEvents.end())
+		return nullptr;
+
+	const auto old_evt_addr = &(old_it->second);
+	return std::atomic_load(old_evt_addr);
 }
 
 } //namespace odc
