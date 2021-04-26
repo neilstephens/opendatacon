@@ -57,7 +57,6 @@ protected:
 	std::pair<std::string,const IUIResponder*> GetUIResponder() final;
 
 	/// Implement ODC::DataPort functions for UI
-	const Json::Value GetCurrentState() const override;
 	const Json::Value GetStatistics() const override;
 
 	/// Implement opendnp3::IOutstationApplication

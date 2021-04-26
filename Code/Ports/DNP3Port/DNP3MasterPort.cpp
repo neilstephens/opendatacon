@@ -147,12 +147,22 @@ void DNP3MasterPort::SetCommsFailed()
 			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
 			event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 			PublishEvent(event);
+
+			//update the EventDB event with the quality as well
+			event = std::make_shared<EventInfo>(*pDB->Get(EventType::Binary,index));
+			event->SetQuality(QualityFlags::COMM_LOST);
+			pDB->Set(event);
 		}
 		for (auto index : pConf->pPointConf->AnalogIndexes)
 		{
 			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
 			event->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
 			PublishEvent(event);
+
+			//update the EventDB event with the quality as well
+			event = std::make_shared<EventInfo>(*pDB->Get(EventType::Analog,index));
+			event->SetQuality(QualityFlags::COMM_LOST);
+			pDB->Set(event);
 		}
 	}
 
@@ -166,6 +176,7 @@ void DNP3MasterPort::SetCommsFailed()
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
 		commsDownEvent->SetPayload<EventType::Binary>(std::move(failed_val));
 		PublishEvent(commsDownEvent);
+		pDB->Set(commsDownEvent);
 	}
 }
 
@@ -278,6 +289,8 @@ void DNP3MasterPort::Build()
 		return;
 	}
 
+	InitEventDB();
+
 	opendnp3::MasterStackConfig StackConfig;
 	opendnp3::LinkConfig link(true,pConf->pPointConf->LinkUseConfirms);
 
@@ -361,6 +374,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 			      event->SetTimestamp();
 			}
 			PublishEvent(event);
+			pDB->Set(event);
 		});
 }
 
@@ -380,6 +394,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
+	pDB->Set(event);
 
 	if(event->GetEventType() == EventType::ConnectState)
 	{

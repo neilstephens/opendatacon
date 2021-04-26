@@ -276,15 +276,9 @@ void DNP3OutstationPort::Build()
 		return;
 	}
 
-	std::vector<std::shared_ptr<const EventInfo>> init_events;
-	init_events.reserve(pConf->pPointConf->AnalogIndexes.size()+
-		pConf->pPointConf->BinaryIndexes.size()+
-		pConf->pPointConf->ControlIndexes.size());
-
 	opendnp3::OutstationStackConfig StackConfig;
 	for(auto index : pConf->pPointConf->AnalogIndexes)
 	{
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::NONE,0));
 		StackConfig.database.analog_input[index].clazz = pConf->pPointConf->AnalogClasses[index];
 		StackConfig.database.analog_input[index].evariation = pConf->pPointConf->EventAnalogResponses[index];
 		StackConfig.database.analog_input[index].svariation = pConf->pPointConf->StaticAnalogResponses[index];
@@ -292,15 +286,12 @@ void DNP3OutstationPort::Build()
 	}
 	for(auto index : pConf->pPointConf->BinaryIndexes)
 	{
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::NONE,0));
 		StackConfig.database.binary_input[index].clazz = pConf->pPointConf->BinaryClasses[index];
 		StackConfig.database.binary_input[index].evariation = pConf->pPointConf->EventBinaryResponses[index];
 		StackConfig.database.binary_input[index].svariation = pConf->pPointConf->StaticBinaryResponses[index];
 	}
-	for(auto index : pConf->pPointConf->ControlIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::NONE,0));
 
-	pDB = std::make_unique<EventDB>(init_events);
+	InitEventDB();
 
 	// Link layer configuration
 	opendnp3::LinkConfig link(false,pConf->pPointConf->LinkUseConfirms);
@@ -348,77 +339,6 @@ void DNP3OutstationPort::Build()
 std::pair<std::string, const IUIResponder *> DNP3OutstationPort::GetUIResponder()
 {
 	return std::pair<std::string,const DNP3OutstationPortCollection*>("DNP3OutstationControl",this->PeerCollection.get());
-}
-
-//DataPort function for UI
-const Json::Value DNP3OutstationPort::GetCurrentState() const
-{
-	auto time_str = since_epoch_to_datetime(msSinceEpoch());
-	Json::Value ret;
-	ret[time_str]["Analogs"] = Json::arrayValue;
-	ret[time_str]["Binaries"] = Json::arrayValue;
-	ret[time_str]["Controls"] = Json::arrayValue;
-
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	auto time_correction = [=](const auto& event)
-				     {
-					     auto ts = event->GetTimestamp();
-					     if(event->GetEventType() == EventType::ControlRelayOutputBlock)
-						     return since_epoch_to_datetime(ts);
-					     if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
-					         || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
-						     ts = msSinceEpoch()+master_time_offset;
-
-					     return since_epoch_to_datetime(ts);
-				     };
-
-	for(const auto index : pConf->pPointConf->BinaryIndexes)
-	{
-		auto event = pDB->Get(EventType::Binary,index);
-		auto& state = ret[time_str]["Binaries"].append(Json::Value());
-		state["Index"] = event->GetIndex();
-		try
-		{
-			state["Value"] = event->GetPayload<EventType::Binary>();
-		}
-		catch(std::runtime_error&)
-		{}
-		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
-		state["SourcePort"] = event->GetSourcePort();
-	}
-	for(const auto index : pConf->pPointConf->AnalogIndexes)
-	{
-		auto event = pDB->Get(EventType::Analog,index);
-		auto& state = ret[time_str]["Analogs"].append(Json::Value());
-		state["Index"] = event->GetIndex();
-		try
-		{
-			state["Value"] = event->GetPayload<EventType::Analog>();
-		}
-		catch(std::runtime_error&)
-		{}
-		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
-		state["SourcePort"] = event->GetSourcePort();
-	}
-	for(const auto index : pConf->pPointConf->ControlIndexes)
-	{
-		auto event = pDB->Get(EventType::ControlRelayOutputBlock,index);
-		auto& state = ret[time_str]["Controls"].append(Json::Value());
-		state["Index"] = event->GetIndex();
-		try
-		{
-			state["Value"] = event->GetPayloadString();
-		}
-		catch(std::runtime_error&)
-		{}
-		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
-		state["SourcePort"] = event->GetSourcePort();
-	}
-
-	return ret;
 }
 
 //DataPort function for UI
