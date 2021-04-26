@@ -142,13 +142,13 @@ void DNP3MasterPort::SetCommsFailed()
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Setting point quality to COMM_LOST.", Name);
 
-		for (auto index : pConf->pPointConf->BinaryIndicies)
+		for (auto index : pConf->pPointConf->BinaryIndexes)
 		{
 			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
 			event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
 			PublishEvent(event);
 		}
-		for (auto index : pConf->pPointConf->AnalogIndicies)
+		for (auto index : pConf->pPointConf->AnalogIndexes)
 		{
 			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
 			event->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
@@ -430,7 +430,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 	auto index = event->GetIndex();
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	for(auto i : pConf->pPointConf->ControlIndicies)
+	for(auto i : pConf->pPointConf->ControlIndexes)
 	{
 		if(i == index)
 		{
