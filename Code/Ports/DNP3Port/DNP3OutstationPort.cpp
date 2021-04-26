@@ -514,6 +514,17 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return FromODC(cb_status);
 }
 
+template<>
+inline void DNP3OutstationPort::EventT<opendnp3::BinaryQuality>(opendnp3::BinaryQuality qual, uint16_t index, opendnp3::FlagsType FT)
+{
+	bool prev_state = pDB->Get(EventType::Binary,index)->GetPayload<EventType::Binary>();
+	uint8_t qual_w_val = prev_state ? (static_cast<uint8_t>(qual) | static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
+	                     : static_cast<uint8_t>(qual);
+	opendnp3::UpdateBuilder builder;
+	builder.Modify(FT, index, index, qual_w_val);
+	pOutstation->Apply(builder.Build());
+}
+
 void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
@@ -559,10 +570,8 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	if (
-		(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0))
-		)
+	if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
+	    || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0)))
 	{
 		meas.time = opendnp3::DNPTime(msSinceEpoch()+master_time_offset);
 	}
