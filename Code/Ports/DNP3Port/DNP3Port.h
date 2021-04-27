@@ -48,6 +48,7 @@ public:
 	void Build() override =0;
 
 	//Override DataPort for UI
+	const Json::Value GetCurrentState() const override;
 	const Json::Value GetStatus() const override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
@@ -55,6 +56,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 protected:
+	void InitEventDB();
 	inline std::weak_ptr<DataPort> ptr()
 	{
 		return weak_from_this();

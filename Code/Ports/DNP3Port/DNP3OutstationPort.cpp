@@ -277,19 +277,21 @@ void DNP3OutstationPort::Build()
 	}
 
 	opendnp3::OutstationStackConfig StackConfig;
-	for (uint16_t index : pConf->pPointConf->AnalogIndicies)
+	for(auto index : pConf->pPointConf->AnalogIndexes)
 	{
 		StackConfig.database.analog_input[index].clazz = pConf->pPointConf->AnalogClasses[index];
 		StackConfig.database.analog_input[index].evariation = pConf->pPointConf->EventAnalogResponses[index];
 		StackConfig.database.analog_input[index].svariation = pConf->pPointConf->StaticAnalogResponses[index];
 		StackConfig.database.analog_input[index].deadband = pConf->pPointConf->AnalogDeadbands[index];
 	}
-	for (uint16_t index : pConf->pPointConf->BinaryIndicies)
+	for(auto index : pConf->pPointConf->BinaryIndexes)
 	{
 		StackConfig.database.binary_input[index].clazz = pConf->pPointConf->BinaryClasses[index];
 		StackConfig.database.binary_input[index].evariation = pConf->pPointConf->EventBinaryResponses[index];
 		StackConfig.database.binary_input[index].svariation = pConf->pPointConf->StaticBinaryResponses[index];
 	}
+
+	InitEventDB();
 
 	// Link layer configuration
 	opendnp3::LinkConfig link(false,pConf->pPointConf->LinkUseConfirms);
@@ -332,32 +334,11 @@ void DNP3OutstationPort::Build()
 			log->error("{}: Error creating outstation.", Name);
 		return;
 	}
-
-	pStateSync = pIOS->make_strand();
 }
 
 std::pair<std::string, const IUIResponder *> DNP3OutstationPort::GetUIResponder()
 {
 	return std::pair<std::string,const DNP3OutstationPortCollection*>("DNP3OutstationControl",this->PeerCollection.get());
-}
-
-//DataPort function for UI
-const Json::Value DNP3OutstationPort::GetCurrentState() const
-{
-	std::atomic_bool stateExecuted(false);
-	Json::Value temp_value;
-	pStateSync->post([this, &stateExecuted, &temp_value]()
-		{
-			temp_value = state;
-			stateExecuted = true;
-		});
-
-	while (!stateExecuted)
-	{
-		pIOS->poll_one();
-	}
-
-	return temp_value;
 }
 
 //DataPort function for UI
@@ -408,7 +389,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint1
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
 	{
-		for(auto index : pConf->pPointConf->ControlIndicies)
+		for(auto index : pConf->pPointConf->ControlIndexes)
 			if(index == aIndex)
 				return opendnp3::CommandStatus::SUCCESS;
 	}
@@ -423,6 +404,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 		return opendnp3::CommandStatus::UNDEFINED;
 
 	auto event = ToODC(arCommand, aIndex, Name);
+	pDB->Set(event);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if (!pConf->pPointConf->WaitForCommandResponses)
@@ -452,6 +434,23 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return FromODC(cb_status);
 }
 
+template<>
+inline void DNP3OutstationPort::EventT<opendnp3::BinaryQuality>(opendnp3::BinaryQuality qual, uint16_t index, opendnp3::FlagsType FT)
+{
+	bool prev_state = false;
+	try
+	{ //GetPayload will throw for uninitialised payload
+		prev_state = pDB->Get(EventType::Binary,index)->GetPayload<EventType::Binary>();
+	}
+	catch(std::runtime_error&)
+	{}
+	uint8_t qual_w_val = prev_state ? (static_cast<uint8_t>(qual) | static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
+	                     : static_cast<uint8_t>(qual);
+	opendnp3::UpdateBuilder builder;
+	builder.Modify(FT, index, index, qual_w_val);
+	pOutstation->Apply(builder.Build());
+}
+
 void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
@@ -459,42 +458,21 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
-
-	auto ts = event->GetTimestamp();
-
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if (
-		(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0))
-		)
-	{
-		ts = msSinceEpoch()+master_time_offset;
-	}
-	const auto timestamp = odc::since_epoch_to_datetime(ts);
+	pDB->Set(event);
 
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
-			SetState("BinaryCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
-			SetState("BinaryQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
-			SetState("BinaryTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
-			SetState("AnalogCurrent", std::to_string(event->GetIndex()), event->GetPayloadString());
-			SetState("AnalogQuality", std::to_string(event->GetIndex()), ToString(event->GetQuality()));
-			SetState("AnalogTimestamp", std::to_string(event->GetIndex()), timestamp);
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
-			SetState("BinaryQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
-			SetState("BinaryTimestamp", std::to_string(event->GetIndex()), timestamp);
-			EventQ<opendnp3::Binary>(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
+			EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
-			SetState("AnalogQuality", std::to_string(event->GetIndex()), event->GetPayloadString());
-			SetState("AnalogTimestamp", std::to_string(event->GetIndex()), timestamp);
-			EventQ<opendnp3::Analog>(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
+			EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
 			break;
@@ -505,8 +483,8 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
-template<typename T, typename Q>
-inline void DNP3OutstationPort::EventQ(Q qual, uint16_t index, opendnp3::FlagsType FT)
+template<typename T>
+inline void DNP3OutstationPort::EventT(T qual, uint16_t index, opendnp3::FlagsType FT)
 {
 	opendnp3::UpdateBuilder builder;
 	builder.Modify(FT, index, index, static_cast<uint8_t>(qual));
@@ -518,10 +496,8 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	if (
-		(pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-		((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0))
-		)
+	if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
+	    || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0)))
 	{
 		meas.time = opendnp3::DNPTime(msSinceEpoch()+master_time_offset);
 	}
@@ -529,14 +505,6 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index);
 	pOutstation->Apply(builder.Build());
-}
-
-inline void DNP3OutstationPort::SetState(const std::string& type, const std::string& index, const std::string& payload)
-{
-	pStateSync->post([=]()
-		{
-			state[type][index] = payload;
-		});
 }
 
 inline void DNP3OutstationPort::SetIINFlags(const AppIINFlags& flags) const
