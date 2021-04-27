@@ -437,7 +437,13 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 template<>
 inline void DNP3OutstationPort::EventT<opendnp3::BinaryQuality>(opendnp3::BinaryQuality qual, uint16_t index, opendnp3::FlagsType FT)
 {
-	bool prev_state = pDB->Get(EventType::Binary,index)->GetPayload<EventType::Binary>();
+	bool prev_state = false;
+	try
+	{ //GetPayload will throw for uninitialised payload
+		prev_state = pDB->Get(EventType::Binary,index)->GetPayload<EventType::Binary>();
+	}
+	catch(std::runtime_error&)
+	{}
 	uint8_t qual_w_val = prev_state ? (static_cast<uint8_t>(qual) | static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
 	                     : static_cast<uint8_t>(qual);
 	opendnp3::UpdateBuilder builder;

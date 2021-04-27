@@ -133,13 +133,13 @@ void JSONPort::Build()
 		pConf->pPointConf->AnalogControls.size());
 
 	for(const auto& point : pConf->pPointConf->Analogs)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,point.first,"",QualityFlags::NONE,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,point.first,"",QualityFlags::RESTART,0));
 	for(const auto& point : pConf->pPointConf->Binaries)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,point.first,"",QualityFlags::NONE,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,point.first,"",QualityFlags::RESTART,0));
 	for(const auto& point : pConf->pPointConf->Controls)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,point.first,"",QualityFlags::NONE,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,point.first,"",QualityFlags::RESTART,0));
 	for(const auto& point : pConf->pPointConf->AnalogControls)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputDouble64,point.first,"",QualityFlags::NONE,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputDouble64,point.first,"",QualityFlags::RESTART,0));
 
 	pDB = std::make_unique<EventDB>(init_events);
 }

@@ -122,6 +122,7 @@ void DNP3MasterPort::SetCommsGood()
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
 		commsUpEvent->SetPayload<EventType::Binary>(!failed_val);
 		PublishEvent(commsUpEvent);
+		pDB->Set(commsUpEvent);
 	}
 
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
@@ -145,25 +146,29 @@ void DNP3MasterPort::SetCommsFailed()
 
 		for (auto index : pConf->pPointConf->BinaryIndexes)
 		{
+			auto last_event = pDB->Get(EventType::Binary,index);
+
 			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
-			event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
+			event->SetPayload<EventType::BinaryQuality>(last_event->GetQuality()|QualityFlags::COMM_LOST);
 			PublishEvent(event);
 
 			//update the EventDB event with the quality as well
-			event = std::make_shared<EventInfo>(*pDB->Get(EventType::Binary,index));
-			event->SetQuality(QualityFlags::COMM_LOST);
-			pDB->Set(event);
+			auto new_event = std::make_shared<EventInfo>(*last_event);
+			new_event->SetQuality(last_event->GetQuality()|QualityFlags::COMM_LOST);
+			pDB->Set(new_event);
 		}
 		for (auto index : pConf->pPointConf->AnalogIndexes)
 		{
+			auto last_event = pDB->Get(EventType::Analog,index);
+
 			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
-			event->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
+			event->SetPayload<EventType::AnalogQuality>(last_event->GetQuality()|QualityFlags::COMM_LOST);
 			PublishEvent(event);
 
 			//update the EventDB event with the quality as well
-			event = std::make_shared<EventInfo>(*pDB->Get(EventType::Analog,index));
-			event->SetQuality(QualityFlags::COMM_LOST);
-			pDB->Set(event);
+			auto new_event = std::make_shared<EventInfo>(*last_event);
+			new_event->SetQuality(last_event->GetQuality()|QualityFlags::COMM_LOST);
+			pDB->Set(new_event);
 		}
 	}
 

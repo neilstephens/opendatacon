@@ -77,11 +77,11 @@ void DNP3Port::InitEventDB()
 		pConf->pPointConf->ControlIndexes.size());
 
 	for(auto index : pConf->pPointConf->AnalogIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::NONE,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART,0));
 	for(auto index : pConf->pPointConf->BinaryIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::NONE,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART,0));
 	for(auto index : pConf->pPointConf->ControlIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::NONE,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
 
 	pDB = std::make_unique<EventDB>(init_events);
 }
@@ -93,7 +93,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	Json::Value ret;
 	ret[time_str]["Analogs"] = Json::arrayValue;
 	ret[time_str]["Binaries"] = Json::arrayValue;
-	ret[time_str]["Controls"] = Json::arrayValue;
+	ret[time_str]["BinaryControls"] = Json::arrayValue;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	auto time_correction = [=](const auto& event)
@@ -141,7 +141,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	for(const auto index : pConf->pPointConf->ControlIndexes)
 	{
 		auto event = pDB->Get(EventType::ControlRelayOutputBlock,index);
-		auto& state = ret[time_str]["Controls"].append(Json::Value());
+		auto& state = ret[time_str]["BinaryControls"].append(Json::Value());
 		state["Index"] = event->GetIndex();
 		try
 		{
