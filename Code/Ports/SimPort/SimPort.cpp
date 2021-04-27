@@ -221,8 +221,8 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 		return false;
 	}
 
-	QualityFlags Q = QualityFlags::ONLINE;
-	if (!quality.empty() && !GetQualityFlagsFromStringName(quality, Q))
+	QualityFlags Q = QualityFlagsFromString(quality);
+	if (!quality.empty() && Q == QualityFlags::NONE)
 		return false;
 
 	auto indexes = IndexesFromString(index, type);
