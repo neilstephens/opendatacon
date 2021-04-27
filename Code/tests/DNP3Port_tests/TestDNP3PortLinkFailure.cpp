@@ -143,7 +143,8 @@ inline void require_comms_point(const bool val, std::shared_ptr<DataPort> pPort)
 		{
 			if(current_state[time]["Binaries"][i]["Index"].asUInt() == 10)
 			{
-				pass = current_state[time]["Binaries"][i]["Value"].asBool() == val;
+				pass = (current_state[time]["Binaries"][i]["Value"].asBool() == val
+				        && QualityFlagsFromString(current_state[time]["Binaries"][i]["Quality"].asString()) == QualityFlags::ONLINE);
 				break;
 			}
 		}
@@ -156,14 +157,39 @@ inline void require_comms_point(const bool val, std::shared_ptr<DataPort> pPort)
 }
 
 template<EventType type>
-inline void send_events(std::shared_ptr<DataPort> pPort, size_t start, size_t end)
+inline void send_events(std::shared_ptr<DataPort> pPort, size_t start, size_t end, const QualityFlags qual = QualityFlags::ONLINE)
 {
 	for(auto index = start; index <= end; index++)
 	{
-		auto event = std::make_shared<EventInfo>(type,index,"Test",QualityFlags::ONLINE);
-		event->SetPayload();
+		auto event = std::make_shared<EventInfo>(type,index,"Test",qual);
+		event->SetPayload<type>(static_cast<typename EventTypePayload<type>::type>(index%2));
 		pPort->Event(event,"Test",std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus){}));
 	}
+}
+
+inline void check_event_values(std::shared_ptr<DataPort> pPort)
+{
+	unsigned int count = 0;
+	bool pass = false;
+	std::string json_str; //use for debugging failure
+	while(!pass && count < test_timeout)
+	{
+		auto current_state = pPort->GetCurrentState();
+		json_str = current_state.toStyledString();
+		auto time = current_state.getMemberNames()[0];
+		for(Json::ArrayIndex i = 0; i < 10; i++)
+		{
+			pass = (current_state[time]["Binaries"][i]["Value"].asBool() == static_cast<bool>(current_state[time]["Binaries"][i]["Index"].asUInt()%2)
+			        && current_state[time]["Analogs"][i]["Value"].asUInt() == current_state[time]["Analogs"][i]["Index"].asUInt()%2);
+			if(!pass)
+				break;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		count++;
+	}
+	if(!pass)
+		std::cout<<json_str<<std::endl;
+	REQUIRE(pass);
 }
 
 inline void require_link_up(std::shared_ptr<DataPort> pPort)
@@ -263,6 +289,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 			send_events<EventType::Analog>(downstream_pair.first,0,9);
 
 			require_quality(QualityFlags::RESTART,false,upstream_pair.second);
+			check_event_values(upstream_pair.second);
 
 			for(size_t i=0; i<10; i++)
 			{
@@ -274,6 +301,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 				require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
 				require_comms_point(false,upstream_pair.second);
 				require_quality(QualityFlags::RESTART,false,upstream_pair.second);
+				check_event_values(upstream_pair.second);
 
 				pMITM->Allow();
 				require_link_up(downstream_pair.first);
@@ -282,8 +310,18 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 				require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
 				require_comms_point(true,upstream_pair.second);
 				require_quality(QualityFlags::RESTART,false,upstream_pair.second);
+				check_event_values(upstream_pair.second);
 			}
 
+			//now just make sure COMM_LOST doesn't affect other flags
+			send_events<EventType::Binary>(downstream_pair.first,0,9,QualityFlags::LOCAL_FORCED|QualityFlags::ONLINE);
+			send_events<EventType::Analog>(downstream_pair.first,0,9,QualityFlags::LOCAL_FORCED|QualityFlags::ONLINE);
+			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
+			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
+			pMITM->Drop();
+			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
+			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
+			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
 
 			upstream_pair.second->Disable();
 			downstream_pair.second->Disable();
