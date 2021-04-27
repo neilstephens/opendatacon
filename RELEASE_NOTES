@@ -1,4 +1,14 @@
-# opendatacon version 1.6.3
+# opendatacon version 1.7.0
+
+## 1.7.0
+  * All DataPorts now have access to an EventDB container for storing latest events
+  * DNP3Ports now leverage the EventDB to handle quality better
+	* Existing quality flags and values are retained on comms lost events
+  * JSONPort and DNP3Port use EventDB to provide more comprehensive current state to UIs
+  * Example WebUI html simplified for Configuration and CurrentState pages
+  * Critical fix for issuing DNP3 integrity scans at appropriate times
+    * On startup
+    * And every time COMMS_LOST quality needs clearing
 
 ## 1.6.3
   * DNP3OutstationPort support for requesting and accepting time sync from master
