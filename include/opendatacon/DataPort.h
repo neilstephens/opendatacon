@@ -31,6 +31,7 @@
 #include "IOHandler.h"
 #include "ConfigParser.h"
 #include "IUIResponder.h"
+#include "EventDB.h"
 
 namespace odc
 {
@@ -81,6 +82,7 @@ public:
 
 protected:
 	std::unique_ptr<DataPortConf> pConf;
+	std::unique_ptr<EventDB> pDB;
 };
 
 }
