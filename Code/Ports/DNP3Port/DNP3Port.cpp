@@ -112,7 +112,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	{
 		auto event = pDB->Get(EventType::Binary,index);
 		auto& state = ret[time_str]["Binaries"].append(Json::Value());
-		state["Index"] = event->GetIndex();
+		state["Index"] =  Json::UInt(event->GetIndex());
 		try
 		{
 			state["Value"] = event->GetPayload<EventType::Binary>();
@@ -127,7 +127,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	{
 		auto event = pDB->Get(EventType::Analog,index);
 		auto& state = ret[time_str]["Analogs"].append(Json::Value());
-		state["Index"] = event->GetIndex();
+		state["Index"] =  Json::UInt(event->GetIndex());
 		try
 		{
 			state["Value"] = event->GetPayload<EventType::Analog>();
@@ -142,7 +142,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	{
 		auto event = pDB->Get(EventType::ControlRelayOutputBlock,index);
 		auto& state = ret[time_str]["BinaryControls"].append(Json::Value());
-		state["Index"] = event->GetIndex();
+		state["Index"] =  Json::UInt(event->GetIndex());
 		try
 		{
 			state["Value"] = event->GetPayloadString();
