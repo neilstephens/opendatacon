@@ -440,7 +440,13 @@ inline void DNP3OutstationPort::EventT<opendnp3::BinaryQuality>(opendnp3::Binary
 	bool prev_state = false;
 	try
 	{ //GetPayload will throw for uninitialised payload
-		prev_state = pDB->Get(EventType::Binary,index)->GetPayload<EventType::Binary>();
+		if(auto prev_event = pDB->Get(EventType::Binary,index))
+			prev_state = prev_event->GetPayload<EventType::Binary>();
+		else if(auto log = odc::spdlog_get("DNP3Port"))
+		{
+			log->warn("{}: Binary quality recived for unconfigured index ({})", Name, index);
+			return;
+		}
 	}
 	catch(std::runtime_error&)
 	{}
