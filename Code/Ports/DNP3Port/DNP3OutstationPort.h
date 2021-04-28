@@ -57,7 +57,6 @@ protected:
 	std::pair<std::string,const IUIResponder*> GetUIResponder() final;
 
 	/// Implement ODC::DataPort functions for UI
-	const Json::Value GetCurrentState() const override;
 	const Json::Value GetStatistics() const override;
 
 	/// Implement opendnp3::IOutstationApplication
@@ -97,8 +96,6 @@ protected:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
-	Json::Value state;
-	std::unique_ptr<asio::io_service::strand> pStateSync;
 	std::shared_ptr<opendnp3::IOutstation> pOutstation;
 	std::atomic<int64_t> master_time_offset;
 	mutable std::atomic<AppIINFlags> IINFlags;
@@ -107,12 +104,11 @@ private:
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
 	template<typename T> void EventT(T meas, uint16_t index);
-	template<typename T, typename Q> void EventQ(Q qual, uint16_t index, opendnp3::FlagsType FT);
+	template<typename T> void EventT(T qual, uint16_t index, opendnp3::FlagsType FT);
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
 
-	void SetState(const std::string& type, const std::string& index, const std::string& payload);
 	void SetIINFlags(const AppIINFlags& flags) const;
 	void SetIINFlags(const std::string& flags) const;
 	void ClearIINFlags(const AppIINFlags& flags) const;

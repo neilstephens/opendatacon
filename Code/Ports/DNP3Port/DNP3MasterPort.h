@@ -135,7 +135,14 @@ private:
 		PortDown(); //initialise as comms down - in case they never come up
 		pMaster->Enable();
 		stack_enabled = true;
-		IntegrityScan->Demand();
+
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		//An integrity scan will happen on link up, unless quality doesn't need refreshing
+		//in which case, make sure it happens on start
+		if(pConf->pPointConf->SetQualityOnLinkStatus == false && IntegrityScan)
+		{
+			IntegrityScan->Demand();
+		}
 	}
 	inline void DisableStack()
 	{

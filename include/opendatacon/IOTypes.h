@@ -326,11 +326,11 @@ inline std::string ToString(const ConnectState cs)
 	return "<no_string_representation>";
 }
 
-inline bool GetQualityFlagsFromStringName(const std::string StrQuality, QualityFlags& QualityResult)
+inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 {
 #define CHECKFLAGSTRING(X) if (StrQuality.find(#X) != std::string::npos) QualityResult |= QualityFlags::X
 
-	QualityResult = QualityFlags::NONE;
+	QualityFlags QualityResult = QualityFlags::NONE;
 
 	CHECKFLAGSTRING(ONLINE);
 	CHECKFLAGSTRING(RESTART);
@@ -343,9 +343,11 @@ inline bool GetQualityFlagsFromStringName(const std::string StrQuality, QualityF
 	CHECKFLAGSTRING(DISCONTINUITY);
 	CHECKFLAGSTRING(CHATTER_FILTER);
 
-	return (QualityResult != QualityFlags::NONE); // Should never be none!
+	return QualityResult;
 }
 
+//FIXME: this is an anti-pattern. Should be
+// EventTypeFromString(), returning an EventType, After/BeforeRange if not found
 inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult)
 {
 #define CHECKEVENTSTRING(X) if (StrEventType.find(ToString(X)) != std::string::npos) EventTypeResult = X
@@ -372,6 +374,8 @@ inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType
 	return (EventTypeResult != EventType::BeforeRange);
 }
 
+//FIXME: this is an anti-pattern. Should be
+// ControlCodeFromString(), returning a ControlCode, UNDEFINED if not found
 inline bool ToControlCode(const std::string StrControlCode, ControlCode& ControlCodeResult)
 {
 #define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
@@ -389,6 +393,8 @@ inline bool ToControlCode(const std::string StrControlCode, ControlCode& Control
 	return (ControlCodeResult != ControlCode::UNDEFINED);
 }
 
+//FIXME: this is an anti-pattern. Should be
+// ConnectStateFromString(), returning a ConnectState, UNDEFINED if not found
 inline bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
 {
 #define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
@@ -659,7 +665,7 @@ public:
 	const typename EventTypePayload<t>::type& GetPayload() const
 	{
 		if(t != Type)
-			throw std::runtime_error("Wrong payload type requested for selected odc::EventInfo");
+			throw std::logic_error("Wrong payload type requested for selected odc::EventInfo");
 		if(!pPayload)
 			throw std::runtime_error("Called GetPayload on uninitialised odc::EventInfo payload");
 		return *static_cast<typename EventTypePayload<t>::type*>(pPayload);

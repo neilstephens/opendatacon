@@ -29,6 +29,7 @@
 
 #include <json/json.h>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
 
 //TODO: make the constructor and instantiator variadic so it's completely generic
 
@@ -65,7 +66,7 @@ public:
 		if(!qual_ref.isNull())
 			find_marker(qual_ref.asString(), instance) = qual;
 		if(!time_ref.isNull())
-			find_marker(time_ref.asString(), instance) = time;
+			find_marker(time_ref.asString(), instance) = odc::since_epoch_to_datetime(time);
 		if(!name_ref.isNull())
 			find_marker(name_ref.asString(), instance) = PointName;
 		if(!source_ref.isNull())
