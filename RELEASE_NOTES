@@ -1,4 +1,8 @@
-# opendatacon version 1.7.0
+# opendatacon version 1.7.1
+
+## 1.7.1
+  * Fix windows/mac builds
+  * Fix crash when quality for unconfigured event sent to DNP3OutstationPort
 
 ## 1.7.0
   * All DataPorts now have access to an EventDB container for storing latest events
