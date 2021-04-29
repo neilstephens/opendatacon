@@ -70,17 +70,14 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 		conf["CommsPoint"]["Index"] = 10;
 		conf["CommsPoint"]["FailValue"] = false;
 	}
+	else
+		conf["SetQualityOnLinkStatus"] = false;
 
 	conf["EnableUnsol"] = true;
 	conf["UnsolClass1"] = true;
 	conf["UnsolClass2"] = true;
 	conf["UnsolClass3"] = true;
 	conf["DoUnsolOnStartup"] = true;
-	//these should be default anyway
-	//conf["StartupIntegrityClass0"] = true;
-	//conf["StartupIntegrityClass1"] = true;
-	//conf["StartupIntegrityClass2"] = true;
-	//conf["StartupIntegrityClass3"] = true;
 
 	//make an outstation port
 	auto OPUT = std::shared_ptr<DataPort>(newOutstation("Outstation"+std::to_string(os_addr), "", conf), delOutstation);
@@ -322,6 +319,21 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
 			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
 			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
+
+			//now try comm lost while upstream disabled
+			pMITM->Allow();
+			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
+			require_comms_point(true,upstream_pair.second);
+			upstream_pair.first->Disable();
+			pMITM->Drop();
+			require_quality(QualityFlags::COMM_LOST,true,downstream_pair.second);
+			std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.first);
+			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
+			upstream_pair.first->Enable();
+			//downstream should re-assert comm-lost when connection detected
+			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
+
 
 			upstream_pair.second->Disable();
 			downstream_pair.second->Disable();
