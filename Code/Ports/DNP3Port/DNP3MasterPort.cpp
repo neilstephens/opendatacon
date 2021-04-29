@@ -406,13 +406,23 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 	{
 		auto state = event->GetPayload<EventType::ConnectState>();
 
-		// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
-		if (stack_enabled && state == ConnectState::PORT_UP && IntegrityScan)
+		if(state == ConnectState::PORT_UP)
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Upstream port enabled, performing integrity scan.", Name);
+			// If an upstream port has been enabled after downstream link is up, do an integrity scan
+			if (pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp && IntegrityScan)
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->info("{}: Upstream port enabled, performing integrity scan.", Name);
+				IntegrityScan->Demand();
+			}
 
-			IntegrityScan->Demand();
+			// If the link is down when a port connects, re-asset the comms-down
+			if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->info("{}: Upstream port enabled, re-asserting comm-lost", Name);
+				PortDown();
+			}
 		}
 
 		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
