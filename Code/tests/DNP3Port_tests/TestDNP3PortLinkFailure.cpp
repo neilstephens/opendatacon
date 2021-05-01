@@ -53,6 +53,8 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	conf["ServerType"] = "PERSISTENT";
 	conf["LinkKeepAlivems"] = Json::UInt(link_ka_period);
 	conf["LinkTimeoutms"] = Json::UInt(link_ka_period >> 1);
+	conf["IPConnectRetryPeriodMinms"] = 100;
+	conf["IPConnectRetryPeriodMaxms"] = 100;
 	//man in the middle config: first half opposite of MS, second half opposite of OS
 	conf["TCPClientServer"] = (direction == MITMConfig::SERVER_CLIENT
 	                           || direction == MITMConfig::CLIENT_CLIENT)
