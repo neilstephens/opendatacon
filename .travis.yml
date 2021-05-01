@@ -54,11 +54,11 @@ matrix:
 
 branches:
   only:
-    - develop
-    - master
-    - /^release\/.*$/
+    #- develop
+    #- master
+    #- /^release\/.*$/
     - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
-    - /^feature\/.*$/
+    #- /^feature\/.*$/
 
 dist: bionic
 
