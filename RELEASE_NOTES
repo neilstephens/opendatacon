@@ -1,4 +1,10 @@
-# opendatacon version 1.7.1
+# opendatacon version 1.7.2
+
+## 1.7.2
+  * DNP3MasterPort re-asserts comms down for late upstream connections
+  * DNP3OutstationPort now stores current state for quality updates
+  * DNP3 time sync offset added to current state JSON
+  * Fix SimPort SendEvent - wouldn't work without quality since 1.7.0 
 
 ## 1.7.1
   * Fix windows/mac builds
