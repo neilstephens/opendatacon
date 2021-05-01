@@ -254,6 +254,11 @@ opendnp3::ApplicationIIN DNP3OutstationPort::GetApplicationIIN() const
 	return FromODC(IINFlags);
 }
 
+void DNP3OutstationPort::ExtendCurrentState(Json::Value& state) const
+{
+	state["DNP3msTimeOffset"] = Json::Int64(master_time_offset);
+}
+
 TCPClientServer DNP3OutstationPort::ClientOrServer()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());

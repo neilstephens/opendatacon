@@ -49,6 +49,7 @@ protected:
 	void Build() override;
 
 	// Implement DNP3Port
+	void ExtendCurrentState(Json::Value& state) const override;
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
 	void ChannelWatchdogTrigger(bool on) override;

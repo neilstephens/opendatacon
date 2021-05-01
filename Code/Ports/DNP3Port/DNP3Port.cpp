@@ -154,6 +154,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		state["SourcePort"] = event->GetSourcePort();
 	}
 
+	ExtendCurrentState(ret[time_str]);
 	return ret;
 }
 
