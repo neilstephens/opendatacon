@@ -26,6 +26,7 @@ CommsRideThroughTimer::CommsRideThroughTimer(odc::asio_service &ios,
 	Timeoutms(aTimeoutms),
 	pTimerAccessStrand(ios.make_strand()),
 	RideThroughInProgress(false),
+	CommsIsBad(false),
 	pCommsRideThroughTimer(ios.make_steady_timer()),
 	CommsGoodCB(aCommsGoodCB),
 	CommsBadCB(aCommsBadCB)
@@ -56,9 +57,16 @@ void CommsRideThroughTimer::Trigger()
 					if(!self)
 						return;
 					if(self->RideThroughInProgress)
-						self->CommsBadCB();
+					{
+					      self->CommsBadCB();
+					      self->CommsIsBad = true;
+					}
 					self->RideThroughInProgress = false;
 				}));
+
+			//if comms is already bad - don't wait
+			if(self->CommsIsBad)
+				self->FastForward();
 		});
 }
 
@@ -89,6 +97,9 @@ void CommsRideThroughTimer::Cancel()
 			      self->pCommsRideThroughTimer->cancel();
 			}
 			else
-				self->CommsGoodCB();
+			{
+			      self->CommsGoodCB();
+			      self->CommsIsBad = false;
+			}
 		});
 }

@@ -254,6 +254,11 @@ opendnp3::ApplicationIIN DNP3OutstationPort::GetApplicationIIN() const
 	return FromODC(IINFlags);
 }
 
+void DNP3OutstationPort::ExtendCurrentState(Json::Value& state) const
+{
+	state["DNP3msTimeOffset"] = Json::Int64(master_time_offset);
+}
+
 TCPClientServer DNP3OutstationPort::ClientOrServer()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -434,21 +439,38 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return FromODC(cb_status);
 }
 
+inline void DNP3OutstationPort::UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual)
+{
+	auto prev_event = pDB->Get(event_type,index);
+	if(!prev_event)
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("{}: {} recived for unconfigured index ({})", Name, ToString(event_type), index);
+		return;
+	}
+	auto prev_event_copy = std::make_shared<EventInfo>(*prev_event);
+	prev_event_copy->SetQuality(qual);
+	pDB->Set(prev_event_copy);
+}
+
 template<>
 inline void DNP3OutstationPort::EventT<opendnp3::BinaryQuality>(opendnp3::BinaryQuality qual, uint16_t index, opendnp3::FlagsType FT)
 {
-	bool prev_state = false;
-	try
-	{ //GetPayload will throw for uninitialised payload
-		prev_state = pDB->Get(EventType::Binary,index)->GetPayload<EventType::Binary>();
+	if(auto prev_event = pDB->Get(EventType::Binary,index))
+	{
+		bool prev_state = false;
+		try
+		{ //GetPayload will throw for uninitialised payload
+			prev_state = prev_event->GetPayload<EventType::Binary>();
+		}
+		catch(std::runtime_error&)
+		{}
+		uint8_t qual_w_val = prev_state ? (static_cast<uint8_t>(qual) | static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
+		                     : static_cast<uint8_t>(qual);
+		opendnp3::UpdateBuilder builder;
+		builder.Modify(FT, index, index, qual_w_val);
+		pOutstation->Apply(builder.Build());
 	}
-	catch(std::runtime_error&)
-	{}
-	uint8_t qual_w_val = prev_state ? (static_cast<uint8_t>(qual) | static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
-	                     : static_cast<uint8_t>(qual);
-	opendnp3::UpdateBuilder builder;
-	builder.Modify(FT, index, index, qual_w_val);
-	pOutstation->Apply(builder.Build());
 }
 
 void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -469,9 +491,11 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
+			UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());
 			EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
+			UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>());
 			EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:

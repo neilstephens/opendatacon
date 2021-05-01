@@ -49,6 +49,7 @@ protected:
 	void Build() override;
 
 	// Implement DNP3Port
+	void ExtendCurrentState(Json::Value& state) const override;
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
 	void ChannelWatchdogTrigger(bool on) override;
@@ -103,6 +104,7 @@ private:
 	std::shared_ptr<DNP3OutstationPortCollection> PeerCollection;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
+	void UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual);
 	template<typename T> void EventT(T meas, uint16_t index);
 	template<typename T> void EventT(T qual, uint16_t index, opendnp3::FlagsType FT);
 

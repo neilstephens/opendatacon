@@ -64,6 +64,7 @@ protected:
 	std::unique_ptr<ChannelHandler> pChanH;
 	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 
+	virtual void ExtendCurrentState(Json::Value& state) const {}
 	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;
 	virtual void ChannelWatchdogTrigger(bool on) = 0;
 	virtual TCPClientServer ClientOrServer() = 0;

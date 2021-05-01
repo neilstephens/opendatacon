@@ -579,7 +579,7 @@ inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, cons
 			break;
 		}
 		default:
-			return Json::Value::null;
+			return Json::Value::nullSingleton();
 	}
 	return output;
 }
