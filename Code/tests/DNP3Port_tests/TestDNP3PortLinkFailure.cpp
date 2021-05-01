@@ -103,10 +103,12 @@ inline void require_quality(const QualityFlags& test_qual, const bool test_set, 
 {
 	unsigned int count = 0;
 	bool all_have_qual = false;
+	std::string json_str; //use for debugging failure
 	while(!all_have_qual && count < test_timeout)
 	{
 		all_have_qual = true;
 		auto current_state = pPort->GetCurrentState();
+		json_str = current_state.toStyledString();
 		auto time = current_state.getMemberNames()[0];
 		for(auto t : {"Binaries","Analogs"})
 		{
@@ -119,10 +121,14 @@ inline void require_quality(const QualityFlags& test_qual, const bool test_set, 
 				if(!all_have_qual)
 					break;
 			}
+			if(!all_have_qual)
+				break;
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
 	}
+	if(!all_have_qual)
+		std::cout<<json_str<<std::endl;
 	REQUIRE(all_have_qual);
 }
 
@@ -242,6 +248,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
+		INFO("Asio liftime")
 		auto ios = odc::asio_service::Get();
 		auto work = ios->make_work();
 		std::thread t([ios](){ios->run();});
@@ -254,7 +261,9 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 		// |------------------------|           |---------------------|
 		// [OS] <---TCP MITM---> [MS] <--ODC--> [OS] <---TCP---> [MS]
 
-		{ //lifetime of all test ojects
+		{
+			INFO("Test objects liftime")
+
 			//need a master/outstation pair downstream with a MITM
 			auto pMITM = std::make_shared<ManInTheMiddle>(MITMConfig::SERVER_CLIENT,20000,20001,"DNP3Port");
 			port_pair_t downstream_pair = PortPair(portlib,3,2,MITMConfig::SERVER_CLIENT,20000,20001,true);
@@ -290,8 +299,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 
 			for(size_t i=0; i<10; i++)
 			{
-				pMITM->Drop();
-				//data is being dropped now, so the downstream link should go down
+				pMITM->Down(); //don't just drop, or the link watchdog will cause flapping
 				require_link_down(downstream_pair.first);
 				require_link_down(downstream_pair.second);
 
@@ -300,7 +308,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 				require_quality(QualityFlags::RESTART,false,upstream_pair.second);
 				check_event_values(upstream_pair.second);
 
-				pMITM->Allow();
+				pMITM->Up();
 				require_link_up(downstream_pair.first);
 				require_link_up(downstream_pair.second);
 
@@ -315,25 +323,46 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 			send_events<EventType::Analog>(downstream_pair.first,0,9,QualityFlags::LOCAL_FORCED|QualityFlags::ONLINE);
 			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
 			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
-			pMITM->Drop();
+			pMITM->Down();
 			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
 			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
 			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
 
 			//now try comm lost while upstream disabled
-			pMITM->Allow();
+			pMITM->Up();
 			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
 			require_comms_point(true,upstream_pair.second);
-			upstream_pair.first->Disable();
-			pMITM->Drop();
-			require_quality(QualityFlags::COMM_LOST,true,downstream_pair.second);
-			std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.first);
-			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
-			upstream_pair.first->Enable();
-			//downstream should re-assert comm-lost when connection detected
-			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
 
+			{
+				INFO("Comm lost while upstream disabled")
+				upstream_pair.first->Disable();
+
+				{
+					INFO("Drop downstream link")
+					pMITM->Down();
+					require_quality(QualityFlags::COMM_LOST,true,downstream_pair.second);
+				}
+				//wait to give time for anything unexpected... because we don't expect anything
+				std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+				{
+					INFO("Check upstream didn't get comm-lost: it's disabled")
+					INFO("Check Outstation")
+					require_quality(QualityFlags::COMM_LOST,false,upstream_pair.first);
+					INFO("Check Master")
+					require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
+				}
+
+				{
+					INFO("Check upstream gets comm-lost when it's re-enabled")
+					//downstream should re-assert comm-lost when connection detected
+					upstream_pair.first->Enable();
+					INFO("Check Outstation")
+					require_quality(QualityFlags::COMM_LOST,true,upstream_pair.first);
+					INFO("Check Master")
+					require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
+				}
+			}
 
 			upstream_pair.second->Disable();
 			downstream_pair.second->Disable();
