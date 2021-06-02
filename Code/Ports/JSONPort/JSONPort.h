@@ -47,6 +47,9 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
+	//ODC::DataPort fuction for UI
+	const Json::Value GetCurrentState() const override;
+
 private:
 	bool isServer;
 	std::unique_ptr<TCPSocketManager> pSockMan;
@@ -54,6 +57,7 @@ private:
 	void ReadCompletionHandler(buf_t& readbuf);
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 	void ProcessBraced(const std::string& braced);
+	Json::Value ToJSON(std::shared_ptr<const EventInfo> event, const std::string& SenderName = "") const;
 };
 
 #endif /* JSONDATAPORT_H_ */

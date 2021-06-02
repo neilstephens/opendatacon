@@ -6,8 +6,6 @@
     <title>OpenDataCon</title>
 
     <script src= "/node_modules/jquery/dist/jquery.min.js"> </script>
-    <script src= "/common_modules/js/bootstrap-treeview.min.js"> </script>
-    <script src= "/common_modules/js/build_treeview_data.js"></script>
 
     <link rel="stylesheet" href="/common_modules/css/common.css">
     <link rel="stylesheet" href="/common_modules/css/bootstrap.min.css">
@@ -15,13 +13,7 @@
 
   <body>
     <!-- configuration view -->
-    <div class="container">
-      <div class="row">
-        <div class="col-md-4 col-md-offset-4">
-          <div id="configuration_view" class=""></div>
-        </div>
-      </div>
-    </div>
+     <pre id="configuration_view"></pre>
 
     <script>
       $( document ).ready(function() {
@@ -31,12 +23,7 @@
 
           $.post(url, {Target : target})
               .done(function(data) {
-                  const configuration_data = convert_to_treeview_data(data);
-                  $('#configuration_view').treeview({
-                      openedClass:'glyphicon-chevron-right',
-                      closedClass:'glyphicon-chevron-down',
-                      data: configuration_data,
-                  });
+                  document.getElementById("configuration_view").innerHTML = JSON.stringify(data, undefined, 2);
               });
       });
     </script>

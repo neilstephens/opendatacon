@@ -221,8 +221,8 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 		return false;
 	}
 
-	QualityFlags Q = QualityFlags::ONLINE;
-	if (!quality.empty() && !GetQualityFlagsFromStringName(quality, Q))
+	QualityFlags Q = quality.empty() ? QualityFlags::ONLINE : QualityFlagsFromString(quality);
+	if (Q == QualityFlags::NONE)
 		return false;
 
 	auto indexes = IndexesFromString(index, type);
@@ -728,31 +728,28 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
 		index = event->GetIndex();
-		auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
-		auto feedbacks = pSimConf->BinaryFeedbacks(index);
+		if (pSimConf->IsIndex(odc::EventType::ControlRelayOutputBlock, index))
+		{
+			status = odc::CommandStatus::SUCCESS;
+			auto feedbacks = pSimConf->BinaryFeedbacks(index);
+			if (!feedbacks.empty())
+			{
+				auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
+				status = HandleBinaryFeedback(feedbacks, index, command, message);
+			}
 
-		auto payload = command;
-		std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
-		control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
-		control_event->SetTimestamp(event->GetTimestamp());
-		if (!feedbacks.empty())
-		{
-			status = HandleBinaryFeedback(feedbacks, index, command, message);
-			pSimConf->SetCurrentBinaryControl(control_event, index);
-		}
-		else
-		{
-			std::shared_ptr<BinaryPosition> bp = pSimConf->GetBinaryPosition(index);
-			if (bp != nullptr)
+			std::shared_ptr<PositionFeedback> bp = pSimConf->GetPositionFeedback(index);
+			if (bp)
 			{
-				status = HandleBinaryPosition(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
-				pSimConf->SetCurrentBinaryControl(control_event, index);
+				status = HandlePositionFeedback(bp, event->GetPayload<EventType::ControlRelayOutputBlock>(), message);
 			}
-			else
-			{
-				message = "No feedback positions point configured";
-				status = CommandStatus::NOT_SUPPORTED;
-			}
+
+			auto& command = event->GetPayload<EventType::ControlRelayOutputBlock>();
+			auto payload = command;
+			std::shared_ptr<odc::EventInfo> control_event = std::make_shared<odc::EventInfo>(odc::EventType::ControlRelayOutputBlock, index, event->GetSourcePort(), event->GetQuality());
+			control_event->SetPayload<odc::EventType::ControlRelayOutputBlock>(std::move(payload));
+			control_event->SetTimestamp(event->GetTimestamp());
+			pSimConf->SetLatestControlEvent(control_event, index);
 		}
 	}
 	EventResponse(message, index, pStatusCallback, status);
@@ -852,20 +849,20 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPosition(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedback(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "This binary position point is not supported";
 	if (binary_position->type == odc::FeedbackType::ANALOG)
-		status = HandleBinaryPositionForAnalog(binary_position, command, message);
+		status = HandlePositionFeedbackForAnalog(binary_position, command, message);
 	else if (binary_position->type == odc::FeedbackType::BINARY)
-		status = HandleBinaryPositionForBinary(binary_position, command, message);
+		status = HandlePositionFeedbackForBinary(binary_position, command, message);
 	else if (binary_position->type == odc::FeedbackType::BCD)
-		status = HandleBinaryPositionForBCD(binary_position, command, message);
+		status = HandlePositionFeedbackForBCD(binary_position, command, message);
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary position control is not supported";
@@ -921,7 +918,7 @@ CommandStatus SimPort::HandleBinaryPositionForAnalog(const std::shared_ptr<Binar
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary control position is not supported";
@@ -979,7 +976,7 @@ CommandStatus SimPort::HandleBinaryPositionForBinary(const std::shared_ptr<Binar
 	return status;
 }
 
-CommandStatus SimPort::HandleBinaryPositionForBCD(const std::shared_ptr<BinaryPosition>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
+CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "this binary control position is not supported for bcd type";

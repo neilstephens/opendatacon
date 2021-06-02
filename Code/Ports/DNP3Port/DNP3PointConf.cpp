@@ -49,6 +49,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	// Master Station configuration
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	LANModeTimeSync(false),        /// If true, the master will use the LAN time sync mode
 	DoUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
 	CommsPointRideThroughTimems(0),
@@ -75,6 +76,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	SolConfirmTimeoutms(5000),
 	UnsolConfirmTimeoutms(5000),
 	WaitForCommandResponses(false),
+	TimeSyncOnStart(false),
+	TimeSyncPeriodms(0),
 	// Default Static Variations
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
@@ -193,6 +196,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MasterResponseTimeoutms = JSONRoot["MasterResponseTimeoutms"].asUInt();
 	if (JSONRoot.isMember("MasterRespondTimeSync"))
 		MasterRespondTimeSync = JSONRoot["MasterRespondTimeSync"].asBool();
+	if (JSONRoot.isMember("LANModeTimeSync"))
+		LANModeTimeSync = JSONRoot["LANModeTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
 	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
@@ -287,6 +292,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
 	if (JSONRoot.isMember("WaitForCommandResponses"))
 		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
+	if (JSONRoot.isMember("TimeSyncOnStart"))
+		TimeSyncOnStart = JSONRoot["TimeSyncOnStart"].asBool();
+	if (JSONRoot.isMember("TimeSyncPeriodms"))
+		TimeSyncPeriodms = JSONRoot["TimeSyncPeriodms"].asUInt64();
 
 	// Default Static Variations
 	if (JSONRoot.isMember("StaticBinaryResponse"))
@@ -356,7 +365,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			for(auto index = start; index <= stop; index++)
 			{
 				bool exists = false;
-				for(auto existing_index : AnalogIndicies)
+				for(auto existing_index : AnalogIndexes)
 					if(existing_index == index)
 						exists = true;
 
@@ -373,7 +382,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				AnalogDeadbands[index] = deadband;
 
 				if(!exists)
-					AnalogIndicies.push_back(index);
+					AnalogIndexes.push_back(index);
 
 				if(Analogs[n].isMember("StartVal"))
 				{
@@ -385,10 +394,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 							AnalogStartVals.erase(index);
 						if(AnalogClasses.count(index))
 							AnalogClasses.erase(index);
-						for(auto it = AnalogIndicies.begin(); it != AnalogIndicies.end(); it++)
+						for(auto it = AnalogIndexes.begin(); it != AnalogIndexes.end(); it++)
 							if(*it == index)
 							{
-								AnalogIndicies.erase(it);
+								AnalogIndexes.erase(it);
 								break;
 							}
 					}
@@ -407,7 +416,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					AnalogStartVals.erase(index);
 			}
 		}
-		std::sort(AnalogIndicies.begin(),AnalogIndicies.end());
+		std::sort(AnalogIndexes.begin(),AnalogIndexes.end());
 	}
 
 	if(JSONRoot.isMember("Binaries"))
@@ -433,7 +442,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			{
 
 				bool exists = false;
-				for(auto existing_index : BinaryIndicies)
+				for(auto existing_index : BinaryIndexes)
 					if(existing_index == index)
 						exists = true;
 
@@ -448,7 +457,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					EventBinaryResponses[index] = EventBinaryResponse;
 
 				if(!exists)
-					BinaryIndicies.push_back(index);
+					BinaryIndexes.push_back(index);
 
 				if(Binaries[n].isMember("StartVal"))
 				{
@@ -460,10 +469,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 							BinaryStartVals.erase(index);
 						if(BinaryClasses.count(index))
 							BinaryClasses.erase(index);
-						for(auto it = BinaryIndicies.begin(); it != BinaryIndicies.end(); it++)
+						for(auto it = BinaryIndexes.begin(); it != BinaryIndexes.end(); it++)
 							if(*it == index)
 							{
-								BinaryIndicies.erase(it);
+								BinaryIndexes.erase(it);
 								break;
 							}
 					}
@@ -482,7 +491,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					BinaryStartVals.erase(index);
 			}
 		}
-		std::sort(BinaryIndicies.begin(),BinaryIndicies.end());
+		std::sort(BinaryIndexes.begin(),BinaryIndexes.end());
 	}
 
 	if(JSONRoot.isMember("BinaryControls"))
@@ -508,26 +517,26 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			{
 
 				bool exists = false;
-				for(auto existing_index : ControlIndicies)
+				for(auto existing_index : ControlIndexes)
 					if(existing_index == index)
 						exists = true;
 
 				if(!exists)
-					ControlIndicies.push_back(index);
+					ControlIndexes.push_back(index);
 
 				auto start_val = BinaryControls[n]["StartVal"].asString();
 				if(start_val == "D")
 				{
-					for(auto it = ControlIndicies.begin(); it != ControlIndicies.end(); it++)
+					for(auto it = ControlIndexes.begin(); it != ControlIndexes.end(); it++)
 						if(*it == index)
 						{
-							ControlIndicies.erase(it);
+							ControlIndexes.erase(it);
 							break;
 						}
 				}
 			}
 		}
-		std::sort(ControlIndicies.begin(),ControlIndicies.end());
+		std::sort(ControlIndexes.begin(),ControlIndexes.end());
 	}
 }
 

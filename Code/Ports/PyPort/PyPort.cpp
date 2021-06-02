@@ -332,8 +332,8 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		LOGERROR("Invalid Event Type String passed from Python Code to ODC - {}", EventTypeStr);
 		return nullptr;
 	}
-	QualityFlags QualityResult;
-	if (!GetQualityFlagsFromStringName(QualityStr, QualityResult))
+	QualityFlags QualityResult = QualityFlagsFromString(QualityStr);
+	if (QualityResult == QualityFlags::NONE)
 	{
 		LOGERROR("No Quality Information Passed from Python Code to ODC - {}", QualityStr);
 		return nullptr;

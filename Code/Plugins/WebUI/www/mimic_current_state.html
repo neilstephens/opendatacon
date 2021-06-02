@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+          font-family: Arial;
+          color: white;
+      }
+
+      .split {
+          height: 100%;
+          width: 50%;
+          position: fixed;
+          z-index: 1;
+          top: 0;
+          overflow-x: hidden;
+          padding-top: 20px;
+      }
+
+      .left {
+          left: 0;
+          background-color: #F0FFFF;
+      }
+
+      .right {
+          right: 0;
+          background-color: #FFFFFF;
+      }
+
+      .centered {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          text-align: center;
+      }
+
+      .centered img {
+          width: 150px;
+          border-radius: 50%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <head>
+      <meta charset="utf-8"/>
+      <link rel="stylesheet" href="/common_modules/css/common.css">
+      <link rel="stylesheet" href="/common_modules/css/bootstrap.min.css">
+
+      <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+      <script src="/common_modules/js/bootstrap-treeview.min.js"></script>
+      <script src="/common_modules/js/build_treeview_data.js"></script>
+    </head>
+
+    <div class="split left">
+      <div class="centered">
+        <body>
+          <svg id="mimic-svg" xmlns="http://www.w3.org/2000/svg" width="601.81927" height="725.12518"></svg>
+          <script>
+            // Send the data using post
+            $(document).ready(function() {
+                const type = new URL(window.location.href).searchParams.get('type');
+                const target = new URL(window.location.href).searchParams.get('target');
+
+                const mimic_name = "dmc";
+                const mimic_SVG = "/mimics/" + mimic_name + ".svg";
+                const mimic_JS = "/mimics/" + mimic_name + ".js";
+
+                jQuery.getScript(mimic_JS)
+                    .done(function() {
+                        console.log(mimic_JS + " loaded successfully !!!");
+                    });
+
+                $('#mimic-svg').load(mimic_SVG, null, function() {
+                    window.setInterval(function() { update_values(type, target);  }, 1000);
+                });
+            });
+
+            function update_values(type, target) {
+                const url = "/" + type + " CurrentState";
+                $.post(url, { Target : target })
+                    .done(function(data) {
+                        updateMimic(document.getElementById("mimic-svg"), data);
+                    });
+            }
+          </script>
+        </body>
+      </div>
+    </div>
+
+    <div class="split right">
+      <div class="centered">
+        <body>
+          <!-- current state view -->
+          <div class="container">
+            <div class="row">
+              <div class="col-md-4 col-md-offset-4">
+                <div id="current_state_view" class=""></div>
+              </div>
+            </div>
+          </div>
+
+          <script>
+            /* init function which will parse the url extract the target and load the current state */
+            $(document).ready(function() {
+                const type = new URL(window.location.href).searchParams.get('type');
+                const target = new URL(window.location.href).searchParams.get('target');
+                window.setInterval(function() { refresh_values(type, target); }, 1000);
+            });
+
+            /* get current state by post from the server and display the data in treeview */
+            function refresh_values(type, target) {
+                const url = "/" + type + " CurrentState";
+                $.post(url, {Target : target})
+                    .done(function(data) {
+                        const current_state_data = convert_to_treeview_data(data);
+                        $('#current_state_view').treeview({
+                            openedClass:'glyphicon-chevron-right',
+                            closedClass:'glyphicon-chevron-down',
+                            data: current_state_data,
+                        });
+                    });
+            }
+          </script>
+        </body>
+      </div>
+    </div>
+  </body>
+</html>

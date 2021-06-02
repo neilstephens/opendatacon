@@ -17,12 +17,18 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
+/*
+ *	ChannelStateSubscriber.h
+ *
+ *  Created on: 2018-11-20
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
 #ifndef COMMSRIDETHROUGHTIMER_H
 #define COMMSRIDETHROUGHTIMER_H
 
-#include <functional>
 #include <opendatacon/asio.h>
-
+#include <functional>
 
 class CommsRideThroughTimer: public std::enable_shared_from_this<CommsRideThroughTimer>
 {
@@ -37,9 +43,10 @@ public:
 	void Cancel();
 
 private:
-	uint32_t Timeoutms;
+	const uint32_t Timeoutms;
 	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
 	bool RideThroughInProgress;
+	bool CommsIsBad;
 	std::unique_ptr<asio::steady_timer> pCommsRideThroughTimer;
 	const std::function<void()> CommsGoodCB;
 	const std::function<void()> CommsBadCB;

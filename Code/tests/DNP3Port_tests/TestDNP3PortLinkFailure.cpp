@@ -34,7 +34,7 @@ using port_pair_t = std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort
 const unsigned int link_ka_period = 100;
 const unsigned int test_timeout = 5000;
 
-inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr = 0, MITMConfig direction = MITMConfig::CLIENT_SERVER, unsigned int ms_port = 20000, unsigned int os_port = 20000)
+inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr = 0, MITMConfig direction = MITMConfig::CLIENT_SERVER, unsigned int ms_port = 20000, unsigned int os_port = 20000, bool comms = false)
 {
 	//fetch the function pointers from the lib for new and del for ports
 	newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
@@ -53,11 +53,33 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	conf["ServerType"] = "PERSISTENT";
 	conf["LinkKeepAlivems"] = Json::UInt(link_ka_period);
 	conf["LinkTimeoutms"] = Json::UInt(link_ka_period >> 1);
+	conf["IPConnectRetryPeriodMinms"] = 100;
+	conf["IPConnectRetryPeriodMaxms"] = 100;
 	//man in the middle config: first half opposite of MS, second half opposite of OS
 	conf["TCPClientServer"] = (direction == MITMConfig::SERVER_CLIENT
 	                           || direction == MITMConfig::CLIENT_CLIENT)
 	                          ? "DEFAULT" : "CLIENT";
 	conf["Port"] = Json::UInt(os_port);
+
+	conf["Binaries"][0]["Range"]["Start"] = 0;
+	conf["Binaries"][0]["Range"]["Stop"] = comms ? 9 : 10;
+	conf["Analogs"][0]["Range"]["Start"] = 0;
+	conf["Analogs"][0]["Range"]["Stop"] = 9;
+	conf["BinaryControls"][0]["Range"]["Start"] = 0;
+	conf["BinaryControls"][0]["Range"]["Stop"] = 4;
+	if(comms)
+	{
+		conf["CommsPoint"]["Index"] = 10;
+		conf["CommsPoint"]["FailValue"] = false;
+	}
+	else
+		conf["SetQualityOnLinkStatus"] = false;
+
+	conf["EnableUnsol"] = true;
+	conf["UnsolClass1"] = true;
+	conf["UnsolClass2"] = true;
+	conf["UnsolClass3"] = true;
+	conf["DoUnsolOnStartup"] = true;
 
 	//make an outstation port
 	auto OPUT = std::shared_ptr<DataPort>(newOutstation("Outstation"+std::to_string(os_addr), "", conf), delOutstation);
@@ -77,6 +99,102 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	MPUT->Build();
 
 	return port_pair_t(OPUT,MPUT);
+}
+
+inline void require_quality(const QualityFlags& test_qual, const bool test_set, std::shared_ptr<DataPort> pPort)
+{
+	unsigned int count = 0;
+	bool all_have_qual = false;
+	std::string json_str; //use for debugging failure
+	while(!all_have_qual && count < test_timeout)
+	{
+		all_have_qual = true;
+		auto current_state = pPort->GetCurrentState();
+		json_str = current_state.toStyledString();
+		auto time = current_state.getMemberNames()[0];
+		for(auto t : {"Binaries","Analogs"})
+		{
+			for(Json::ArrayIndex i=0; i<10; i++)
+			{
+				auto qual = QualityFlagsFromString(current_state[time][t][i]["Quality"].asString());
+				all_have_qual = test_set ? (qual & test_qual) != QualityFlags::NONE
+				                : (qual & test_qual) == QualityFlags::NONE;
+
+				if(!all_have_qual)
+					break;
+			}
+			if(!all_have_qual)
+				break;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		count++;
+	}
+	if(!all_have_qual)
+		std::cout<<json_str<<std::endl;
+	REQUIRE(all_have_qual);
+}
+
+inline void require_comms_point(const bool val, std::shared_ptr<DataPort> pPort)
+{
+	unsigned int count = 0;
+	bool pass = false;
+	std::string json_str; //use for debugging failure
+	while(!pass && count < test_timeout)
+	{
+		auto current_state = pPort->GetCurrentState();
+		json_str = current_state.toStyledString();
+		auto time = current_state.getMemberNames()[0];
+		for(Json::ArrayIndex i = 0; i <= 10; i++)
+		{
+			if(current_state[time]["Binaries"][i]["Index"].asUInt() == 10)
+			{
+				pass = (current_state[time]["Binaries"][i]["Value"].asBool() == val
+				        && QualityFlagsFromString(current_state[time]["Binaries"][i]["Quality"].asString()) == QualityFlags::ONLINE);
+				break;
+			}
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		count++;
+	}
+	if(!pass)
+		std::cout<<json_str<<std::endl;
+	REQUIRE(pass);
+}
+
+template<EventType type>
+inline void send_events(std::shared_ptr<DataPort> pPort, size_t start, size_t end, const QualityFlags qual = QualityFlags::ONLINE)
+{
+	for(auto index = start; index <= end; index++)
+	{
+		auto event = std::make_shared<EventInfo>(type,index,"Test",qual);
+		event->SetPayload<type>(static_cast<typename EventTypePayload<type>::type>(index%2));
+		pPort->Event(event,"Test",std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus){}));
+	}
+}
+
+inline void check_event_values(std::shared_ptr<DataPort> pPort)
+{
+	unsigned int count = 0;
+	bool pass = false;
+	std::string json_str; //use for debugging failure
+	while(!pass && count < test_timeout)
+	{
+		auto current_state = pPort->GetCurrentState();
+		json_str = current_state.toStyledString();
+		auto time = current_state.getMemberNames()[0];
+		for(Json::ArrayIndex i = 0; i < 10; i++)
+		{
+			pass = (current_state[time]["Binaries"][i]["Value"].asBool() == static_cast<bool>(current_state[time]["Binaries"][i]["Index"].asUInt()%2)
+			        && current_state[time]["Analogs"][i]["Value"].asUInt() == current_state[time]["Analogs"][i]["Index"].asUInt()%2);
+			if(!pass)
+				break;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		count++;
+	}
+	if(!pass)
+		std::cout<<json_str<<std::endl;
+	REQUIRE(pass);
 }
 
 inline void require_link_up(std::shared_ptr<DataPort> pPort)
@@ -123,6 +241,145 @@ inline unsigned int require_connection_increase(std::shared_ptr<ManInTheMiddle> 
 	}
 	REQUIRE(pMITM->ConnectionCount(dir) > start_conns);
 	return pMITM->ConnectionCount(dir);
+}
+
+TEST_CASE(SUITE("Quality and CommsPoint"))
+{
+	TestSetup();
+
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		INFO("Asio liftime")
+		auto ios = odc::asio_service::Get();
+		auto work = ios->make_work();
+		std::thread t([ios](){ios->run();});
+
+		//This is to test the datacon/gateway situation where
+		//we want the link status of a master to be presented on the
+		//corresponding outstation as bad quality points and a comms point
+
+		// | Downstream connection  |           | Upstream connection |
+		// |------------------------|           |---------------------|
+		// [OS] <---TCP MITM---> [MS] <--ODC--> [OS] <---TCP---> [MS]
+
+		{
+			INFO("Test objects liftime")
+
+			//need a master/outstation pair downstream with a MITM
+			auto pMITM = std::make_shared<ManInTheMiddle>(MITMConfig::SERVER_CLIENT,20000,20001,"DNP3Port");
+			port_pair_t downstream_pair = PortPair(portlib,3,2,MITMConfig::SERVER_CLIENT,20000,20001,true);
+
+			//then an extra pair upstream without MITM
+			//We'll check that the downstream link status flows through to these as quality/commspoint
+			port_pair_t upstream_pair = PortPair(portlib,1,0,MITMConfig::SERVER_CLIENT,20002,20002,false);
+
+			//cross subscribe the two pairs for ODC events - usually a connector would be used, but we can go direct
+			downstream_pair.second->Subscribe(upstream_pair.first.get(),"UpstreamOS");
+			upstream_pair.first->Subscribe(downstream_pair.second.get(),"DownstreamMS");
+
+			downstream_pair.first->Enable();
+			upstream_pair.first->Enable();
+			downstream_pair.second->Enable();
+			upstream_pair.second->Enable();
+
+			require_link_up(downstream_pair.first);
+			require_link_up(upstream_pair.first);
+			require_link_up(downstream_pair.second);
+			require_link_up(upstream_pair.second);
+
+			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
+			require_comms_point(true,upstream_pair.second);
+			require_quality(QualityFlags::RESTART,true,upstream_pair.second);
+
+			//pump through some values
+			send_events<EventType::Binary>(downstream_pair.first,0,9);
+			send_events<EventType::Analog>(downstream_pair.first,0,9);
+
+			require_quality(QualityFlags::RESTART,false,upstream_pair.second);
+			check_event_values(upstream_pair.second);
+
+			for(size_t i=0; i<10; i++)
+			{
+				pMITM->Down(); //don't just drop, or the link watchdog will cause flapping
+				require_link_down(downstream_pair.first);
+				require_link_down(downstream_pair.second);
+
+				require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
+				require_comms_point(false,upstream_pair.second);
+				require_quality(QualityFlags::RESTART,false,upstream_pair.second);
+				check_event_values(upstream_pair.second);
+
+				pMITM->Up();
+				require_link_up(downstream_pair.first);
+				require_link_up(downstream_pair.second);
+
+				require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
+				require_comms_point(true,upstream_pair.second);
+				require_quality(QualityFlags::RESTART,false,upstream_pair.second);
+				check_event_values(upstream_pair.second);
+			}
+
+			//now just make sure COMM_LOST doesn't affect other flags
+			send_events<EventType::Binary>(downstream_pair.first,0,9,QualityFlags::LOCAL_FORCED|QualityFlags::ONLINE);
+			send_events<EventType::Analog>(downstream_pair.first,0,9,QualityFlags::LOCAL_FORCED|QualityFlags::ONLINE);
+			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
+			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
+			pMITM->Down();
+			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
+			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
+			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
+
+			//now try comm lost while upstream disabled
+			pMITM->Up();
+			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
+			require_comms_point(true,upstream_pair.second);
+
+			{
+				INFO("Comm lost while upstream disabled")
+				upstream_pair.first->Disable();
+
+				{
+					INFO("Drop downstream link")
+					pMITM->Down();
+					require_quality(QualityFlags::COMM_LOST,true,downstream_pair.second);
+				}
+				//wait to give time for anything unexpected... because we don't expect anything
+				std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+				{
+					INFO("Check upstream didn't get comm-lost: it's disabled")
+					INFO("Check Outstation")
+					require_quality(QualityFlags::COMM_LOST,false,upstream_pair.first);
+					INFO("Check Master")
+					require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
+				}
+
+				{
+					INFO("Check upstream gets comm-lost when it's re-enabled")
+					//downstream should re-assert comm-lost when connection detected
+					upstream_pair.first->Enable();
+					INFO("Check Outstation")
+					require_quality(QualityFlags::COMM_LOST,true,upstream_pair.first);
+					INFO("Check Master")
+					require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
+				}
+			}
+
+			upstream_pair.second->Disable();
+			downstream_pair.second->Disable();
+			upstream_pair.first->Disable();
+			downstream_pair.first->Disable();
+		} //lifetime of all test ojects
+
+		work.reset();
+		ios->run();
+		t.join();
+		ios.reset();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
 }
 
 TEST_CASE(SUITE("Single Drop"))

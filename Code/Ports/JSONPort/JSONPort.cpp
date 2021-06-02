@@ -125,6 +125,23 @@ void JSONPort::Build()
 		           1000,
 		           true,
 		           pConf->retry_time_ms);
+
+	std::vector<std::shared_ptr<const EventInfo>> init_events;
+	init_events.reserve(pConf->pPointConf->Analogs.size()+
+		pConf->pPointConf->Binaries.size()+
+		pConf->pPointConf->Controls.size()+
+		pConf->pPointConf->AnalogControls.size());
+
+	for(const auto& point : pConf->pPointConf->Analogs)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,point.first,"",QualityFlags::RESTART,0));
+	for(const auto& point : pConf->pPointConf->Binaries)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,point.first,"",QualityFlags::RESTART,0));
+	for(const auto& point : pConf->pPointConf->Controls)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,point.first,"",QualityFlags::RESTART,0));
+	for(const auto& point : pConf->pPointConf->AnalogControls)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputDouble64,point.first,"",QualityFlags::RESTART,0));
+
+	pDB = std::make_unique<EventDB>(init_events);
 }
 
 void JSONPort::ReadCompletionHandler(buf_t& readbuf)
@@ -295,6 +312,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 		//Publish any analog and binary events from above
 		for(auto& event : events)
 		{
+			pDB->Set(event);
 			PublishEvent(event);
 		}
 		//We'll publish any controls separately below, because they each have a callback
@@ -425,6 +443,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							pSockMan->Write(oss.str());
 						});
 				event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(command));
+				pDB->Set(event);
 				PublishEvent(event,pStatusCallback);
 			}
 		}
@@ -490,7 +509,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							pWriter->write(result, &oss); oss << std::endl;
 							pSockMan->Write(oss.str());
 						});
-
+				pDB->Set(event);
 				PublishEvent(event, pStatusCallback);
 			}
 		}
@@ -502,13 +521,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	}
 }
 
-void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, const std::string& SenderName) const
 {
-	if(!enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
-	}
-
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 	auto i = event->GetIndex();
@@ -521,7 +535,13 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	{
 		case EventType::Analog:
 		{
-			auto v = event->GetPayload<EventType::Analog>();
+			typename EventTypePayload<EventType::Analog>::type v;
+			try
+			{
+				v = event->GetPayload<EventType::Analog>();
+			}
+			catch(std::runtime_error&)
+			{}
 			auto& m = pConf->pPointConf->Analogs;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
@@ -530,7 +550,13 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		}
 		case EventType::Binary:
 		{
-			auto v = event->GetPayload<EventType::Binary>();
+			typename EventTypePayload<EventType::Binary>::type v;
+			try
+			{
+				v = event->GetPayload<EventType::Binary>();
+			}
+			catch(std::runtime_error&)
+			{}
 			auto& m = pConf->pPointConf->Binaries;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
@@ -539,7 +565,13 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		}
 		case EventType::ControlRelayOutputBlock:
 		{
-			auto v = std::string(event->GetPayload<EventType::ControlRelayOutputBlock>());
+			std::string v = "";
+			try
+			{
+				v = event->GetPayloadString();
+			}
+			catch(std::runtime_error&)
+			{}
 			auto& m = pConf->pPointConf->Controls;
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
@@ -547,15 +579,28 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 			break;
 		}
 		default:
-			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-			return;
+			return Json::Value::nullSingleton();
 	}
+	return output;
+}
+
+void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	if(!enabled)
+	{
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+	}
+	pDB->Set(event);
+
+	auto output = ToJSON(event,SenderName);
 
 	if(output.isNull())
 	{
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 		return;
 	}
+
+	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 	//TODO: make this writer reusable (class member)
 	//WARNING: Json::StreamWriter isn't threadsafe - maybe just share the StreamWriterBuilder for now...
@@ -569,4 +614,30 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	pSockMan->Write(oss.str());
 
 	(*pStatusCallback)(CommandStatus::SUCCESS);
+}
+
+const Json::Value JSONPort::GetCurrentState() const
+{
+	if(!pDB)
+		return Json::Value();
+
+	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
+
+	auto time_str = since_epoch_to_datetime(msSinceEpoch());
+	Json::Value ret;
+	ret[time_str]["Analogs"] = Json::arrayValue;
+	ret[time_str]["Binaries"] = Json::arrayValue;
+	ret[time_str]["Controls"] = Json::arrayValue;
+	ret[time_str]["AnalogControls"] = Json::arrayValue;
+
+	for(const auto& point : pConf->pPointConf->Analogs)
+		ret[time_str]["Analogs"].append(ToJSON(pDB->Get(EventType::Analog,point.first)));
+	for(const auto& point : pConf->pPointConf->Binaries)
+		ret[time_str]["Binaries"].append(ToJSON(pDB->Get(EventType::Binary,point.first)));
+	for(const auto& point : pConf->pPointConf->Controls)
+		ret[time_str]["Controls"].append(ToJSON(pDB->Get(EventType::ControlRelayOutputBlock,point.first)));
+	for(const auto& point : pConf->pPointConf->AnalogControls)
+		ret[time_str]["AnalogControls"].append(ToJSON(pDB->Get(EventType::AnalogOutputDouble64,point.first)));
+
+	return ret;
 }

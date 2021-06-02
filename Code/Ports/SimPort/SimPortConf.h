@@ -87,7 +87,7 @@ public:
 
 	void Event(std::shared_ptr<odc::EventInfo> event);
 	std::shared_ptr<odc::EventInfo> Event(odc::EventType type, std::size_t index) const;
-	void SetCurrentBinaryControl(std::shared_ptr<odc::EventInfo> event, std::size_t index);
+	void SetLatestControlEvent(std::shared_ptr<odc::EventInfo> event, std::size_t index);
 	void Payload(odc::EventType type, std::size_t index, double payload);
 	double Payload(odc::EventType type, std::size_t index) const;
 	double StartValue(odc::EventType type, std::size_t index) const;
@@ -104,7 +104,7 @@ public:
 	std::vector<std::size_t> Indexes(odc::EventType type) const;
 
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
-	std::shared_ptr<BinaryPosition> GetBinaryPosition(std::size_t index) const;
+	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index) const;
 
 private:
 	std::string m_name;

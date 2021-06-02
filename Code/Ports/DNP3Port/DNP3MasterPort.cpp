@@ -122,6 +122,16 @@ void DNP3MasterPort::SetCommsGood()
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
 		commsUpEvent->SetPayload<EventType::Binary>(!failed_val);
 		PublishEvent(commsUpEvent);
+		pDB->Set(commsUpEvent);
+	}
+
+	if(pConf->pPointConf->SetQualityOnLinkStatus)
+	{
+		// Trigger integrity scan to get point quality
+		// Only way to get true state upstream
+		// Can't just reset quality, because it would make new events for old values
+		if(IntegrityScan)
+			IntegrityScan->Demand();
 	}
 }
 
@@ -134,17 +144,31 @@ void DNP3MasterPort::SetCommsFailed()
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Setting point quality to COMM_LOST.", Name);
 
-		for (auto index : pConf->pPointConf->BinaryIndicies)
+		for (auto index : pConf->pPointConf->BinaryIndexes)
 		{
+			auto last_event = pDB->Get(EventType::Binary,index);
+
 			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
-			event->SetPayload<EventType::BinaryQuality>(QualityFlags::COMM_LOST);
+			event->SetPayload<EventType::BinaryQuality>(last_event->GetQuality()|QualityFlags::COMM_LOST);
 			PublishEvent(event);
+
+			//update the EventDB event with the quality as well
+			auto new_event = std::make_shared<EventInfo>(*last_event);
+			new_event->SetQuality(last_event->GetQuality()|QualityFlags::COMM_LOST);
+			pDB->Set(new_event);
 		}
-		for (auto index : pConf->pPointConf->AnalogIndicies)
+		for (auto index : pConf->pPointConf->AnalogIndexes)
 		{
+			auto last_event = pDB->Get(EventType::Analog,index);
+
 			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
-			event->SetPayload<EventType::AnalogQuality>(QualityFlags::COMM_LOST);
+			event->SetPayload<EventType::AnalogQuality>(last_event->GetQuality()|QualityFlags::COMM_LOST);
 			PublishEvent(event);
+
+			//update the EventDB event with the quality as well
+			auto new_event = std::make_shared<EventInfo>(*last_event);
+			new_event->SetQuality(last_event->GetQuality()|QualityFlags::COMM_LOST);
+			pDB->Set(new_event);
 		}
 	}
 
@@ -158,6 +182,7 @@ void DNP3MasterPort::SetCommsFailed()
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
 		commsDownEvent->SetPayload<EventType::Binary>(std::move(failed_val));
 		PublishEvent(commsDownEvent);
+		pDB->Set(commsDownEvent);
 	}
 }
 
@@ -192,17 +217,6 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Notify subscribers that a connect event has occured
 		PublishEvent(ConnectState::CONNECTED);
 
-		//if it was just a link layer interruption, we might need an integrity scan
-		if(channel_stayed_up)
-		{
-			if(pConf->pPointConf->SetQualityOnLinkStatus)
-			{
-				// Trigger integrity scan to get point quality
-				// Only way to get true state upstream
-				// Can't just reset quality, because it would make new events for old values
-				IntegrityScan->Demand();
-			}
-		}
 		return;
 	}
 
@@ -281,6 +295,8 @@ void DNP3MasterPort::Build()
 		return;
 	}
 
+	InitEventDB();
+
 	opendnp3::MasterStackConfig StackConfig;
 	opendnp3::LinkConfig link(true,pConf->pPointConf->LinkUseConfirms);
 
@@ -297,10 +313,15 @@ void DNP3MasterPort::Build()
 
 	// Master station configuration
 	StackConfig.master.responseTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->MasterResponseTimeoutms);
-	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ? opendnp3::TimeSyncMode::NonLAN : opendnp3::TimeSyncMode::None;
+	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ?
+	                                  (pConf->pPointConf->LANModeTimeSync ? opendnp3::TimeSyncMode::LAN : opendnp3::TimeSyncMode::NonLAN)
+	                                  : opendnp3::TimeSyncMode::None;
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask();
+
+	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
+	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
+
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
@@ -321,9 +342,9 @@ void DNP3MasterPort::Build()
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
+		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
 	else
-		IntegrityScan = pMaster->AddClassScan(opendnp3::ClassField(opendnp3::ClassField::ALL_CLASSES), opendnp3::TimeDuration::Minutes(600000000),ISOEHandle); //ten million hours
+		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Minutes(600000000),ISOEHandle); //ten million hours
 	if(pConf->pPointConf->EventClass1ScanRatems > 0)
 		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class1), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass2ScanRatems > 0)
@@ -359,6 +380,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 			      event->SetTimestamp();
 			}
 			PublishEvent(event);
+			pDB->Set(event);
 		});
 }
 
@@ -378,18 +400,29 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
+	pDB->Set(event);
 
 	if(event->GetEventType() == EventType::ConnectState)
 	{
 		auto state = event->GetPayload<EventType::ConnectState>();
 
-		// If an upstream port has been enabled after the stack has already been enabled, do an integrity scan
-		if (stack_enabled && state == ConnectState::PORT_UP)
+		if(state == ConnectState::PORT_UP)
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Upstream port enabled, performing integrity scan.", Name);
+			// If an upstream port has been enabled after downstream link is up, do an integrity scan
+			if (pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp && IntegrityScan)
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->info("{}: Upstream port enabled, performing integrity scan.", Name);
+				IntegrityScan->Demand();
+			}
 
-			IntegrityScan->Demand();
+			// If the link is down when a port connects, re-asset the comms-down
+			if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->info("{}: Upstream port enabled, re-asserting comm-lost", Name);
+				PortDown();
+			}
 		}
 
 		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -428,7 +461,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 	auto index = event->GetIndex();
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	for(auto i : pConf->pPointConf->ControlIndicies)
+	for(auto i : pConf->pPointConf->ControlIndexes)
 	{
 		if(i == index)
 		{

@@ -67,6 +67,7 @@ public:
 	// Master Station configuration
 	uint32_t MasterResponseTimeoutms;     /// Application layer response timeout
 	bool MasterRespondTimeSync;           /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	bool LANModeTimeSync;                 /// If true, the master will use the LAN time sync mode
 	bool DoUnsolOnStartup;                /// If true, the master will enable unsol on startup
 	bool SetQualityOnLinkStatus;          /// Whether to set point quality to COMM_LOST when link down
 	uint32_t CommsPointRideThroughTimems; /// How long to wait before admitting the link is down
@@ -97,6 +98,8 @@ public:
 	uint32_t SolConfirmTimeoutms;   /// Timeout for solicited confirms
 	uint32_t UnsolConfirmTimeoutms; /// Timeout for unsolicited confirms
 	bool WaitForCommandResponses;   // when responding to a command, wait for downstream command responses, otherwise returns success
+	bool TimeSyncOnStart;
+	uint64_t TimeSyncPeriodms;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;
@@ -120,19 +123,19 @@ public:
 	// Point Configuration
 	// TODO: use struct or class for point configuration
 	std::pair<opendnp3::Binary, size_t> mCommsPoint;
-	std::vector<uint16_t> BinaryIndicies;
+	std::vector<uint16_t> BinaryIndexes;
 	std::map<uint16_t, opendnp3::Binary> BinaryStartVals;
 	std::map<uint16_t, opendnp3::PointClass> BinaryClasses;
 	std::map<uint16_t, opendnp3::StaticBinaryVariation> StaticBinaryResponses;
 	std::map<uint16_t, opendnp3::EventBinaryVariation> EventBinaryResponses;
 
-	std::vector<uint32_t> AnalogIndicies;
+	std::vector<uint32_t> AnalogIndexes;
 	std::map<uint16_t, opendnp3::Analog> AnalogStartVals;
 	std::map<uint16_t, opendnp3::StaticAnalogVariation> StaticAnalogResponses;
 	std::map<uint16_t, opendnp3::EventAnalogVariation> EventAnalogResponses;
 	std::map<uint16_t, opendnp3::PointClass> AnalogClasses;
 	std::map<uint16_t, double> AnalogDeadbands;
-	std::vector<uint16_t> ControlIndicies;
+	std::vector<uint16_t> ControlIndexes;
 };
 
 #endif /* DNP3POINTCONF_H_ */

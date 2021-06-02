@@ -1,4 +1,36 @@
-# opendatacon version 1.6.1
+# opendatacon version 1.7.2
+
+## 1.7.2
+  * DNP3MasterPort re-asserts comms down for late upstream connections
+  * DNP3OutstationPort now stores current state for quality updates
+  * DNP3 time sync offset added to current state JSON
+  * Fix SimPort SendEvent - wouldn't work without quality since 1.7.0 
+
+## 1.7.1
+  * Fix windows/mac builds
+  * Fix crash when quality for unconfigured event sent to DNP3OutstationPort
+
+## 1.7.0
+  * All DataPorts now have access to an EventDB container for storing latest events
+  * DNP3Ports now leverage the EventDB to handle quality better
+	* Existing quality flags and values are retained on comms lost events
+  * JSONPort and DNP3Port use EventDB to provide more comprehensive current state to UIs
+  * Example WebUI html simplified for Configuration and CurrentState pages
+  * Critical fix for issuing DNP3 integrity scans at appropriate times
+    * On startup
+    * And every time COMMS_LOST quality needs clearing
+
+## 1.6.3
+  * DNP3OutstationPort support for requesting and accepting time sync from master
+  * DNP3OutstationPort commands to set application level IIN flags
+  * DNP3Masterstation support for 'LAN' time sync mode
+  * Another fix for SimPort control feedback
+    * validate feedback indexes
+
+## 1.6.2
+  * Hotfix for SimPort control feedback
+    * fix regression in support of control without feedback
+    * fix RESTFUL interface crash when requesting status of control without feeback
 
 ## 1.6.1
   * WebUI uses html files from the install dir by default now

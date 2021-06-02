@@ -54,11 +54,11 @@ matrix:
 
 branches:
   only:
-    - develop
-    - master
-    - /^release\/.*$/
+    #- develop
+    #- master
+    #- /^release\/.*$/
     - /^[0-9]+\.[0-9]+\.[0-9]+.*$/
-    - /^feature\/.*$/
+    #- /^feature\/.*$/
 
 dist: bionic
 
@@ -135,10 +135,10 @@ install:
         ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
         
         #Extras that aren-t yum-able
-        curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm
-        curl -O http://packages.psychotic.ninja/7/plus/x86_64/RPMS//libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
-        rpm -i libmodbus-3.0.6-2.el7.psychotic.x86_64.rpm
-        rpm -i libmodbus-devel-3.0.6-2.el7.psychotic.x86_64.rpm     
+        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-devel-3.0.8-1.el7.x86_64.rpm
+        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-3.0.8-1.el7.x86_64.rpm
+        rpm -i libmodbus-3.0.8-1.el7.x86_64.rpm
+        rpm -i libmodbus-devel-3.0.8-1.el7.x86_64.rpm    
         # To get Python3.6 we need scl-util-build tools
         curl -O http://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
         rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
