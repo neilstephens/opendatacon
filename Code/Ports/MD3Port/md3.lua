@@ -58,7 +58,8 @@ local md3_proto = Proto("md3","MD3 Protocol")
 
 local f = md3_proto.fields
 -- Need to use ProtoFields for the Station, MtoS, Function and Data so that we can then display them as columns, which then means we can export to excel.
-f.md3function = ProtoField.uint8 ("md3.function",  "Function", base.DEC) 
+f.md3function = ProtoField.uint8 ("md3.function",  "Function", base.DEC)
+f.md3seq = ProtoField.uint8 ("md3.md3seq",  "Sequence Number", base.DEC)
 f.station  = ProtoField.uint8 ("md3.station",  "Station", base.HEX) 
 f.mtos = ProtoField.bool ("md3.mtos", "MasterCommand")
 f.module = ProtoField.uint8 ("md3.module",  "Module Addr", base.HEX) 
@@ -121,7 +122,7 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	subtree:append_text (" - " .. functionname)
 	
 	-- Now add the sub trees for the fields we are interested in
-	subtree:add(f.md3function,buffer(1,1)) 
+	subtree:add(f.md3function,buffer(1,1))
 	local stationleaf = subtree:add(f.station, buffer(0,1):bitfield(1,7))
 	if (buffer(0,1):bitfield(1,7) == 0x7F) then
 		stationleaf.append_text(" - WARNING EXTENDED ADDRESS NOT DECODED");
@@ -131,6 +132,9 @@ function md3_proto.dissector(buffer,pinfo,tree)
 	if (buffer(0,1):bitfield(0,1) == 1) then
 		ismaster = false;
 		extra_info = " - Slave"
+		subtree:add(f.md3seq,buffer(2,1):bitfield(4,4))
+	else
+		subtree:add(f.md3seq,buffer(3,1):bitfield(0,4))
 	end
 	pinfo.cols.info = functionname .. extra_info
 	
