@@ -48,6 +48,15 @@ public:
 					return IUIResponder::GenerateResult("No DNP3OutstationPort matched");
 				return IUIResponder::GenerateResult(ToString(target->IINFlags));
 			},"Show the current outstation application level IIN flags. Usage: ShowIINFlags <port_regex>");
+		this->AddCommand("IINRestart", [this](const ParamCollection &params) -> const Json::Value
+			{
+				//one param - string with flags
+				auto target = GetTarget(params).lock();
+				if(!target)
+					return IUIResponder::GenerateResult("No DNP3OutstationPort matched");
+				target->pOutstation->SetRestartIIN();
+				return IUIResponder::GenerateResult("Success");
+			},"Simulate a device restart by setting the stack IIN flag. Usage: IINRestart <port_regex>");
 	}
 	void Add(std::shared_ptr<DNP3OutstationPort> p, const std::string& Name)
 	{
