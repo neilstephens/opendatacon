@@ -153,6 +153,7 @@ public:
 	std::pair<std::string, const IUIResponder*> GetUIResponder() final;
 	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
+	bool UIRandomReponseDrop(const std::string& probability); // Zero probability = does not happen. 1 = every response is dropped
 
 	// Testing use only
 	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }
@@ -171,6 +172,7 @@ private:
 	// UI Testing flags to cause misbehaviour
 	bool FailControlResponse = false;
 	double BitFlipProbability = 0.0;
+	double ResponseDropProbability = 0.0;
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);

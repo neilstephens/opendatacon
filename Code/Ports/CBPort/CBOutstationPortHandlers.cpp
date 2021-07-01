@@ -959,6 +959,22 @@ bool CBOutstationPort::UIRandomReponseBitFlips(const std::string& probability)
 	{}
 	return false;
 }
+bool CBOutstationPort::UIRandomReponseDrops(const std::string& probability)
+{
+	try
+	{
+		auto prob = std::stod(probability);
+		if ((prob > 1.0) || (prob < 0.0))
+			return false;
+		ResponseDropProbability = prob;
+		LOGCRITICAL("{} Set the probability of a dropped response packet to {}", Name, ResponseDropProbability);
+		return true;
+	}
+	catch (...)
+	{
+	}
+	return false;
+}
 #ifdef _MSC_VER
 #pragma endregion
 #endif
