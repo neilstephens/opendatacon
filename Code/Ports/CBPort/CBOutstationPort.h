@@ -156,6 +156,7 @@ public:
 	std::pair<std::string, const IUIResponder*> GetUIResponder() final;
 	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
+	bool UIRandomReponseDrops(const std::string& probability); // Zero probability = does not happen. 1 = there is a drop every response packet.
 
 	// Testing use only
 	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed
@@ -170,9 +171,10 @@ private:
 	//Strand to sync access to the above functions
 	std::unique_ptr<asio::io_service::strand> EventSyncExecutor = odc::asio_service::Get()->make_strand();
 
-	// UI Testing flags to cause misbehaviour
+	// UI Testing flags to cause misbehavior
 	bool FailControlResponse = false;
 	double BitFlipProbability = 0.0;
+	double ResponseDropProbability = 0.0;
 
 	bool DigitalChangedFlagCalculationMethod(void);
 	bool TimeTaggedDataAvailableFlagCalculationMethod(void);

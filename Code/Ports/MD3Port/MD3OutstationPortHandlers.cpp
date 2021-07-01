@@ -1730,6 +1730,22 @@ bool MD3OutstationPort::UIRandomReponseBitFlips(const std::string& probability)
 	{}
 	return false;
 }
+bool MD3OutstationPort::UIRandomReponseDrop(const std::string& probability)
+{
+	try
+	{
+		auto prob = std::stod(probability);
+		if ((prob > 1.0) || (prob < 0.0))
+			return false;
+		ResponseDropProbability = prob;
+		LOGCRITICAL("{} Set the probability of a dropped reponseset to {}", Name, ResponseDropProbability);
+		return true;
+	}
+	catch (...)
+	{
+	}
+	return false;
+}
 #ifdef _MSC_VER
 #pragma endregion
 #endif

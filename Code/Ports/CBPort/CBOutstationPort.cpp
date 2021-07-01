@@ -169,8 +169,21 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 	}
 	else
 	{
-		LOGDEBUG("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
+		if (ResponseDropProbability != 0.0)
+		{
+			// Setup a random generator
+			std::random_device rd;
+			std::mt19937 e2(rd());
+			std::uniform_real_distribution<> dist(0, 1);
 
+			if (dist(e2) < ResponseDropProbability)
+			{
+				LOGDEBUG("{} - Dropping Message - {}", Name, CBMessageAsString(CompleteCBMessage));
+				return;
+			}
+		}
+
+		LOGDEBUG("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
 		// Done this way just to get context into log messages.
 		CBPort::SendCBMessage(CompleteCBMessage);
 	}
@@ -185,7 +198,7 @@ CBMessage_t CBOutstationPort::CorruptCBMessage(const CBMessage_t& CompleteCBMess
 		std::mt19937 e2(rd());
 		std::uniform_real_distribution<> dist(0, 1);
 
-		if (dist(e2) > BitFlipProbability)
+		if (dist(e2) < BitFlipProbability)
 		{
 			CBMessage_t ResMsg = CompleteCBMessage;
 			size_t messagelen = CompleteCBMessage.size();

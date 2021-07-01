@@ -169,8 +169,20 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 	}
 	else
 	{
-		LOGDEBUG("{} - Sending Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
+		if (ResponseDropProbability != 0.0)
+		{
+			// Setup a random generator
+			std::random_device rd;
+			std::mt19937 e2(rd());
+			std::uniform_real_distribution<> dist(0, 1);
 
+			if (dist(e2) < ResponseDropProbability)
+			{
+				LOGDEBUG("{} - Dropping Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
+				return;
+			}
+		}
+		LOGDEBUG("{} - Sending Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
 		// Done this way just to get context into log messages.
 		MD3Port::SendMD3Message(CompleteMD3Message);
 	}
@@ -185,7 +197,7 @@ MD3Message_t MD3OutstationPort::CorruptMD3Message(const MD3Message_t& CompleteMD
 		std::mt19937 e2(rd());
 		std::uniform_real_distribution<> dist(0, 1);
 
-		if (dist(e2) > BitFlipProbability)
+		if (dist(e2) < BitFlipProbability)
 		{
 			MD3Message_t ResMsg = CompleteMD3Message;
 			size_t messagelen = CompleteMD3Message.size();
