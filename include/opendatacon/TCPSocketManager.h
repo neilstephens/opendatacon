@@ -90,6 +90,14 @@ struct TCPKeepaliveOpts
 	unsigned int fail_count;
 };
 
+struct throttle_data_t
+{
+	bool is_active;
+	std::chrono::microseconds needed_delay;
+	std::chrono::system_clock::time_point time_before;
+	size_t transfer_size;
+};
+
 class TCPSocketManager
 {
 public:
@@ -104,6 +112,8 @@ public:
 		      = std::numeric_limits<size_t>::max(),                       //maximum number of writes to buffer
 		const bool aauto_reopen = false,                                  //Keeps the socket open (retry on error), unless you explicitly Close() it
 		const uint16_t aretry_time_ms = 0,                                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
+		const uint64_t athrottle_bitrate = 0,                             //You can throttle the throughput, zero means don't throttle
+		const uint64_t athrottle_chunksize = 0,                           //You can define the max chunksize in bytes to write in one go when throttling, zero means dont chunk writes
 		const std::function<void(const std::string&,const std::string&)>& //
 		aLogCallback = [](const std::string&, const std::string&){},      //Handler for log messages
 		const bool useKeepalives = true,                                  //Set TCP keepalive socket option
@@ -160,6 +170,10 @@ private:
 	uint16_t retry_time_ms;
 	uint16_t ramp_time_ms; //keep track of exponential backoff
 
+	//throttling
+	const uint64_t throttle_bitrate;
+	const uint64_t throttle_chunksize;
+
 	//Host/IP and Port resolution:
 	const std::string host_name;
 	const std::string service_name;
@@ -176,12 +190,14 @@ private:
 	void ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
 	void ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
 	void CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
+	void ThrottleCheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, throttle_data_t throttle_data, std::shared_ptr<void> tracker);
 	void WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
 	void ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str);
 	void Read(std::string remote_addr_str, std::shared_ptr<void> tracker);
 	void Open(std::shared_ptr<void> tracker);
 	void AutoOpen(std::shared_ptr<void> tracker);
 	void AutoClose(std::shared_ptr<void> tracker);
+	inline throttle_data_t CheckThrottle(const size_t data_size);
 };
 
 } //namespace odc
