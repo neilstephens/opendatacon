@@ -67,7 +67,9 @@ CBConnection::CBConnection
 	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
-	uint16_t retry_time_ms
+	uint16_t retry_time_ms,
+	uint64_t throttle_bitrate,
+	uint64_t throttle_chunksize
 ):
 	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
@@ -81,7 +83,7 @@ CBConnection::CBConnection
 		           std::bind(&CBConnection::SocketStateHandler, this, std::placeholders::_1),
 		           std::numeric_limits<size_t>::max(),
 		           true,
-		           retry_time_ms);
+		           retry_time_ms,throttle_bitrate,throttle_chunksize);
 
 	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
@@ -112,7 +114,7 @@ ConnectionTokenType CBConnection::AddConnection
 		// If we give each connectiontoken a shared_ptr to the connection, then in the Connectiontoken destructors,
 		// when the use_count is 2 (the map and the connectiontoken), then it is time to destroy the connection.
 
-		ConnectionMap[ChannelID] = std::make_shared<CBConnection>(apIOS, aisServer, aEndPoint, aPort, isbakerdevice, retry_time_ms);
+		ConnectionMap[ChannelID] = std::make_shared<CBConnection>(apIOS, aisServer, aEndPoint, aPort, isbakerdevice, retry_time_ms, throttle_bitrate, throttle_chunksize);
 	}
 	else
 		LOGDEBUG("ConnectionTok already exists, using that connection - {}",ChannelID);
