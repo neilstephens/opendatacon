@@ -41,6 +41,8 @@ TCPSocketManager::TCPSocketManager
 	const size_t abuffer_limit,
 	const bool aauto_reopen,
 	const uint16_t aretry_time_ms,
+	const uint64_t athrottle_bitrate,
+	const uint64_t athrottle_chunksize,
 	const std::function<void(const std::string&,const std::string&)>& aLogCallback,
 	const bool useKeepalives,
 	const unsigned int KeepAliveTimeout_s,
@@ -67,6 +69,8 @@ TCPSocketManager::TCPSocketManager
 	auto_reopen(aauto_reopen),
 	retry_time_ms(aretry_time_ms),
 	ramp_time_ms(0),
+	throttle_bitrate(athrottle_bitrate),
+	throttle_chunksize(athrottle_chunksize),
 	host_name(aEndPoint),
 	service_name(aPort),
 	EndpointIterator(),
@@ -138,16 +142,18 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 			else
 				remote_addr_str = "'"+addr_err.message()+"'";
 
-			asio::async_write(*pWriteSock,buf,asio::transfer_all(),pSockStrand->wrap([this,tracker,buf,pWriteSock,remote_addr_str](asio::error_code err_code, std::size_t n)
+			auto throttle_data = CheckThrottle(buf.size());
+
+			auto write_handler = pSockStrand->wrap([this,tracker,buf,pWriteSock,throttle_data,remote_addr_str](asio::error_code err_code, std::size_t n)
 				{
 					write_count += n;
-					pending_write = false;
-					if(err_code)
+					if(err_code || buf.size() > n)
 					{
-					      LogCallback("debug","Async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
+					      if(err_code)
+							LogCallback("debug","Async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
 					      if(buf.size() > n)
 					      {
-					            LogCallback("debug","Buffering "+std::to_string(buf.size()-n)+" bytes");
+					            LogCallback("trace","Buffering "+std::to_string(buf.size()-n)+" bytes");
 					            queue_writebufs->push_back(buf);
 					            queue_writebufs->back() += n;
 					            if(queue_writebufs->size() > buffer_limit)
@@ -157,8 +163,12 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 							}
 						}
 					}
-					CheckLastWrite(pWriteSock,remote_addr_str,tracker);
-				}));
+					ThrottleCheckLastWrite(pWriteSock,remote_addr_str,throttle_data,tracker);
+				});
+			if(throttle_data.is_active)
+				asio::async_write(*pWriteSock,buf,asio::transfer_exactly(buf.size()),write_handler);
+			else
+				asio::async_write(*pWriteSock,buf,asio::transfer_all(),write_handler);
 		});
 }
 
@@ -278,6 +288,7 @@ void TCPSocketManager::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandid
 
 void TCPSocketManager::CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
+	pending_write = false;
 	//if the connection is still the active one, keep writing
 	if(pWriteSock == pSock && isConnected && !manuallyClosed)
 		WriteBuffer(pWriteSock,remote_addr_str,tracker);
@@ -292,6 +303,28 @@ void TCPSocketManager::CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWr
 	}
 }
 
+void TCPSocketManager::ThrottleCheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, throttle_data_t throttle_data, std::shared_ptr<void> tracker)
+{
+	if(throttle_data.is_active)
+	{
+		auto delay_so_far = std::chrono::system_clock::now() - throttle_data.time_before;
+		if(throttle_data.needed_delay > delay_so_far)
+		{
+			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+			pTimer->expires_from_now(throttle_data.needed_delay - delay_so_far);
+			pTimer->async_wait(pSockStrand->wrap([this,pTimer,pWriteSock,remote_addr_str,tracker](asio::error_code)
+				{
+					CheckLastWrite(pWriteSock,remote_addr_str,tracker);
+				}));
+			auto took = std::chrono::duration_cast<std::chrono::microseconds>(delay_so_far).count();
+			auto wait = std::chrono::duration_cast<std::chrono::microseconds>(throttle_data.needed_delay - delay_so_far).count();
+			LogCallback("trace","Throttle waiting "+std::to_string(wait)+" microseconds after writing "
+				+std::to_string(throttle_data.transfer_size)+" bytes in "+std::to_string(took)+" microseconds.");
+			return;
+		}
+	}
+	CheckLastWrite(pWriteSock,remote_addr_str,tracker);
+}
 
 void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
@@ -307,12 +340,18 @@ void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWrite
 		}
 
 		pending_write = true;
-		asio::async_write(*pWriteSock,*dispatch_writebufs,asio::transfer_all(),pSockStrand->wrap([this,pWriteSock,remote_addr_str,tracker](asio::error_code err_code, std::size_t n)
+
+		size_t data_size = 0;
+		for(auto& b : *dispatch_writebufs)
+			data_size += b.size();
+
+		auto throttle_data = CheckThrottle(data_size);
+
+		auto write_handler = pSockStrand->wrap([this,pWriteSock,data_size,throttle_data,remote_addr_str,tracker](asio::error_code err_code, std::size_t n)
 			{
-				pending_write = false;
 				write_count += n;
 
-				if(err_code)
+				if(err_code || data_size > n)
 				{
 				      size_t consumed = 0;
 				      while(consumed < n)
@@ -327,21 +366,24 @@ void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWrite
 				            dispatch_writebufs->erase(dispatch_writebufs->begin());
 					}
 
-				      size_t left = 0;
-				      for(auto& b : *dispatch_writebufs)
-						left += b.size();
-
-				      LogCallback("debug","Buffer async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(left+consumed)+" bytes) error: "+err_code.message());
-				      LogCallback("debug","Leaving "+std::to_string(left)+" bytes in buffer");
+				      if(err_code)
+				      {
+				            LogCallback("debug","Buffer async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(data_size)+" bytes) error: "+err_code.message());
+				            LogCallback("debug","Leaving "+std::to_string(data_size-n)+" bytes in buffer");
+					}
 				}
 				else //wrote everything, connection still healthy
 					dispatch_writebufs->clear();
 
-				CheckLastWrite(pWriteSock,remote_addr_str,tracker);
-			}));
+				ThrottleCheckLastWrite(pWriteSock,remote_addr_str,throttle_data,tracker);
+			});
+
+		if(throttle_data.is_active)
+			asio::async_write(*pWriteSock,*dispatch_writebufs,asio::transfer_exactly(throttle_data.transfer_size),write_handler);
+		else
+			asio::async_write(*pWriteSock,*dispatch_writebufs,asio::transfer_all(),write_handler);
 	}
 }
-
 
 void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str)
 {
@@ -378,27 +420,58 @@ void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, a
 	WriteBuffer(pSock,remote_addr_str,tracker);
 }
 
+void TCPSocketManager::ThrottleReadHandler(const size_t n, asio::error_code err_code, const std::string& remote_addr_str, std::shared_ptr<void> tracker)
+{
+	if(n)
+	{
+		auto throttle_data = CheckThrottle(n);
+		if(throttle_data.is_active)
+		{
+			readbuf.commit(throttle_data.transfer_size);
+			ReadCallback(readbuf);
+			auto data_leftover = n-throttle_data.transfer_size;
+			auto delay_so_far = std::chrono::system_clock::now() - throttle_data.time_before;
+			if(throttle_data.needed_delay > delay_so_far)
+			{
+				std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+				pTimer->expires_from_now(throttle_data.needed_delay - delay_so_far);
+				pTimer->async_wait(pSockStrand->wrap([this,pTimer,data_leftover,err_code,remote_addr_str,tracker](asio::error_code)
+					{
+						ThrottleReadHandler(data_leftover,err_code,remote_addr_str,tracker);
+					}));
+				auto took = std::chrono::duration_cast<std::chrono::microseconds>(delay_so_far).count();
+				auto wait = std::chrono::duration_cast<std::chrono::microseconds>(throttle_data.needed_delay - delay_so_far).count();
+				LogCallback("trace","Throttle waiting "+std::to_string(wait)+" microseconds after handling "
+					+std::to_string(throttle_data.transfer_size)+" byte read in "+std::to_string(took)+" microseconds.");
+				return;
+			}
+			ThrottleReadHandler(data_leftover,err_code,remote_addr_str,tracker);
+			return;
+		}
+		readbuf.commit(n);
+		ReadCallback(readbuf);
+	}
+	pending_read = false;
+	if(err_code)
+	{
+		auto level = (err_code == asio::error::eof) ? "info" : "warning";
+		LogCallback(level,"Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) : "+err_code.message());
+		pSock->shutdown(asio::ip::tcp::socket::shutdown_receive,err_code);
+		if(err_code)
+			LogCallback("debug","Read shutdown failed: "+err_code.message());
+		AutoClose(tracker);
+		AutoOpen(tracker);
+	}
+	else
+		Read(remote_addr_str,tracker);
+}
 
 void TCPSocketManager::Read(std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	pending_read = true;
-	asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str](asio::error_code err_code, std::size_t n)
+	asio::async_read(*pSock, readbuf.prepare(65536), asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str](asio::error_code err_code, std::size_t n)
 		{
-			pending_read = false;
-			if(n)
-				ReadCallback(readbuf);
-			if(err_code)
-			{
-			      auto level = (err_code == asio::error::eof) ? "info" : "warning";
-			      LogCallback(level,"Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) : "+err_code.message());
-			      pSock->shutdown(asio::ip::tcp::socket::shutdown_receive,err_code);
-			      if(err_code)
-					LogCallback("debug","Read shutdown failed: "+err_code.message());
-			      AutoClose(tracker);
-			      AutoOpen(tracker);
-			}
-			else
-				Read(remote_addr_str,tracker);
+			ThrottleReadHandler(n,err_code,remote_addr_str,tracker);
 		}));
 }
 
@@ -466,6 +539,25 @@ void TCPSocketManager::AutoClose(std::shared_ptr<void> tracker)
 			//Force endpoint(s) resolution between connections
 			EndpointIterator = asio::ip::tcp::resolver::iterator();
 		});
+}
+
+throttle_data_t TCPSocketManager::CheckThrottle(const size_t data_size)
+{
+	throttle_data_t throttle_data;
+	throttle_data.time_before = std::chrono::system_clock::now();
+	auto byterate = throttle_bitrate >> 3;
+	if(byterate == 0)
+	{
+		throttle_data.is_active = false;
+		return throttle_data;
+	}
+	throttle_data.is_active = true;
+	if(throttle_chunksize == 0)
+		throttle_data.transfer_size = data_size;
+	else
+		throttle_data.transfer_size = (throttle_chunksize > data_size) ? data_size : throttle_chunksize;
+	throttle_data.needed_delay = std::chrono::microseconds(1000000*throttle_data.transfer_size/byterate);
+	return throttle_data;
 }
 
 } // namespace odc

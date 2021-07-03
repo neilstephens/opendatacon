@@ -97,7 +97,9 @@ ConnectionTokenType CBConnection::AddConnection
 	const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
 	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	bool isbakerdevice,
-	uint16_t retry_time_ms
+	uint16_t retry_time_ms,
+	uint64_t throttle_bitrate,
+	uint64_t throttle_chunksize
 )
 {
 	std::string ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);

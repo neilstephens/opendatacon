@@ -69,8 +69,22 @@ public:
 				auto probability = params.at("0");
 				return target->UIRandomReponseBitFlips(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
 
-			},"Sets the probability of a bit flip in the response packet and returns if the operation was succesful. Syntax: 'RandomBitFlips <MD3OutstationPort|Regex> <Probability (float)>");
+			},"Sets the probability of a bit flip in the response packet and returns if the operation was successful. Syntax: 'RandomBitFlips <MD3OutstationPort|Regex> <Probability (float)>");
+		this->AddCommand("RandomResponseDrops", [this](const ParamCollection& params) -> const Json::Value
+			{
+				auto target = GetTarget(params).lock();
+				if (!target)
+					return IUIResponder::GenerateResult("No MD3OutstationPort matched");
 
+				//param 0: Probability 0 to 1
+				if (params.count("0") == 0)
+				{
+					return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a drop range 0 to 1");
+				}
+				auto probability = params.at("0");
+				return target->UIRandomReponseBitFlips(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
+
+			}, "Sets the probability of a dropped response packet and returns if the operation was successful. Syntax: 'RandomResponseDrops <MD3OutstationPort|Regex> <Probability (float)>");
 	}
 
 	void Add(std::shared_ptr<MD3OutstationPort> p, const std::string& Name)

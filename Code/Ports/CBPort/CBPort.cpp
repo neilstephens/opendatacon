@@ -92,6 +92,10 @@ void CBPort::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("TCPConnectRetryPeriodms"))
 		static_cast<CBPortConf*>(pConf.get())->mAddrConf.TCPConnectRetryPeriodms = numeric_cast<uint16_t>(JSONRoot["TCPConnectRetryPeriodms"].asUInt());
+	if (JSONRoot.isMember("TCPThrottleBitrate"))
+		static_cast<CBPortConf*>(pConf.get())->mAddrConf.TCPThrottleBitrate = JSONRoot["TCPThrottleBitrate"].asUInt64();
+	if (JSONRoot.isMember("TCPThrottleChunksize"))
+		static_cast<CBPortConf*>(pConf.get())->mAddrConf.TCPThrottleChunksize = JSONRoot["TCPThrottleChunksize"].asUInt64();
 
 }
 
