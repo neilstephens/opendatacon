@@ -90,7 +90,10 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("TCPConnectRetryPeriodms"))
 		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.TCPConnectRetryPeriodms = numeric_cast<uint16_t>(JSONRoot["TCPConnectRetryPeriodms"].asUInt());
-
+	if (JSONRoot.isMember("TCPThrottleBitrate"))
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.TCPThrottleBitrate = JSONRoot["TCPThrottleBitrate"].asUInt64();
+	if (JSONRoot.isMember("TCPThrottleChunksize"))
+		static_cast<MD3PortConf*>(pConf.get())->mAddrConf.TCPThrottleChunksize = JSONRoot["TCPThrottleChunksize"].asUInt64();
 }
 
 int MD3Port::Limit(int val, int max)

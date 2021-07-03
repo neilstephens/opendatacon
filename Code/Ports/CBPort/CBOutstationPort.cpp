@@ -145,7 +145,7 @@ void CBOutstationPort::Build()
 	MyPointConf->PointTable.Build(Name, IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEBufferOverflowFlag);
 
 	// Creates internally if necessary
-	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms, MyConf->mAddrConf.TCPThrottleBitrate, MyConf->mAddrConf.TCPThrottleChunksize); //Static method
 
 
 	std::function<void(CBMessage_t &&CBMessage)> aReadCallback = std::bind(&CBOutstationPort::ProcessCBMessage, this, std::placeholders::_1);
