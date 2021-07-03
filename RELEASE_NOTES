@@ -1,4 +1,10 @@
-# opendatacon version 1.7.2
+# opendatacon version 1.7.3
+
+## 1.7.3
+  * DNP3OutstationPort UI command for simulating restart IIN
+  * TCP throttling (config options to use throttling in MD3 and CB Ports)
+  * Simulate dropped packets in MD3 and CB Ports
+  * Sequence numbers in MD3 wireshark disector
 
 ## 1.7.2
   * DNP3MasterPort re-asserts comms down for late upstream connections
