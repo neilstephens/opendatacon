@@ -420,27 +420,58 @@ void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, a
 	WriteBuffer(pSock,remote_addr_str,tracker);
 }
 
+void TCPSocketManager::ThrottleReadHandler(const size_t n, asio::error_code err_code, const std::string& remote_addr_str, std::shared_ptr<void> tracker)
+{
+	if(n)
+	{
+		auto throttle_data = CheckThrottle(n);
+		if(throttle_data.is_active)
+		{
+			readbuf.commit(throttle_data.transfer_size);
+			ReadCallback(readbuf);
+			auto data_leftover = n-throttle_data.transfer_size;
+			auto delay_so_far = std::chrono::system_clock::now() - throttle_data.time_before;
+			if(throttle_data.needed_delay > delay_so_far)
+			{
+				std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+				pTimer->expires_from_now(throttle_data.needed_delay - delay_so_far);
+				pTimer->async_wait(pSockStrand->wrap([this,pTimer,data_leftover,err_code,remote_addr_str,tracker](asio::error_code)
+					{
+						ThrottleReadHandler(data_leftover,err_code,remote_addr_str,tracker);
+					}));
+				auto took = std::chrono::duration_cast<std::chrono::microseconds>(delay_so_far).count();
+				auto wait = std::chrono::duration_cast<std::chrono::microseconds>(throttle_data.needed_delay - delay_so_far).count();
+				LogCallback("trace","Throttle waiting "+std::to_string(wait)+" microseconds after handling "
+					+std::to_string(throttle_data.transfer_size)+" byte read in "+std::to_string(took)+" microseconds.");
+				return;
+			}
+			ThrottleReadHandler(data_leftover,err_code,remote_addr_str,tracker);
+			return;
+		}
+		readbuf.commit(n);
+		ReadCallback(readbuf);
+	}
+	pending_read = false;
+	if(err_code)
+	{
+		auto level = (err_code == asio::error::eof) ? "info" : "warning";
+		LogCallback(level,"Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) : "+err_code.message());
+		pSock->shutdown(asio::ip::tcp::socket::shutdown_receive,err_code);
+		if(err_code)
+			LogCallback("debug","Read shutdown failed: "+err_code.message());
+		AutoClose(tracker);
+		AutoOpen(tracker);
+	}
+	else
+		Read(remote_addr_str,tracker);
+}
 
 void TCPSocketManager::Read(std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	pending_read = true;
-	asio::async_read(*pSock, readbuf, asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str](asio::error_code err_code, std::size_t n)
+	asio::async_read(*pSock, readbuf.prepare(65536), asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str](asio::error_code err_code, std::size_t n)
 		{
-			pending_read = false;
-			if(n)
-				ReadCallback(readbuf);
-			if(err_code)
-			{
-			      auto level = (err_code == asio::error::eof) ? "info" : "warning";
-			      LogCallback(level,"Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) : "+err_code.message());
-			      pSock->shutdown(asio::ip::tcp::socket::shutdown_receive,err_code);
-			      if(err_code)
-					LogCallback("debug","Read shutdown failed: "+err_code.message());
-			      AutoClose(tracker);
-			      AutoOpen(tracker);
-			}
-			else
-				Read(remote_addr_str,tracker);
+			ThrottleReadHandler(n,err_code,remote_addr_str,tracker);
 		}));
 }
 
