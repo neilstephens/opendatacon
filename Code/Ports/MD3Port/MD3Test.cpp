@@ -772,18 +772,6 @@ TEST_CASE("MD3Block - Fn11")
 	REQUIRE(b11a.GetModuleCount() == 5);
 	REQUIRE(b11a.IsEndOfMessageBlock() == false);
 	REQUIRE(b11a.CheckSumPasses());
-
-	MD3BlockData ba((char)0xCB, 0x0B, 0x0E, 0x6B, false);
-	MD3BlockFn11StoM b11as(ba);
-	MD3BlockFn11StoM p11(0x4b, 0, 0xe, 0xb, false, true, true, false);
-	// 0xCB, 0x0B, 0x0E, 0x6B -35-00-25-00-14-02-8F-00-26-00-14-04-B6-00-27-00-00-40-8D-00-28-00-70-39-89-00-29-00-38-73-A3-00-2A-00-24-1C-86-00-2B-00-68-E0-BF-00-2C-00-72-39-9F-00-2D-00-38-70-BC-00-2E-00-24-00-87-00-2F-00-40-00-DC-00
-	int sta = b11as.GetStationAddress();
-	bool ismas = b11as.IsMasterToStationMessage();
-	int fnc = b11as.GetFunctionCode();
-	int dsn = b11as.GetDigitalSequenceNumber();
-	bool chks = b11as.CheckSumPasses();
-	int tevc = b11as.GetTaggedEventCount();
-	int mcnt = b11as.GetModuleCount();
 }
 TEST_CASE("MD3Block - Fn12")
 {
@@ -3552,12 +3540,8 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
 		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
 		auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
-		MD3BlockData b2[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime/1000)),
+		MD3BlockData b[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime/1000)),
 			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true)};
-
-		// 0xCB, 0x0B, 0x0E, 0x6B	Changed address to 7C from 4B
-		MD3BlockFn11StoM p11(0x7C,0,0xe,0xb, false, true, true, false);
-		MD3BlockData b[] = { p11, MD3BlockData(0x35002500), MD3BlockData(0x14028F00), MD3BlockData(0x26001404), MD3BlockData(0xB6002700), MD3BlockData(0x00408D00), MD3BlockData(0x28007039), MD3BlockData(0x89002900), MD3BlockData(0x3873A300), MD3BlockData(0x2A00241C), MD3BlockData(0x86002B00), MD3BlockData(0x68E0BF00), MD3BlockData(0x2C007239), MD3BlockData(0x9F002D00), MD3BlockData(0x3870BC00), MD3BlockData(0x2E002400), MD3BlockData(0x87002F00), MD3BlockData(0x4000DC00,true) };
 
 		for (auto bl :b)
 			MAoutput << bl.ToBinaryString();
