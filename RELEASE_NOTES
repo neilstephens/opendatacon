@@ -1,4 +1,7 @@
-# opendatacon version 1.7.4
+# opendatacon version 1.7.5
+
+## 1.7.5
+  * AnalogScaling Transform added
 
 ## 1.7.4
   * Hotfix - the throttling wasn't actually being used in 1.7.3
