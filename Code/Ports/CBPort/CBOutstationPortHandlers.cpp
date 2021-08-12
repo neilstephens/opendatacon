@@ -270,13 +270,13 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				// We dont think about open or closed, we will just be getting a value of 1 or 0 from the real outstation, or a simulator. So we dont do inversion or anything like that.
 				// We do need to track the types of transision, and the point has a special field to do this.
 
-				      // Set our bit and MC changed flag in the output. Data bit is first then change bit So bit 11 = changea, bit 10 = data in 12 bit word - 11 highest bit.
+				      // Set our bit and MC changed flag in the output. Data bit is first (low) then change bit (higher) So bit 11 = changea, bit 10 = data in 12 bit word - 11 highest bit.
 				      uint8_t result;
 				      bool MCS;
 				      pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
 
 				      if (pt.GetPointType() == MCA)
-						result = !result; // MCA point on the wire is inverted.
+						result = !result; // MCA point on the wire is inverted. Closed == 0
 
 				      if (result == 1) // Status
 				      {
