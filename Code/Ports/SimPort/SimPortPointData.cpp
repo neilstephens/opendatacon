@@ -302,9 +302,10 @@ void SimPortPointData::CreateBinaryControl(std::size_t index,
 	odc::FeedbackType type,
 	const std::vector<std::size_t>& indexes,
 	const std::vector<odc::PositionAction>& action,
-	std::size_t lower_limit, std::size_t raise_limit)
+	std::size_t lower_limit, std::size_t raise_limit,
+	double tap_step)
 {
-	m_binary_control.CreateBinaryControl(index, port_source, type, indexes, action, lower_limit, raise_limit);
+	m_binary_control.CreateBinaryControl(index, port_source, type, indexes, action, lower_limit, raise_limit, tap_step);
 }
 
 std::shared_ptr<PositionFeedback> SimPortPointData::GetPositionFeedback(std::size_t index)

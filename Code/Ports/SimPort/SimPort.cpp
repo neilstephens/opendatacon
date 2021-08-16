@@ -880,7 +880,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 			{
 				if (payload < binary_position->raise_limit)
 				{
-					++payload;
+					payload += binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
@@ -896,7 +896,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 			{
 				if (payload > binary_position->lower_limit)
 				{
-					--payload;
+					payload -= binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
@@ -945,7 +945,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<Pos
 	{
 		if (payload < binary_position->raise_limit)
 		{
-			++payload;
+			payload += int(binary_position->tap_step);
 			binary = odc::to_binary(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, binary);
 			message = "the event processing for this binary control position is a success";
@@ -961,7 +961,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<Pos
 	{
 		if (payload > binary_position->lower_limit)
 		{
-			--payload;
+			payload -= int(binary_position->tap_step);
 			binary = odc::to_binary(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, binary);
 			message = "the event processing for this binary control position is a success";
@@ -1001,7 +1001,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 	{
 		if (payload < binary_position->raise_limit)
 		{
-			++payload;
+			payload += int(binary_position->tap_step);
 			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, bcd_binary);
 			message = "the event processing for this binary control position is a success";
@@ -1017,7 +1017,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 	{
 		if (payload > binary_position->lower_limit)
 		{
-			--payload;
+			payload -= int(binary_position->tap_step);
 			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());
 			PublishBinaryEvents(binary_position->indexes, bcd_binary);
 			message = "the event processing for this binary control position is a success";

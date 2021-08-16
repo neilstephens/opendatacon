@@ -76,7 +76,9 @@ inline Json::Value GetTestConfigJSON()
             {"Index": 12, "StartVal" : true},
             {"Index": 13, "StartVal" : false},
             {"Index": 14, "StartVal" : true},
-            {"Index": 15}
+            {"Index": 15},
+			{"Index": 20},
+            {"Index": 21}
 		],
 
 		"Analogs" :
@@ -84,6 +86,7 @@ inline Json::Value GetTestConfigJSON()
 			{"Range" : {"Start" : 0, "Stop" : 2}, "StartVal" : 50, "UpdateIntervalms" : 10000, "StdDev" : 2},
 			{"Range" : {"Start" : 3, "Stop" : 5}, "StartVal" : 230, "UpdateIntervalms" : 10000, "StdDev" : 5},
 			{"Index" : 7, "StartVal" : 5, "StdDev" : 0}, //this is the tap position feedback
+			{"Index" : 17, "StartVal" : 9, "StdDev" : 0}, //this is the tap position feedback
 			{"Index" : 8, "StartVal" : 240, "UpdateIntervalms" : 10000 ,"StdDev" : 5},
 			{"Index" : 9, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
 			{"Index" : 10, "StartVal" : 240, "UpdateIntervalms" : 10000, "StdDev" : 5},
@@ -184,7 +187,15 @@ inline Json::Value GetTestConfigJSON()
             },
             {
                 "Index" : 12
-            }
+            },
+			{
+				"Index" : 20,
+				"FeedbackPosition": {"Type": "Analog", "Index" : 17, "OnAction":"RAISE", "RaiseLimit": 40, "Step": 2}
+			},
+			{
+				"Index" : 21,
+				"FeedbackPosition": {"Type": "Analog", "Index" : 17, "OnAction":"LOWER", "LowerLimit": 0, "Step": 2}
+			}
 		]
 	})001";
 
@@ -1381,6 +1392,42 @@ TEST_CASE("OnOffTestAnalogTapChangerLower")
 	TestTearDown();
 }
 
+TEST_CASE("OnOffTestAnalogTapChangerStepRaiseLower")
+{
+	//Load the library
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	//scope for port, ios lifetime
+	{
+		auto IOS = odc::asio_service::Get();
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+		sim_port->Enable();
+
+		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["17"].asString();
+		REQUIRE(result == "9.000000");
+		/*
+		  As we know the index 7 tap changer's default position is 9, step is 2
+		  Raise -> 11
+		*/
+		SendEvent(CODES[1][0], 20, sim_port, CommandStatus::SUCCESS);
+		REQUIRE(11 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
+
+		SendEvent(CODES[1][0], 20, sim_port, CommandStatus::SUCCESS);
+		REQUIRE(13 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
+
+		SendEvent(CODES[1][0], 21, sim_port, CommandStatus::SUCCESS);
+		REQUIRE(11 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
+	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
 /*
   function     : TEST_CASE
   description  : tests tap changer random raise / lower for analog type
