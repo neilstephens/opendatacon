@@ -1,4 +1,9 @@
-# opendatacon version 1.7.5
+# opendatacon version 1.7.6
+
+## 1.7.6
+  * systemd service reload support
+  * Simport position feeback (increment/decrement controls) optional step size
+  * Conitel MCA/B change bit logic fix
 
 ## 1.7.5
   * AnalogScaling Transform added
