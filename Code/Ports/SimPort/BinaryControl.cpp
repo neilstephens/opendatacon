@@ -65,7 +65,8 @@ void BinaryControl::CreateBinaryControl(std::size_t index,
 	odc::FeedbackType type,
 	const std::vector<std::size_t>& indexes,
 	const std::vector<odc::PositionAction>& action,
-	std::size_t lower_limit, std::size_t raise_limit)
+	std::size_t lower_limit, std::size_t raise_limit,
+	double tap_step)
 {
 	odc::EventTypePayload<odc::EventType::ControlRelayOutputBlock>::type payload;
 	payload.functionCode = odc::ControlCode::NUL;
@@ -74,7 +75,7 @@ void BinaryControl::CreateBinaryControl(std::size_t index,
 	control_event->SetTimestamp(0);
 	{ // scope of the lock
 		std::unique_lock<std::shared_timed_mutex> lck(position_mutex);
-		m_position_feedbacks[index] = std::make_shared<PositionFeedback>(type, action, indexes, lower_limit, raise_limit);
+		m_position_feedbacks[index] = std::make_shared<PositionFeedback>(type, action, indexes, lower_limit, raise_limit, tap_step);
 	}
 	{ // scope of the lock
 		std::unique_lock<std::shared_timed_mutex> lck(current_mutex);

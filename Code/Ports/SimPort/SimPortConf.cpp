@@ -472,6 +472,7 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 
 	//FIXME: should allow negative limits
 	std::size_t lower_limit = 0, raise_limit = std::numeric_limits<size_t>::max();
+	double tap_step = 1;
 
 	if (feedback_position.isMember("Type"))
 		type = ToFeedbackType(feedback_position["Type"].asString());
@@ -488,6 +489,8 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 		lower_limit = feedback_position["LowerLimit"].asUInt();
 	if (feedback_position.isMember("RaiseLimit"))
 		raise_limit = feedback_position["RaiseLimit"].asUInt();
+	if (feedback_position.isMember("Step"))
+		tap_step = feedback_position["Step"].asUInt();
 
 	//warn if there's not at least one action
 	if(actions[ON] == PositionAction::UNDEFINED && actions[OFF] == PositionAction::UNDEFINED)
@@ -518,5 +521,5 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 			return;
 		}
 
-	m_pport_data->CreateBinaryControl(index, m_name, type, indexes, actions, lower_limit, raise_limit);
+	m_pport_data->CreateBinaryControl(index, m_name, type, indexes, actions, lower_limit, raise_limit, tap_step);
 }
