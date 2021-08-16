@@ -19,7 +19,7 @@ compiler:
 
 env:
   - BUILD_CONFIG=Release
-  - BUILD_CONFIG=Debug
+  #Don't do debug build on travis now that it's not free - BUILD_CONFIG=Debug
   
 matrix:
   include: #extra matrix entries for docker builds
@@ -28,25 +28,28 @@ matrix:
       services:
         - docker
     #Rpi Debug
-    - env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi RPI_DEBUG=True
-      services:
-        - docker
+    #- env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi RPI_DEBUG=True
+    #  services:
+    #    - docker
+    
     #OEL7 Release
     - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
       services:
         - docker
     #OEL7 Debug
-    - env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
-      services:
-        - docker
+    #- env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
+    #  services:
+    #    - docker
+    
     #i686 Release
     - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
       services:
         - docker
     #i686 Debug
-    - env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
-      services:
-        - docker
+    #- env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
+    #  services:
+    #    - docker
+  
   exclude:
     #Travis docs say on osx gcc is an alias for clang anyway
     - os: osx
