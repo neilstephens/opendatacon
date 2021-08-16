@@ -65,14 +65,16 @@ struct PositionFeedback
 	PositionFeedback(odc::FeedbackType feedback_type,
 		const std::vector<odc::PositionAction>& an,
 		const std::vector<std::size_t>& index,
-		std::size_t l_limit, std::size_t r_limit):
-		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit) {}
+		std::size_t l_limit, std::size_t r_limit,
+		double r_tap_step):
+		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit), tap_step(r_tap_step) {}
 
 	odc::FeedbackType type;
 	std::vector<odc::PositionAction> action;
 	std::vector<std::size_t> indexes;
 	std::size_t lower_limit;
 	std::size_t raise_limit;
+	double tap_step;
 };
 
 class BinaryControl
@@ -90,7 +92,8 @@ public:
 		odc::FeedbackType type,
 		const std::vector<std::size_t>& indexes,
 		const std::vector<odc::PositionAction>& action,
-		std::size_t lower_limit, std::size_t raise_limit);
+		std::size_t lower_limit, std::size_t raise_limit,
+		double tap_step);
 	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index);
 
 	void CreateBinaryControl(std::size_t index);

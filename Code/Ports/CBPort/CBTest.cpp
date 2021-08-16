@@ -916,7 +916,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "04080034" // Data 2A and 2B
+	                "24080018" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
 	                "800f7d19";
@@ -956,7 +956,7 @@ TEST_CASE("Station - ScanRequest F0")
 	// We are setting Channels 1,2,3. So should be the bits Change1, Status1, Change2, Status2, Change3, Status3.
 	// Look at block 2A (first 3 hex chars on second line
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "fc080016" // Data 2A and 2B
+	                "5c08001e" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
 	                "800f7d19";
@@ -978,7 +978,7 @@ TEST_CASE("Station - ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "09355516" // Echoed block plus data 1B
-	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
+	                "a008000e" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
 	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
@@ -1471,7 +1471,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "0392aab8" // Echoed block plus data 1B
-	                "0208003a" // Data 2A and 2B
+	                "0248000a" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
 	                "800f7d19";
@@ -1504,7 +1504,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	// We are setting Channels 1,2,3. So should be the bits Change1, Status1, Change2, Status2, Change3, Status3.
 	// Look at block 2A (first 3 hex chars on second line
 	DesiredResult = "0392aab8" // Echoed block plus data 1B
-	                "03f8002a" // Data 2A and 2B
+	                "03a80016" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
 	                "800f7d19";
@@ -1526,7 +1526,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 
 	// Should now get different data!
 	DesiredResult = "0392aab8" // Echoed block plus data 1B
-	                "00080006" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
+	                "0058003a" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
 	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
