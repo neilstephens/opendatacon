@@ -11,11 +11,11 @@ addons:
 
 os:
   - linux
-  - osx
+  #- osx
 
 compiler:
   - gcc
-  - clang
+  #- clang
 
 env:
   - BUILD_CONFIG=Release
@@ -24,9 +24,10 @@ env:
 matrix:
   include: #extra matrix entries for docker builds
     #Rpi Release
-    - env: BUILD_CONFIG=Release DOCKER_BUILD=Rpi
-      services:
-        - docker
+    #- env: BUILD_CONFIG=Release DOCKER_BUILD=Rpi
+    #  services:
+    #    - docker
+    
     #Rpi Debug
     #- env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi RPI_DEBUG=True
     #  services:
@@ -42,9 +43,9 @@ matrix:
     #    - docker
     
     #i686 Release
-    - env: BUILD_CONFIG=Release DOCKER_BUILD=i386
-      services:
-        - docker
+    #- env: BUILD_CONFIG=Release DOCKER_BUILD=i386
+    #  services:
+    #    - docker
     #i686 Debug
     #- env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
     #  services:
@@ -54,6 +55,8 @@ matrix:
     #Travis docs say on osx gcc is an alias for clang anyway
     - os: osx
       compiler: clang
+    - os: linux
+      compiler gcc
 
 branches:
   only:
