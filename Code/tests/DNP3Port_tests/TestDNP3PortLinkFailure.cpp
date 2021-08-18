@@ -71,6 +71,7 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	{
 		conf["CommsPoint"]["Index"] = 10;
 		conf["CommsPoint"]["FailValue"] = false;
+		conf["FlagsToClearOnLinkStatus"] = "";
 	}
 	else
 		conf["SetQualityOnLinkStatus"] = false;

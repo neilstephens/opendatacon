@@ -52,6 +52,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	LANModeTimeSync(false),        /// If true, the master will use the LAN time sync mode
 	DoUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
+	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
+	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
 	/// Which classes should be requested in a startup integrity scan
 	StartupIntegrityClass0(true),
@@ -202,6 +204,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
 	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
 		SetQualityOnLinkStatus = JSONRoot["SetQualityOnLinkStatus"].asBool();
+	if (JSONRoot.isMember("FlagsToSetOnLinkStatus"))
+		FlagsToSetOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToSetOnLinkStatus"].asString());
+	if (JSONRoot.isMember("FlagsToClearOnLinkStatus"))
+		FlagsToClearOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToClearOnLinkStatus"].asString());
 
 	/// Which classes should be requested in a startup integrity scan
 	if (JSONRoot.isMember("StartupIntegrityClass0"))
