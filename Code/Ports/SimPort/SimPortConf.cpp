@@ -490,7 +490,7 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 	if (feedback_position.isMember("RaiseLimit"))
 		raise_limit = feedback_position["RaiseLimit"].asUInt();
 	if (feedback_position.isMember("Step"))
-		tap_step = feedback_position["Step"].asUInt();
+		tap_step = feedback_position["Step"].asDouble();
 
 	//warn if there's not at least one action
 	if(actions[ON] == PositionAction::UNDEFINED && actions[OFF] == PositionAction::UNDEFINED)

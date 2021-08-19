@@ -9,54 +9,15 @@ addons:
   apt:
     update: true
 
-os:
-  - linux
+os: linux
   #- osx
 
-compiler:
-  - gcc
+compiler: gcc
   #- clang
 
-env:
-  - BUILD_CONFIG=Release
-  #Don't do debug build on travis now that it's not free - BUILD_CONFIG=Debug
-  
-matrix:
-  include: #extra matrix entries for docker builds
-    #Rpi Release
-    #- env: BUILD_CONFIG=Release DOCKER_BUILD=Rpi
-    #  services:
-    #    - docker
-    
-    #Rpi Debug
-    #- env: BUILD_CONFIG=Debug DOCKER_BUILD=Rpi RPI_DEBUG=True
-    #  services:
-    #    - docker
-    
-    #OEL7 Release
-    - env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
-      services:
-        - docker
-    #OEL7 Debug
-    #- env: BUILD_CONFIG=Debug DOCKER_BUILD=OEL
-    #  services:
-    #    - docker
-    
-    #i686 Release
-    #- env: BUILD_CONFIG=Release DOCKER_BUILD=i386
-    #  services:
-    #    - docker
-    #i686 Debug
-    #- env: BUILD_CONFIG=Debug DOCKER_BUILD=i386
-    #  services:
-    #    - docker
-  
-  exclude:
-    #Travis docs say on osx gcc is an alias for clang anyway
-    - os: osx
-      compiler: clang
-    - os: linux
-      compiler gcc
+env: BUILD_CONFIG=Release DOCKER_BUILD=OEL
+
+services: docker
 
 branches:
   only:
@@ -201,7 +162,7 @@ install:
 
 script:
   - $BUILDRUN sh -c "$PRESOURCE cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_CONFIG -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX $TOOLCHAIN_OPT $SYSVER_OPT .."
-  - $BUILDRUN sh -c "$PRESOURCE make -j3"
+  - $BUILDRUN sh -c "$PRESOURCE make -j8"
   - $BUILDRUN sh -c "$PRESOURCE make package"
   - $BUILDRUN sh -c "$PRESOURCE make install"
   #tagged builds are redundant for running tests - they run on branch builds anyway
