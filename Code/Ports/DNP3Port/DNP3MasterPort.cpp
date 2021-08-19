@@ -147,7 +147,7 @@ void DNP3MasterPort::SetCommsFailed()
 		for (auto index : pConf->pPointConf->BinaryIndexes)
 		{
 			auto last_event = pDB->Get(EventType::Binary,index);
-			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) ^ pConf->pPointConf->FlagsToClearOnLinkStatus;
+			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
 
 			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
 			event->SetPayload<EventType::BinaryQuality>(QualityFlags(new_qual));
@@ -161,7 +161,7 @@ void DNP3MasterPort::SetCommsFailed()
 		for (auto index : pConf->pPointConf->AnalogIndexes)
 		{
 			auto last_event = pDB->Get(EventType::Analog,index);
-			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) ^ pConf->pPointConf->FlagsToClearOnLinkStatus;
+			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
 
 			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
 			event->SetPayload<EventType::AnalogQuality>(QualityFlags(new_qual));

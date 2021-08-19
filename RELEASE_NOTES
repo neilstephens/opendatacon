@@ -1,5 +1,8 @@
-# opendatacon version 1.7.7
+# opendatacon version 1.7.8
 
+## 1.7.8
+  * DNP3MasterPort - link down flag clearing hot fix
+  
 ## 1.7.7
   * DNP3MasterPort - ability to configure custom flags to set/clear on link down
 
