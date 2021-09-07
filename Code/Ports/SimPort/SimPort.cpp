@@ -878,7 +878,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 			double payload = event->GetPayload<odc::EventType::Analog>();
 			if (action == odc::PositionAction::RAISE)
 			{
-				if (payload < binary_position->raise_limit)
+				if (payload + binary_position->tap_step <= binary_position->raise_limit)
 				{
 					payload += binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
@@ -894,7 +894,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 			}
 			else if (action == odc::PositionAction::LOWER)
 			{
-				if (payload > binary_position->lower_limit)
+				if (payload - binary_position->tap_step >= binary_position->lower_limit)
 				{
 					payload -= binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
@@ -943,7 +943,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<Pos
 		action = binary_position->action[OFF];
 	if (action == odc::PositionAction::RAISE)
 	{
-		if (payload < binary_position->raise_limit)
+		if (payload + binary_position->tap_step <= binary_position->raise_limit)
 		{
 			payload += int(binary_position->tap_step);
 			binary = odc::to_binary(payload, binary_position->indexes.size());
@@ -959,7 +959,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<Pos
 	}
 	else if (action == odc::PositionAction::LOWER)
 	{
-		if (payload > binary_position->lower_limit)
+		if (payload - binary_position->tap_step >= binary_position->lower_limit)
 		{
 			payload -= int(binary_position->tap_step);
 			binary = odc::to_binary(payload, binary_position->indexes.size());
@@ -999,7 +999,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 		action = binary_position->action[OFF];
 	if (action == odc::PositionAction::RAISE)
 	{
-		if (payload < binary_position->raise_limit)
+		if (payload + binary_position->tap_step <= binary_position->raise_limit)
 		{
 			payload += int(binary_position->tap_step);
 			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());
@@ -1015,7 +1015,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 	}
 	else if (action == odc::PositionAction::LOWER)
 	{
-		if (payload > binary_position->lower_limit)
+		if (payload - binary_position->tap_step >= binary_position->lower_limit)
 		{
 			payload -= int(binary_position->tap_step);
 			bcd_binary = odc::decimal_to_bcd_encoded_string(payload, binary_position->indexes.size());

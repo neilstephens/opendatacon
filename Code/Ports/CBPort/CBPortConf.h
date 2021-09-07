@@ -45,6 +45,8 @@ struct CBAddrConf
 	//Common
 	uint8_t OutstationAddr;
 	uint16_t TCPConnectRetryPeriodms;
+	uint64_t TCPThrottleBitrate;
+	uint64_t TCPThrottleChunksize;
 
 	// Default address values can minimally set IP.
 	CBAddrConf():
@@ -52,7 +54,9 @@ struct CBAddrConf
 		Port("20000"),
 		ClientServer(TCPClientServer::SERVER),
 		OutstationAddr(1),
-		TCPConnectRetryPeriodms(500)
+		TCPConnectRetryPeriodms(500),
+		TCPThrottleBitrate(0),
+		TCPThrottleChunksize(0)
 	{}
 	std::string ChannelID()
 	{

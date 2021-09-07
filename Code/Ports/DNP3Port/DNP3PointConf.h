@@ -40,6 +40,7 @@
 #include <opendnp3/gen/ServerAcceptMode.h>
 #include <opendatacon/DataPointConf.h>
 #include <opendatacon/ConfigParser.h>
+#include <opendatacon/IOTypes.h>
 
 class DNP3PointConf: public ConfigParser
 {
@@ -65,12 +66,14 @@ public:
 	bool UnsolClass3;
 
 	// Master Station configuration
-	uint32_t MasterResponseTimeoutms;     /// Application layer response timeout
-	bool MasterRespondTimeSync;           /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
-	bool LANModeTimeSync;                 /// If true, the master will use the LAN time sync mode
-	bool DoUnsolOnStartup;                /// If true, the master will enable unsol on startup
-	bool SetQualityOnLinkStatus;          /// Whether to set point quality to COMM_LOST when link down
-	uint32_t CommsPointRideThroughTimems; /// How long to wait before admitting the link is down
+	uint32_t MasterResponseTimeoutms;           /// Application layer response timeout
+	bool MasterRespondTimeSync;                 /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
+	bool LANModeTimeSync;                       /// If true, the master will use the LAN time sync mode
+	bool DoUnsolOnStartup;                      /// If true, the master will enable unsol on startup
+	bool SetQualityOnLinkStatus;                /// Whether to set point quality when link down
+	odc::QualityFlags FlagsToSetOnLinkStatus;   /// The flags to Set when SetQualityOnLinkStatus is true
+	odc::QualityFlags FlagsToClearOnLinkStatus; /// The flags to Clear when SetQualityOnLinkStatus is true
+	uint32_t CommsPointRideThroughTimems;       /// How long to wait before admitting the link is down
 	/// Which classes should be requested in a startup integrity scan
 	opendnp3::ClassField GetStartupIntegrityClassMask();
 	bool StartupIntegrityClass0;

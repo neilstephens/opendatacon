@@ -468,6 +468,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	}
 
 	//TODO: document these config options
+	std::string tcp_level_name = "";
 	if(JSONRoot.isMember("TCPLog"))
 	{
 		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
@@ -489,13 +490,19 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 
 			TCPbufs["tcp"].Init(pIOS, isServer, TCPLogJSON["IP"].asString(), TCPLogJSON["Port"].asString());
 			pTCPostreams["tcp"] = std::make_unique<std::ostream>(&TCPbufs["tcp"]);
+			tcp_level_name = TCPLogJSON.isMember("LogLevel") ? TCPLogJSON["LogLevel"].asString() : "";
 		}
 	}
 
 	if(pTCPostreams.find("tcp") != pTCPostreams.end())
 	{
+		auto tcp_level = spdlog::level::from_str(tcp_level_name);
+		//check for no match and set defaults
+		if(tcp_level == spdlog::level::off && tcp_level_name != "off")
+			tcp_level = log_level;
+
 		auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams["tcp"], true);
-		tcp->set_level(log_level);
+		tcp->set_level(tcp_level);
 		LogSinks["tcp"] = tcp;
 	}
 

@@ -32,6 +32,7 @@
 #include "RateLimitTransform.h"
 #include "ThresholdTransform.h"
 #include "BlackHoleTransform.h"
+#include "AnalogScalingTransform.h"
 #include <iostream>
 #include <opendatacon/Platform.h>
 #include <opendatacon/spdlog.h>
@@ -134,6 +135,11 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				if (Transforms[n]["Type"].asString() == "BlackHole")
 				{
 					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new BlackHoleTransform(Transforms[n]["Parameters"]), normal_delete));
+					continue;
+				}
+				if (Transforms[n]["Type"].asString() == "AnalogScaling")
+				{
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new AnalogScalingTransform(Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 

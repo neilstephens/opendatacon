@@ -71,7 +71,7 @@ protected:
 
 	//All the names and addrs to send to for each sender
 	std::unordered_multimap<std::string,std::pair<std::string,IOHandler*>> SenderConnections;
-	//The transfors to perform for each sender
+	//The transforms to perform for each sender
 	std::unordered_map<std::string,std::vector<std::unique_ptr<Transform, std::function<void(Transform*)>> > > SenderTransforms;
 };
 

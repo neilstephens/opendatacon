@@ -111,7 +111,7 @@ void CBMasterPort::Build()
 	MyPointConf->PointTable.Build(Name, IsOutStation, *pIOS, 5, SOEBufferOverflowFlag);
 
 	// Creates internally if necessary, returns a token for the connection
-	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms); //Static method
+	pConnection = CBConnection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyPointConf->IsBakerDevice, MyConf->mAddrConf.TCPConnectRetryPeriodms, MyConf->mAddrConf.TCPThrottleBitrate, MyConf->mAddrConf.TCPThrottleChunksize); //Static method
 
 	CBConnection::AddMaster(pConnection, MyConf->mAddrConf.OutstationAddr,
 		std::bind(&CBMasterPort::ProcessCBMessage, this, std::placeholders::_1),

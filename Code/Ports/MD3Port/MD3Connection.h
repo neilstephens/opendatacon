@@ -77,7 +77,9 @@ public:
 		bool aisServer,                            //Whether to act as a server or client
 		const std::string& aEndPoint,              //IP addr or hostname (to connect to if client, or bind to if server)
 		const std::string& aPort,                  //Port to connect to if client, or listen on if server
-		uint16_t retry_time_ms = 0);
+		uint16_t retry_time_ms = 0,
+		uint64_t throttle_bitrate = 0,
+		uint64_t throttle_chunksize = 0);
 
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
 	static void AddOutstation(const ConnectionTokenType &ConnectionTok,
@@ -95,13 +97,13 @@ public:
 	static void RemoveMaster(const ConnectionTokenType &ConnectionTok,uint8_t TargetStationAddress);
 
 	static ConnectionTokenType AddConnection
-	(
-		std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
-		bool aisServer,                           //Whether to act as a server or client
-		const std::string& aEndPoint,             //IP addr or hostname (to connect to if client, or bind to if server)
-		const std::string& aPort,                 //Port to connect to if client, or listen on if server
-		uint16_t retry_time_ms = 0
-	);
+		(std::shared_ptr<odc::asio_service> apIOS, //pointer to an asio io_service
+		bool aisServer,                            //Whether to act as a server or client
+		const std::string& aEndPoint,              //IP addr or hostname (to connect to if client, or bind to if server)
+		const std::string& aPort,                  //Port to connect to if client, or listen on if server
+		uint16_t retry_time_ms = 0,
+		uint64_t throttle_bitrate = 0,
+		uint64_t throttle_chunksize = 0);
 
 	static void Open(const ConnectionTokenType &ConnectionTok);
 

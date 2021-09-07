@@ -1,4 +1,27 @@
-# opendatacon version 1.7.2
+# opendatacon version 1.7.8
+
+## 1.7.8
+  * DNP3MasterPort - link down flag clearing hot fix
+  
+## 1.7.7
+  * DNP3MasterPort - ability to configure custom flags to set/clear on link down
+
+## 1.7.6
+  * systemd service reload support
+  * Simport position feeback (increment/decrement controls) optional step size
+  * Conitel MCA/B change bit logic fix
+
+## 1.7.5
+  * AnalogScaling Transform added
+
+## 1.7.4
+  * Hotfix - the throttling wasn't actually being used in 1.7.3
+
+## 1.7.3
+  * DNP3OutstationPort UI command for simulating restart IIN
+  * TCP throttling (config options to use throttling in MD3 and CB Ports)
+  * Simulate dropped packets in MD3 and CB Ports
+  * Sequence numbers in MD3 wireshark disector
 
 ## 1.7.2
   * DNP3MasterPort re-asserts comms down for late upstream connections
