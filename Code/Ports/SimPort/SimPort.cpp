@@ -528,7 +528,7 @@ void SimPort::Build()
 {
 	pEnableDisableSync = pIOS->make_strand();
 	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
-	this->SimCollection->Add(shared_this,this->Name);
+	this->SimCollection->insert_or_assign(this->Name,shared_this);
 
 	if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
 	{

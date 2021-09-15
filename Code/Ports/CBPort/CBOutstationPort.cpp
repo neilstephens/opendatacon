@@ -139,7 +139,7 @@ void CBOutstationPort::Build()
 {
 	// Add this port to the list of ports we can command.
 	auto shared_this = std::static_pointer_cast<CBOutstationPort>(shared_from_this());
-	this->CBOutstationCollection->Add(shared_this, this->Name);
+	this->CBOutstationCollection->insert_or_assign(this->Name,shared_this);
 
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(Name, IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEBufferOverflowFlag);
