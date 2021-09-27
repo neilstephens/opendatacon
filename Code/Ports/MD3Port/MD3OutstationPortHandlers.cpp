@@ -323,33 +323,33 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(uint8_t ModuleAddress, uint8_t 
 	uint16_t wordres = 0;
 	bool hasbeenset;
 
-	// Is it a counter module? Fails if not at this address
+	// Can get up to 8 values from each module
+	uint8_t chancnt = Channels >= 8 ? 8 : Channels;
+	// Is it a counter or analog?
 	if (MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress, 0, wordres, hasbeenset))
 	{
-		// We have a counter module, can get up to 8 values from it
-		uint8_t chancnt = Channels >= 8 ? 8 : Channels;
 		GetAnalogModuleValues(CounterModule,chancnt, ModuleAddress, ResponseType, AnalogValues, AnalogDeltaValues);
-
-		if (Channels > 8)
-		{
-			// Now we have to get the remaining channels (up to 8) from the next module, if it exists.
-			// Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
-			if (MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres,hasbeenset))
-			{
-				GetAnalogModuleValues(CounterModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
-			}
-			else
-			{
-				GetAnalogModuleValues(AnalogModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
-			}
-		}
 	}
 	else
 	{
 		// It must be an analog module (if it does not exist, we return appropriate error codes anyway
 		// Yes proceed , up to 16 channels.
-		GetAnalogModuleValues(AnalogModule, Channels, ModuleAddress, ResponseType, AnalogValues, AnalogDeltaValues);
+		GetAnalogModuleValues(AnalogModule, chancnt, ModuleAddress, ResponseType, AnalogValues, AnalogDeltaValues);
 	}
+	if (Channels > 8)
+	{
+		// Now we have to get the remaining channels (up to 8) from the next module, if it exists.
+		// Check if it is a counter, otherwise assume analog. Will return correct error codes if not there
+		if (MyPointConf->PointTable.GetCounterValueUsingMD3Index(ModuleAddress+1, 0, wordres,hasbeenset))
+		{
+			GetAnalogModuleValues(CounterModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
+		}
+		else
+		{
+			GetAnalogModuleValues(AnalogModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
+		}
+	}
+	
 }
 void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, uint8_t Channels, uint8_t ModuleAddress, MD3OutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t> & AnalogValues, std::vector<int> & AnalogDeltaValues)
 {
