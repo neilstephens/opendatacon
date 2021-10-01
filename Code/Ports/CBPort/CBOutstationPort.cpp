@@ -51,9 +51,8 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
 
-	//TODO: Do we need these flags for Conitel/Baker
-	SystemFlags.SetDigitalChangedFlagCalculationMethod(std::bind(&CBOutstationPort::DigitalChangedFlagCalculationMethod, this));
-	SystemFlags.SetTimeTaggedDataAvailableFlagCalculationMethod(std::bind(&CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod, this));
+	SystemFlags.SetSOEAvailableFn(std::bind(&CBOutstationPort::SOEAvailableFn, this));
+	SystemFlags.SetSOEOverflowFn(std::bind(&CBOutstationPort::SOEOverflowFn, this));
 
 	IsOutStation = true;
 

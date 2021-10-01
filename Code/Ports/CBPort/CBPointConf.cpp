@@ -457,20 +457,12 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 			error = true;
 		}
 
-		if (JSONNode[n].isMember("Channel"))
-			channel = JSONNode[n]["Channel"].asUInt();
-		else
-		{
-			LOGERROR(" A point needs a \"Channel\" : " + JSONNode[n].toStyledString());
-			error = true;
-		}
-
 		if (!error)
 		{
-			if (PointTable.AddStatusByteToCBMap(numeric_cast<uint8_t>(group), numeric_cast<uint8_t>(channel), payloadlocation))
+			if (PointTable.AddStatusByteToCBMap(numeric_cast<uint8_t>(group), payloadlocation))
 			{
-				// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
-				LOGDEBUG("Adding a Status Byte - Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Payload Location: " + payloadlocation.to_string());
+				// Can only exist in on group, save the group and payload location
+				LOGDEBUG("Adding a Status Byte - Group: " + std::to_string(group) + " Payload Location: " + payloadlocation.to_string());
 			}
 		}
 	}

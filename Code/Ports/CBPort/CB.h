@@ -140,6 +140,10 @@ public:
 		std::shared_lock<std::shared_timed_mutex> lck(m);
 		return val;
 	}
+	bool getandclear(void)
+	{
+		return getandset(false);
+	}
 private:
 	mutable std::shared_timed_mutex m;
 	bool val;
@@ -167,6 +171,14 @@ public:
 	std::string to_string() const
 	{
 		return std::to_string(Packet) + ((Position == PayloadABType::PositionA) ? "A" : (Position == PayloadABType::PositionB) ? "B" : "Error");
+	}
+	bool Valid()
+	{
+		return Position != PayloadABType::Error;
+	}
+	bool operator==(const PayloadLocationType& src)
+	{
+		return (Position == src.Position) && (Packet == src.Packet);
 	}
 };
 
@@ -317,7 +329,7 @@ public:
 
 protected:
 	// Only the values below will be changed in two places
-	uint8_t Binary = 0x01;
+	uint8_t Binary = 0x01;		// NOTE: WHY WOULD I DEFAULT THESE TO 1???
 	bool Changed = true;
 	bool MomentaryChangeStatus = false; // Used only for MCA, MCB and MCC types. Not valid for other types.
 	BinaryPointType PointType = DIG;

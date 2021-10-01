@@ -253,75 +253,75 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				uint8_t ch = pt.GetChannel();
 				if (pt.GetPointType() == DIG)
 				{
-				      if (pt.GetBinary() == 1)
-				      {
-				            if (MyPointConf->IsBakerDevice)
-							Payload |= ShiftLeftResult16Bits(1, ch - 1); // ch 12 TO 1,
-				            else
-							Payload |= ShiftLeftResult16Bits(1, 12 - ch); // ch 1 TO 12, Just have to OR, we know it was zero initially.
+					if (pt.GetBinary() == 1)
+					{
+						if (MyPointConf->IsBakerDevice)
+						Payload |= ShiftLeftResult16Bits(1, ch - 1); // ch 12 TO 1,
+						else
+						Payload |= ShiftLeftResult16Bits(1, 12 - ch); // ch 1 TO 12, Just have to OR, we know it was zero initially.
 					}
 				}
 				else if ((pt.GetPointType() == MCA) || (pt.GetPointType() == MCB) || (pt.GetPointType() == MCC))
 				{
-				// Up to 6 x 2 bit blocks, channels 1 to 6.
-				// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
-				// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
-				// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
-				// We dont think about open or closed, we will just be getting a value of 1 or 0 from the real outstation, or a simulator. So we dont do inversion or anything like that.
-				// We do need to track the types of transision, and the point has a special field to do this.
+					// Up to 6 x 2 bit blocks, channels 1 to 6.
+					// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
+					// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
+					// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
+					// We dont think about open or closed, we will just be getting a value of 1 or 0 from the real outstation, or a simulator. So we dont do inversion or anything like that.
+					// We do need to track the types of transision, and the point has a special field to do this.
 
-				      // Set our bit and MC changed flag in the output. Data bit is first (low) then change bit (higher) So bit 11 = changea, bit 10 = data in 12 bit word - 11 highest bit.
-				      uint8_t result;
-				      bool MCS;
-				      pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
+					// Set our bit and MC changed flag in the output. Data bit is first (low) then change bit (higher) So bit 11 = changea, bit 10 = data in 12 bit word - 11 highest bit.
+					uint8_t result;
+					bool MCS;
+					pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
 
-				      if (pt.GetPointType() == MCA)
-						result = !result; // MCA point on the wire is inverted. Closed == 0
+					if (pt.GetPointType() == MCA)
+					result = !result; // MCA point on the wire is inverted. Closed == 0
 
-				      if (result == 1) // Status
-				      {
-				            if (MyPointConf->IsBakerDevice)
-							Payload |= ShiftLeftResult16Bits(1, 1 + (ch - 1) * 2); // ch 1 value is Bit 1
-				            else
-							Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 value is bit 10
+					if (result == 1) // Status
+					{
+						if (MyPointConf->IsBakerDevice)
+						Payload |= ShiftLeftResult16Bits(1, 1 + (ch - 1) * 2); // ch 1 value is Bit 1
+						else
+						Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 value is bit 10
 					}
-				      if (MCS) // Change Flag
-				      {
-				            if (MyPointConf->IsBakerDevice)
-							Payload |= ShiftLeftResult16Bits(1, (ch - 1) * 2); // ch 1 status is Bit 0
-				            else
-							Payload |= ShiftLeftResult16Bits(1, 11 - (ch - 1) * 2); // ch 1 status is bit 11
+					if (MCS) // Change Flag
+					{
+						if (MyPointConf->IsBakerDevice)
+						Payload |= ShiftLeftResult16Bits(1, (ch - 1) * 2); // ch 1 status is Bit 0
+						else
+						Payload |= ShiftLeftResult16Bits(1, 11 - (ch - 1) * 2); // ch 1 status is bit 11
 					}
 				}
 				else
 				{
-				      LOGERROR("{} Unhandled Binary Point type {} - no valid value returned",Name, pt.GetPointType());
+					LOGERROR("{} Unhandled Binary Point type {} - no valid value returned",Name, pt.GetPointType());
 				}
 				FoundMatch = true;
 			});
 	}
-	if (!FoundMatch)
+	// See if it is a StatusByte we need to provide - there is only one status byte
+	// We could have RST converted to DIG to allow setting some status bits - we clear the important ones below if there is a clash..
+	if (MyPointConf->PointTable.IsStatusByteLocation(Group, payloadlocation))
 	{
-		// See if it is a StatusByte we need to provide - there is only one status byte, but it could be requested in several groups.
-		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [this,&Payload,&FoundMatch,&Group,&payloadlocation](void)
-			{
-				// We have a matching status byte, set a flag to indicate we have a match.
-				LOGDEBUG("{} Got a Status Byte request at :{} - {}",Name, Group ,payloadlocation.to_string());
+		FoundMatch = true;
+		// So we have some RST bits defined, we will now clear and then OR those bits with the "system maintained" bits.		
+		Payload &= ~((0x1 << 11) | (0x1 << 10) | (0x1 << 5));	// Clear (just in case someone defined an RST bit that clashes)
+		// We cant do this in the above lambda as we might getandset the overflow flag multiple times...
+		// Bit Definitions:
+		// 0-3 Error Code
+		// 4 - Controls Isolated
+		// 5 - Reset Occurred
+		// 6 - Field Supply Low
+		// 7 - Internal Supply Low
+		// 8 - Accumulator Overflow Change
+		// 9 - Accumulator Overflow Status
+		// 10 - SOE Overflow
+		// 11 - SOE Data Available
+		// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+		Payload |= SystemFlags.GetStatusPayload();
 
-				// Get the current value and clear in the same operation.
-				// Effectively clear this flag when we have reported it to the Master.
-				if (SOEBufferOverflowFlag->getandset(false))
-				{
-				// Bit 11 SOE Buffer Full
-				      Payload |= (0x1 << 10);
-				}
-				if (MyPointConf->PointTable.TimeTaggedDataAvailable())
-				{
-				// Bit 12 SOE Data available
-				      Payload |= (0x1 << 11);
-				}
-				FoundMatch = true;
-			});
+		LOGDEBUG("{} Combining RST bits and Status Word Flags :{} - {} - {}", Name, Group, payloadlocation.to_string(), to_hexstring(Payload));
 	}
 	if (!FoundMatch)
 	{
@@ -624,8 +624,7 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 		break;
 
 		case MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD:
-			EchoReceivedHeaderToMaster(Header);
-			LOGDEBUG("{} Received Get Remote Status Master Command Function - {}, no action, but we reply", Name, Header.GetGroup());
+			RemoteStatusWordResponse(Header);
 			break;
 
 		case MASTER_SUB_FUNC_RETREIVE_INPUT_CIRCUIT_DATA:
@@ -658,6 +657,22 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 			LOGERROR("{} Unknown PendingCommand Function - {} On Station Address - {}", Name, Header.GetFunctionCode(),Header.GetStationAddress());
 			break;
 	}
+}
+
+void CBOutstationPort::RemoteStatusWordResponse(CBBlockData& Header)
+{
+	// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+	uint16_t Payload = 0;
+	
+	// TODO: Need to scan any digitals in this Group/Location..
+
+	Payload |= SystemFlags.GetStatusPayload();
+	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), Payload, true);
+	CBMessage_t ResponseCBMessage;
+	ResponseCBMessage.push_back(firstblock);
+	SendCBMessage(ResponseCBMessage);
+
+	LOGDEBUG("{} Received Get Remote Status Master Command Function - {}, replied with Status Bits {}", Name, Header.GetGroup(), to_hexstring(Payload));
 }
 
 void CBOutstationPort::FuncReSendSOEResponse(CBBlockData & Header)
@@ -879,16 +894,14 @@ void CBOutstationPort::EchoReceivedHeaderToMaster(CBBlockData & Header)
 #endif
 // This method is passed to the SystemFlags variable to do the necessary calculation
 // Access through SystemFlags.GetDigitalChangedFlag()
-bool CBOutstationPort::DigitalChangedFlagCalculationMethod(void)
+bool CBOutstationPort::SOEAvailableFn(void)
 {
-	// Return true if there is unsent digital changes
-	return (CountBinaryBlocksWithChanges() > 0);
+	return MyPointConf->PointTable.TimeTaggedDataAvailable();
+	// Was this - not correct	return (CountBinaryBlocksWithChanges() > 0);
 }
-// This method is passed to the SystemFlags variable to do the necessary calculation
-// Access through SystemFlags.GetTimeTaggedDataAvailableFlag()
-bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
+bool CBOutstationPort::SOEOverflowFn(void)
 {
-	return false; //TODO: MyPointConf->PointTable.TimeTaggedDataAvailable();
+	return SOEBufferOverflowFlag->getandclear();
 }
 void CBOutstationPort::MarkAllBinaryPointsAsChanged()
 {
