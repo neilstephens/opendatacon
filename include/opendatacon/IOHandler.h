@@ -41,16 +41,17 @@ namespace odc
 enum class  InitState_t { ENABLED, DISABLED, DELAYED };
 
 typedef std::shared_ptr<std::function<void (CommandStatus status)>> SharedStatusCallback_t;
+using Demands_t = std::map<std::string,bool>;
 
 //class to synchronise access to connection demand map
 class DemandMap
 {
 public:
-	bool InDemand();
-	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName);
-	std::map<std::string,bool> GetDemands();
+	bool InDemand(const std::string& ReceiverName);
+	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName, const std::string& ReceiverName);
+	std::map<std::string,Demands_t> GetDemands();
 private:
-	std::map<std::string,bool> connection_demands;
+	std::map<std::string,Demands_t> connection_demands;
 	std::mutex mtx;
 	//TODO: do it using asio
 	//asio::io_service::strand sync;
@@ -74,7 +75,7 @@ public:
 	void Subscribe(IOHandler* pIOHandler, const std::string& aName);
 	void UnSubscribe(const std::string& aName);
 	inline const std::unordered_map<std::string,IOHandler*>& GetSubscribers(){return Subscribers;}
-	inline std::map<std::string,bool> GetDemands(){return mDemandMap.GetDemands();}
+	inline std::map<std::string,Demands_t> GetDemands(){return mDemandMap.GetDemands();}
 
 	inline const std::string& GetName(){return Name;}
 	inline const bool Enabled(){return enabled;}
@@ -88,9 +89,9 @@ protected:
 	const std::shared_ptr<odc::asio_service> pIOS;
 	std::atomic_bool enabled;
 
-	inline bool InDemand(){ return mDemandMap.InDemand(); }
-	inline bool MuxConnectionEvents(ConnectState state, const std::string& SenderName)
-	{ return mDemandMap.MuxConnectionEvents(state, SenderName); }
+	inline bool InDemand(){ return mDemandMap.InDemand(""); }
+	inline bool MuxConnectionEvents(ConnectState state, const std::string& SenderName, const std::string& ReceiverName = "")
+	{ return mDemandMap.MuxConnectionEvents(state, SenderName, ReceiverName); }
 
 	inline void PublishEvent(ConnectState state)
 	{

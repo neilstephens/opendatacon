@@ -1336,7 +1336,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		log->debug("Preparing to delete old config objects.");
 	std::vector<std::shared_ptr<void>> to_delete;
 	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
-	std::map<std::string,std::map<std::string,bool>> old_demands;
+	std::map<std::string,std::map<std::string,Demands_t>> old_demands;
 	std::multimap<std::string,DataConnector*> needs_new_addr;
 	for(auto name : delete_or_changeIOHs)
 	{
@@ -1409,7 +1409,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			{
 				for(auto sub_pair : old_subs[name])
 					ioh_it->second->Subscribe(sub_pair.second,sub_pair.first);
-				for(auto name_demand : old_demands[name])
+				for(auto name_demand : old_demands[name][""])
 					if(name_demand.second)
 						ioh_it->second->Event(ConnectState::CONNECTED, name_demand.first);
 			}

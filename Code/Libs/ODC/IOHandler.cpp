@@ -55,36 +55,36 @@ void IOHandler::UnSubscribe(const std::string& aName)
 	this->Subscribers.erase(aName);
 }
 
-bool DemandMap::InDemand()
+bool DemandMap::InDemand(const std::string& ReceiverName)
 {
 	std::lock_guard<std::mutex> lck (mtx);
-	for(const auto& demand : connection_demands)
+	for(const auto& demand : connection_demands[ReceiverName])
 		if(demand.second)
 			return true;
 	return false;
 }
 
-bool DemandMap::MuxConnectionEvents(ConnectState state, const std::string& SenderName)
+bool DemandMap::MuxConnectionEvents(ConnectState state, const std::string& SenderName, const std::string& ReceiverName)
 {
 	if (state == ConnectState::DISCONNECTED)
 	{
 		{
 			std::lock_guard<std::mutex> lck (mtx);
-			connection_demands[SenderName] = false;
+			connection_demands[ReceiverName][SenderName] = false;
 		}
-		return !InDemand();
+		return !InDemand(ReceiverName);
 	}
 	else if (state == ConnectState::CONNECTED)
 	{
 		std::lock_guard<std::mutex> lck (mtx);
-		bool new_demand = !connection_demands[SenderName];
-		connection_demands[SenderName] = true;
+		bool new_demand = !connection_demands[ReceiverName][SenderName];
+		connection_demands[ReceiverName][SenderName] = true;
 		return new_demand;
 	}
 	return true;
 }
 
-std::map<std::string,bool> DemandMap::GetDemands()
+std::map<std::string, Demands_t> DemandMap::GetDemands()
 {
 	std::lock_guard<std::mutex> lck (mtx);
 	return connection_demands;
