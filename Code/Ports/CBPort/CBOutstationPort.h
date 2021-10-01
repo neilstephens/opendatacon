@@ -38,49 +38,69 @@
 
 class OutstationSystemFlags
 {
-	// CB can support 16 bits of status flags, which are reported by Fn52, system flag scan. The first 8 are reserved for MegaData use, only 3 are documented.
-	// The last 8 are contract dependent, we don't know if any are used.
-	// A change in any will set the RSF bit in ANY scan/control replies. So we maintain a separate RSF bit in the structure, which will be reset on a flag scan.
-
+	// CB can support 12 bits of status flags, which are reported by Fn 9 Group 8, system flag scan. 
 public:
-	bool GetRemoteStatusChangeFlag() { return RSF; }
-
 	// This is calculated by checking the digital bit changed flag, using a method registered with us
-	bool GetDigitalChangedFlag()
+	bool GetSOEAvailableFlag()
 	{
-		if (DCPCalc != nullptr)
-			return DCPCalc();
+		if (SOEAvailableFn != nullptr)
+			return SOEAvailableFn();
 
-		LOGERROR("GetDigitalChangedFlag called without a handler being registered");
+		LOGERROR("GetSOEAvailableFlag called without a handler being registered");
 		return false;
 	}
 
 	// This is calculated by checking the timetagged data queues, using a method registered with us
-	bool GetTimeTaggedDataAvailableFlag()
+	bool GetSOEOverflowFlag()
 	{
-		if (HRPCalc != nullptr)
-			return HRPCalc();
+		if (SOEOverflowFn != nullptr)
+			return SOEOverflowFn();
 
-		LOGERROR("GetTimeTaggedDataAvailableFlag called without a handler being registered");
+		LOGERROR("GetSOEOverflowFlag called without a handler being registered");
 		return false;
 	}
+	uint16_t GetStatusPayload()
+	{
+		// We cant do this in the above lambda as we might getandset the overflow flag multiple times...
+		// Bit Definitions:
+		// 0-3 Error Code
+		// 4 - Controls Isolated
+		// 5 - Reset Occurred
+		// 6 - Field Supply Low
+		// 7 - Internal Supply Low
+		// 8 - Accumulator Overflow Change
+		// 9 - Accumulator Overflow Status
+		// 10 - SOE Overflow
+		// 11 - SOE Data Available
+		// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+		uint16_t Payload = 0;
+		if (StartUp)
+		{
+			// Bit 5 Power Up
+			Payload |= (0x1 << 5);
+			StartUp = false;
+		}
+		if (GetSOEOverflowFlag())
+		{
+			// Bit 11 SOE Buffer Full
+			Payload |= (0x1 << 10);
+		}
+		if (GetSOEAvailableFlag())
+		{
+			// Bit 12 SOE Data available
+			Payload |= (0x1 << 11);
+		}
+		return Payload;
+	}
 
-	bool GetSystemPoweredUpFlag() { return SPU; }
-	bool GetSystemTimeIncorrectFlag() { return STI; }
-
-	void FlagScanPacketSent() { SPU = false; RSF = false; }
-	void TimePacketReceived() { STI = false; }
-
-	void SetDigitalChangedFlagCalculationMethod(std::function<bool(void)> Calc) { DCPCalc = Calc; }
-	void SetTimeTaggedDataAvailableFlagCalculationMethod(std::function<bool(void)> Calc) { HRPCalc = Calc; }
+	void SetSOEAvailableFn(std::function<bool(void)> Fn) { SOEAvailableFn = Fn; }
+	void SetSOEOverflowFn(std::function<bool(void)> Fn) { SOEOverflowFn = Fn; }
 
 private:
-	bool RSF = true;                             // All true on start up...
-	std::function<bool(void)> HRPCalc = nullptr; // HRER/TimeTagged Events Pending
-	std::function<bool(void)> DCPCalc = nullptr; // Digital bit has changed and is waiting to be sent
+	std::function<bool(void)> SOEAvailableFn = nullptr; // SOE Events Pending
+	std::function<bool(void)> SOEOverflowFn = nullptr; // SOE Overflow
 
-	bool SPU = true; // Bit 16 of Block data, bit 0 of 16 bit flag data
-	bool STI = true; // Bit 17 of Block data, bit 1 of 16 bit flag data
+	bool StartUp = true; 
 };
 
 
@@ -134,6 +154,7 @@ public:
 	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
 	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
+	void RemoteStatusWordResponse(CBBlockData& Header);
 	void FuncReSendSOEResponse(CBBlockData & Header);
 	void FuncSendSOEResponse(CBBlockData & Header);
 
@@ -176,8 +197,8 @@ private:
 	double BitFlipProbability = 0.0;
 	double ResponseDropProbability = 0.0;
 
-	bool DigitalChangedFlagCalculationMethod(void);
-	bool TimeTaggedDataAvailableFlagCalculationMethod(void);
+	bool SOEOverflowFn(void);
+	bool SOEAvailableFn(void);
 	int SOETimeOffsetMinutes = 0;
 
 	OutstationSystemFlags SystemFlags;

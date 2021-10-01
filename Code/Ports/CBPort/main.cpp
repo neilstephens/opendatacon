@@ -91,11 +91,13 @@ extern "C" int run_tests( int argc, char* argv[] )
 			new_argv = argv+1;
 		}
 	}
-	CommandLineLoggingSetup(log_level);
+	if (log_level != spdlog::level::off)
+		CommandLineLoggingSetup(log_level);
 
 	int res =  Catch::Session().run( new_argc, new_argv );
 	// And release here.
-	CommandLineLoggingCleanup();
+	if (log_level != spdlog::level::off)
+		CommandLineLoggingCleanup();
 	return res;
 
 	#else
