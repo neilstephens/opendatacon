@@ -58,14 +58,7 @@ public:
 				return IUIResponder::GenerateResult("Success");
 			},"Simulate a device restart by setting the stack IIN flag. Usage: IINRestart <port_regex>");
 	}
-	void Add(std::shared_ptr<DNP3OutstationPort> p, const std::string& Name)
-	{
-		std::lock_guard<std::mutex> lck(mtx);
-		this->insert(std::pair<std::string,std::shared_ptr<DNP3OutstationPort>>(Name,p));
-	}
 	virtual ~DNP3OutstationPortCollection(){}
-private:
-	std::mutex mtx;
 };
 
 #endif // DNP3OUTSTATIONPORTCOLLECTION_H

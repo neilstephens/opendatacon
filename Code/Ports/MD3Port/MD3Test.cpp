@@ -227,25 +227,21 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 void WriteStartLoggingMessage(const std::string& TestName)
 {
 	std::string msg = "Logging for '" + TestName + "' started..";
+
 	if (auto md3logger = odc::spdlog_get("MD3Port"))
 	{
 		md3logger->info("------------------");
 		md3logger->info(msg);
 	}
 	else
-		std::cout << "Error MD3Port Logger not operational";
-
-	/*	if (auto odclogger = odc::spdlog_get("opendatacon"))
-	                  odclogger->info(msg);
-	        else
-	                  std::cout << "Error opendatacon Logger not operational";
-	                  */
+		std::cout << msg << std::endl;
 }
-void TestSetup(bool writeconffiles = true)
+void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
 	#ifndef NONVSTESTING
 	SetupLoggers(spdlog::level::level_enum::debug);
 	#endif
+	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
 		WriteConfFilesToCurrentWorkingDirectory();
@@ -309,8 +305,12 @@ void Wait(odc::asio_service &IOS, const size_t seconds)
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
-	TestSetup();\
+	TestSetup(Catch::getResultCapture().getCurrentTestName());\
 	auto IOS = odc::asio_service::Get()
+
+// Used for tests that dont need IOS
+#define SIMPLE_TEST_SETUP()\
+	TestSetup(Catch::getResultCapture().getCurrentTestName())
 
 #define START_IOS(ThreadCount) \
 	LOGINFO("Starting ASIO Threads"); \
@@ -359,6 +359,7 @@ TEST_CASE("Utility - HexStringTest")
 
 TEST_CASE("Utility - MD3CRCTest")
 {
+	SIMPLE_TEST_SETUP();
 	// The first 4 are all formatted first and only packets
 	uint8_t res = MD3CRC(0x7C05200F);
 	REQUIRE(MD3CRCCompare(res, 0x52));
@@ -390,6 +391,7 @@ TEST_CASE("Utility - MD3CRCTest")
 
 TEST_CASE("MD3Block - ClassConstructor1")
 {
+	SIMPLE_TEST_SETUP();
 	uint8_t stationaddress = 124;
 	bool mastertostation = true;
 	MD3_FUNCTION_CODE functioncode = ANALOG_UNCONDITIONAL;
@@ -425,6 +427,7 @@ TEST_CASE("MD3Block - ClassConstructor1")
 }
 TEST_CASE("MD3Block - ClassConstructor2")
 {
+	SIMPLE_TEST_SETUP();
 	uint8_t stationaddress = 0x33;
 	bool mastertostation = false;
 	MD3_FUNCTION_CODE functioncode = ANALOG_UNCONDITIONAL;
@@ -599,6 +602,7 @@ TEST_CASE("MD3Block - ClassConstructor2")
 }
 TEST_CASE("MD3Block - ClassConstructor3")
 {
+	SIMPLE_TEST_SETUP();
 	uint16_t firstword = 12;
 	uint16_t secondword = 32000;
 	bool lastblock = true;
@@ -625,6 +629,7 @@ TEST_CASE("MD3Block - ClassConstructor3")
 }
 TEST_CASE("MD3Block - ClassConstructor4")
 {
+	SIMPLE_TEST_SETUP();
 	uint32_t data = 128364324;
 	bool lastblock = true;
 
@@ -647,6 +652,7 @@ TEST_CASE("MD3Block - ClassConstructor4")
 }
 TEST_CASE("MD3Block - ClassConstructor5")
 {
+	SIMPLE_TEST_SETUP();
 	uint32_t data = 0x32F1F203;
 	bool lastblock = true;
 	uint8_t bc[] = {0x32, 0xF1, 0xf2, 0x03};
@@ -664,6 +670,7 @@ TEST_CASE("MD3Block - ClassConstructor5")
 }
 TEST_CASE("MD3Block - BlockBuilding")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockData db;
 
 	// From a packet capture - 0x7C,0x05,0x20,0x0F,0x52, 0x00
@@ -726,6 +733,7 @@ TEST_CASE("MD3Block - BlockBuilding")
 }
 TEST_CASE("MD3Block - Fn9")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn9 b9(0x20, true, 3, 100, false, true);
 
 	REQUIRE(b9.GetStationAddress() == 0x20);
@@ -750,6 +758,7 @@ TEST_CASE("MD3Block - Fn9")
 }
 TEST_CASE("MD3Block - Fn11")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn11MtoS b11(0x32, 15, 3, 14);
 	REQUIRE(b11.GetStationAddress() == 0x32);
 	REQUIRE(b11.IsMasterToStationMessage() == true);
@@ -789,6 +798,7 @@ TEST_CASE("MD3Block - Fn11")
 }
 TEST_CASE("MD3Block - Fn12")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn12MtoS b12(0x32, 70, 7, 15);
 	REQUIRE(b12.GetStationAddress() == 0x32);
 	REQUIRE(b12.IsMasterToStationMessage() == true);
@@ -800,6 +810,7 @@ TEST_CASE("MD3Block - Fn12")
 }
 TEST_CASE("MD3Block - Fn14")
 {
+	SIMPLE_TEST_SETUP();
 	// New style no change response constructor - contains a digital sequence number (6)
 	MD3BlockFn14StoM b14(0x25, 6);
 	REQUIRE(b14.IsMasterToStationMessage() == false);
@@ -823,6 +834,7 @@ TEST_CASE("MD3Block - Fn14")
 }
 TEST_CASE("MD3Block - Fn17")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn17MtoS b17(0x63, 0xF0, 15);
 	REQUIRE(b17.GetStationAddress() == 0x63);
 	REQUIRE(b17.GetModuleAddress() == 0xF0);
@@ -855,6 +867,7 @@ TEST_CASE("MD3Block - Fn17")
 }
 TEST_CASE("MD3Block - Fn19")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn19MtoS b19(0x63, 0xF0);
 	REQUIRE(b19.GetStationAddress() == 0x63);
 	REQUIRE(b19.GetModuleAddress() == 0xF0);
@@ -872,6 +885,7 @@ TEST_CASE("MD3Block - Fn19")
 }
 TEST_CASE("MD3Block - Fn16")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn16MtoS b16(0x63, true);
 	REQUIRE(b16.GetStationAddress() == 0x63);
 	REQUIRE(b16.IsEndOfMessageBlock());
@@ -892,6 +906,7 @@ TEST_CASE("MD3Block - Fn16")
 
 TEST_CASE("MD3Block - Fn20")
 {
+	SIMPLE_TEST_SETUP();
 	// Master from packet capture -> 1e140c951e0061f36a95960000200fdff600
 
 	// Decode the captured packet to get the values and then rebuild it again!
@@ -921,6 +936,7 @@ TEST_CASE("MD3Block - Fn20")
 }
 TEST_CASE("MD3Block - Fn23")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn23MtoS b23(0x63, 0x37, 15);
 	REQUIRE(b23.GetStationAddress() == 0x63);
 	REQUIRE(b23.GetModuleAddress() == 0x37);
@@ -939,6 +955,7 @@ TEST_CASE("MD3Block - Fn23")
 }
 TEST_CASE("MD3Block - Fn40")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn40MtoS b40(0x3F);
 	REQUIRE(b40.IsValid());
 	REQUIRE(b40.GetData() == 0x3f28c0d7);
@@ -959,8 +976,9 @@ TEST_CASE("MD3Block - Fn40")
 }
 TEST_CASE("MD3Block - Fn43")
 {
+	SIMPLE_TEST_SETUP();
 	// Actual captured test data 5e2b007a1300 5ad6ba8ce700
-	TestSetup(false);
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn43MtoS b43(0x38, 999);
 	REQUIRE(b43.GetMilliseconds() == 999);
 	REQUIRE(b43.GetStationAddress() == 0x38);
@@ -984,13 +1002,14 @@ TEST_CASE("MD3Block - Fn43")
 }
 TEST_CASE("MD3Block - Fn44")
 {
+	SIMPLE_TEST_SETUP();
 	// Fn44 Example 262c02521d00 5ad6b75fbc00 02580000c200
 	// The second block looks like the Fn43 second block which is seconds since epoch.
 	// The first block could be essentially the same as Fn43
 	// The 3rd block we have a clue is some kind of UTC offset. 0x258 is 600 - 600 minutes, or +10 hours - Our offset from UTC
 	// Arrival Time : Apr 18, 2018 13 : 11 : 27.532344000 AUS Eastern Standard Time
 	// Epoch Time : 1524021087.532344000 seconds
-	TestSetup(false);
+	SIMPLE_TEST_SETUP();
 
 	MD3Time timebase = static_cast<uint64_t>(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
 	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
@@ -1020,6 +1039,7 @@ TEST_CASE("MD3Block - Fn44")
 }
 TEST_CASE("MD3Block - Fn15 OK Packet")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn43MtoS b43(0x38, 999);
 
 	MD3BlockFn15StoM b15(b43);
@@ -1032,6 +1052,7 @@ TEST_CASE("MD3Block - Fn15 OK Packet")
 }
 TEST_CASE("MD3Block - Fn30 Fail Packet")
 {
+	SIMPLE_TEST_SETUP();
 	MD3BlockFn43MtoS b43(0x38, 999);
 	MD3BlockFn30StoM b30(b43);
 	REQUIRE(b30.GetStationAddress() == 0x38);
@@ -1043,6 +1064,7 @@ TEST_CASE("MD3Block - Fn30 Fail Packet")
 }
 TEST_CASE("MD3Block - Fn52")
 {
+	SIMPLE_TEST_SETUP();
 	// New style no change response constructor - contains a digital sequence number (6)
 	MD3BlockFn52MtoS b52mtos(0x25);
 	REQUIRE(b52mtos.IsMasterToStationMessage() == true);
@@ -3605,21 +3627,6 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		REQUIRE(MAResponse[1] == commandblock.GetByte(1));
 		REQUIRE(MAResponse[2] == static_cast<char>(commandblock.GetByte(2)));
 		REQUIRE((MAResponse[3] & 0x0f) == (commandblock.GetByte(3) & 0x0f)); // Not comparing the sequence count, only the module count
-
-		// We now inject the expected response to the command above, a DCOS block
-		// Want to test this response from an actual RTU. We asked for 15 modules, so it tried to give us that. Should only ask for what we want.
-
-		//MD3BlockData b[] = {"fc0b016f3f00","100000009a00","00001101a100","00001210bd00","00001310af00","000014108a00","000015109800","00001610ae00","00001710bc00","00001810bf00","00001910ad00","00001a109b00","00001b108900","00001c10ac00","00001d10be00","00001e10c800" };
-
-		// We have two modules in this poll group, 34 and 35, ODC points 0 to 31.
-		// Will send 3 time tagged events, and data for both modules
-		// 34 set to 8000, 35 to FF00
-		// Timedate is msec, but need seconds
-		// Then COS records, and we insert one time block to test the decoding which is only 16 bits and offsets everything...
-		// So COS records are 22058000, 23100100, time extend, 2200fe00, time extend/padding
-		auto changedtime = static_cast<MD3Time>(0x0000016338b6d4fb);
-		MD3BlockData b2[] = {MD3BlockFn11StoM(0x7C, 4, 1, 2),MD3BlockData(0x22008000),MD3BlockData(0x2300ff00), MD3BlockData(static_cast<uint32_t>(changedtime/1000)),
-			              MD3BlockData(0x22058000), MD3BlockData(0x23100100), MD3BlockData(0x00202200),MD3BlockData(0xfe000000,true)};
 
 		// 0xCB, 0x0B, 0x0E, 0x6B	Changed address to 7C from 4B - TaggedEvent count = 0,  ModuleCount 0xb
 		// THIS DATA DOES NOT HAVE COS RECORDS???
