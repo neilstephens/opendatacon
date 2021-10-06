@@ -788,13 +788,13 @@ TEST_CASE("MD3Block - Fn11")
 	MD3BlockFn11StoM b11as(ba);
 	MD3BlockFn11StoM p11(0x4b, 0, 0xe, 0xb, false, true, true, false);
 	// 0xCB, 0x0B, 0x0E, 0x6B -35-00-25-00-14-02-8F-00-26-00-14-04-B6-00-27-00-00-40-8D-00-28-00-70-39-89-00-29-00-38-73-A3-00-2A-00-24-1C-86-00-2B-00-68-E0-BF-00-2C-00-72-39-9F-00-2D-00-38-70-BC-00-2E-00-24-00-87-00-2F-00-40-00-DC-00
-	int sta = b11as.GetStationAddress();
-	bool ismas = b11as.IsMasterToStationMessage();
-	int fnc = b11as.GetFunctionCode();
-	int dsn = b11as.GetDigitalSequenceNumber();
-	bool chks = b11as.CheckSumPasses();
-	int tevc = b11as.GetTaggedEventCount();
-	int mcnt = b11as.GetModuleCount();
+//	int sta = b11as.GetStationAddress();
+//	bool ismas = b11as.IsMasterToStationMessage();
+//	int fnc = b11as.GetFunctionCode();
+//	int dsn = b11as.GetDigitalSequenceNumber();
+//	bool chks = b11as.CheckSumPasses();
+//	int tevc = b11as.GetTaggedEventCount();
+//	int mcnt = b11as.GetModuleCount();
 }
 TEST_CASE("MD3Block - Fn12")
 {
