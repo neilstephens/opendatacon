@@ -90,6 +90,7 @@ public:
 
 	//*** PUBLIC for unit tests only
 	void DoPoll(uint32_t pollgroup);
+	void ClearMD3CommandQueue();
 
 	void ResetDigitalCommandSequenceNumber();
 	uint8_t GetAndIncrementDigitalCommandSequenceNumber(); // Thread protected
@@ -117,12 +118,12 @@ private:
 
 	void SendNextMasterCommand();
 	void UnprotectedSendNextMasterCommand(bool timeoutoccured);
-	void ClearMD3CommandQueue();
 	void ProcessMD3Message(MD3Message_t&& CompleteMD3Message);
 
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 	bool ProcessAnalogUnconditionalReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 	bool ProcessAnalogDeltaScanReturn( MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
+	bool SetAnalogCounterAndSendEvent(const uint8_t ModuleAddress, const uint8_t idx, const uint16_t value, bool DeltaUpdate, bool OnlyUpdateTime);
 	bool ProcessAnalogNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t& CompleteMD3Message);
 
 	bool ProcessDigitalNoChangeReturn(MD3BlockFormatted & Header, const MD3Message_t & CompleteMD3Message);

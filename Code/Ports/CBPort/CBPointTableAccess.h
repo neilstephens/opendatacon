@@ -52,7 +52,7 @@ public:
 	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation, const BinaryPointType & pointtype, bool issoe, uint8_t soeindex);
 	bool AddAnalogControlPointToPointTable(const size_t & index, const uint8_t & group, const uint8_t & channel, const AnalogCounterPointType &pointtype);
 
-	bool AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType &payloadlocation);
+	bool AddStatusByteToCBMap(const uint8_t & group, const PayloadLocationType &payloadlocation);
 	void UpdateMaxPayload(const uint8_t & group, const PayloadLocationType & payloadlocation);
 
 	bool GetCounterValueUsingODCIndex(const size_t index, uint16_t & res, bool & hasbeenset);
@@ -93,7 +93,10 @@ public:
 	void ForEachMatchingBinaryPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBBinaryPoint&pt)>& fn);
 	void ForEachMatchingAnalogPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint&pt)>& fn);
 	void ForEachMatchingCounterPoint(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(CBAnalogCounterPoint&pt)>& fn);
-	void ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(void)>& fn);
+	bool IsStatusByteLocation(const uint8_t& group, const PayloadLocationType& payloadlocation)
+	{
+		return ((group == StatusByteGroup) && (StatusBytePayloadLocation == payloadlocation));
+	}
 
 	bool GetMaxPayload(uint8_t group, uint8_t &blockcount);
 
@@ -101,6 +104,9 @@ public:
 	static uint16_t GetCBPointMapIndex(const uint8_t &group, const uint8_t &channel, const PayloadLocationType &payloadlocation); // Group/Payload/Channel
 	static uint16_t GetCBBitMapIndex(const uint8_t& group, uint8_t bit, const PayloadLocationType& payloadlocation, const BinaryPointType& pointtype);
 	static uint16_t GetCBControlPointMapIndex(const uint8_t & group, const uint8_t & channel);
+	PayloadLocationType GetPayLoadLocationFromCBPointMapIndex(const uint16_t& CBIndex);
+	uint8_t GetGroupFromCBPointMapIndex(const uint16_t& CBIndex);
+
 protected:
 
 	// We access the map using a Module:Channel combination, so that they will always be in order. Makes searching the next item easier.
@@ -123,7 +129,8 @@ protected:
 	std::map<uint16_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlCBPointMap; // Group/Payload/Channel, CBPoint
 	std::map<size_t, std::shared_ptr<CBAnalogCounterPoint>> AnalogControlODCPointMap;  // Index OpenDataCon, CBPoint
 
-	std::map<uint16_t, uint8_t> StatusByteMap; // Group/Payload/Channel, second parameter empty.
+	uint8_t StatusByteGroup = -1; // Group/Payload/Channel, second parameter bit value.
+	PayloadLocationType StatusBytePayloadLocation;
 
 	std::map<uint8_t, uint8_t> MaxiumPayloadPerGroupMap; // Group 0 to 15, Max payload - a count of 1 to 16.
 

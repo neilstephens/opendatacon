@@ -46,14 +46,7 @@
 #include <fstream>
 #include <thread>
 #include <utility>
-
-
-#if defined(NONVSTESTING)
 #include <catch.hpp>
-#else
-#include "spdlog/sinks/msvc_sink.h"
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer - but also has some problems not destructing objects correctly.
-#endif
 
 #define SUITE(name) "CBTests - " name
 
@@ -130,7 +123,9 @@ const char *conffile1 = R"001(
 					{"Index" : 13, "Group" : 3, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB"},
 					{"Index" : 14, "Group" : 3, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC" },
 					{"Index" : 81, "Group" : 6, "PayloadLocation": "2A", "Channel" : 2, "Type" : "MCB","SOE" : { "Index" : 82}},
-					{"Index" : 90, "Group" : 6, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC","SOE" : { "Index" : 91}} ],
+					{"Index" : 90, "Group" : 6, "PayloadLocation": "2A", "Channel" : 3, "Type" : "MCC","SOE" : { "Index" : 91}},
+					{"Index" : 100, "Group": 3, "PayloadLocation": "5A", "Channel" : 8, "Type" : "DIG"} ],	
+					//Internal Supply Low in RST Word must match Group/Location defined below
 
 	"Analogs" : [	{"Index" : 0, "Group" : 3, "PayloadLocation": "3A","Channel" : 1, "Type":"ANA"},
 					{"Index" : 1, "Group" : 3, "PayloadLocation": "3B","Channel" : 1, "Type":"ANA"},
@@ -146,7 +141,7 @@ const char *conffile1 = R"001(
 	"AnalogControls" : [{"Index": 1,  "Group" : 3, "Channel" : 1, "Type" : "CONTROL"}],
 
 	// Special definition, so we know where to find the Remote Status Data in the scanned group.
-	"RemoteStatus" : [{"Group":3, "Channel" : 1, "PayloadLocation": "5A"}]
+	"RemoteStatus" : [{"Group":3, "PayloadLocation": "5A"}]
 
 })001";
 
@@ -211,11 +206,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 		return; // Already exists
 
 	// So create the log sink first - can be more than one and add to a vector.
-	#if defined(NONVSTESTING)
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	#else
-	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
-	#endif
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("cbporttest.log", true);
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
@@ -235,24 +226,12 @@ void WriteStartLoggingMessage(const std::string& TestName)
 	std::string msg = "Logging for '"+TestName+"' started..";
 
 	if (auto cblogger = odc::spdlog_get("CBPort"))
-	{
-		cblogger->info("------------------");
 		cblogger->info(msg);
-	}
-	else
-		std::cout << "Error CBPort Logger not operational";
-
-/*	if (auto odclogger = odc::spdlog_get("opendatacon"))
-                          odclogger->info(msg);
-            else
-                          std::cout << "Error opendatacon Logger not operational";
-                          */
+	else if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->info("CBPort Logger Message: "+msg);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
-	#ifndef NONVSTESTING
-	SetupLoggers(spdlog::level::debug);
-	#endif
 	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
@@ -261,10 +240,6 @@ void TestSetup(const std::string& TestName, bool writeconffiles = true)
 void TestTearDown(void)
 {
 	LOGINFO("Test Finished");
-	#ifndef NONVSTESTING
-
-	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
-	#endif
 }
 // Used for command line test setup
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
@@ -867,7 +842,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                            "14080022" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "000fff89";
+	                            "030fffab";
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -905,6 +880,8 @@ TEST_CASE("Station - ScanRequest F0")
 		SendBinaryEvent(IOS,CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
 	}
 
+	SendBinaryEvent(IOS, CBOSPort, 100, true); // RTU Power Supply Low
+
 	// MCA,MCB,MCC Set to starting values
 	SendBinaryEvent(IOS,CBOSPort, 12, true);  //CLOSED // MCA inverted on the wire!!
 	SendBinaryEvent(IOS,CBOSPort, 13, false); //OPEN
@@ -919,7 +896,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "24080018" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "800f7d19";
+	                "810f7d07";
 
 	CBMessage_t Msg = BuildCBMessageFromASCIIHexString(DesiredResult);
 	assert(Msg[2].GetA() == 1024);                       // Checking payload values
@@ -948,6 +925,7 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(IOS,CBOSPort, 13, true);  // CLOSED
 	SendBinaryEvent(IOS,CBOSPort, 14, false); // OPEN // Cause more than one change.
 	SendBinaryEvent(IOS,CBOSPort, 14, true);
+	SendBinaryEvent(IOS, CBOSPort, 100, false); // RTU Power Supply OK
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
@@ -959,7 +937,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "5c08001e" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "800f7d19";
+	                "800f7d19"; // First 12 bits is RST Word
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1425,7 +1403,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                            "02880010" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "000fff89";
+	                            "0a0fff9b";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -1474,7 +1452,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "0248000a" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "800f7d19";
+	                "880f7d37";
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1507,7 +1485,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "03a80016" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "800f7d19";
+	                "880f7d37";
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1529,7 +1507,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "0058003a" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
+	                "c80f7d25"; // The SOE buffer overflow bit should be set here...
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;

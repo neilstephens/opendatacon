@@ -300,28 +300,28 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				FoundMatch = true;
 			});
 	}
-	if (!FoundMatch)
+	// See if it is a StatusByte we need to provide - there is only one status byte
+	// We could have RST converted to DIG to allow setting some status bits - we clear the important ones below if there is a clash..
+	if (MyPointConf->PointTable.IsStatusByteLocation(Group, payloadlocation))
 	{
-		// See if it is a StatusByte we need to provide - there is only one status byte, but it could be requested in several groups.
-		MyPointConf->PointTable.ForEachMatchingStatusByte(Group, payloadlocation, [this,&Payload,&FoundMatch,&Group,&payloadlocation](void)
-			{
-				// We have a matching status byte, set a flag to indicate we have a match.
-				LOGDEBUG("{} Got a Status Byte request at :{} - {}",Name, Group ,payloadlocation.to_string());
+		FoundMatch = true;
+		// So we have some RST bits defined, we will now clear and then OR those bits with the "system maintained" bits.
+		Payload &= ~((0x1 << 11) | (0x1 << 10) | (0x1 << 5)); // Clear (just in case someone defined an RST bit that clashes)
+		// We cant do this in the above lambda as we might getandset the overflow flag multiple times...
+		// Bit Definitions:
+		// 0-3 Error Code
+		// 4 - Controls Isolated
+		// 5 - Reset Occurred
+		// 6 - Field Supply Low
+		// 7 - Internal Supply Low
+		// 8 - Accumulator Overflow Change
+		// 9 - Accumulator Overflow Status
+		// 10 - SOE Overflow
+		// 11 - SOE Data Available
+		// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+		Payload |= SystemFlags.GetStatusPayload();
 
-				// Get the current value and clear in the same operation.
-				// Effectively clear this flag when we have reported it to the Master.
-				if (SOEBufferOverflowFlag->getandset(false))
-				{
-				// Bit 11 SOE Buffer Full
-				      Payload |= (0x1 << 10);
-				}
-				if (MyPointConf->PointTable.TimeTaggedDataAvailable())
-				{
-				// Bit 12 SOE Data available
-				      Payload |= (0x1 << 11);
-				}
-				FoundMatch = true;
-			});
+		LOGDEBUG("{} Combining RST bits and Status Word Flags :{} - {} - {}", Name, Group, payloadlocation.to_string(), to_hexstring(Payload));
 	}
 	if (!FoundMatch)
 	{
@@ -624,8 +624,7 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 		break;
 
 		case MASTER_SUB_FUNC_RETRIEVE_REMOTE_STATUS_WORD:
-			EchoReceivedHeaderToMaster(Header);
-			LOGDEBUG("{} Received Get Remote Status Master Command Function - {}, no action, but we reply", Name, Header.GetGroup());
+			RemoteStatusWordResponse(Header);
 			break;
 
 		case MASTER_SUB_FUNC_RETREIVE_INPUT_CIRCUIT_DATA:
@@ -658,6 +657,22 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 			LOGERROR("{} Unknown PendingCommand Function - {} On Station Address - {}", Name, Header.GetFunctionCode(),Header.GetStationAddress());
 			break;
 	}
+}
+
+void CBOutstationPort::RemoteStatusWordResponse(CBBlockData& Header)
+{
+	// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+	uint16_t Payload = 0;
+
+	// TODO: Need to scan any digitals in this Group/Location..
+
+	Payload |= SystemFlags.GetStatusPayload();
+	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), Payload, true);
+	CBMessage_t ResponseCBMessage;
+	ResponseCBMessage.push_back(firstblock);
+	SendCBMessage(ResponseCBMessage);
+
+	LOGDEBUG("{} Received Get Remote Status Master Command Function - {}, replied with Status Bits {}", Name, Header.GetGroup(), to_hexstring(Payload));
 }
 
 void CBOutstationPort::FuncReSendSOEResponse(CBBlockData & Header)
@@ -879,16 +894,14 @@ void CBOutstationPort::EchoReceivedHeaderToMaster(CBBlockData & Header)
 #endif
 // This method is passed to the SystemFlags variable to do the necessary calculation
 // Access through SystemFlags.GetDigitalChangedFlag()
-bool CBOutstationPort::DigitalChangedFlagCalculationMethod(void)
+bool CBOutstationPort::SOEAvailableFn(void)
 {
-	// Return true if there is unsent digital changes
-	return (CountBinaryBlocksWithChanges() > 0);
+	return MyPointConf->PointTable.TimeTaggedDataAvailable();
+	// Was this - not correct	return (CountBinaryBlocksWithChanges() > 0);
 }
-// This method is passed to the SystemFlags variable to do the necessary calculation
-// Access through SystemFlags.GetTimeTaggedDataAvailableFlag()
-bool CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod(void)
+bool CBOutstationPort::SOEOverflowFn(void)
 {
-	return false; //TODO: MyPointConf->PointTable.TimeTaggedDataAvailable();
+	return SOEBufferOverflowFlag->getandclear();
 }
 void CBOutstationPort::MarkAllBinaryPointsAsChanged()
 {
@@ -971,8 +984,7 @@ bool CBOutstationPort::UIRandomReponseDrops(const std::string& probability)
 		return true;
 	}
 	catch (...)
-	{
-	}
+	{}
 	return false;
 }
 #ifdef _MSC_VER
