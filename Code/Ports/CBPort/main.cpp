@@ -26,14 +26,8 @@
 
 #include "CB.h"
 #include <iostream>
-
-
-#ifdef NONVSTESTING
 #define CATCH_CONFIG_RUNNER
 #include <catch.hpp>
-#else
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
-#endif
 
 #include "CBMasterPort.h"
 #include "CBOutstationPort.h"
@@ -70,7 +64,6 @@ extern "C" void delete_CBOutstationPort(CBOutstationPort* aCBOutstationPort_ptr)
 
 extern "C" int run_tests( int argc, char* argv[] )
 {
-	#ifdef NONVSTESTING
 	// Create loggers for tests here
 	spdlog::level::level_enum log_level = spdlog::level::off;
 	int new_argc = argc;
@@ -99,11 +92,6 @@ extern "C" int run_tests( int argc, char* argv[] )
 	if (log_level != spdlog::level::off)
 		CommandLineLoggingCleanup();
 	return res;
-
-	#else
-	std::cout << "CBPort: Compiled for Visual Studio Testing only" << std::endl;
-	return 1;
-	#endif
 }
 
 

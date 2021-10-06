@@ -31,36 +31,16 @@
 #include <opendatacon/asio.h>
 #include <opendatacon/util.h>
 
-// If we are compiling for external testing (or production) define this.
-// If we are using VS and its test framework, don't define this.
-// The test cases do not destruct everthing correctly, they run individually ok, but one after the other they fail.
-#define NONVSTESTING
-
 // A cheat for it to find my Python module py files... comment out normally!
 //#define SCOTTPYTHONCODEPATH
 
 // Hide some of the code to make Logging cleaner
-#define LOGTRACE(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->trace(__VA_ARGS__)
-#define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->debug(__VA_ARGS__)
-#define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->error(__VA_ARGS__)
-#define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("PyPort"))  \
-		log->warn(__VA_ARGS__)
-#define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->info(__VA_ARGS__)
-#define LOGCRITICAL(...) \
-	if (auto log = odc::spdlog_get("PyPort")) \
-		log->critical(__VA_ARGS__)
-#define LOGSTRAND(...)
-/*if (auto log = odc::spdlog_get("PyPort")) \
-            log->critical(__VA_ARGS__);
-*/
+#define LOGTRACE(...) if (auto log = odc::spdlog_get("PyPort")) log->trace(__VA_ARGS__)
+#define LOGDEBUG(...) if (auto log = odc::spdlog_get("PyPort")) log->debug(__VA_ARGS__)
+#define LOGERROR(...) if (auto log = odc::spdlog_get("PyPort")) log->error(__VA_ARGS__)
+#define LOGWARN(...) if (auto log = odc::spdlog_get("PyPort"))  log->warn(__VA_ARGS__)
+#define LOGINFO(...) if (auto log = odc::spdlog_get("PyPort")) log->info(__VA_ARGS__)
+#define LOGCRITICAL(...) if (auto log = odc::spdlog_get("PyPort")) log->critical(__VA_ARGS__)
+#define LOGSTRAND(...) /*if (auto log = odc::spdlog_get("PyPort")) log->critical(__VA_ARGS__);*/
 
 #endif /* PY_H_ */

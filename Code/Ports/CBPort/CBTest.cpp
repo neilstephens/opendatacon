@@ -46,14 +46,7 @@
 #include <fstream>
 #include <thread>
 #include <utility>
-
-
-#if defined(NONVSTESTING)
 #include <catch.hpp>
-#else
-#include "spdlog/sinks/msvc_sink.h"
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer - but also has some problems not destructing objects correctly.
-#endif
 
 #define SUITE(name) "CBTests - " name
 
@@ -213,11 +206,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 		return; // Already exists
 
 	// So create the log sink first - can be more than one and add to a vector.
-	#if defined(NONVSTESTING)
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	#else
-	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
-	#endif
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("cbporttest.log", true);
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
@@ -237,24 +226,12 @@ void WriteStartLoggingMessage(const std::string& TestName)
 	std::string msg = "Logging for '"+TestName+"' started..";
 
 	if (auto cblogger = odc::spdlog_get("CBPort"))
-	{
-		cblogger->info("------------------");
 		cblogger->info(msg);
-	}
-	else
-		std::cout << msg << std::endl;
-
-	if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info(msg);
-	//else
-	//	std::cout << "Error opendatacon Logger not operational";
-                          
+	else if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->info("CBPort Logger Message: "+msg);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
-	#ifndef NONVSTESTING
-	SetupLoggers(spdlog::level::debug);
-	#endif
 	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
@@ -263,10 +240,6 @@ void TestSetup(const std::string& TestName, bool writeconffiles = true)
 void TestTearDown(void)
 {
 	LOGINFO("Test Finished");
-	#ifndef NONVSTESTING
-
-	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
-	#endif
 }
 // Used for command line test setup
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
@@ -907,7 +880,7 @@ TEST_CASE("Station - ScanRequest F0")
 		SendBinaryEvent(IOS,CBOSPort, ODCIndex, ((ODCIndex % 2) == 0));
 	}
 
-	SendBinaryEvent(IOS, CBOSPort, 100, true);  // RTU Power Supply Low
+	SendBinaryEvent(IOS, CBOSPort, 100, true); // RTU Power Supply Low
 
 	// MCA,MCB,MCC Set to starting values
 	SendBinaryEvent(IOS,CBOSPort, 12, true);  //CLOSED // MCA inverted on the wire!!
@@ -952,7 +925,7 @@ TEST_CASE("Station - ScanRequest F0")
 	SendBinaryEvent(IOS,CBOSPort, 13, true);  // CLOSED
 	SendBinaryEvent(IOS,CBOSPort, 14, false); // OPEN // Cause more than one change.
 	SendBinaryEvent(IOS,CBOSPort, 14, true);
-	SendBinaryEvent(IOS, CBOSPort, 100, false);  // RTU Power Supply OK
+	SendBinaryEvent(IOS, CBOSPort, 100, false); // RTU Power Supply OK
 
 	Response = "Not Set";
 	output << commandblock.ToBinaryString();
@@ -964,7 +937,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "5c08001e" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "800f7d19";	// First 12 bits is RST Word
+	                "800f7d19"; // First 12 bits is RST Word
 
 	while(!done_flag)
 		IOS->poll_one();

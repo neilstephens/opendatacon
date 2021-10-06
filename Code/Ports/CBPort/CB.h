@@ -27,10 +27,6 @@
 #ifndef CB_H_
 #define CB_H_
 
-// If we are compiling for external testing (or production) define this.
-// If we are using VS and its test framework, don't define this.
-#define NONVSTESTING
-
 #include <cstdint>
 #include <shared_mutex>
 #include <opendatacon/DataPort.h>
@@ -49,7 +45,7 @@
 //	CONTROL - Used
 //	ACC24
 //	MCDA - Used - Same as SMCDA
-//	ANA6 - Used - Half of an analog 12 bit value... 
+//	ANA6 - Used - Half of an analog 12 bit value...
 
 // Microsoft Message Analyzer filter
 // Virtually all the master commands are 4 bytes only. So look for these only with command # > 0
@@ -319,7 +315,7 @@ public:
 		ChangedTime = ctime;
 
 		if ((PointType == MCA) && (Binary == 0) && (b == 1)) MomentaryChangeStatus = true;  // Only set on 0-->1 transition
-		if ((PointType == MCB) && (Binary == 1) && (b == 0)) MomentaryChangeStatus = true;  // Only set on 1-->0 transition		
+		if ((PointType == MCB) && (Binary == 1) && (b == 0)) MomentaryChangeStatus = true;  // Only set on 1-->0 transition
 		if ((PointType == MCC) && (Changed) && (Binary != b)) MomentaryChangeStatus = true; // The normal changed flag was already set, and then we got another change.
 
 		Changed = (Binary != b);
@@ -329,7 +325,7 @@ public:
 
 protected:
 	// Only the values below will be changed in two places
-	uint8_t Binary = 0x01;		// NOTE: WHY WOULD I DEFAULT THESE TO 1???
+	uint8_t Binary = 0x01; // NOTE: WHY WOULD I DEFAULT THESE TO 1???
 	bool Changed = true;
 	bool MomentaryChangeStatus = false; // Used only for MCA, MCB and MCC types. Not valid for other types.
 	BinaryPointType PointType = DIG;
