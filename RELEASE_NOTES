@@ -1,5 +1,13 @@
 # opendatacon version 1.7.8
 
+## 1.7.9-RC1
+  * Conitel/Baker/MD3 bugfixes
+  * ONDEMAND connection fixes
+    * Some ports were connecting on demand, but not disconnecting on lack of demand
+  * TCPLog has it's own level
+  * reload_config fix
+    * changed ports weren't receiving UI commands
+
 ## 1.7.8
   * DNP3MasterPort - link down flag clearing hot fix
   
