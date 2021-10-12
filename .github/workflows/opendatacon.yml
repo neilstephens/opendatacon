@@ -102,7 +102,7 @@ jobs:
     
     - if: contains(matrix.os,'ubuntu') && matrix.cross == 'none' && matrix.build-type == 'Release'
       name: Upload release text
-      run: git tag -l --format='%(subject)' $(git describe) > tag_annotation.txt
+      run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
         
     - if: matrix.cross == 'rpi'
       name: Rpi Setup Script
@@ -231,7 +231,7 @@ jobs:
         apt-get update
         apt-get install -y libmodbus-dev socat psmisc libc6-dev openssl libssl-dev
         apt-get install -y python3.6 python3.6-dev g++ git cmake make binutils
-        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic -DCMAKE_SYSTEM_PROCESSOR=x86' >> $GITHUB_ENV
+        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic -DARCH_DESC=x86' >> $GITHUB_ENV
 
     - name: Finish run wrapper
       run: |
@@ -292,7 +292,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           draft: true
-          name: opendatacon ${GITHUB_REF/refs\/tags\//}
           body_path: tag_annotation.txt
           files: |
             **/opendatacon-*.*.*-*-*-*-*-*.sh

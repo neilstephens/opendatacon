@@ -45,6 +45,10 @@ elseif(CMAKE_GENERATOR MATCHES "^Visual Studio(.*)$")
 	endif()
 endif()
 
+if(ARCH_DESC)
+	set(BUILD_ARCH ${ARCH_DESC})
+endif()
+
 if(EXISTS "${CMAKE_BINARY_DIR}/current_build_config")
 	message("Reading build config from temp file ${CMAKE_BINARY_DIR}/current_build_config")
 	file(READ "${CMAKE_BINARY_DIR}/current_build_config" build_type)
