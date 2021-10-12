@@ -88,7 +88,7 @@ if(USE_DNP3_SUBMODULE)
 	foreach(CONF ${CONFIGS})
 		message("Building DNP3 dependency")
 		execute_process(
-			COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config ${CONF} --target install
+			COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config ${CONF} --parallel 8 --target install
 			WORKING_DIRECTORY "${DNP3_BUILD}"
 			RESULT_VARIABLE EXEC_RESULT
 		)
@@ -98,7 +98,7 @@ if(USE_DNP3_SUBMODULE)
 	endforeach()
 	add_custom_target( build_dnp3
 		WORKING_DIRECTORY "${DNP3_BUILD}"
-		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config $<CONFIG> --target install
+		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config $<CONFIG> --parallel 8 --target install
 	)
 else()
 	if(DEFINED DNP3_HOME)
@@ -150,7 +150,9 @@ install(CODE
 	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
 		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
 	)
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
+	if(PACK_NAMES)
+		set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
+			${PACK_NAMES}
+		)
+	endif()
 ")

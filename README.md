@@ -1,8 +1,8 @@
 
-| Branch  | Travis CI Linux/OSX x86/x64/arm gcc/clang builds | Appveyor CI x86/x64 Windows build |
-|---------|--------------------------------------------------|-----------------------------------|
-| develop |[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=develop)](https://travis-ci.com/neilstephens/opendatacon)|[![Build status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d/branch/develop?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon/branch/develop)|
-| master  |[![Travis Build Status](https://travis-ci.com/neilstephens/opendatacon.svg?branch=master)](https://travis-ci.com/neilstephens/opendatacon)|[![Build status](https://ci.appveyor.com/api/projects/status/dafc9t0xb3qrqj4d/branch/master?svg=true)](https://ci.appveyor.com/project/neilstephens/opendatacon/branch/develop)|
+| Branch  | Github Actions Linux/Mac/Windows x86/x64/arm builds |
+|---------|-----------------------------------------------------|
+| develop |[![CI](https://github.com/neilstephens/opendatacon/actions/workflows/opendatacon.yml/badge.svg?branch=develop)](https://github.com/neilstephens/opendatacon/actions/workflows/opendatacon.yml)|
+| master  |[![CI](https://github.com/neilstephens/opendatacon/actions/workflows/opendatacon.yml/badge.svg?branch=master)](https://github.com/neilstephens/opendatacon/actions/workflows/opendatacon.yml) |
 
 ## Table of contents
 

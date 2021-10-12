@@ -178,16 +178,16 @@ script:
   - if_notag "$RUN install/bin/Integration_tests $LOG_LVL -d yes"
   - $STOP
 
-deploy:
-  # Only do a git deploy on a tagged release.
-  provider: releases
-  api_key:
-    secure: "a1Vm3l2QwXhwDoFpQn1Rw6BEL+gHHDlSAL5C43IWjr52qPRBL/qiQi9DBSrb4421M01QQtfxHOAxVs7bcM3oZ6oTeqy4vVHA3oqMhDtlVrt0Om4tlyLdY8kuSM/Hxm5G6WPYcgIj2ABMoX0PxpEftgrEtqa8E/cu8WkSP1Hmuv5RC5fJ+TmLHTTW7KxRSKZ9clmjWzRgLyrLYB+eS3HFfo64XW98XHkop9U+rb7+NQ9E4oZ9gVXmPYwEG805lNePAhyJ+EZ6NAMwY0HFeNj5JRt73EFtokYaLTW+drf7zUnptT9grquCpu16EbmEnUrgdJfUKjZHUAuBu6vYGLmM1SJ9PcS9+PGnGqhKyIZhSRFZCeCH5//gc3sh+Yp7NxT+6IrqsOKVitNoeiXykpk4MwCefuxvB5kDboxic8vxniSp+awnlzmwyKHP/aDCUANHpkQ+uNHnpA7Ev+zFeZnsDoDmcrzT39pWZav23ofP4c7H7MsgjQV/SWutHp91Bqs8AR2sBRpXl6FbLKIMrgXUQWd52lsSGWUUW042KddzGlfiWPV24P642AI40LbkPD1yD4FStH/KniA+9q0xvKeDqGqSB/8IrH0ZUxB/pCrHbsLl0R77Wi2PmYYIT+LGL58UxaJzMr+CyMTW05HH6/ruM4pUXzSMes7GC7cdJs2D/g8="
-  file_glob: true
-  file: opendatacon-*.*.*-*-*-*-*-*.sh
-  name: "opendatacon ${TRAVIS_TAG}"
-  skip_cleanup: true
-  on:
-    tags: true
-    compiler: gcc
+#deploy:
+#  # Only do a git deploy on a tagged release.
+#  provider: releases
+#  api_key:
+#    secure: "a1Vm3l2QwXhwDoFpQn1Rw6BEL+gHHDlSAL5C43IWjr52qPRBL/qiQi9DBSrb4421M01QQtfxHOAxVs7bcM3oZ6oTeqy4vVHA3oqMhDtlVrt0Om4tlyLdY8kuSM/Hxm5G6WPYcgIj2ABMoX0PxpEftgrEtqa8E/cu8WkSP1Hmuv5RC5fJ+TmLHTTW7KxRSKZ9clmjWzRgLyrLYB+eS3HFfo64XW98XHkop9U+rb7+NQ9E4oZ9gVXmPYwEG805lNePAhyJ+EZ6NAMwY0HFeNj5JRt73EFtokYaLTW+drf7zUnptT9grquCpu16EbmEnUrgdJfUKjZHUAuBu6vYGLmM1SJ9PcS9+PGnGqhKyIZhSRFZCeCH5//gc3sh+Yp7NxT+6IrqsOKVitNoeiXykpk4MwCefuxvB5kDboxic8vxniSp+awnlzmwyKHP/aDCUANHpkQ+uNHnpA7Ev+zFeZnsDoDmcrzT39pWZav23ofP4c7H7MsgjQV/SWutHp91Bqs8AR2sBRpXl6FbLKIMrgXUQWd52lsSGWUUW042KddzGlfiWPV24P642AI40LbkPD1yD4FStH/KniA+9q0xvKeDqGqSB/8IrH0ZUxB/pCrHbsLl0R77Wi2PmYYIT+LGL58UxaJzMr+CyMTW05HH6/ruM4pUXzSMes7GC7cdJs2D/g8="
+#  file_glob: true
+#  file: opendatacon-*.*.*-*-*-*-*-*.sh
+#  name: "opendatacon ${TRAVIS_TAG}"
+#  skip_cleanup: true
+#  on:
+#    tags: true
+#    compiler: gcc
   
