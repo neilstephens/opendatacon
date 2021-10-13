@@ -43,7 +43,10 @@ if(NOT USE_PYTHON_SUBMODULE)
 
 	set(PYTHON_INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS} ${TOP_INCLUDE})
 
-	string(REGEX MATCH "3[0-9]+" PYTHON_NUM "${PYTHON_INCLUDE_DIRS}")
+	string(REGEX MATCH "(3)\.?([0-9]+)" PYTHON_NUM "${PYTHON_INCLUDE_DIRS}")
+	if(PYTHON_NUM)
+		set(PYTHON_NUM ${CMAKE_MATCH_1}${CMAKE_MATCH_2})
+	endif()
 
 	if(PYTHON_NUM OR PYTHON_MINOR_VER)
 		if(PYTHON_NUM)
@@ -93,18 +96,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 
 	if(WIN32)
 		if (NOT PYTHON_LIBRARY_DEBUG)
-			#FIXME:
-			# Appveyor does not have the debug libraries. Point to our copy that we have put into GIT. This issue will be fixed on next Image Release
-			# Remove this and python37_d.lib from GIT when the Appveyor image catches up.
-			message("Hack to work around missing Python debug library")
-
-			if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "8")	# 64 Bit
-				set(platform "x64")
-			else()
-				set(platform "x86")
-			endif()
-
-			set(PYTHON_LIBRARY_DEBUG "${CMAKE_SOURCE_DIR}/PyPort/${platform}/python37_d.lib")
+			message(FATAL_ERROR "Error: Can't find Python debug lib" )
 		endif()
 	endif()
 

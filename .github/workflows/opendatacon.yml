@@ -1,0 +1,301 @@
+name: opendatacon workflow
+
+on:
+  push:
+    branches:
+      - '**' # matches every branch
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  opendatacon-native:
+    name: ${{matrix.os}} ${{matrix.build-type}} ${{matrix.cross}} ${{matrix.bits}} 
+  
+    strategy:
+      fail-fast: false
+      
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        build-type: [Release,Debug]
+        bits: [64]
+        cross: ['none']
+            
+        include:
+          - os: windows-latest
+            build-type: Release
+            bits: 32
+            cross: 'none'
+          - os: windows-latest
+            build-type: Debug
+            bits: 32
+            cross: 'none'
+          - os: ubuntu-latest
+            build-type: Release
+            bits: 32
+            cross: 'rpi'
+          - os: ubuntu-latest
+            build-type: Debug
+            bits: 32
+            cross: 'rpi'
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      BUILD_TYPE: ${{ matrix.build-type }}
+      INSTALL_PREFIX: ${{github.workspace}}/build/install
+      LOG_LVL: error
+
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - run: git fetch --force --tags
+    
+    - if: matrix.cross == 'rpi'
+      name: Setup QEMU
+      uses: docker/setup-qemu-action@v1
+    
+    - if: matrix.bits == 32 && contains(matrix.os,'windows')
+      name: Set 32-bit env
+      run: |
+        echo 'BITPLAT=x86' >> $env:GITHUB_ENV
+        echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
+        choco install openssl --x86
+        
+    - if: matrix.bits == 64 && contains(matrix.os,'windows')
+      name: Set 64-bit env
+      run: |
+        echo 'BITPLAT=x64' >> $env:GITHUB_ENV
+        echo 'BITGEN=-Ax64' >> $env:GITHUB_ENV
+        choco install openssl
+    
+    - if: contains(matrix.os,'windows')
+      name: Setup Windows Environment
+      run: |
+        If (-not (Test-Path C:\libmodbus\libmodbus)){
+          Invoke-WebRequest -OutFile libmodbus.zip "https://www.dropbox.com/s/iqf95y9x1x4ol36/libmodbus.zip?dl=1"
+          7z x -y libmodbus.zip
+          New-Item C:\libmodbus -ItemType Directory
+          Move-Item .\libmodbus C:\libmodbus\libmodbus
+        }
+        #hack because debug lib aint available!
+        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/${{env.BITPLAT}}/python37_d.lib -Destination C:/hostedtoolcache/windows/Python/3.7.9/${{env.BITPLAT}}/libs/
+        echo 'TOOLCHAIN_OPT=-G"Visual Studio 16 2019" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.7.9\${{env.BITPLAT}}' >> $env:GITHUB_ENV
+
+    - if: contains(matrix.os,'macos')
+      name: Setup MacOS Environment
+      run: |
+        brew install libmodbus socat openssl
+        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3' >> $GITHUB_ENV
+        echo 'BINDIR=bin/' >> $GITHUB_ENV
+
+    - if: contains(matrix.os,'ubuntu') && matrix.cross == 'none'
+      name: Setup Ubuntu Environment
+      run: |
+        sudo apt-get install -y libmodbus-dev libssl-dev socat
+        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic' >> $GITHUB_ENV
+        echo 'BINDIR=bin/' >> $GITHUB_ENV
+    
+    - if: contains(matrix.os,'ubuntu') && matrix.cross == 'none' && matrix.build-type == 'Release'
+      name: Upload release text
+      run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
+        
+    - if: matrix.cross == 'rpi'
+      name: Rpi Setup Script
+      run: |
+        echo '#!/bin/bash
+        apt-get update
+        apt-get install -y libmodbus-dev libc6-dev openssl libssl-dev python3.7 python3.7-dev
+        mkdir -p /github/workspace/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
+        chmod a+rwx /github/workspace/build
+        rm /usr/lib/python3.7/sitecustomize.py
+        cp /etc/python3.7/sitecustomize.py /usr/lib/python3.7/sitecustomize.py
+        cp -a /usr/include/*/*/pyconfig.h /github/workspace/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
+        cp -a /usr/include/modbus /github/workspace/build/sysroot/usr/include/
+        cp -a /usr/include/python* /github/workspace/build/sysroot/usr/include/
+        cp -a /usr/include/openssl /github/workspace/build/sysroot/usr/include/
+        cp -a /usr/include/*/*/opensslconf.h /github/workspace/build/sysroot/usr/include/openssl/
+        cp -a /usr/lib /github/workspace/build/sysroot/usr/
+        cp -a /lib* /github/workspace/build/sysroot/
+        ' > ${{github.workspace}}/install_rpi_deps.sh
+        chmod +x ${{github.workspace}}/install_rpi_deps.sh
+    
+    - if: matrix.cross == 'rpi'
+      name: Setup Rpi Environment
+      uses: docker://2000cubits/raspbian:buster
+      with:
+        entrypoint: /github/workspace/install_rpi_deps.sh
+    
+    - if: matrix.cross == 'rpi'
+      name: Setup cross compilation for Rpi
+      run: |
+        sudo apt-get install -y g++-arm-linux-gnueabihf
+        echo 'SYSROOT=${{github.workspace}}/build/sysroot/' >> $GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/Code/cmake/rpi-toolchain.cmake -DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF' >> $GITHUB_ENV
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 8
+
+    - name: Package
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target package
+
+    - name: Install
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
+
+    - name: Test
+      if: ${{ !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: |
+        ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
+        ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
+        ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
+        ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
+        ${{github.workspace}}/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
+        ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
+        ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+    
+    - if: always()
+      name: Upload Installer
+      uses: actions/upload-artifact@v2
+      with:
+        name: installers
+        path: |
+          ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.sh
+          ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.exe
+          tag_annotation.txt
+
+  opendatacon-docker:
+    name: ${{matrix.docker}} ${{matrix.build-type}}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build-type: [Release,Debug]
+        docker: ['library/oraclelinux:7.6','i386/ubuntu:bionic']
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.docker }}
+
+    env:
+      BUILD_TYPE: ${{ matrix.build-type }}
+      INSTALL_PREFIX: /github/workspace/build/install
+      LOG_LVL: error
+      BINDIR: bin/
+
+    steps:
+    - name: Start run wrapper
+      run: echo '#!/bin/bash' >> $HOME/run.sh
+
+    - if: contains(matrix.docker, 'oracle')
+      name: Setup OEL7 Environment
+      continue-on-error: true
+      run: |
+        yum install -y oracle-softwarecollection-release-el7
+        /usr/bin/ol_yum_configure.sh
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static
+        ln -s /usr/bin/cmake3 /bin/cmake
+        mkdir -p /opt/openssl-root
+        ln -s /usr/include/openssl11 /opt/openssl-root/include
+        ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
+        #Extras that aren-t yum-able
+        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-devel-3.0.8-1.el7.x86_64.rpm
+        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-3.0.8-1.el7.x86_64.rpm
+        rpm -i libmodbus-3.0.8-1.el7.x86_64.rpm
+        rpm -i libmodbus-devel-3.0.8-1.el7.x86_64.rpm    
+        # To get Python3.6 we need scl-util-build tools
+        curl -O http://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
+        rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
+        yum install -y rh-python36 rh-python36-python-devel rh-git218
+        echo 'TOOLCHAIN_OPT=-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root -DADD_LIBS=z' >> $GITHUB_ENV
+        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=oel7' >> $GITHUB_ENV
+        echo 'source scl_source enable rh-python36' >> $HOME/run.sh
+        echo 'source scl_source enable devtoolset-8' >> $HOME/run.sh
+        echo 'source scl_source enable rh-git218' >> $HOME/run.sh
+        echo '#!/bin/bash' >> /bin/git
+        echo "$HOME/run.sh git \"\$@\"" >> /bin/git
+        chmod +x /bin/git
+        
+    - if: contains(matrix.docker, 'i386')
+      name: Setup i386 Environment
+      run: |
+        apt-get update
+        apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
+        apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+        apt-get update
+        apt-get install -y libmodbus-dev socat psmisc libc6-dev openssl libssl-dev
+        apt-get install -y python3.6 python3.6-dev g++ git cmake make binutils
+        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic -DARCH_DESC=x86' >> $GITHUB_ENV
+
+    - name: Finish run wrapper
+      run: |
+        echo 'exec "$@"' >> $HOME/run.sh
+        chmod +x $HOME/run.sh
+    
+    - uses: actions/checkout@v1
+    - run: git fetch --force --tags
+
+    - name: Configure CMake
+      run: $HOME/run.sh cmake -B /github/workspace/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON
+
+    - name: Build
+      run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --parallel 8
+
+    - name: Package
+      run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --target package
+
+    - name: Install
+      run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --target install
+
+    - name: Test
+      if: ${{ !contains(github.ref, 'tag') }}
+      run: |
+        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
+        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
+        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
+        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
+        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
+        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
+        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+        
+    - if: always()
+      name: Find Installer Name
+      run: |
+        echo "INSTALLER_NAME=$(find /github/workspace/build -name "opendatacon-*.*.*-*-*-*-*-*.sh" -printf "%f" -quit)" >> $GITHUB_ENV
+        cp /github/workspace/build/opendatacon-*.*.*-*-*-*-*-*.sh /github/home/
+        
+    - if: always()
+      name: Upload Installer
+      uses: actions/upload-artifact@v1
+      with:
+        name: installers
+        path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}     
+        
+            
+  opendatacon-deploy:
+    if: always() && contains(github.ref, 'tag')
+    needs: [opendatacon-native,opendatacon-docker]
+    runs-on: macos-latest
+    steps:
+      - name: Download Installers
+        uses: actions/download-artifact@v2
+        with:
+          name: installers
+          
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          body_path: tag_annotation.txt
+          files: |
+            **/opendatacon-*.*.*-*-*-*-*-*.sh
+            **/opendatacon-*.*.*-*-*-*-*-*.exe
+          fail_on_unmatched_files: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+  

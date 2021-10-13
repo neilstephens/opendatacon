@@ -436,7 +436,6 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 		bool error = false;
 
 		uint32_t group = 0;
-		uint32_t channel = 0;
 		PayloadLocationType payloadlocation;
 
 		if (JSONNode[n].isMember("PayloadLocation"))
@@ -445,7 +444,7 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 		}
 		else
 		{
-			LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+			LOGERROR("A RemoteStatus needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -453,7 +452,7 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 			group = JSONNode[n]["Group"].asUInt();
 		else
 		{
-			LOGERROR(" A point needs a \"Group\" : " + JSONNode[n].toStyledString());
+			LOGERROR(" A RemoteStatus needs a \"Group\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 

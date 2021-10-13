@@ -25,13 +25,8 @@
  */
 
 #include "PyPort.h"
-
-#ifdef NONVSTESTING
 #define CATCH_CONFIG_RUNNER
 #include <catch.hpp>
-#else
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
-#endif
 
 extern "C" PyPort* new_PyPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
@@ -50,7 +45,6 @@ extern "C" void delete_PyPort(PyPort* aPyPort_ptr)
 
 extern "C" int run_tests(int argc, char* argv[])
 {
-	#ifdef NONVSTESTING
 	// Create loggers for tests here
 	spdlog::level::level_enum log_level = spdlog::level::off;
 	int new_argc = argc;
@@ -78,9 +72,4 @@ extern "C" int run_tests(int argc, char* argv[])
 	// And release here.
 	CommandLineLoggingCleanup();
 	return result;
-
-	#else
-	std::cout << "PyPort: Compiled for Visual Studio Testing only" << std::endl;
-	return 1;
-	#endif
 }

@@ -53,7 +53,7 @@ public:
 
 	uint16_t  CalcAnalogCounterMD3Index(const uint16_t module, const uint8_t channel)
 	{
-		if (channel > 7)	// Should only ever be 0 to 7, but if you do reference channels 8-15, then that is actually the next module up.
+		if (channel > 7) // Should only ever be 0 to 7, but if you do reference channels 8-15, then that is actually the next module up.
 		{
 			uint16_t modchannel = channel - 8;
 			uint8_t modmodule = module + 1;

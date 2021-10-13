@@ -46,13 +46,7 @@
 #include <opendatacon/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <utility>
-
-#ifdef NONVSTESTING
 #include <catch.hpp>
-#else
-#include "spdlog/sinks/msvc_sink.h"
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer
-#endif
 
 #define SUITE(name) "MD3Tests - " name
 
@@ -203,17 +197,13 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers(spdlog::level::level_enum loglevel)
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	#ifdef NONVSTESTING
-	//auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	#else
-	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
-	#endif
+	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("md3porttest.log", true);
 
-	//console_sink->set_level(loglevel);
+	console_sink->set_level(loglevel);
 	file_sink->set_level(spdlog::level::debug);
 
-	std::vector<spdlog::sink_ptr> sinks = { file_sink };// , console_sink };
+	std::vector<spdlog::sink_ptr> sinks = { file_sink, console_sink };
 
 	auto pLibLogger = std::make_shared<spdlog::logger>("MD3Port", begin(sinks), end(sinks));
 	pLibLogger->set_level(spdlog::level::trace);
@@ -229,18 +219,12 @@ void WriteStartLoggingMessage(const std::string& TestName)
 	std::string msg = "Logging for '" + TestName + "' started..";
 
 	if (auto md3logger = odc::spdlog_get("MD3Port"))
-	{
-		md3logger->info("------------------");
 		md3logger->info(msg);
-	}
-	else
-		std::cout << msg << std::endl;
+	else if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->info("MD3Port Logger Message: "+msg);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
-	#ifndef NONVSTESTING
-	SetupLoggers(spdlog::level::level_enum::debug);
-	#endif
 	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
@@ -788,13 +772,13 @@ TEST_CASE("MD3Block - Fn11")
 	MD3BlockFn11StoM b11as(ba);
 	MD3BlockFn11StoM p11(0x4b, 0, 0xe, 0xb, false, true, true, false);
 	// 0xCB, 0x0B, 0x0E, 0x6B -35-00-25-00-14-02-8F-00-26-00-14-04-B6-00-27-00-00-40-8D-00-28-00-70-39-89-00-29-00-38-73-A3-00-2A-00-24-1C-86-00-2B-00-68-E0-BF-00-2C-00-72-39-9F-00-2D-00-38-70-BC-00-2E-00-24-00-87-00-2F-00-40-00-DC-00
-	int sta = b11as.GetStationAddress();
-	bool ismas = b11as.IsMasterToStationMessage();
-	int fnc = b11as.GetFunctionCode();
-	int dsn = b11as.GetDigitalSequenceNumber();
-	bool chks = b11as.CheckSumPasses();
-	int tevc = b11as.GetTaggedEventCount();
-	int mcnt = b11as.GetModuleCount();
+//	int sta = b11as.GetStationAddress();
+//	bool ismas = b11as.IsMasterToStationMessage();
+//	int fnc = b11as.GetFunctionCode();
+//	int dsn = b11as.GetDigitalSequenceNumber();
+//	bool chks = b11as.CheckSumPasses();
+//	int tevc = b11as.GetTaggedEventCount();
+//	int mcnt = b11as.GetModuleCount();
 }
 TEST_CASE("MD3Block - Fn12")
 {
@@ -1194,14 +1178,14 @@ TEST_CASE("Station - AnalogUnconditionalF5")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	const std::string DesiredResult = ("fc05205f1500" // Echoed block
-		                                "100011018400" // Channel 0 and 1
-		                                "12021303b700" // Channel 2 and 3 etc
-		                                "14041505b900"
-		                                "160617078a00"
-		                                "18081909a500"
-		                                "1a0a1b0b9600"
-		                                "1c0c1d0d9800"
-		                                "1e0e1f0feb00");
+	                                   "100011018400" // Channel 0 and 1
+	                                   "12021303b700" // Channel 2 and 3 etc
+	                                   "14041505b900"
+	                                   "160617078a00"
+	                                   "18081909a500"
+	                                   "1a0a1b0b9600"
+	                                   "1c0c1d0d9800"
+	                                   "1e0e1f0feb00");
 	while(!done_flag)
 		IOS->poll_one();
 
@@ -1221,7 +1205,7 @@ TEST_CASE("Station - AnalogUnconditionalF5CrossModule")
 	// {"Range" : {"Start" : 16, "Stop" : 23}, "Module" : 48, "Offset" : 0, "PollGroup" : 8},
 	// { "Range" : {"Start" : 24, "Stop" : 31}, "Module" : 49, "Offset" : 0, "PollGroup" : 8 }],
 	// Request Analog Unconditional, Station 0x7C, Module 0x30, 16 Channels
-	MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 48, 16, true);	// Module 48 and 49 0x30,0x31
+	MD3BlockFormatted commandblock(0x7C, true, ANALOG_UNCONDITIONAL, 48, 16, true); // Module 48 and 49 0x30,0x31
 	asio::streambuf write_buffer;
 	std::ostream output(&write_buffer);
 	output << commandblock.ToBinaryString();
@@ -1261,15 +1245,15 @@ TEST_CASE("Station - AnalogUnconditionalF5CrossModule")
 
 	// TODO: This is the bug we have to fix!!
 	const std::string DesiredResult = ("fc05305f0200" // Echoed block
-										"20102111a200" // Module 48 Channel 0 and 1
-										"221223139100" // Channel 2 and 3 etc
-										"241425159f00"
-										"26162717ac00"
-										"281829198300" // Module 49 Channel 0, 1
-										"2a1a2b1bb000" 
-										"2c1c2d1dbe00" 
-										"2e1e2f1fcd00"); 
-	while (!done_flag) 
+	                                   "20102111a200" // Module 48 Channel 0 and 1
+	                                   "221223139100" // Channel 2 and 3 etc
+	                                   "241425159f00"
+	                                   "26162717ac00"
+	                                   "281829198300" // Module 49 Channel 0, 1
+	                                   "2a1a2b1bb000"
+	                                   "2c1c2d1dbe00"
+	                                   "2e1e2f1fcd00");
+	while (!done_flag)
 		IOS->poll_one();
 
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult);
@@ -1324,14 +1308,14 @@ TEST_CASE("Station - CounterScanFn30")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	const std::string DesiredResult = ("fc1f205f3a00" // Echoed block
-		                                "100011018400" // Channel 0 and 1
-		                                "12021303b700" // Channel 2 and 3 etc
-		                                "14041505b900"
-		                                "160617078a00"
-		                                "18081909a500"
-		                                "1a0a1b0b9600"
-		                                "1c0c1d0d9800"
-		                                "1e0e1f0feb00");
+	                                   "100011018400" // Channel 0 and 1
+	                                   "12021303b700" // Channel 2 and 3 etc
+	                                   "14041505b900"
+	                                   "160617078a00"
+	                                   "18081909a500"
+	                                   "1a0a1b0b9600"
+	                                   "1c0c1d0d9800"
+	                                   "1e0e1f0feb00");
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1363,14 +1347,14 @@ TEST_CASE("Station - CounterScanFn30")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	const std::string DesiredResult2 = ("fc1f3d5f0a00" // Echoed block
-		                                "100011018400" // Channel 0 and 1
-		                                "12021303b700" // Channel 2 and 3 etc
-		                                "14041505b900"
-		                                "160617078a00"
-		                                "18081909a500"
-		                                "1a0a1b0b9600"
-		                                "1c0c1d0d9800"
-		                                "1e0e1f0feb00");
+	                                    "100011018400" // Channel 0 and 1
+	                                    "12021303b700" // Channel 2 and 3 etc
+	                                    "14041505b900"
+	                                    "160617078a00"
+	                                    "18081909a500"
+	                                    "1a0a1b0b9600"
+	                                    "1c0c1d0d9800"
+	                                    "1e0e1f0feb00");
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1426,14 +1410,14 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	const std::string DesiredResult1 = ("fc05205f1500" // Echoed block
-		                                "100011018400" // Channel 0 and 1
-		                                "12021303b700" // Channel 2 and 3 etc
-		                                "14041505b900"
-		                                "160617078a00"
-		                                "18081909a500"
-		                                "1a0a1b0b9600"
-		                                "1c0c1d0d9800"
-		                                "1e0e1f0feb00");
+	                                    "100011018400" // Channel 0 and 1
+	                                    "12021303b700" // Channel 2 and 3 etc
+	                                    "14041505b900"
+	                                    "160617078a00"
+	                                    "18081909a500"
+	                                    "1a0a1b0b9600"
+	                                    "1c0c1d0d9800"
+	                                    "1e0e1f0feb00");
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1461,10 +1445,10 @@ TEST_CASE("Station - AnalogDeltaScanFn6")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	const std::string DesiredResult2 = ("fc06205f3100"
-		                                "32ce32ce8b00"
-		                                "320000009200"
-		                                "00000000bf00"
-		                                "00000000ff00");
+	                                    "32ce32ce8b00"
+	                                    "320000009200"
+	                                    "00000000bf00"
+	                                    "00000000ff00");
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1599,7 +1583,7 @@ TEST_CASE("Station - DigitalChangeOnlyFn8")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	const std::string DesiredResult2 = ("fc0822701d00"   // Return function 8, Channels == 0, so 1 block to follow.
-		                                 "7c22aaaaf900"); // Values set above
+	                                    "7c22aaaaf900"); // Values set above
 	while(!done_flag)
 		IOS->poll_one();
 	REQUIRE(BuildASCIIHexStringfromBinaryString(Response) == DesiredResult2);
@@ -1849,11 +1833,11 @@ TEST_CASE("Station - DigitalCOSScanFn10")
 	MD3OSPort->InjectSimulatedTCPMessage(write_buffer);
 
 	const std::string DesiredResult2 = ("fc0a25452400"
-		                                "7c25ffff9300"
-		                                "7c26ff00b000"
-		                                "7c3fffffbc00"
-		                                "7c2100008c00"
-		                                "7c23ffffc000");
+	                                    "7c25ffff9300"
+	                                    "7c26ff00b000"
+	                                    "7c3fffffbc00"
+	                                    "7c2100008c00"
+	                                    "7c23ffffc000");
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -2906,10 +2890,10 @@ TEST_CASE("Master - Analog")
 	STANDARD_TEST_SETUP();
 
 	Json::Value portoverride;
-	portoverride["MD3CommandTimeoutmsec"] = static_cast<Json::UInt64>(10 * 1000);	// Long timeouts as we are not testing timeouts in this test so should never happen
+	portoverride["MD3CommandTimeoutmsec"] = static_cast<Json::UInt64>(10 * 1000); // Long timeouts as we are not testing timeouts in this test so should never happen
 	TEST_MD3MAPort(portoverride);
 
-	portoverride["Port"] = static_cast<Json::UInt64>(10011);	// Dont want anything connecting to/available to connect on this port!
+	portoverride["Port"] = static_cast<Json::UInt64>(10011); // Dont want anything connecting to/available to connect on this port!
 	TEST_MD3OSPort(portoverride);
 
 	START_IOS(1);
@@ -2918,7 +2902,7 @@ TEST_CASE("Master - Analog")
 	// Usually is a cross subscription, where each subscribes to the other.
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
-	MD3MAPort->EnablePolling(false);	// Must be after enable!
+	MD3MAPort->EnablePolling(false); // Must be after enable!
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
@@ -2986,7 +2970,7 @@ TEST_CASE("Master - Analog")
 	{
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above
-		MD3MAPort->ClearMD3CommandQueue();	// Make sure nothing is lurking around.
+		MD3MAPort->ClearMD3CommandQueue(); // Make sure nothing is lurking around.
 		Wait(*IOS, 2);
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
 		Response = "Not Set";
@@ -3050,7 +3034,7 @@ TEST_CASE("Master - Analog")
 
 	INFO("Analog Delta Fn6 - No Change Response")
 	{
-		MD3MAPort->ClearMD3CommandQueue();	// Make sure nothing is lurking around.
+		MD3MAPort->ClearMD3CommandQueue(); // Make sure nothing is lurking around.
 		Wait(*IOS, 2);
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above, the value remain unchanged
@@ -3107,7 +3091,7 @@ TEST_CASE("Master - Analog")
 	{
 		// Now send a request analog unconditional command
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
-		MD3MAPort->ClearMD3CommandQueue();	// Make sure nothing is lurking around.
+		MD3MAPort->ClearMD3CommandQueue(); // Make sure nothing is lurking around.
 		Wait(*IOS, 2);
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
 		Response = "Not Set";
@@ -3147,7 +3131,7 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 	START_IOS(1);
 
 	MD3MAPort->Enable();
-	MD3MAPort->EnablePolling(false);	// Must be after enable!
+	MD3MAPort->EnablePolling(false); // Must be after enable!
 
 	//  We need to register a couple of handlers to be able to receive the event sent below.
 	// The DataConnector normally handles this when ODC is running.
@@ -3200,7 +3184,7 @@ TEST_CASE("Master - DOM and POM Tests")
 
 	MD3OSPort->Enable();
 	MD3MAPort->Enable();
-	MD3MAPort->EnablePolling(false);	// Must be after enable!
+	MD3MAPort->EnablePolling(false); // Must be after enable!
 
 	// Hook the output functions
 	std::atomic_bool os_response_ready(false);
@@ -3631,10 +3615,10 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// 0xCB, 0x0B, 0x0E, 0x6B	Changed address to 7C from 4B - TaggedEvent count = 0,  ModuleCount 0xb
 		// THIS DATA DOES NOT HAVE COS RECORDS???
 		MD3BlockFn11StoM p11(0x7C,0,0xe,0xb, false, true, true, false);
-		MD3BlockData b[] = { p11, MD3BlockData(0x35002500), MD3BlockData(0x14028F00), MD3BlockData(0x26001404), MD3BlockData(0xB6002700), MD3BlockData(0x00408D00), 
-								MD3BlockData(0x28007039), MD3BlockData(0x89002900), MD3BlockData(0x3873A300), MD3BlockData(0x2A00241C), MD3BlockData(0x86002B00), 
-								MD3BlockData(0x68E0BF00), MD3BlockData(0x2C007239), MD3BlockData(0x9F002D00), MD3BlockData(0x3870BC00), MD3BlockData(0x2E002400), 
-								MD3BlockData(0x87002F00), MD3BlockData(0x4000DC00,true) };
+		MD3BlockData b[] = { p11, MD3BlockData(0x35002500), MD3BlockData(0x14028F00), MD3BlockData(0x26001404), MD3BlockData(0xB6002700), MD3BlockData(0x00408D00),
+			               MD3BlockData(0x28007039), MD3BlockData(0x89002900), MD3BlockData(0x3873A300), MD3BlockData(0x2A00241C), MD3BlockData(0x86002B00),
+			               MD3BlockData(0x68E0BF00), MD3BlockData(0x2C007239), MD3BlockData(0x9F002D00), MD3BlockData(0x3870BC00), MD3BlockData(0x2E002400),
+			               MD3BlockData(0x87002F00), MD3BlockData(0x4000DC00,true) };
 
 		for (auto bl :b)
 			MAoutput << bl.ToBinaryString();
@@ -3649,7 +3633,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 
 		// Get the list of time tagged events, and check...
 		std::vector<MD3BinaryPoint> SOEPointList = MD3OSPort->GetPointTable()->DumpTimeTaggedPointList();
-		REQUIRE(SOEPointList.size() == 1);	// Empty Point List
+		REQUIRE(SOEPointList.size() == 1); // Empty Point List
 		// Check some point values in the Master Point list
 		uint8_t res;
 		bool changed;

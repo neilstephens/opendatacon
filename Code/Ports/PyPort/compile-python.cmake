@@ -51,7 +51,7 @@ if(USE_PYTHON_SUBMODULE)
 	foreach(CONF ${CONFIGS})
 		message("Building Python dependency")
 		execute_process(
-			COMMAND ${CMAKE_COMMAND} --build ${PYTHON_BUILD} --config ${CONF} --target install
+			COMMAND ${CMAKE_COMMAND} --build ${PYTHON_BUILD} --config ${CONF} --parallel 8 --target install
 			WORKING_DIRECTORY "${PYTHON_BUILD}"
 			RESULT_VARIABLE EXEC_RESULT
 		)
@@ -61,7 +61,7 @@ if(USE_PYTHON_SUBMODULE)
 	endforeach()
 	add_custom_target( build_python
 		WORKING_DIRECTORY "${PYTHON_BUILD}"
-		COMMAND ${CMAKE_COMMAND} --build ${PYTHON_BUILD} --config $<CONFIG> --target install
+		COMMAND ${CMAKE_COMMAND} --build ${PYTHON_BUILD} --config $<CONFIG> --parallel 8 --target install
 	)
 
 	include(${PYTHON_BUILD}/share/python3.6/PythonConfig.cmake)

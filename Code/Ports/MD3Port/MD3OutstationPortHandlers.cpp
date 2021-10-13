@@ -349,7 +349,7 @@ void MD3OutstationPort::ReadAnalogOrCounterRange(uint8_t ModuleAddress, uint8_t 
 			GetAnalogModuleValues(AnalogModule, Channels - 8, ModuleAddress + 1, ResponseType, AnalogValues, AnalogDeltaValues);
 		}
 	}
-	
+
 }
 void MD3OutstationPort::GetAnalogModuleValues(AnalogCounterModuleType IsCounterOrAnalog, uint8_t Channels, uint8_t ModuleAddress, MD3OutstationPort::AnalogChangeType & ResponseType, std::vector<uint16_t> & AnalogValues, std::vector<int> & AnalogDeltaValues)
 {
@@ -1742,8 +1742,7 @@ bool MD3OutstationPort::UIRandomReponseDrop(const std::string& probability)
 		return true;
 	}
 	catch (...)
-	{
-	}
+	{}
 	return false;
 }
 #ifdef _MSC_VER

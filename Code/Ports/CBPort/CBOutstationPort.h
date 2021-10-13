@@ -38,7 +38,7 @@
 
 class OutstationSystemFlags
 {
-	// CB can support 12 bits of status flags, which are reported by Fn 9 Group 8, system flag scan. 
+	// CB can support 12 bits of status flags, which are reported by Fn 9 Group 8, system flag scan.
 public:
 	// This is calculated by checking the digital bit changed flag, using a method registered with us
 	bool GetSOEAvailableFlag()
@@ -98,9 +98,9 @@ public:
 
 private:
 	std::function<bool(void)> SOEAvailableFn = nullptr; // SOE Events Pending
-	std::function<bool(void)> SOEOverflowFn = nullptr; // SOE Overflow
+	std::function<bool(void)> SOEOverflowFn = nullptr;  // SOE Overflow
 
-	bool StartUp = true; 
+	bool StartUp = true;
 };
 
 
@@ -177,7 +177,7 @@ public:
 	std::pair<std::string, const IUIResponder*> GetUIResponder() final;
 	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
-	bool UIRandomReponseDrops(const std::string& probability); // Zero probability = does not happen. 1 = there is a drop every response packet.
+	bool UIRandomReponseDrops(const std::string& probability);    // Zero probability = does not happen. 1 = there is a drop every response packet.
 
 	// Testing use only
 	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed

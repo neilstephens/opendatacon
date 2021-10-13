@@ -175,7 +175,7 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 
 bool CBPointTableAccess::AddStatusByteToCBMap(const uint8_t & group, const PayloadLocationType & payloadlocation)
 {
-	// This will only be called once. 
+	// This will only be called once.
 	StatusBytePayloadLocation = payloadlocation;
 	StatusByteGroup = group;
 
@@ -526,7 +526,7 @@ PayloadLocationType CBPointTableAccess::GetPayLoadLocationFromCBPointMapIndex(co
 {
 	// Top 4 bits group (0-15), Next 4 bits channel (1-12), next 4 bits payload packet number (0-15), next 4 bits 0(A) or 1(B)
 	PayloadLocationType payloadlocation;
-	payloadlocation.Packet = CBIndex >> 4 + 1;
+	payloadlocation.Packet = (CBIndex >> 4) + 1;
 	payloadlocation.Position = (CBIndex & 0x01) == 0 ? PayloadABType::PositionA : PayloadABType::PositionB;
 	return payloadlocation;
 }
