@@ -8,8 +8,10 @@ import odc
 # getting a problem loading Kafka module - [No module named 'confluent_kafka.cimpl']
 # This is due the .cimpl file being installed into the release library .zip file, so is not fund under debug builds.
 # Could just copy the C:\Python37\python37.zip to C:\Python37\python37_d.zip, or just use release ODC.
-# Also could get this error if running an "embedded" python ODC build. The library has to be iinstalled into that embedded python.
-# Not sure how to do that yet.
+# DO NOT USE Debug build on Windows
+# Rather than building your project in DEBUG mode on windows, try building in RELEASE mode with debug symbols and no optimization. 
+# Full DEBUG mode on windows changes the names of the DLLs python expects to find, so if you wish to truly work in DEBUG mode you will 
+# need to recompile the entire stack of python modules you work with including NumPy
 from confluent_kafka import Producer, Consumer, KafkaError
 
 # Logging Levels
@@ -63,6 +65,7 @@ class SimPortClass:
         self.timestart = 1.1 # Used for profiling, setup as a float
         self.measuretimeus = 0
         self.measuretimeus2 = 0
+        self.secondcount = 0
         self.ConfigDict = {}      # Config Dictionary
         self.LogInfo("PyPortKafka - SimPortClass Init Called - {}".format(objectname))
         self.LogDebug("Python sys.path - {}".format(sys.path))
@@ -78,16 +81,18 @@ class SimPortClass:
 
     def minutetimermessage(self):
         DeltaSeconds = time.time() - self.StartTimeSeconds
-        self.LogError("PyPortKafka status. Event Queue {}, Messages Processed - {}, Messages/Second - {}".format(self.EventQueueSize, self.MessageIndex, math.floor((self.MessageIndex - self.LastMessageIndex)/DeltaSeconds)))
         self.StartTimeSeconds = time.time()
+        DeltaIndex = self.MessageIndex - self.LastMessageIndex
         self.LastMessageIndex = self.MessageIndex
+        if (DeltaIndex != 0):
+            self.LogError("PyPortKafka status. Event Queue Size {}, Total Messages - {}, Messages/Second - {}".format(self.EventQueueSize, self.MessageIndex, math.floor(DeltaIndex/DeltaSeconds)))
         return
 
     def Config(self, MainJSON, OverrideJSON):
         """ The JSON values are passed as strings (stripped of comments), which we then load into a dictionary for processing
         Note that this does not handle Inherits JSON entries correctly (Inherits is effectily an Include file entry)"""
-        #self.LogDebug("Passed Main JSON Config information - Len {} , {}".format(len(MainJSON),MainJSON))
-        #self.LogDebug("Passed Override JSON Config information - Len {} , {}".format(len(OverrideJSON), OverrideJSON))
+        self.LogDebug("Passed Main JSON Config information - Len {} , {}".format(len(MainJSON),MainJSON))
+        self.LogDebug("Passed Override JSON Config information - Len {} , {}".format(len(OverrideJSON), OverrideJSON))
 
         # Load JSON into Dicts
         Override = {}
@@ -106,7 +111,7 @@ class SimPortClass:
         # So you cannot change a single value in a Binary point definition without rewriting the whole "Binaries" json key.
         self.ConfigDict.update(Override)               # Merges with Override doing just that - no recursion into sub dictionaries
 
-        #self.LogTrace("Combined (Merged) JSON Config {}".format(json.dumps(self.ConfigDict)))
+        self.LogDebug("Combined (Merged) JSON Config {}".format(json.dumps(self.ConfigDict)))
 
         # Now extract what is needed for this instance, or just reference the ConfigDict when needed.
         kafkaserver = self.ConfigDict["bootstrap.servers"]
@@ -137,7 +142,7 @@ class SimPortClass:
         self.LogDebug("Port Operational - {}".format(datetime.now().isoformat(" ")))
         # This is only done once - will self restart from the timer callback.
         odc.SetTimer(self.guid, 1, 500)    # Start the timer cycle
-        odc.SetTimer(self.guid, 2, 10000)   # First status message after 10 seconds
+        odc.SetTimer(self.guid, 2, 5000)   # First status message after 5 seconds
         return
 
     def Enable(self):
@@ -148,6 +153,7 @@ class SimPortClass:
     def Disable(self):
         self.LogDebug("Disabled - {}".format(datetime.now().isoformat(" ")))
         self.enabled = False
+        self.producer = None
         return
 
     # Not used
@@ -186,6 +192,10 @@ class SimPortClass:
     def TimerHandler(self,TimerId):
         # self.LogDebug("TimerHander: ID {}, {}".format(TimerId, self.guid))
 
+        if (self.enabled is False):
+            self.LogDebug("TimerHander Called but Port Disabled: ID {}, {}".format(TimerId, self.guid))
+            return  # Port is disabled, need to stop processing and dont restart the timers.
+            
         if (self.producer is not None):
             self.producer.poll(0)   # Do any waiting processing, but dont wait!
 
@@ -194,7 +204,7 @@ class SimPortClass:
             MaxMessageCount = 5000
             longwaitmsec = 100
             shortwaitmsec = 5
-            EventCount = 1
+            EventCount = 0
             starttime = datetime.now()
             self.measuretimeus = 0
             self.measuretimeus2 = 0
@@ -202,9 +212,7 @@ class SimPortClass:
             if (self.producer is not None):
                 # Get Events from the queue and process them, up until we have an empty queue or MaxMessageCount entries
                 # Then trigger the Kafka library to send them.
-
                 while ((EventCount < MaxMessageCount)):
-                    EventCount += 1
 
                     self.timeusstart()
                     ### Takes about 3.2usec (old 8.4usec) per call (approx) on DEV server
@@ -215,6 +223,8 @@ class SimPortClass:
                     if (empty == True):
                         break
 
+                    EventCount += 1
+                    # self.LogDebug("Kafka Message {} : {}".format(self.topic,JsonEventstr))
                     try:
                         self.timeusstart()
                         # Now 32msec/5000, about 5usec per record. (old 45msec/5000 so 9usec/record)
@@ -241,7 +251,7 @@ class SimPortClass:
                 #self.LogDebug("Kafka Produced {} messages. Kafka queue size {}. ODC Event queue size {} Execution time {} msec Timed code {}, {} us".format(EventCount,len(self.producer),self.EventQueueSize,self.millisdiff(starttime),self.measuretimeus,self.measuretimeus2))
 
                 self.MessageIndex += EventCount
-
+                
             # If we have pushed the maximum number of events in, we need to go faster...
             # If the producer queue hits the limit, this means the kafka cluster is not keeping up.
             if EventCount < MaxMessageCount:
@@ -250,8 +260,11 @@ class SimPortClass:
                 odc.SetTimer(self.guid, 1, shortwaitmsec)   # We do have messages waiting
 
         if (TimerId == 2):
-            self.minutetimermessage()
-            odc.SetTimer(self.guid, 2, 10000)   # Set to run again in 10 seconds
+            odc.SetTimer(self.guid, 2, 5000)   # Set to run again in 5 seconds
+            self.secondcount += 5
+            if self.secondcount >= 30:       # Normally 60 seconds
+                self.secondcount = 0
+                self.minutetimermessage()
 
         if (self.producer is not None):
             self.producer.poll(0)   # Do any waiting processing, but dont wait!
