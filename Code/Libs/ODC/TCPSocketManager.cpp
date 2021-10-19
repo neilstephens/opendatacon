@@ -50,7 +50,6 @@ TCPSocketManager::TCPSocketManager
 	const unsigned int KeepAliveFailcount):
 	handler_tracker(std::make_shared<char>()),
 	isConnected(false),
-	pending_connections(0),
 	pending_write(false),
 	pending_read(false),
 	manuallyClosed(true),
@@ -94,6 +93,9 @@ void TCPSocketManager::Close()
 			manuallyClosed = true;
 			ramp_time_ms = 0;
 			pRetryTimer->cancel();
+			for(auto ps : CandidatepSocks)
+				ps->close();
+			CandidatepSocks.clear();
 			pAcceptor.reset();
 			AutoClose(tracker);
 		});
@@ -175,7 +177,7 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 void TCPSocketManager::Open(std::shared_ptr<void> tracker)
 {
 	manuallyClosed = false;
-	if(isConnected || pending_connections || pending_read)
+	if(isConnected || CandidatepSocks.size() || pending_read)
 		return;
 
 	if(!EndPointResolved(tracker))
@@ -236,14 +238,14 @@ void TCPSocketManager::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandid
 	catch(std::exception& e)
 	{
 		LogCallback("error","Failed to start server on "+addr_str+". Exception: "+e.what());
-		if(pending_connections == 0)
+		if(CandidatepSocks.size() == 0)
 			AutoOpen(tracker);
 		return;
 	}
-	pending_connections++;
+	CandidatepSocks.insert(pCandidateSock);
 	pAcceptor->async_accept(*pCandidateSock,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 		{
-			pending_connections--;
+			CandidatepSocks.erase(pCandidateSock);
 
 			std::string remote_addr_str;
 			asio::error_code addr_err;
@@ -265,10 +267,10 @@ void TCPSocketManager::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandid
 void TCPSocketManager::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
 {
 	LogCallback("info","Connecting to "+addr_str);
-	pending_connections++;
+	CandidatepSocks.insert(pCandidateSock);
 	pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
 		{
-			pending_connections--;
+			CandidatepSocks.erase(pCandidateSock);
 
 			std::string local_addr_str;
 			asio::error_code addr_err;
@@ -390,7 +392,7 @@ void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, a
 	if(err_code)
 	{
 		LogCallback("error","Connection error from "+addr_str+" to "+remote_addr_str+" : "+err_code.message());
-		if(pending_connections == 0)
+		if(CandidatepSocks.size() == 0)
 			AutoOpen(tracker);
 		return;
 	}
@@ -480,7 +482,7 @@ void TCPSocketManager::AutoOpen(std::shared_ptr<void> tracker)
 {
 	pSockStrand->post([this,tracker]()
 		{
-			if(!auto_reopen || manuallyClosed || isConnected || pending_connections || pending_read)
+			if(!auto_reopen || manuallyClosed || isConnected || CandidatepSocks.size() || pending_read)
 				return;
 
 			if(retry_time_ms != 0)
