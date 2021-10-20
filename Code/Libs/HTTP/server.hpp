@@ -44,6 +44,10 @@ namespace http {
 		{
 			request_handler_.register_handler(uripattern, handler);
 		};
+		size_t deregister_handler(const std::string& uripattern)
+		{
+			return request_handler_.deregister_handler(uripattern);
+		};
 
 	private:
 
