@@ -50,7 +50,7 @@ public:
 
 	std::shared_ptr<node> head;
 	std::shared_ptr<node> tail;
-
+	std::atomic_bool enabled_flag;
 	std::atomic<size_t> size;
 	size_t maxsize;
 	std::shared_ptr<odc::asio_service> pIOS;
@@ -64,7 +64,27 @@ public:
 		maxsize(_maxsize),
 		pIOS(_pIOS),
 		internal_queue_strand(pIOS->make_strand())
-	{}
+	{
+		enabled_flag.store(true);
+	}
+
+	// Is enabled at startup, but allow us to enable it again, if for some reason we do a Disable/Enable cycle on the port...
+	void Enable(bool en)
+	{
+		enabled_flag.store(en);
+		// Empty the queue if Disabled....
+		if (en == false)
+		{
+			internal_queue_strand->dispatch([this]()
+				{
+					while (tail != nullptr)
+					{
+						tail = tail->next;
+						size--;
+					}
+				});
+		}
+	}
 
 	size_t Size() { return size.load(); }
 
@@ -73,8 +93,8 @@ public:
 	// The push is a threadsafe multi producer using ASIO strand protection.
 	bool async_push(const T& _value)
 	{
-		// The queue could grow to a few more than maxsize in size.
-		if (size.load() >= maxsize)
+		// If too big, or disabled dont do anything!
+		if ((size.load() >= maxsize) || (enabled_flag.load() == false))
 		{
 			return false;
 		}
@@ -88,6 +108,8 @@ public:
 			// Dispatch will execute now - if we can, otherwise results in a post.
 			internal_queue_strand->dispatch([this, nodeptr]()
 				{
+					if (enabled_flag.load() == false) return;
+
 					// This is only called from within the internal_queue_strand, so we are safe.
 					// Always add here, we have already checked
 					size++;
@@ -115,6 +137,8 @@ public:
 	// This is a single thread consumer only method. Cannot be called from mutilple threads. Will cause problems for SURE!
 	std::shared_ptr<T> pop()
 	{
+		if (enabled_flag.load() == false) return nullptr;
+
 		if ((tail == nullptr) || (tail == head))
 		{
 			// Dont try and change head and tail pointers at the same time - we have to be much more careful with thread safety if we do.
