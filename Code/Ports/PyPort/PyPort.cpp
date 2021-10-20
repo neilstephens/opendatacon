@@ -183,83 +183,7 @@ void PyPort::Build()
 		});
 
 	pServer = HttpServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new HttpServerManager if required
-
-	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
-
-	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-		{
-			rep.status = http::reply::ok;
-			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
-			rep.headers.resize(2);
-			rep.headers[0].name = "Content-Length";
-			rep.headers[0].value = std::to_string(rep.content.size());
-			rep.headers[1].name = "Content-Type";
-			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
-		});
-
-	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
-
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-		{
-			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
-			std::string contenttype = "application/json";
-			std::string result = "";
-
-			if (!pWrapper)
-			{
-			      LOGERROR("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
-			      rep.status = http::reply::not_found;
-			      rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
-			      contenttype = "text/html";
-			}
-			else
-			{
-			      result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
-
-			      if (result.length() > 0)
-			      {
-			            rep.status = http::reply::ok;
-			            rep.content.append(result);
-				}
-			      else
-			      {
-			            rep.status = http::reply::not_found;
-			            rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
-			            contenttype = "text/html";
-				}
-			}
-			rep.headers.resize(2);
-			rep.headers[0].name = "Content-Length";
-			rep.headers[0].value = std::to_string(rep.content.size());
-			rep.headers[1].name = "Content-Type";
-			rep.headers[1].value = contenttype;
-		});
-	HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
-
-	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-		{
-			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
-			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
-			std::string contenttype = "application/json";
-
-			if (result.length() > 0)
-			{
-			      rep.status = http::reply::ok;
-			      rep.content.append(result);
-			}
-			else
-			{
-			      rep.status = http::reply::not_found;
-			      rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
-			      contenttype = "text/html";
-			}
-			rep.headers.resize(2);
-			rep.headers[0].name = "Content-Length";
-			rep.headers[0].value = std::to_string(rep.content.size());
-			rep.headers[1].name = "Content-Type";
-			rep.headers[1].value = contenttype;
-		});
-	HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+	AddHTTPHandlers();
 }
 
 void PyPort::Enable()
@@ -280,6 +204,7 @@ void PyPort::Enable()
 	LOGDEBUG("pWrapper is good!");
 
 	HttpServerManager::StartConnection(pServer);
+
 	auto promise = std::make_shared<std::promise<bool>>();
 	auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
@@ -313,8 +238,10 @@ void PyPort::Disable()
 	if (!enabled.exchange(false))
 		return;
 
-	// Leaves handlers in place, so can be restarted without re-adding handlers
-	HttpServerManager::StopConnection(pServer);
+	CancelTimers();
+	RemoveHTTPHandlers();
+	// Leaves the connection running, someone else might be using it? If another joins will work fine.
+	// Used to be: HttpServerManager::StopConnection(pServer);
 
 	python_strand->dispatch([this]()
 		{
@@ -322,6 +249,94 @@ void PyPort::Disable()
 			pWrapper->Disable();
 			LOGSTRAND("Exit Strand");
 		});
+}
+
+void PyPort::AddHTTPHandlers()
+{
+	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
+
+	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		{
+			rep.status = http::reply::ok;
+			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
+			rep.headers.resize(2);
+			rep.headers[0].name = "Content-Length";
+			rep.headers[0].value = std::to_string(rep.content.size());
+			rep.headers[1].name = "Content-Type";
+			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
+		});
+
+	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
+
+	auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		{
+			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
+			std::string contenttype = "application/json";
+			std::string result = "";
+
+			if (!pWrapper)
+			{
+				LOGERROR("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
+				rep.status = http::reply::not_found;
+				rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
+				contenttype = "text/html";
+			}
+			else
+			{
+				result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+
+				if (result.length() > 0)
+				{
+					rep.status = http::reply::ok;
+					rep.content.append(result);
+				}
+				else
+				{
+					rep.status = http::reply::not_found;
+					rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
+					contenttype = "text/html";
+				}
+			}
+			rep.headers.resize(2);
+			rep.headers[0].name = "Content-Length";
+			rep.headers[0].value = std::to_string(rep.content.size());
+			rep.headers[1].name = "Content-Type";
+			rep.headers[1].value = contenttype;
+		});
+	HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
+
+	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
+		{
+			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
+			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+			std::string contenttype = "application/json";
+
+			if (result.length() > 0)
+			{
+				rep.status = http::reply::ok;
+				rep.content.append(result);
+			}
+			else
+			{
+				rep.status = http::reply::not_found;
+				rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
+				contenttype = "text/html";
+			}
+			rep.headers.resize(2);
+			rep.headers[0].name = "Content-Length";
+			rep.headers[0].value = std::to_string(rep.content.size());
+			rep.headers[1].name = "Content-Type";
+			rep.headers[1].value = contenttype;
+		});
+	HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
+}
+
+void PyPort::RemoveHTTPHandlers()
+{
+	//HttpServerManager::RemoveHandler(pServer, "GET /");
+	//HttpServerManager::RemoveHandler(pServer, "GET /" + Name);
+	//HttpServerManager::RemoveHandler(pServer, "POST /" + Name);
+	HttpServerManager::StopConnection(pServer);		// Old way of doing things, leaves handlers hanging
 }
 
 std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
@@ -584,17 +599,37 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 	LOGTRACE("SetTimer call {}, {}, {}", Name, id, delayms);
 
 	pTimer_t timer = pIOS->make_steady_timer();
+	StoreTimer(id, timer);
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
 	timer->async_wait(python_strand->wrap(
 		[this, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
 		{
-			if (err_code != asio::error::operation_aborted)
+			if (!err_code)
 			{
-			      LOGSTRAND("Entered Strand on SetTimer");
-			      pWrapper->CallTimerHandler(id);
-			      LOGSTRAND("Exit Strand");
+				if (!enabled)
+				{
+					LOGDEBUG("PyPort {} not enabled, Timer callback ignored", Name);
+					return;
+				}
+				LOGSTRAND("Entered Strand on SetTimer");
+				pWrapper->CallTimerHandler(id);
+				LOGSTRAND("Exit Strand");
 			}
 		}));
+}
+
+void PyPort::StoreTimer(uint32_t id, pTimer_t t)
+{
+	std::unique_lock<std::shared_timed_mutex> lck(timer_mutex);
+	timers[id] = t;
+}
+
+void PyPort::CancelTimers()
+{
+	std::unique_lock<std::shared_timed_mutex> lck(timer_mutex);
+	for (const auto& timer : timers)
+		timer.second->cancel();
+	timers.clear();
 }
 
 // This is called when we have decoded a restful request, to the point where we know which instance it should be passed to. We give it a callback, which will

@@ -65,9 +65,12 @@ public:
 	void Enable() override;
 	void Disable() override;
 
+	void RemoveHTTPHandlers();
+
 	void Build() override;
+	void AddHTTPHandlers();
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	void SetTimer(uint32_t id, uint32_t delayms);
+
 	void RestHandler(const std::string& url, const std::string& content, const ResponseCallback_t& pResponseCallback);
 	void PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
 
@@ -79,6 +82,7 @@ public:
 	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
 	std::string GetTagValue(const std::string& SenderName, EventType Eventt, size_t Index);
 	void ProcessPoints(PointType ptype, const Json::Value& JSONNode);
+	void SetTimer(uint32_t id, uint32_t delayms);
 
 protected:
 	// Worker function to try and clean up the code...
@@ -95,10 +99,14 @@ private:
 	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
 	static std::shared_ptr<asio::io_context::strand> python_strand;
 	static std::once_flag python_strand_flag;
+	std::shared_timed_mutex timer_mutex;
+	std::unordered_map<uint32_t, pTimer_t> timers;
 
 	// Worker methods
 	void PostCallbackCall(const odc::SharedStatusCallback_t& pStatusCallback, CommandStatus c);
 	void PostResponseCallbackCall(const ResponseCallback_t& pResponseCallback, const std::string& response);
+	void StoreTimer(uint32_t id, pTimer_t t);
+	void CancelTimers();
 };
 
 #endif /* PYPORT_H_ */
