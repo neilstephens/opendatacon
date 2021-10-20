@@ -717,11 +717,10 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 			} ());
 		LOGDEBUG("Port5 Disabled");
-
-
-		STOP_IOS(); // Wait in here for all threads to stop.
-		LOGDEBUG("IOS Stopped");
 	}
+
+	STOP_IOS(); // Wait in here for all threads to stop.
+	LOGDEBUG("IOS Stopped");
 
 	STANDARD_TEST_TEARDOWN();
 	LOGDEBUG("Test Teardown complete");
