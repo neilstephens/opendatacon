@@ -31,6 +31,20 @@ void request_handler::register_handler(const std::string& uripattern, const pHan
 	}
 	HandlerMap.emplace(std::make_pair(uripattern, handler));
 }
+size_t request_handler::deregister_handler(const std::string& uripattern)
+{
+	if (HandlerMap.find(uripattern) != HandlerMap.end())
+	{
+		LOGDEBUG("Removing a http handler {} ", uripattern);
+		HandlerMap.erase(uripattern);
+		return HandlerMap.size();
+	}
+	else
+	{
+		LOGDEBUG("Trying to remove a http handler that does not exist {} ", uripattern);
+		return HandlerMap.size();
+	}
+}
 
 // Strip any parameters before handing to this method
 // The matching here will need to be better in future...

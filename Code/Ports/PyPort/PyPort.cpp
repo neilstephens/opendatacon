@@ -333,10 +333,13 @@ void PyPort::AddHTTPHandlers()
 
 void PyPort::RemoveHTTPHandlers()
 {
-	//HttpServerManager::RemoveHandler(pServer, "GET /");
-	//HttpServerManager::RemoveHandler(pServer, "GET /" + Name);
-	//HttpServerManager::RemoveHandler(pServer, "POST /" + Name);
-	HttpServerManager::StopConnection(pServer);		// Old way of doing things, leaves handlers hanging
+	HttpServerManager::RemoveHandler(pServer, "GET /");
+	HttpServerManager::RemoveHandler(pServer, "GET /" + Name);
+	size_t remaininghandlers = HttpServerManager::RemoveHandler(pServer, "POST /" + Name);
+	if (remaininghandlers == 0)
+	{
+		HttpServerManager::StopConnection(pServer);		// Only do this if no one else (other PyPort instances) is listening on the port.
+	}
 }
 
 std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
