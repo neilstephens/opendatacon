@@ -75,6 +75,7 @@ public:
 	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
 	// This is the factory method for this class.
 	static void AddHandler(const ServerTokenType& ServerTok, const std::string& urlpattern, http::pHandlerCallbackType urihandler);
+	static size_t RemoveHandler(const ServerTokenType& ServerTok, const std::string& urlpattern);
 
 	static ServerTokenType AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
 

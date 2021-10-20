@@ -38,6 +38,7 @@ namespace http
 			explicit request_handler();
 
 			void register_handler(const std::string& uripattern, const pHandlerCallbackType& handler);
+			size_t deregister_handler(const std::string& uripattern);
 
 			/// Handle a request and produce a reply.
 			void handle_request(const request& req, reply& rep);

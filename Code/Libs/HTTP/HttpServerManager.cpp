@@ -119,5 +119,19 @@ void HttpServerManager::AddHandler(const ServerTokenType& ServerTok, const std::
 	}
 }
 
+size_t HttpServerManager::RemoveHandler(const ServerTokenType& ServerTok, const std::string& urlpattern)
+{
+	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
+	if (auto pServerMgr = ServerTok.pServerManager)
+	{
+		return pServerMgr->pServer->deregister_handler(urlpattern); // Will overwrite if duplicate
+	}
+	else
+	{
+		LOGERROR("Tried to remove a urihandler when the httpserver was not valid");
+		return 0;
+	}
+}
+
 HttpServerManager::~HttpServerManager()
 {}
