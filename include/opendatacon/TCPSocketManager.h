@@ -44,7 +44,7 @@
 #include <opendatacon/util.h>
 #include <string>
 #include <functional>
-
+#include <set>
 
 namespace odc
 {
@@ -137,7 +137,6 @@ public:
 private:
 	std::shared_ptr<void> handler_tracker;
 	bool isConnected;
-	size_t pending_connections;
 	bool pending_write;
 	bool pending_read;
 	bool manuallyClosed;
@@ -156,6 +155,8 @@ private:
 	std::vector<shared_const_buffer>* dispatch_writebufs;
 
 	std::shared_ptr<asio::ip::tcp::socket> pSock;
+	std::set<std::shared_ptr<asio::ip::tcp::socket>,
+		std::owner_less<std::shared_ptr<asio::ip::tcp::socket>>> CandidatepSocks;
 	//Strand to sync access to socket
 	std::unique_ptr<asio::io_service::strand> pSockStrand;
 
