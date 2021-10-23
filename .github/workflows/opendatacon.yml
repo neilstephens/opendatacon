@@ -149,16 +149,27 @@ jobs:
     - name: Install
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
 
-    - name: Test
-      if: ${{ !contains(github.ref, 'tag') && matrix.cross == 'none' }}
-      run: |
-        ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
-        ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
-        ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
-        ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
-        ${{github.workspace}}/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
-        ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
-        ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+    - name: ODC_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
+    - name: DNP3Port_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
+    - name: SimPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
+    - name: MD3Port_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
+    - name: CBPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
+    - name: PyPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
+    - name: Integration_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
     
     - if: always()
       name: Upload Installer
@@ -253,17 +264,28 @@ jobs:
     - name: Install
       run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --target install
 
-    - name: Test
-      if: ${{ !contains(github.ref, 'tag') }}
-      run: |
-        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
-        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
-        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
-        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
-        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
-        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
-        $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
-        
+    - name: ODC_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
+    - name: DNP3Port_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
+    - name: SimPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
+    - name: MD3Port_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
+    - name: CBPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
+    - name: PyPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
+    - name: Integration_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+
     - if: always()
       name: Find Installer Name
       run: |
