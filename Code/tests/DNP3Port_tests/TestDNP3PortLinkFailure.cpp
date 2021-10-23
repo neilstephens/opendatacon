@@ -131,7 +131,7 @@ inline void require_quality(const QualityFlags& test_qual, const bool test_set, 
 		count++;
 	}
 	if(!all_have_qual)
-		std::cout<<json_str<<std::endl;
+		std::cout<<"Test "<<ToString(test_qual)<<(test_set ? "" : " not")<<" set, failed"<<std::endl<<json_str<<std::endl;
 	REQUIRE(all_have_qual);
 }
 

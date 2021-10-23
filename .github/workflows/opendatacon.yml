@@ -209,7 +209,7 @@ jobs:
         rpm -i libmodbus-3.0.8-1.el7.x86_64.rpm
         rpm -i libmodbus-devel-3.0.8-1.el7.x86_64.rpm    
         # To get Python3.6 we need scl-util-build tools
-        curl -O http://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
+        curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
         rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
         yum install -y rh-python36 rh-python36-python-devel rh-git218
         echo 'TOOLCHAIN_OPT=-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root -DADD_LIBS=z' >> $GITHUB_ENV
