@@ -176,6 +176,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: installers
+        retention-days: 7
         path: |
           ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.sh
           ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.exe
@@ -297,6 +298,7 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: installers
+        retention-days: 7
         path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}     
         
             
