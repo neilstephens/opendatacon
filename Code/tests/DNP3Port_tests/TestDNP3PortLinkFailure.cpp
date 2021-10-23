@@ -32,7 +32,7 @@
 using port_pair_t = std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>>;
 
 const unsigned int link_ka_period = 100;
-const unsigned int test_timeout = 5000;
+const unsigned int test_timeout = 30000;
 
 inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr = 0, MITMConfig direction = MITMConfig::CLIENT_SERVER, unsigned int ms_port = 20000, unsigned int os_port = 20000, bool comms = false)
 {

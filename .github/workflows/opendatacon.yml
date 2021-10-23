@@ -65,6 +65,9 @@ jobs:
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
         echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
         choco install openssl --x86
+        Remove-Item 'C:\hostedtoolcache\windows\Python\3.7.9\x64' -Recurse
+        echo "C:\hostedtoolcache\windows\Python\3.7.9\x86" >> $env:GITHUB_PATH
+        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x86/python37_d.dll -Destination C:\Windows\sysWOW64\
         
     - if: matrix.bits == 64 && contains(matrix.os,'windows')
       name: Set 64-bit env
@@ -72,6 +75,7 @@ jobs:
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
         echo 'BITGEN=-Ax64' >> $env:GITHUB_ENV
         choco install openssl
+        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x64/python37_d.dll -Destination C:\Windows\system32\
     
     - if: contains(matrix.os,'windows')
       name: Setup Windows Environment
@@ -90,7 +94,7 @@ jobs:
       name: Setup MacOS Environment
       run: |
         brew install libmodbus socat openssl
-        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3' >> $GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3' >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
 
     - if: contains(matrix.os,'ubuntu') && matrix.cross == 'none'
@@ -210,7 +214,7 @@ jobs:
       run: |
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat psmisc make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static
         ln -s /usr/bin/cmake3 /bin/cmake
         mkdir -p /opt/openssl-root
         ln -s /usr/include/openssl11 /opt/openssl-root/include
@@ -226,7 +230,6 @@ jobs:
         yum install -y rh-python36 rh-python36-python-devel rh-git218
         echo 'TOOLCHAIN_OPT=-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root -DADD_LIBS=z' >> $GITHUB_ENV
         echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=oel7' >> $GITHUB_ENV
-        echo 'source scl_source enable rh-python36' >> $HOME/run.sh
         echo 'source scl_source enable devtoolset-8' >> $HOME/run.sh
         echo 'source scl_source enable rh-git218' >> $HOME/run.sh
         echo '#!/bin/bash' >> /bin/git
@@ -267,25 +270,25 @@ jobs:
 
     - name: ODC_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
+      run: /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
+      run: /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
+      run: /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
     - name: MD3Port_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
+      run: /github/workspace/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
     - name: CBPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
+      run: /github/workspace/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
     - name: PyPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
+      run: /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: $HOME/run.sh /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+      run: /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
 
     - if: always()
       name: Find Installer Name
@@ -298,7 +301,6 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: installers
-        retention-days: 7
         path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}     
         
             
@@ -322,4 +324,15 @@ jobs:
             **/opendatacon-*.*.*-*-*-*-*-*.exe
           fail_on_unmatched_files: false
           token: ${{ secrets.GITHUB_TOKEN }}
-  
+
+  opendatacon-clean:
+    if: always()
+    needs: [opendatacon-native,opendatacon-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove old artifacts
+        uses: c-hive/gha-remove-artifacts@v1
+        with:
+          age: '1 week'
+          skip-recent: 5
+          skip-tags: false
