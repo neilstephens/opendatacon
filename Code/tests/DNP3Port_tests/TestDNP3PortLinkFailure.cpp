@@ -326,6 +326,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 			send_events<EventType::Analog>(downstream_pair.first,0,9,QualityFlags::LOCAL_FORCED|QualityFlags::ONLINE);
 			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
 			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
+			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
 			pMITM->Down();
 			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
 			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
@@ -333,6 +334,8 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 
 			//now try comm lost while upstream disabled
 			pMITM->Up();
+			require_link_up(downstream_pair.first);
+			require_link_up(downstream_pair.second);
 			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
 			require_comms_point(true,upstream_pair.second);
 
