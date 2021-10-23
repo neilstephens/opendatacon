@@ -109,7 +109,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 	#include in install/packaging
 	option(PACKAGE_PYTHON "Package python libs in c-pack installer" ON)
 	if(PACKAGE_PYTHON)
-		set(PACK_NAMES python expat zlib tinfo sqlite readline ncurses mpdec lzma ffi db5 bz2)
+		set(PACK_NAMES python python${PYTHON_NUM} python${PYTHON_NUM}${PYTHON_DEBUG_POSTFIX} expat zlib tinfo sqlite readline ncurses mpdec lzma ffi db5 bz2)
 		find_path(PYTHON_STDLIB_DIR _pydecimal.py
 			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/lib64/${PYTHON_VER} ${PYTHON_HOME}/Lib
 			NO_DEFAULT_PATH
