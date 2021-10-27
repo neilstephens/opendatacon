@@ -55,6 +55,7 @@ public:
 	size_t maxsize;
 	std::shared_ptr<odc::asio_service> pIOS;
 	std::unique_ptr<asio::io_context::strand> internal_queue_strand;
+	std::mutex QueueMutex;	// Hack to see if we have a sync problem with this queue....
 
 public:
 	SpecialEventQueue(std::shared_ptr<odc::asio_service> _pIOS, size_t _maxsize)
@@ -77,6 +78,7 @@ public:
 		{
 			internal_queue_strand->dispatch([this]()
 				{
+					std::unique_lock<std::mutex> lck(QueueMutex);
 					while (tail != nullptr)
 					{
 						tail = tail->next;
@@ -110,6 +112,7 @@ public:
 				{
 					if (enabled_flag.load() == false) return;
 
+					std::unique_lock<std::mutex> lck(QueueMutex);
 					// This is only called from within the internal_queue_strand, so we are safe.
 					// Always add here, we have already checked
 					size++;
@@ -139,6 +142,7 @@ public:
 	{
 		if (enabled_flag.load() == false) return nullptr;
 
+		std::unique_lock<std::mutex> lck(QueueMutex);
 		if ((tail == nullptr) || (tail == head))
 		{
 			// Dont try and change head and tail pointers at the same time - we have to be much more careful with thread safety if we do.
