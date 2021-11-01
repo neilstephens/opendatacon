@@ -157,30 +157,26 @@ void PyPort::Build()
 			PyPort::python_strand = pIOS->make_strand();
 		});
 
-	// Every call to pWrapper should be strand protected. NOTE ASIO is not running here...
-	python_strand->dispatch([this, PyModPath]()
-		{
-			LOGSTRAND("Entered Strand on Build");
-			// If first time constructor is called, will instansiate the interpreter.
-			// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
-			// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
-			pWrapper = std::make_unique<PythonWrapper>(this->Name, pIOS, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
-				std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
-			LOGDEBUG("pWrapper Created #####");
-			try
-			{
-			// Python code is loaded and class created, __init__ called.
-			      pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
+	// Build is single threaded, no ASIO tasks fire up until all the builds are finished
 
-			      pWrapper->Config(JSONMain, JSONOverride);
-			      LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
-			}
-			catch (std::exception& e)
-			{
-			      LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
-			}
-			LOGSTRAND("Exit Strand");
-		});
+	// If first time constructor is called, will instansiate the interpreter.
+	// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
+	// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
+	pWrapper = std::make_unique<PythonWrapper>(this->Name, pIOS, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
+		std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+	LOGDEBUG("pWrapper Created #####");
+	try
+	{
+	// Python code is loaded and class created, __init__ called.
+			pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
+
+			pWrapper->Config(JSONMain, JSONOverride);
+			LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
+	}
+	catch (std::exception& e)
+	{
+			LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
+	}
 
 	pServer = HttpServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new HttpServerManager if required
 	AddHTTPHandlers();
