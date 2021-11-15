@@ -1432,6 +1432,10 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 				break;
 			case ON: val.functionCode = ControlCode::LATCH_ON;
 				break;
+			case RESERVED_9: //used to send value with command
+				val.functionCode = ControlCode::PULSE_ON;
+				val.onTimeMS = output;
+				break;
 
 			default: val.functionCode = ControlCode::PULSE_ON;
 				break;
