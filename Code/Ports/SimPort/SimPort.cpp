@@ -655,22 +655,22 @@ void SimPort::Build()
 
 				if (parameters.count("force") != 0)
 				{
-					bool result = false;
-					if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
-					{
-						result = SetForcedState(index, type, true);
+				      bool result = false;
+				      if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
+				      {
+				            result = SetForcedState(index, type, true);
 					}
-					if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
-					{
-						result = SetForcedState(index, type, false);
+				      if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
+				      {
+				            result = SetForcedState(index, type, false);
 					}
-					if (result == false)
-					{
-						error += "  Set Period Command Failed";
+				      if (result == false)
+				      {
+				            error += "  Unable to set forced";
 					}
-					else
-					{
-						rep.content.append("Set Period Command Accepted\n");
+				      else
+				      {
+				            rep.content.append("Set Period Command Accepted\n");
 					}
 				}
 
@@ -681,23 +681,23 @@ void SimPort::Build()
 
 				if ((error.length() == 0) && (value.length() != 0)) // Forced set above
 				{
-					if (UILoad(type, index, value, quality, timestamp, false))
-					{
-						rep.status = http::reply::ok;
-						rep.content.append("Set Value Command Accepted\n");
+				      if (UILoad(type, index, value, quality, timestamp, false))
+				      {
+				            rep.status = http::reply::ok;
+				            rep.content.append("Set Value Command Accepted\n");
 					}
-					else
+				      else
 						error += " Unable to set value (invalid index?) ";
 				}
 
 				if ((error.length() == 0) && (period.length() != 0) )
 				{
-					if (UISetUpdateInterval(type, index, period))
-					{
-						rep.status = http::reply::ok;
-						rep.content.append("Set Period Command Accepted\n");
+				      if (UISetUpdateInterval(type, index, period))
+				      {
+				            rep.status = http::reply::ok;
+				            rep.content.append("Set Period Command Accepted\n");
 					}
-					else
+				      else
 						error += " Unable to set Period (invalid index?) ";
 				}
 

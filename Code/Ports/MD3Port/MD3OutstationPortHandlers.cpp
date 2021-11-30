@@ -1407,8 +1407,8 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 			LOGDEBUG("{} - DoInputPointControl, Warning - received a reserved Control Code - taking a default acton", Name);
 			EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 			val.functionCode = ControlCode::PULSE_ON;
-			val.onTimeMS = output;
-			val.offTimeMS = Header.GetControlSelection();
+			val.onTimeMS = output;                        //used to send value with command
+			val.offTimeMS = Header.GetControlSelection(); // Should be 9 for our case
 			auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
 			event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 			success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
@@ -1434,12 +1434,7 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 				break;
 			case ON: val.functionCode = ControlCode::LATCH_ON;
 				break;
-			case RESERVED_9: //used to send value with command
-				val.functionCode = ControlCode::PULSE_ON;
-				val.onTimeMS = output;
-				break;
-
-			default: val.functionCode = ControlCode::UNDEFINED;
+			default: val.functionCode = ControlCode::PULSE_ON;
 				break;
 		}
 
