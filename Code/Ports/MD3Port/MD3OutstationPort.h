@@ -67,6 +67,8 @@ public:
 
 	bool GetSystemPoweredUpFlag() { return SPU; }
 	bool GetSystemTimeIncorrectFlag() { return STI; }
+	void SetSystemPoweredUpFlag(bool on) { SPU = on; }
+	void SetSystemTimeIncorrectFlag(bool on) { STI = on; }
 
 	void FlagScanPacketSent() { SPU = false; RSF = false; }
 	void TimePacketReceived() { STI = false; }
@@ -151,7 +153,10 @@ public:
 
 	// UI Interactions
 	std::pair<std::string, const IUIResponder*> GetUIResponder() final;
-	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
+	bool UIFailControl(const std::string& active);
+	bool UISetRTUReStartFlag(const std::string& active);
+	bool UISetSystemTimeIncorrectFlag(const std::string& active);
+	// Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
 	bool UIRandomReponseDrop(const std::string& probability); // Zero probability = does not happen. 1 = every response is dropped
 
