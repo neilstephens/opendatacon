@@ -1716,6 +1716,41 @@ bool MD3OutstationPort::UIFailControl(const std::string& active)
 	}
 	return false;
 }
+bool MD3OutstationPort::UISetRTUReStartFlag(const std::string& active)
+{
+	// Set the Watchdog Timer bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetSystemPoweredUpFlag(true);
+		LOGCRITICAL("{} The RTU Reset Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetSystemPoweredUpFlag(false);
+		LOGCRITICAL("{} The RTU Reset Flag has been cleared", Name);
+		return true;
+	}
+	return false;
+}
+bool MD3OutstationPort::UISetSystemTimeIncorrectFlag(const std::string& active)
+{
+	// Set the Watchdog Timer bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetSystemTimeIncorrectFlag(true);
+		LOGCRITICAL("{} The System Time Incorrect Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetSystemTimeIncorrectFlag(false);
+		LOGCRITICAL("{} The System Time Incorrect Flag has been cleared", Name);
+		return true;
+	}
+	return false;
+}
+
 bool MD3OutstationPort::UIRandomReponseBitFlips(const std::string& probability)
 {
 	try

@@ -959,7 +959,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "a008000e" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
+	                "c00f7d0b"; // The SOE buffer overflow and SOE data available bits are set here - the C value.
 
 	while(!done_flag)
 		IOS->poll_one();

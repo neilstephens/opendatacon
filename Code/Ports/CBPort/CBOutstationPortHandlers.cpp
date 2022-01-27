@@ -957,6 +957,40 @@ bool CBOutstationPort::UIFailControl(const std::string &active)
 	}
 	return false;
 }
+bool CBOutstationPort::UISetRTUReStartFlag(const std::string& active)
+{
+	// Set the Watchdog Timer bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetStartupFlag(true);
+		LOGCRITICAL("{} The RTU Reset Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetStartupFlag(false);
+		LOGCRITICAL("{} The RTU Reset Flag has been cleared", Name);
+		return true;
+	}
+	return false;
+}
+bool CBOutstationPort::UISetRTUControlIsolateFlag(const std::string& active)
+{
+	// Set the Control Isolate bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetControlIsolateFlag(true);
+		LOGCRITICAL("{} The RTU Control Isolate Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetControlIsolateFlag(false);
+		LOGCRITICAL("{} The RTU Control Isolate Flag has been cleared", Name);
+		return true;
+	}
+	return false;
+}
 bool CBOutstationPort::UIRandomReponseBitFlips(const std::string& probability)
 {
 	try

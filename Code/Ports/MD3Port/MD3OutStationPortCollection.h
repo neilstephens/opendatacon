@@ -55,6 +55,37 @@ public:
 
 			},"Specify that any control response gets migrated one bit left and returns if the operation was succesful. Syntax: 'FailControlResponse <MD3OutstationPort|Regex> <True/False>");
 
+		this->AddCommand("RTUStartupFlag", [this](const ParamCollection& params) -> const Json::Value
+			{
+				auto target = GetTarget(params).lock();
+				if (!target)
+					return IUIResponder::GenerateResult("No MD3OutstationPort matched");
+
+				// Active - True or False
+				if (params.count("0") == 0)
+				{
+					return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
+				}
+				auto active = params.at("0");
+				return target->UISetRTUReStartFlag(active) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
+
+			}, "Set or Clear the RTU power on flag. Syntax: 'RTUStartupFlag <CBOutstationPort|Regex> <True/False>");
+
+		this->AddCommand("RTUTimeErrorFlag", [this](const ParamCollection& params) -> const Json::Value
+			{
+				auto target = GetTarget(params).lock();
+				if (!target)
+					return IUIResponder::GenerateResult("No MD3OutstationPort matched");
+
+				// Active - True or False
+				if (params.count("0") == 0)
+				{
+					return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
+				}
+				auto active = params.at("0");
+				return target->UISetSystemTimeIncorrectFlag(active) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
+			}, "Set or Clear the System Time Error flag. Syntax: 'TimeErrorFlag <CBOutstationPort|Regex> <True/False>");
+
 		this->AddCommand("RandomBitFlips", [this](const ParamCollection &params) -> const Json::Value
 			{
 				auto target = GetTarget(params).lock();
