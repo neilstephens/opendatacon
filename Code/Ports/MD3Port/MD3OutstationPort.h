@@ -43,8 +43,6 @@ class OutstationSystemFlags
 	// A change in any will set the RSF bit in ANY scan/control replies. So we maintain a separate RSF bit in the structure, which will be reset on a flag scan.
 
 public:
-	bool GetRemoteStatusChangeFlag() { return RSF; }
-
 	// This is calculated by checking the digital bit changed flag, using a method registered with us
 	bool GetDigitalChangedFlag()
 	{
@@ -65,13 +63,16 @@ public:
 		return false;
 	}
 
+	// The RSF bit has to get set each time STI or SPU changes, but cleared when a flagscan is done (that does not change SPU)
 	bool GetSystemPoweredUpFlag() { return SPU; }
 	bool GetSystemTimeIncorrectFlag() { return STI; }
-	void SetSystemPoweredUpFlag(bool on) { SPU = on; }
-	void SetSystemTimeIncorrectFlag(bool on) { STI = on; }
+	bool GetRemoteStatusChangeFlag() { return RSF; }
 
-	void FlagScanPacketSent() { SPU = false; RSF = false; }
-	void TimePacketReceived() { STI = false; }
+	void SetSystemPoweredUpFlag(bool on) { SPU = on; RSF = true;  }
+	void SetSystemTimeIncorrectFlag(bool on) { STI = on; RSF = true; }
+
+	void FlagScanPacketSent() { if (SPU) { SPU = false; RSF = true; } else { RSF = false; } }
+	void TimePacketReceived() { if (STI) { STI = false; RSF = true; } }
 
 	void SetDigitalChangedFlagCalculationMethod(std::function<bool(void)> Calc) { DCPCalc = Calc; }
 	void SetTimeTaggedDataAvailableFlagCalculationMethod(std::function<bool(void)> Calc) { HRPCalc = Calc; }
