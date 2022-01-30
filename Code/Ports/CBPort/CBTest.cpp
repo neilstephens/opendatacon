@@ -842,7 +842,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                            "14080022" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "030fffab";
+	                            "050fffa5";
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -896,7 +896,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "24080018" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "810f7d07";
+	                "011f7d2f";
 
 	CBMessage_t Msg = BuildCBMessageFromASCIIHexString(DesiredResult);
 	assert(Msg[2].GetA() == 1024);                       // Checking payload values
@@ -937,7 +937,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "5c08001e" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "800f7d19"; // First 12 bits is RST Word
+	                "001f7d31"; // First 12 bits is RST Word
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -959,7 +959,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "a008000e" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c00f7d0b"; // The SOE buffer overflow and SOE data available bits are set here - the C value.
+	                "003f7d29"; // The SOE buffer overflow and SOE data available bits are set here - the C value.
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1403,7 +1403,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                            "02880010" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "0a0fff9b";
+	                            "040fffbb";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -1452,7 +1452,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "0248000a" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "880f7d37";
+	                "001f7d31";
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1485,7 +1485,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "03a80016" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "880f7d37";
+	                "001f7d31";
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1507,7 +1507,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "0058003a" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c80f7d25"; // The SOE buffer overflow bit should be set here...
+	                "003f7d29"; // The SOE buffer overflow bit should be set here... SOE data and SOE overflow set!
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
