@@ -305,10 +305,8 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	if (MyPointConf->PointTable.IsStatusByteLocation(Group, payloadlocation))
 	{
 		FoundMatch = true;
-		// So we have some RST bits defined, we will now clear and then OR those bits with the "system maintained" bits.
-		Payload &= ~((0x1 << 11) | (0x1 << 10) | (0x1 << 5)); // Clear (just in case someone defined an RST bit that clashes)
 		// We cant do this in the above lambda as we might getandset the overflow flag multiple times...
-		// Bit Definitions:
+		// Bit Definitions: 0 is MSB!!!!
 		// 0-3 Error Code
 		// 4 - Controls Isolated
 		// 5 - Reset Occurred
@@ -319,7 +317,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 		// 10 - SOE Overflow
 		// 11 - SOE Data Available
 		// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
-		Payload |= SystemFlags.GetStatusPayload();
+		Payload = SystemFlags.GetStatusPayload(Payload);
 
 		LOGDEBUG("{} Combining RST bits and Status Word Flags :{} - {} - {}", Name, Group, payloadlocation.to_string(), to_hexstring(Payload));
 	}
@@ -661,12 +659,12 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 
 void CBOutstationPort::RemoteStatusWordResponse(CBBlockData& Header)
 {
-	// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+	// We only implement 4, 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
 	uint16_t Payload = 0;
 
 	// TODO: Need to scan any digitals in this Group/Location..
 
-	Payload |= SystemFlags.GetStatusPayload();
+	Payload = SystemFlags.GetStatusPayload(Payload);
 	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), Payload, true);
 	CBMessage_t ResponseCBMessage;
 	ResponseCBMessage.push_back(firstblock);
