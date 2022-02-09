@@ -102,6 +102,9 @@ protected:
 
 	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
 	{
+		if(pIOS == nullptr)
+			throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
+		auto shouldPost = !pIOS->current_thread_in_pool();
 		if(!pStatusCallback)
 			pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){});
 		if(event->GetEventType() == EventType::ConnectState)
@@ -110,7 +113,10 @@ protected:
 			//	so it can keep track of upsteam demand
 			for(const auto& IOHandler_pair: Subscribers)
 			{
-				IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);
+				if(shouldPost)
+					pIOS->post([=](){IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);});
+				else
+					IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);
 			}
 		}
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
@@ -118,7 +124,10 @@ protected:
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->trace("{} {} Payload {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);
-			IOHandler_pair.second->Event(event, Name, multi_callback);
+			if(shouldPost)
+				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, multi_callback);});
+			else
+				IOHandler_pair.second->Event(event, Name, multi_callback);
 		}
 	}
 
