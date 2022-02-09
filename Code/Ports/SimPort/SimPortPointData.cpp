@@ -229,7 +229,7 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 		if (type == odc::EventType::ControlRelayOutputBlock)
 		{
 			auto val = m_binary_control.GetCurrentBinaryEvent(index)->GetPayload<odc::EventType::ControlRelayOutputBlock>();
-			state[std::to_string(index)][odc::ToString(type)+"Payload"] = odc::ToString(val.functionCode);
+			state[std::to_string(index)][odc::ToString(type)+"Payload"] = std::string(val);
 		}
 		if (type == odc::EventType::Binary || type == odc::EventType::Analog)
 		{
