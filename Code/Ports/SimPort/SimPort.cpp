@@ -130,6 +130,7 @@ void SimPort::PublishBinaryEvents(const std::vector<std::size_t>& indexes, const
 	{
 		auto event = pSimConf->Event(odc::EventType::Binary, indexes[i]);
 		event->SetPayload<odc::EventType::Binary>(std::move(payload[i] - '0'));
+		event->SetTimestamp(msSinceEpoch());
 		PostPublishEvent(event);
 	}
 }
@@ -403,6 +404,7 @@ void SimPort::PortUp()
 	{
 		auto event = pSimConf->Event(odc::EventType::Binary, index);
 		bool val = event->GetPayload<odc::EventType::Binary>();
+		event->SetTimestamp(msSinceEpoch());
 		PostPublishEvent(event);
 
 		ptimer_t ptimer = pIOS->make_steady_timer();
@@ -899,6 +901,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 				{
 					payload += binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
+					event->SetTimestamp(msSinceEpoch());
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
@@ -915,6 +918,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 				{
 					payload -= binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
+					event->SetTimestamp(msSinceEpoch());
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
