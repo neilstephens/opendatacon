@@ -93,7 +93,7 @@ void TCPSocketManager::Close()
 			manuallyClosed = true;
 			ramp_time_ms = 0;
 			pRetryTimer->cancel();
-			for(auto ps : CandidatepSocks)
+			for(auto& ps : CandidatepSocks)
 				ps->close();
 			CandidatepSocks.clear();
 			pAcceptor.reset();

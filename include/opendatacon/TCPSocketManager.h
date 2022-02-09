@@ -45,6 +45,7 @@
 #include <string>
 #include <functional>
 #include <set>
+#include <limits>
 
 namespace odc
 {
