@@ -683,6 +683,7 @@ void PythonWrapper::PortOperational()
 }
 void PythonWrapper::Enable()
 {
+	EventQueue->Enable(true);
 	try
 	{
 		GetPythonGIL g;
@@ -704,6 +705,7 @@ void PythonWrapper::Enable()
 
 void PythonWrapper::Disable()
 {
+	EventQueue->Enable(false);
 	try
 	{
 		GetPythonGIL g;

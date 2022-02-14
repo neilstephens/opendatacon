@@ -79,22 +79,14 @@ public:
 				//param 0: Probability 0 to 1
 				if (params.count("0") == 0)
 				{
-					return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a drop range 0 to 1");
+				      return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a drop range 0 to 1");
 				}
 				auto probability = params.at("0");
 				return target->UIRandomReponseBitFlips(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
 
 			}, "Sets the probability of a dropped response packet and returns if the operation was successful. Syntax: 'RandomResponseDrops <MD3OutstationPort|Regex> <Probability (float)>");
 	}
-
-	void Add(std::shared_ptr<MD3OutstationPort> p, const std::string& Name)
-	{
-		std::lock_guard<std::mutex> lck(mtx);
-		this->insert(std::pair<std::string,std::shared_ptr<MD3OutstationPort>>(Name,p));
-	}
 	virtual ~MD3OutstationPortCollection(){}
-private:
-	std::mutex mtx;
 };
 
 

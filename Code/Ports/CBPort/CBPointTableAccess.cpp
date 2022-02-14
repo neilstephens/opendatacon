@@ -173,17 +173,13 @@ bool CBPointTableAccess::AddBinaryPointToPointTable(const size_t &index, const u
 	return true;
 }
 
-bool CBPointTableAccess::AddStatusByteToCBMap(const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation)
+bool CBPointTableAccess::AddStatusByteToCBMap(const uint8_t & group, const PayloadLocationType & payloadlocation)
 {
-	uint16_t CBIndex = GetCBPointMapIndex(group, channel, payloadlocation);
-	if (StatusByteMap.find(CBIndex) != StatusByteMap.end())
-	{
-		LOGERROR("{} Error Duplicate Status Byte CB Index {} - {} - {}",Name,group,channel, payloadlocation.to_string());
-		return false;
-	}
+	// This will only be called once.
+	StatusBytePayloadLocation = payloadlocation;
+	StatusByteGroup = group;
 
 	UpdateMaxPayload(group, payloadlocation);
-	StatusByteMap[CBIndex] = 0; // Creates the map entry
 	return true;
 }
 
@@ -526,6 +522,19 @@ bool CBPointTableAccess::SetAnalogControlValueUsingODCIndex(const size_t index, 
 	return false;
 }
 
+PayloadLocationType CBPointTableAccess::GetPayLoadLocationFromCBPointMapIndex(const uint16_t& CBIndex)
+{
+	// Top 4 bits group (0-15), Next 4 bits channel (1-12), next 4 bits payload packet number (0-15), next 4 bits 0(A) or 1(B)
+	PayloadLocationType payloadlocation;
+	payloadlocation.Packet = (CBIndex >> 4) + 1;
+	payloadlocation.Position = (CBIndex & 0x01) == 0 ? PayloadABType::PositionA : PayloadABType::PositionB;
+	return payloadlocation;
+}
+uint8_t CBPointTableAccess::GetGroupFromCBPointMapIndex(const uint16_t& CBIndex)
+{
+	// Top 4 bits group (0-15), Next 4 bits channel (1-12), next 4 bits payload packet number (0-15), next 4 bits 0(A) or 1(B)
+	return (CBIndex >> 12);
+}
 uint16_t CBPointTableAccess::GetCBPointMapIndex(const uint8_t & group, const uint8_t & channel, const PayloadLocationType & payloadlocation)
 {
 	assert(group <= 0x0F);
@@ -587,15 +596,6 @@ void CBPointTableAccess::ForEachMatchingCounterPoint(const uint8_t & group, cons
 	{
 		// We have a match - call our function with the point as a parameter.
 		fn(*CounterCBPointMap[CBIndex]);
-	}
-}
-void CBPointTableAccess::ForEachMatchingStatusByte(const uint8_t & group, const PayloadLocationType & payloadlocation, const std::function<void(void)>& fn)
-{
-	uint16_t CBIndex = GetCBPointMapIndex(group, 1, payloadlocation); // Use the same index as the points
-	if (StatusByteMap.count(CBIndex) != 0)
-	{
-		// We have a match - call our function
-		fn();
 	}
 }
 

@@ -235,10 +235,11 @@ void DataConnector::ReplaceAddress(std::string PortName, IOHandler* Addr)
 
 void DataConnector::Event(ConnectState state, const std::string& SenderName)
 {
-	if(MuxConnectionEvents(state, SenderName))
+	auto bounds = SenderConnections.equal_range(SenderName);
+	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 	{
-		auto bounds = SenderConnections.equal_range(SenderName);
-		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+		auto& ReceiverName = aMatch_it->second.second->GetName();
+		if(MuxConnectionEvents(state, SenderName,ReceiverName))
 			aMatch_it->second.second->Event(state, Name);
 	}
 }

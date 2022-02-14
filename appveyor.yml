@@ -98,17 +98,17 @@ artifacts:
     name: Releases
 
 
-deploy:
-  release: 'opendatacon $(APPVEYOR_REPO_TAG_NAME)'
-  description: ''
-  provider: GitHub
-  auth_token:
-    secure: MuDZnJV9gGH51bmihPpcFDEyAVC3bU9BPaciSz48OI3sZfe1j4Y7BaMLV4qJqwIC
-  draft: false
-  prerelease: false
-  tag: $(APPVEYOR_REPO_TAG_NAME)
-  on:
-    appveyor_repo_tag: true
+#deploy:
+#  release: 'opendatacon $(APPVEYOR_REPO_TAG_NAME)'
+#  description: ''
+#  provider: GitHub
+#  auth_token:
+#    secure: MuDZnJV9gGH51bmihPpcFDEyAVC3bU9BPaciSz48OI3sZfe1j4Y7BaMLV4qJqwIC
+#  draft: false
+#  prerelease: false
+#  tag: $(APPVEYOR_REPO_TAG_NAME)
+#  on:
+#    appveyor_repo_tag: true
     
 ###
 ##Here is a script your can run in your browser's javascript terminal to build any branch/commit

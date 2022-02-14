@@ -436,7 +436,6 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 		bool error = false;
 
 		uint32_t group = 0;
-		uint32_t channel = 0;
 		PayloadLocationType payloadlocation;
 
 		if (JSONNode[n].isMember("PayloadLocation"))
@@ -445,7 +444,7 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 		}
 		else
 		{
-			LOGERROR("A point needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+			LOGERROR("A RemoteStatus needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -453,24 +452,16 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 			group = JSONNode[n]["Group"].asUInt();
 		else
 		{
-			LOGERROR(" A point needs a \"Group\" : " + JSONNode[n].toStyledString());
-			error = true;
-		}
-
-		if (JSONNode[n].isMember("Channel"))
-			channel = JSONNode[n]["Channel"].asUInt();
-		else
-		{
-			LOGERROR(" A point needs a \"Channel\" : " + JSONNode[n].toStyledString());
+			LOGERROR(" A RemoteStatus needs a \"Group\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
 		if (!error)
 		{
-			if (PointTable.AddStatusByteToCBMap(numeric_cast<uint8_t>(group), numeric_cast<uint8_t>(channel), payloadlocation))
+			if (PointTable.AddStatusByteToCBMap(numeric_cast<uint8_t>(group), payloadlocation))
 			{
-				// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
-				LOGDEBUG("Adding a Status Byte - Group: " + std::to_string(group) + " Channel: " + std::to_string(channel) + " Payload Location: " + payloadlocation.to_string());
+				// Can only exist in on group, save the group and payload location
+				LOGDEBUG("Adding a Status Byte - Group: " + std::to_string(group) + " Payload Location: " + payloadlocation.to_string());
 			}
 		}
 	}

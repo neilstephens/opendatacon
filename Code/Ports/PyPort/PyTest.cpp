@@ -46,13 +46,7 @@
 #include "PyPort.h"
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-
-#if defined(NONVSTESTING)
 #include <catch.hpp>
-#else
-#include "spdlog/sinks/msvc_sink.h"
-#include <catchvs.hpp> // This version has the hooks to display the tests in the VS Test Explorer - but also has some problems not destructing objects correctly.
-#endif
 
 // To remove GCC warnings
 namespace RTUConnectedTests
@@ -124,11 +118,7 @@ void WriteConfFilesToCurrentWorkingDirectory()
 void SetupLoggers(spdlog::level::level_enum log_level)
 {
 	// So create the log sink first - can be more than one and add to a vector.
-	#if defined(NONVSTESTING)
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-	#else
-	auto console_sink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
-	#endif
 	auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("pyporttest.log", true);
 
 	std::vector<spdlog::sink_ptr> sinks = { file_sink,console_sink };
@@ -151,25 +141,12 @@ void WriteStartLoggingMessage(const std::string& TestName)
 	std::string msg = "Logging for '" + TestName + "' started..";
 
 	if (auto pylogger = odc::spdlog_get("PyPort"))
-	{
-		pylogger->info("------------------");
-		pylogger->info("PyPort Logger Message "+msg);
-	}
-	else
-		std::cout << "Error PyPort Logger not operational";
-
-	if (auto odclogger = odc::spdlog_get("opendatacon"))
-	{
-		odclogger->info("opendatacon Logger Message "+msg);
-	}
-	else
-		std::cout << "Error opendatacon Logger not operational";
+		pylogger->info(msg);
+	else if (auto odclogger = odc::spdlog_get("opendatacon"))
+		odclogger->info("PyPort Logger Message: "+msg);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
-	#ifndef NONVSTESTING
-	SetupLoggers(spdlog::level::level_enum::trace);
-	#endif
 	WriteStartLoggingMessage(TestName);
 
 	if (writeconffiles)
@@ -178,10 +155,6 @@ void TestSetup(const std::string& TestName, bool writeconffiles = true)
 void TestTearDown(void)
 {
 	INFO("Test Finished")
-	#ifndef NONVSTESTING
-
-	spdlog::drop_all(); // Un-register loggers, and if no other shared_ptr references exist, they will be destroyed.
-	#endif
 }
 // Used for command line test setup
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
@@ -744,11 +717,10 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 			} ());
 		LOGDEBUG("Port5 Disabled");
-
-
-		STOP_IOS(); // Wait in here for all threads to stop.
-		LOGDEBUG("IOS Stopped");
 	}
+
+	STOP_IOS(); // Wait in here for all threads to stop.
+	LOGDEBUG("IOS Stopped");
 
 	STANDARD_TEST_TEARDOWN();
 	LOGDEBUG("Test Teardown complete");

@@ -51,9 +51,8 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 	std::string over = "None";
 	if (aConfOverrides.isObject()) over = aConfOverrides.toStyledString();
 
-	//TODO: Do we need these flags for Conitel/Baker
-	SystemFlags.SetDigitalChangedFlagCalculationMethod(std::bind(&CBOutstationPort::DigitalChangedFlagCalculationMethod, this));
-	SystemFlags.SetTimeTaggedDataAvailableFlagCalculationMethod(std::bind(&CBOutstationPort::TimeTaggedDataAvailableFlagCalculationMethod, this));
+	SystemFlags.SetSOEAvailableFn(std::bind(&CBOutstationPort::SOEAvailableFn, this));
+	SystemFlags.SetSOEOverflowFn(std::bind(&CBOutstationPort::SOEOverflowFn, this));
 
 	IsOutStation = true;
 
@@ -139,7 +138,7 @@ void CBOutstationPort::Build()
 {
 	// Add this port to the list of ports we can command.
 	auto shared_this = std::static_pointer_cast<CBOutstationPort>(shared_from_this());
-	this->CBOutstationCollection->Add(shared_this, this->Name);
+	this->CBOutstationCollection->insert_or_assign(this->Name,shared_this);
 
 	// Need a couple of things passed to the point table.
 	MyPointConf->PointTable.Build(Name, IsOutStation, *pIOS, MyPointConf->SOEQueueSize, SOEBufferOverflowFlag);

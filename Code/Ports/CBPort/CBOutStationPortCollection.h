@@ -87,15 +87,7 @@ public:
 
 			}, "Sets the probability of a dropped response packet and returns if the operation was successful. Syntax: 'RandomResponseDrops <CBOutstationPort|Regex> <Probability (float)>");
 	}
-
-	void Add(std::shared_ptr<CBOutstationPort> p, const std::string& Name)
-	{
-		std::lock_guard<std::mutex> lck(mtx);
-		this->insert(std::pair<std::string,std::shared_ptr<CBOutstationPort>>(Name,p));
-	}
 	virtual ~CBOutstationPortCollection(){}
-private:
-	std::mutex mtx;
 };
 
 

@@ -139,7 +139,7 @@ void MD3OutstationPort::Build()
 {
 	// Add this port to the list of ports we can command.
 	auto shared_this = std::static_pointer_cast<MD3OutstationPort>(shared_from_this());
-	this->MD3OutstationCollection->Add(shared_this, this->Name);
+	this->MD3OutstationCollection->insert_or_assign(this->Name,shared_this);
 
 	std::string ChannelID = MyConf->mAddrConf.ChannelID();
 

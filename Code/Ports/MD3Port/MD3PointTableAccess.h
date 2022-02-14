@@ -51,6 +51,19 @@ public:
 	bool AddBinaryPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const BinaryPointType & pointtype, const uint32_t & pollgroup);
 	bool AddBinaryControlPointToPointTable(const size_t & index, const uint8_t & moduleaddress, const uint8_t & channel, const BinaryPointType & pointtype, const uint32_t & pollgroup);
 
+	uint16_t  CalcAnalogCounterMD3Index(const uint16_t module, const uint8_t channel)
+	{
+		if (channel > 7) // Should only ever be 0 to 7, but if you do reference channels 8-15, then that is actually the next module up.
+		{
+			uint16_t modchannel = channel - 8;
+			uint8_t modmodule = module + 1;
+			return ShiftLeft8Result16Bits(modmodule) | modchannel;
+		}
+		else
+		{
+			return ShiftLeft8Result16Bits(module) | channel;
+		}
+	}
 	bool GetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, bool &hasbeenset);
 	bool GetCounterValueAndChangeUsingMD3Index(const uint16_t module, const uint8_t channel, uint16_t & res, int & delta, bool &hasbeenset);
 	bool SetCounterValueUsingMD3Index(const uint16_t module, const uint8_t channel, const uint16_t meas);

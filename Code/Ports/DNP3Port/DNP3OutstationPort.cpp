@@ -270,7 +270,7 @@ TCPClientServer DNP3OutstationPort::ClientOrServer()
 void DNP3OutstationPort::Build()
 {
 	auto shared_this = std::static_pointer_cast<DNP3OutstationPort>(shared_from_this());
-	this->PeerCollection->Add(shared_this,this->Name);
+	this->PeerCollection->insert_or_assign(this->Name,shared_this);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 

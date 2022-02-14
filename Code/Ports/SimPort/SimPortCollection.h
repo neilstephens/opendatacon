@@ -119,14 +119,7 @@ public:
 		else
 			return IUIResponder::GenerateResult("Bad parameter");
 	}
-	void Add(std::shared_ptr<SimPort> p, const std::string& Name)
-	{
-		std::lock_guard<std::mutex> lck(mtx);
-		this->insert(std::pair<std::string,std::shared_ptr<SimPort>>(Name,p));
-	}
 	virtual ~SimPortCollection(){}
-private:
-	std::mutex mtx;
 };
 
 

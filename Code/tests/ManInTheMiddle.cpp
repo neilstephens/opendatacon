@@ -102,12 +102,9 @@ void ManInTheMiddle::ReadHandler(const bool direction, odc::buf_t& readbuf)
 	}
 
 	auto pSockMan = direction ? &SockMan1 : &SockMan2;
+
 	std::vector<char> data_vec(readbuf.size());
-	while(readbuf.size() > 0)
-	{
-		data_vec.push_back(readbuf.sgetc());
-		readbuf.consume(1);
-	}
+	readbuf.sgetn(data_vec.data(),readbuf.size());
 	pSockMan->Write(std::move(data_vec));
 }
 void ManInTheMiddle::StateHandler(const bool direction, const bool state)

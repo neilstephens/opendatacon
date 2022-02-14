@@ -32,7 +32,7 @@
 using port_pair_t = std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>>;
 
 const unsigned int link_ka_period = 100;
-const unsigned int test_timeout = 5000;
+const unsigned int test_timeout = 30000;
 
 inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr = 0, MITMConfig direction = MITMConfig::CLIENT_SERVER, unsigned int ms_port = 20000, unsigned int os_port = 20000, bool comms = false)
 {
@@ -131,7 +131,7 @@ inline void require_quality(const QualityFlags& test_qual, const bool test_set, 
 		count++;
 	}
 	if(!all_have_qual)
-		std::cout<<json_str<<std::endl;
+		std::cout<<"Test "<<ToString(test_qual)<<(test_set ? "" : " not")<<" set, failed"<<std::endl<<json_str<<std::endl;
 	REQUIRE(all_have_qual);
 }
 
@@ -326,6 +326,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 			send_events<EventType::Analog>(downstream_pair.first,0,9,QualityFlags::LOCAL_FORCED|QualityFlags::ONLINE);
 			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
 			require_quality(QualityFlags::LOCAL_FORCED,true,upstream_pair.second);
+			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
 			pMITM->Down();
 			require_quality(QualityFlags::COMM_LOST,true,upstream_pair.second);
 			require_quality(QualityFlags::ONLINE,true,upstream_pair.second);
@@ -333,6 +334,8 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 
 			//now try comm lost while upstream disabled
 			pMITM->Up();
+			require_link_up(downstream_pair.first);
+			require_link_up(downstream_pair.second);
 			require_quality(QualityFlags::COMM_LOST,false,upstream_pair.second);
 			require_comms_point(true,upstream_pair.second);
 

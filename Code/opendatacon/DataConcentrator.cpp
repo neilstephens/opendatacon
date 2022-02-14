@@ -468,6 +468,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	}
 
 	//TODO: document these config options
+	std::string tcp_level_name = "";
 	if(JSONRoot.isMember("TCPLog"))
 	{
 		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
@@ -489,13 +490,19 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 
 			TCPbufs["tcp"].Init(pIOS, isServer, TCPLogJSON["IP"].asString(), TCPLogJSON["Port"].asString());
 			pTCPostreams["tcp"] = std::make_unique<std::ostream>(&TCPbufs["tcp"]);
+			tcp_level_name = TCPLogJSON.isMember("LogLevel") ? TCPLogJSON["LogLevel"].asString() : "";
 		}
 	}
 
 	if(pTCPostreams.find("tcp") != pTCPostreams.end())
 	{
+		auto tcp_level = spdlog::level::from_str(tcp_level_name);
+		//check for no match and set defaults
+		if(tcp_level == spdlog::level::off && tcp_level_name != "off")
+			tcp_level = log_level;
+
 		auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams["tcp"], true);
-		tcp->set_level(log_level);
+		tcp->set_level(tcp_level);
 		LogSinks["tcp"] = tcp;
 	}
 
@@ -1329,7 +1336,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		log->debug("Preparing to delete old config objects.");
 	std::vector<std::shared_ptr<void>> to_delete;
 	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
-	std::map<std::string,std::map<std::string,bool>> old_demands;
+	std::map<std::string,std::map<std::string,Demands_t>> old_demands;
 	std::multimap<std::string,DataConnector*> needs_new_addr;
 	for(auto name : delete_or_changeIOHs)
 	{
@@ -1402,7 +1409,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			{
 				for(auto sub_pair : old_subs[name])
 					ioh_it->second->Subscribe(sub_pair.second,sub_pair.first);
-				for(auto name_demand : old_demands[name])
+				for(auto name_demand : old_demands[name][""])
 					if(name_demand.second)
 						ioh_it->second->Event(ConnectState::CONNECTED, name_demand.first);
 			}

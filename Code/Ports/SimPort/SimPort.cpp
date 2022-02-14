@@ -130,6 +130,7 @@ void SimPort::PublishBinaryEvents(const std::vector<std::size_t>& indexes, const
 	{
 		auto event = pSimConf->Event(odc::EventType::Binary, indexes[i]);
 		event->SetPayload<odc::EventType::Binary>(std::move(payload[i] - '0'));
+		event->SetTimestamp(msSinceEpoch());
 		PostPublishEvent(event);
 	}
 }
@@ -226,7 +227,7 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 		return false;
 
 	auto indexes = IndexesFromString(index, type);
-	if (ValidEventType(type))
+	if (ValidEventType(type) && (indexes.size() > 0))
 	{
 		for (std::size_t index : indexes)
 		{
@@ -403,6 +404,7 @@ void SimPort::PortUp()
 	{
 		auto event = pSimConf->Event(odc::EventType::Binary, index);
 		bool val = event->GetPayload<odc::EventType::Binary>();
+		event->SetTimestamp(msSinceEpoch());
 		PostPublishEvent(event);
 
 		ptimer_t ptimer = pIOS->make_steady_timer();
@@ -528,7 +530,7 @@ void SimPort::Build()
 {
 	pEnableDisableSync = pIOS->make_strand();
 	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
-	this->SimCollection->Add(shared_this,this->Name);
+	this->SimCollection->insert_or_assign(this->Name,shared_this);
 
 	if ((pSimConf->HttpAddress().size() != 0) && (pSimConf->HttpPort().size() != 0))
 	{
@@ -539,7 +541,7 @@ void SimPort::Build()
 		auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;
-				rep.content.append("You have reached the SimPort http interface.<br>To talk to a port the url must contain the SimPort name, which is case senstive.<br>The rest is formatted as if it were a console UI command.");
+				rep.content.append("ERROR - You have reached the SimPort http interface.<br>To talk to a port the url must contain the SimPort name, which is case senstive.<br>The rest is formatted as if it were a console UI command.");
 				rep.headers.resize(2);
 				rep.headers[0].name = "Content-Length";
 				rep.headers[0].value = std::to_string(rep.content.size());
@@ -614,7 +616,7 @@ void SimPort::Build()
 				{
 				      rep.status = http::reply::not_found;
 				      contenttype = "text/html";
-				      rep.content.append("You have reached the SimPort Instance with GET on " + Name + " Invalid Request " + type + ", " + index + " - " + error);
+				      rep.content.append("ERROR - You have reached the SimPort Instance with GET on " + Name + " Invalid Request " + type + ", " + index + " - " + error);
 				}
 				rep.headers.resize(2);
 				rep.headers[0].name = "Content-Length";
@@ -655,14 +657,21 @@ void SimPort::Build()
 
 				if (parameters.count("force") != 0)
 				{
+				      bool result = false;
 				      if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
 				      {
-				            SetForcedState(index, type, true);
-				            rep.content.append("Set Period Command Accepted\n");
+				            result = SetForcedState(index, type, true);
 					}
 				      if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
 				      {
-				            SetForcedState(index, type, false);
+				            result = SetForcedState(index, type, false);
+					}
+				      if (result == false)
+				      {
+				            error += "  Unable to set forced";
+					}
+				      else
+				      {
 				            rep.content.append("Set Period Command Accepted\n");
 					}
 				}
@@ -672,27 +681,37 @@ void SimPort::Build()
 				if (parameters.count("period") != 0)
 					period = parameters.at("period");
 
-				if ((error.length() == 0) && (value.length() != 0) && UILoad(type, index, value, quality, timestamp, false)) // Forced set above
+				if ((error.length() == 0) && (value.length() != 0)) // Forced set above
 				{
-				      rep.status = http::reply::ok;
-				      rep.content.append("Set Value Command Accepted\n");
+				      if (UILoad(type, index, value, quality, timestamp, false))
+				      {
+				            rep.status = http::reply::ok;
+				            rep.content.append("Set Value Command Accepted\n");
+					}
+				      else
+						error += " Unable to set value (invalid index?) ";
 				}
 
-				if ((error.length() == 0) && (period.length() != 0) && UISetUpdateInterval(type, index, period))
+				if ((error.length() == 0) && (period.length() != 0) )
 				{
-				      rep.status = http::reply::ok;
-				      rep.content.append("Set Period Command Accepted\n");
+				      if (UISetUpdateInterval(type, index, period))
+				      {
+				            rep.status = http::reply::ok;
+				            rep.content.append("Set Period Command Accepted\n");
+					}
+				      else
+						error += " Unable to set Period (invalid index?) ";
 				}
 
-				if ((value.length() == 0) && (period.length() != 0))
+				if (!((value.length() > 0) || (period.length() > 0)))
 				{
-				      error += " Missing a value or period parameter. Must have at least one.";
+				      error += " Missing a value or period (or both) parameter(s). Must have at least one.";
 				}
 
 				if (error.length() != 0)
 				{
 				      rep.status = http::reply::not_found;
-				      rep.content.append("You have reached the SimPort Instance with POST on " + Name + " POST Command Failed - " + error);
+				      rep.content.assign("ERROR - You have reached the SimPort Instance with POST on " + Name + " POST Command Failed - " + error);
 				}
 				rep.headers.resize(2);
 				rep.headers[0].name = "Content-Length";
@@ -882,6 +901,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 				{
 					payload += binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
+					event->SetTimestamp(msSinceEpoch());
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
@@ -898,6 +918,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 				{
 					payload -= binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
+					event->SetTimestamp(msSinceEpoch());
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
