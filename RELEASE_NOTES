@@ -1,12 +1,14 @@
-# opendatacon version 1.7.8
+# opendatacon version 1.7.9
 
-## 1.7.9-RC1
-  * Conitel/Baker/MD3 bugfixes
+## 1.7.9
+  * Conitel/Baker/MD3/Sim/Py port bugfixes
   * ONDEMAND connection fixes
     * Some ports were connecting on demand, but not disconnecting on lack of demand
   * TCPLog has it's own level
-  * reload_config fix
+  * reload_config fixes
     * changed ports weren't receiving UI commands
+    * ensure ports post all events to asio
+  * PyPort Kafka example improvements/fixes
 
 ## 1.7.8
   * DNP3MasterPort - link down flag clearing hot fix
