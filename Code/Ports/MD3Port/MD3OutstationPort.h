@@ -35,6 +35,7 @@
 #include <vector>
 #include <functional>
 
+// Minor change to trigger pull request rebuild
 
 class OutstationSystemFlags
 {
