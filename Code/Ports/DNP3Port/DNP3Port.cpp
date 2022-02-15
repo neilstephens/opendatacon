@@ -82,7 +82,9 @@ void DNP3Port::InitEventDB()
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART,0));
 	for(auto index : pConf->pPointConf->ControlIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
-
+	for (auto index : pConf->pPointConf->BinaryIndexes)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputInt32, index, "", QualityFlags::RESTART, 0));
+	
 	pDB = std::make_unique<EventDB>(init_events);
 }
 
@@ -97,9 +99,9 @@ const Json::Value DNP3Port::GetCurrentState() const
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	auto time_correction = [=](const auto& event)
-				     {
-					     auto ts = event->GetTimestamp();
-					     if(event->GetEventType() == EventType::ControlRelayOutputBlock)
+	{
+		auto ts = event->GetTimestamp();
+		if ((event->GetEventType() == EventType::ControlRelayOutputBlock) || (event->GetEventType() == EventType::AnalogOutputInt32))
 						     return since_epoch_to_datetime(ts);
 					     if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
 					         || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
@@ -149,6 +151,22 @@ const Json::Value DNP3Port::GetCurrentState() const
 		}
 		catch(std::runtime_error&)
 		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = time_correction(event);
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
+	{
+		auto event = pDB->Get(EventType::AnalogOutputInt32, index);
+		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
+		state["Index"] = Json::UInt(event->GetIndex());
+		try
+		{
+			state["Value"] = event->GetPayloadString();
+		}
+		catch (std::runtime_error&)
+		{
+		}
 		state["Quality"] = ToString(event->GetQuality());
 		state["Timestamp"] = time_correction(event);
 		state["SourcePort"] = event->GetSourcePort();

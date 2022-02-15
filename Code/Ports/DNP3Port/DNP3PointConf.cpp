@@ -544,6 +544,51 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		std::sort(ControlIndexes.begin(),ControlIndexes.end());
 	}
+	
+	if (JSONRoot.isMember("AnalogControls"))
+	{
+		const auto AnalogControls = JSONRoot["AnalogControls"];
+		for (Json::ArrayIndex n = 0; n < AnalogControls.size(); ++n)
+		{
+			size_t start, stop;
+			if (AnalogControls[n].isMember("Index"))
+				start = stop = AnalogControls[n]["Index"].asUInt();
+			else if (AnalogControls[n]["Range"].isMember("Start") && AnalogControls[n]["Range"].isMember("Stop"))
+			{
+				start = AnalogControls[n]["Range"]["Start"].asUInt();
+				stop = AnalogControls[n]["Range"]["Stop"].asUInt();
+			}
+			else
+			{
+				if (auto log = odc::spdlog_get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", AnalogControls[n].toStyledString());
+				continue;
+			}
+			for (auto index = start; index <= stop; index++)
+			{
+
+				bool exists = false;
+				for (auto existing_index : AnalogControlIndexes)
+					if (existing_index == index)
+						exists = true;
+
+				if (!exists)
+					AnalogControlIndexes.push_back(index);
+
+				auto start_val = AnalogControls[n]["StartVal"].asString();
+				if (start_val == "D")
+				{
+					for (auto it = AnalogControlIndexes.begin(); it != AnalogControlIndexes.end(); it++)
+						if (*it == index)
+						{
+							AnalogControlIndexes.erase(it);
+							break;
+						}
+				}
+			}
+		}
+		std::sort(AnalogControlIndexes.begin(), AnalogControlIndexes.end());
+	}
 }
 
 
