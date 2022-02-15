@@ -398,6 +398,12 @@ inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint1
 			if(index == aIndex)
 				return opendnp3::CommandStatus::SUCCESS;
 	}
+	if (std::is_same<T, opendnp3::AnalogOutput32>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
+	{
+		for (auto index : pConf->pPointConf->AnalogControlIndexes)
+			if (index == aIndex)
+				return opendnp3::CommandStatus::SUCCESS;
+	}
 	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
 

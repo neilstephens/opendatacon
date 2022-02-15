@@ -139,6 +139,7 @@ public:
 	std::map<uint16_t, opendnp3::PointClass> AnalogClasses;
 	std::map<uint16_t, double> AnalogDeadbands;
 	std::vector<uint16_t> ControlIndexes;
+	std::vector<uint16_t> AnalogControlIndexes;
 };
 
 #endif /* DNP3POINTCONF_H_ */
