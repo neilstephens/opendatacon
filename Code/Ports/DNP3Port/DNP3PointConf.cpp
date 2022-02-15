@@ -547,6 +547,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	
 	if (JSONRoot.isMember("AnalogControls"))
 	{
+		//TODO: SJE Probably need to manage a payload type here to support the different options 16bit, 32bit, float, double.
 		const auto AnalogControls = JSONRoot["AnalogControls"];
 		for (Json::ArrayIndex n = 0; n < AnalogControls.size(); ++n)
 		{

@@ -463,6 +463,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 	auto index = event->GetIndex();
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	// TODO: SJE Need to process the analogcontrols in a separate loop.
 	for(auto i : pConf->pPointConf->ControlIndexes)
 	{
 		if(i == index)
