@@ -82,7 +82,7 @@ void DNP3Port::InitEventDB()
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART,0));
 	for(auto index : pConf->pPointConf->ControlIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
-	for (auto index : pConf->pPointConf->BinaryIndexes)
+	for (auto index : pConf->pPointConf->AnalogControlIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputInt32, index, "", QualityFlags::RESTART, 0));
 	
 	pDB = std::make_unique<EventDB>(init_events);
