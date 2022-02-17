@@ -773,7 +773,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 {
 	// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
 	// First section format:
-	// 1 - 3 bits group #, 7 bits point number, Status(value) bit, Quality Bit (unused), Time Bit - changes what comes next
+	// 1 - 3 bits group #, 7 bits point number, Status(value) bit (Note MCA Status is inverted??), Quality Bit (unused), Time Bit - changes what comes next
 	// T==1 Time - 27 bits, Hour (0-23, 5 bits), Minute (0-59, 6 bits), Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
 	// T==0 Hours and Minutes same as previous event, 16 bits - Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
 	// Last bit L, when set indicates last record.
@@ -798,26 +798,26 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		}
 
 		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
-		// The time field is the delta between the previous event (if there is one) and the current event (in msec)
+		// The time field hours/minutes/seconds/msec since epoch (adjusted for the time set command)
 		SOEEventFormat PackedEvent;
 		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; // Bottom three bits of the point group,  not the SOE Group!
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? true : false;
+		if (CurrentPoint.GetPointType() == MCA)
+			PackedEvent.ValueBit = !PackedEvent.ValueBit; // MCA point on the wire is inverted. Closed == 0
+		
 		PackedEvent.QualityBit = false;
 
-		CBTime TimeDelta = CurrentPoint.GetChangedTime() - LastPointTime;
+		CBTime ChangedCorrectedTime = CurrentPoint.GetChangedTime() + (int64_t)(SOETimeOffsetMinutes * 60 * 1000);
 
 		bool FirstEvent = (LastPointTime == 0);
-		LastPointTime = CurrentPoint.GetChangedTime();
 
-		if (FirstEvent)
-		{
-			// Adjust by the OffsetMinutes. Only necessary for the first record, as everything else after this is just a delta anyway in msec.
-			// The SOETimeOffsetMinutes can be +/- so need integer addition (not uint)
-			TimeDelta = (int64_t)TimeDelta + (int64_t)(SOETimeOffsetMinutes * 60 * 1000);
-		}
+		bool SendHoursAndMinutes = HoursMinutesHaveChanged(LastPointTime, ChangedCorrectedTime) || FirstEvent;
+		
+		LastPointTime = ChangedCorrectedTime;
 
-		PackedEvent.SetTimeFields(TimeDelta, FirstEvent);
+		// The time we send gets reduced to H:M:S.msec
+		PackedEvent.SetTimeFields(ChangedCorrectedTime, SendHoursAndMinutes);
 
 		PackedEvent.LastEventFlag = false; // Might be changed on the loop exit, if there is nothing left in the SOE queue.
 
