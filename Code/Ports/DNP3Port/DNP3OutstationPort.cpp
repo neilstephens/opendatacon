@@ -388,21 +388,26 @@ const Json::Value DNP3OutstationPort::GetStatistics() const
 template<typename T>
 inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint16_t aIndex)
 {
-	if(!enabled)
+	if (!enabled)
 		return opendnp3::CommandStatus::UNDEFINED;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(std::is_same<T,opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
+	if (std::is_same<T, opendnp3::ControlRelayOutputBlock>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
 	{
-		for(auto index : pConf->pPointConf->ControlIndexes)
-			if(index == aIndex)
-				return opendnp3::CommandStatus::SUCCESS;
-	}
-	if (std::is_same<T, opendnp3::AnalogOutputInt32>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
-	{
-		for (auto index : pConf->pPointConf->AnalogControlIndexes)
+		for (auto index : pConf->pPointConf->ControlIndexes)
 			if (index == aIndex)
 				return opendnp3::CommandStatus::SUCCESS;
+	}
+	else
+	{
+		// This is failing even though it is being called as Select AnalogOutputInt16 NEIL - Help!
+		// Just treat all other controls as analogOutputs for now!
+		// if (std::is_same<T, opendnp3::AnalogOutputInt16>::value) //TODO: add support for other types of controls (probably un-templatise when we support more)
+		{
+			for (auto index : pConf->pPointConf->AnalogControlIndexes)
+				if (index == aIndex)
+					return opendnp3::CommandStatus::SUCCESS;
+		}
 	}
 	return opendnp3::CommandStatus::NOT_SUPPORTED;
 }
