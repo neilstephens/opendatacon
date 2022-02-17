@@ -83,7 +83,7 @@ void DNP3Port::InitEventDB()
 	for(auto index : pConf->pPointConf->ControlIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
 	for (auto index : pConf->pPointConf->AnalogControlIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputInt32, index, "", QualityFlags::RESTART, 0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputInt16, index, "", QualityFlags::RESTART, 0));
 	
 	pDB = std::make_unique<EventDB>(init_events);
 }
@@ -101,7 +101,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	auto time_correction = [=](const auto& event)
 	{
 		auto ts = event->GetTimestamp();
-		if ((event->GetEventType() == EventType::ControlRelayOutputBlock) || (event->GetEventType() == EventType::AnalogOutputInt32))
+		if ((event->GetEventType() == EventType::ControlRelayOutputBlock) || (event->GetEventType() == EventType::AnalogOutputInt16))
 						     return since_epoch_to_datetime(ts);
 					     if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
 					         || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
@@ -157,7 +157,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	}
 	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
-		auto event = pDB->Get(EventType::AnalogOutputInt32, index);
+		auto event = pDB->Get(EventType::AnalogOutputInt16, index);
 		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());
 		try
