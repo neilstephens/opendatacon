@@ -157,6 +157,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	}
 	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
+		// Need to handle other Analog Output EventTypes
 		auto event = pDB->Get(EventType::AnalogOutputInt16, index);
 		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());
