@@ -29,6 +29,7 @@
 #include <string>
 #include <opendnp3/app/MeasurementTypes.h>
 #include <opendnp3/app/MeasurementInfo.h>
+#include <opendatacon/IOTypes.h>
 
 opendnp3::StaticBinaryVariation StringToStaticBinaryResponse(const std::string& str);
 opendnp3::StaticAnalogVariation StringToStaticAnalogResponse(const std::string& str);
@@ -36,6 +37,7 @@ opendnp3::StaticCounterVariation StringToStaticCounterResponse(const std::string
 opendnp3::EventBinaryVariation StringToEventBinaryResponse(const std::string& str);
 opendnp3::EventAnalogVariation StringToEventAnalogResponse(const std::string& str);
 opendnp3::EventCounterVariation StringToEventCounterResponse(const std::string& str);
-
+opendnp3::EventAnalogOutputStatusVariation StringToEventAnalogControlResponse(const std::string& str);
+odc::EventType EventAnalogControlResponseToODCEvent(const opendnp3::EventAnalogOutputStatusVariation var);
 
 #endif
