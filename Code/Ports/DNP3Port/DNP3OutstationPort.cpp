@@ -398,7 +398,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::SupportsT(T& arCommand, uint1
 			if (index == aIndex)
 				return opendnp3::CommandStatus::SUCCESS;
 	}
-	else if ((std::is_same<T, opendnp3::AnalogOutputDouble64>::value) || (std::is_same<T, opendnp3::AnalogOutputFloat32>::value) || (std::is_same<T, opendnp3::AnalogOutputInt16>::value))
+	else if ((std::is_same<T, opendnp3::AnalogOutputDouble64>::value) || (std::is_same<T, opendnp3::AnalogOutputFloat32>::value) || (std::is_same<T, opendnp3::AnalogOutputInt32>::value) || (std::is_same<T, opendnp3::AnalogOutputInt16>::value))
 	{
 		for (auto index : pConf->pPointConf->AnalogControlIndexes)
 			if (index == aIndex)
