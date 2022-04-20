@@ -362,6 +362,10 @@ inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType
 	CHECKEVENTSTRING(EventType::BinaryOutputStatus);
 	CHECKEVENTSTRING(EventType::AnalogOutputStatus);
 	CHECKEVENTSTRING(EventType::ControlRelayOutputBlock);
+	CHECKEVENTSTRING(EventType::AnalogOutputInt16);
+	CHECKEVENTSTRING(EventType::AnalogOutputInt32);
+	CHECKEVENTSTRING(EventType::AnalogOutputFloat32);
+	CHECKEVENTSTRING(EventType::AnalogOutputDouble64);
 	CHECKEVENTSTRING(EventType::OctetString);
 	CHECKEVENTSTRING(EventType::BinaryQuality);
 	CHECKEVENTSTRING(EventType::DoubleBitBinaryQuality);

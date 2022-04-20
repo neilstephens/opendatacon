@@ -384,7 +384,6 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				pubevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, QualityResult);
 				double dval = std::stod(PayloadStr);
 				pubevent->SetPayload<EventType::Analog>(std::move(dval));
-
 			}
 			catch (std::exception& e)
 			{
@@ -432,6 +431,62 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				LOGERROR("ControlRelayOutputBlock Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
 			}
 			break;
+		case EventType::AnalogOutputInt16:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputInt16>::type val;
+				int16_t ival = std::stoi(PayloadStr);
+				val.first = ival;
+				// val.second = odc::CommandStatus::SUCCESS;	// Should this be set at all - NO
+				pubevent->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputInt16 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
+			break;
+		case EventType::AnalogOutputInt32:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputInt32>::type val;
+				int32_t ival = std::stoi(PayloadStr);
+				val.first = ival;
+				pubevent->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputInt32 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
+			break;
+		case EventType::AnalogOutputFloat32:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputFloat32, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputFloat32>::type val;
+				float fval = std::stof(PayloadStr);
+				val.first = fval;
+				pubevent->SetPayload<EventType::AnalogOutputFloat32>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputFloat32 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
+			break;
+		case EventType::AnalogOutputDouble64:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputDouble64>::type val;
+				double dval = std::stod(PayloadStr);
+				val.first = dval;
+				pubevent->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputDouble64 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
 		case EventType::OctetString:
 			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
@@ -519,6 +574,7 @@ std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt
 			if (search != foundport->BinaryControlMap.end())
 				Tag = search->second;
 		}
+		// TODO: AnalogControlMap
 	}
 	LOGTRACE("PyPort {} GetTagValue {} {} {} {}", Name, SenderName, Index, ToString(Eventt), Tag);
 	return Tag;
@@ -745,6 +801,8 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 		Name = "Binary";
 	if (ptype == BinaryControl)
 		Name = "Control";
+	if (ptype == AnalogControl)
+		Name = "AnalogControl";
 
 	LOGDEBUG("Conf processing - {}", Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
@@ -794,6 +852,8 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 				foundport->BinaryMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == BinaryControl)
 				foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
+			else if (ptype == AnalogControl)
+				foundport->AnalogControlMap.emplace(std::make_pair(index, Tag));
 			else
 			{
 				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
