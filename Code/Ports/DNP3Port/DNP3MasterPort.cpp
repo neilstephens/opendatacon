@@ -544,9 +544,8 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			// Now create an event of this type and copy the quality and time from the source event
 			auto newevent = std::make_shared<const EventInfo>(evttype, index, "", event->GetQuality(), event->GetTimestamp());
 			// Still have to set the payload (possibley with conversion)
-
-			if ((event->GetEventType() == EventType::AnalogOutputInt16) || (event->GetEventType() == EventType::AnalogOutputInt32) ||
-				(event->GetEventType() == EventType::AnalogOutputFloat32) || (event->GetEventType() == EventType::AnalogOutputDouble64))
+			std::unordered_set<EventType> s = { EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
+			if (s.count(event->GetEventType()))
 			{
 				// Turn the payload into double64, then convert to the target.
 				double value = 0;

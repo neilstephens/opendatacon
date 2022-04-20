@@ -108,8 +108,8 @@ const Json::Value DNP3Port::GetCurrentState() const
 	auto time_correction = [=](const auto& event)
 	{
 		auto ts = event->GetTimestamp();
-		if ((event->GetEventType() == EventType::ControlRelayOutputBlock) || (event->GetEventType() == EventType::AnalogOutputInt16) || (event->GetEventType() == EventType::AnalogOutputInt32)
-			|| (event->GetEventType() == EventType::AnalogOutputDouble64) || (event->GetEventType() == EventType::AnalogOutputFloat32) )
+		std::unordered_set<EventType> s = { EventType::ControlRelayOutputBlock, EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
+		if (s.count(event->GetEventType()))
 			return since_epoch_to_datetime(ts);
 		if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
 			|| ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
