@@ -55,6 +55,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
+	CommsPointHeartBeatTimems(0),
 	/// Which classes should be requested in a startup integrity scan
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
@@ -243,6 +244,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
 			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("HeartBeatTimems"))
+			CommsPointHeartBeatTimems = JSONRoot["CommsPoint"]["HeartBeatTimems"].asUInt();
 	}
 
 	// Master Station scanning configuration

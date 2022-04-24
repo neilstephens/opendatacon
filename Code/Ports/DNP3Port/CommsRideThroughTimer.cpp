@@ -22,19 +22,56 @@
 CommsRideThroughTimer::CommsRideThroughTimer(odc::asio_service &ios,
 	const uint32_t aTimeoutms,
 	std::function<void()>&& aCommsGoodCB,
-	std::function<void()>&& aCommsBadCB):
+	std::function<void()>&& aCommsBadCB,
+	std::function<void(bool)>&& aHeartBeatCB,
+	const uint32_t aHeartBeatTimems):
 	Timeoutms(aTimeoutms),
 	pTimerAccessStrand(ios.make_strand()),
 	RideThroughInProgress(false),
 	CommsIsBad(false),
 	pCommsRideThroughTimer(ios.make_steady_timer()),
+	pHeartBeatTimer(ios.make_steady_timer()),
 	CommsGoodCB(aCommsGoodCB),
-	CommsBadCB(aCommsBadCB)
+	CommsBadCB(aCommsBadCB),
+	HeartBeatCB(aHeartBeatCB),
+	HeartBeatTimems(aHeartBeatTimems)
 {}
 
 CommsRideThroughTimer::~CommsRideThroughTimer()
 {
 	pCommsRideThroughTimer->cancel();
+	pHeartBeatTimer->cancel();
+}
+
+void CommsRideThroughTimer::HeartBeat()
+{
+	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	pHeartBeatTimer->expires_from_now(std::chrono::milliseconds(HeartBeatTimems));
+	pHeartBeatTimer->async_wait(pTimerAccessStrand->wrap([weak_self](asio::error_code err)
+		{
+			if(err)
+				return;
+			auto self = weak_self.lock();
+			if(!self || self->HeartBeatTimems == 0)
+				return;
+			self->HeartBeatCB(self->CommsIsBad);
+			self->HeartBeat();
+		}));
+}
+
+void CommsRideThroughTimer::ReassertCommsState()
+{
+	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	pTimerAccessStrand->post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+			if(self->CommsIsBad)
+				self->CommsBadCB();
+			else
+				self->CommsGoodCB();
+		});
 }
 
 void CommsRideThroughTimer::Trigger()
