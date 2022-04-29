@@ -252,8 +252,18 @@ jobs:
       run: |
         echo 'exec "$@"' >> $HOME/run.sh
         chmod +x $HOME/run.sh
+
+    # see https://github.com/actions/checkout/issues/760
+    - name: Work-around perms
+      run: |
+        git config --global --add safe.directory /__w/opendatacon/opendatacon
+        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/tclap
+        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/dnp3
+        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/asio
+        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/spdlog
+        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/Simple-Web-Server
+        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/python-cmake-buildsystem 
     
-    - run: git config --global --add safe.directory /__w/opendatacon/opendatacon
     - uses: actions/checkout@v1
     - run: git fetch --force --tags
 
