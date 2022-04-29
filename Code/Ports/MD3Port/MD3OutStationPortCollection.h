@@ -64,12 +64,12 @@ public:
 				// Active - True or False
 				if (params.count("0") == 0)
 				{
-					return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
+				      return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
 				}
 				auto active = params.at("0");
 				return target->UISetRTUReStartFlag(active) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
 
-			}, "Set or Clear the RTU power on flag. Syntax: 'RTUStartupFlag <CBOutstationPort|Regex> <True/False>");
+			}, "Set or Clear the RTU power on flag. Syntax: 'RTUStartupFlag <MD3OutstationPort|Regex> <True/False>");
 
 		this->AddCommand("RTUTimeErrorFlag", [this](const ParamCollection& params) -> const Json::Value
 			{
@@ -80,11 +80,11 @@ public:
 				// Active - True or False
 				if (params.count("0") == 0)
 				{
-					return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
+				      return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
 				}
 				auto active = params.at("0");
 				return target->UISetSystemTimeIncorrectFlag(active) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
-			}, "Set or Clear the System Time Error flag. Syntax: 'TimeErrorFlag <CBOutstationPort|Regex> <True/False>");
+			}, "Set or Clear the System Time Error flag. Syntax: 'TimeErrorFlag <MD3OutstationPort|Regex> <True/False>");
 
 		this->AddCommand("RandomBitFlips", [this](const ParamCollection &params) -> const Json::Value
 			{
@@ -113,7 +113,7 @@ public:
 				      return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a drop range 0 to 1");
 				}
 				auto probability = params.at("0");
-				return target->UIRandomReponseBitFlips(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
+				return target->UIRandomReponseDrop(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
 
 			}, "Sets the probability of a dropped response packet and returns if the operation was successful. Syntax: 'RandomResponseDrops <MD3OutstationPort|Regex> <Probability (float)>");
 	}
