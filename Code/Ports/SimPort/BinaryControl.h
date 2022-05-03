@@ -48,15 +48,18 @@ struct BinaryFeedback
 	std::shared_ptr<odc::EventInfo> on_value;
 	std::shared_ptr<odc::EventInfo> off_value;
 	FeedbackMode mode;
+	uint32_t delay;
 	std::size_t update_interval;
 
 	BinaryFeedback(const std::shared_ptr<odc::EventInfo>& on,
 		const std::shared_ptr<odc::EventInfo>& off,
 		FeedbackMode amode,
+		uint32_t delay_ms,
 		std::size_t u_interval):
 		on_value(on),
 		off_value(off),
 		mode(amode),
+		delay(delay_ms),
 		update_interval(u_interval) {}
 };
 
@@ -84,6 +87,7 @@ public:
 		const std::shared_ptr<odc::EventInfo>& on,
 		const std::shared_ptr<odc::EventInfo>& off,
 		FeedbackMode mode,
+		uint32_t delay,
 		std::size_t update_interval);
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index);
 
