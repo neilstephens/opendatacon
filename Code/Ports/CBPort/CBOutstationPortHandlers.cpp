@@ -808,7 +808,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		
 		PackedEvent.QualityBit = false;
 
-		CBTime ChangedCorrectedTime = CurrentPoint.GetChangedTime() + (int64_t)(SOETimeOffsetMinutes * 60 * 1000);
+		CBTime ChangedCorrectedTime = CurrentPoint.GetChangedTime() + (int64_t)((int64_t)SOETimeOffsetMinutes * 60 * 1000) + (int64_t)(SystemClockOffsetMilliSeconds);
 
 		bool FirstEvent = (LastPointTime == 0);
 
@@ -871,7 +871,22 @@ void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 
 	LOGDEBUG("{} Received Time Set Command {}, Current UTC Time {} - SOE Offset Now Set to {} minutes",Name, to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), to_stringfromCBtime(CBNowUTC()), SOETimeOffsetMinutes);
 
+	//(uint16_t P1B, uint16_t P2A, uint16_t P2B, uint8_t & hhin, uint8_t & mmin, uint8_t & ssin, uint16_t & msecin)
+
+	// Have to adjust hh,mm,ss,msec to match adjusted time..in msec
+	int64_t SetMilliSecs = (((uint64_t)hhin * 60 + (uint64_t)mmin) * 60 + (uint64_t)ssin) * 1000 + msecin + SystemClockOffsetMilliSeconds;
+
+	// Now turn back into hh,mm,ss,msec - does not matter that our msec does not contain years/days.
+	to_hhmmssmmfromCBtime(SetMilliSecs, hh, mm, ss, msec);
+	uint16_t P1B = 0;
+	uint16_t P2A = 0;
+	uint16_t P2B = 0;
+	PackageTimePayload(hh, mm, ss, msec, P1B, P2A, P2B);
+
 	// We just echo back what we were sent. This is what is expected.
+	CompleteCBMessage[0].SetB(P1B);
+	CompleteCBMessage[1].SetA(P2A);
+	CompleteCBMessage[1].SetB(P2B);
 	ResponseCBMessage.push_back(CompleteCBMessage[0]);
 	ResponseCBMessage.push_back(CompleteCBMessage[1]);
 
@@ -1019,6 +1034,20 @@ bool CBOutstationPort::UIRandomReponseDrops(const std::string& probability)
 	{}
 	return false;
 }
+bool CBOutstationPort::UIAdjustTimeOffsetMilliSeconds(const std::string& millisecondoffset)
+{
+	try
+	{
+		SystemClockOffsetMilliSeconds = std::stoi(millisecondoffset);
+		LOGCRITICAL("{} Set the millisecond clock offset to {}", Name, SystemClockOffsetMilliSeconds);
+		return true;
+	}
+	catch (...)
+	{
+	}
+	return false;
+}
+
 #ifdef _MSC_VER
 #pragma endregion
 #endif
