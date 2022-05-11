@@ -751,6 +751,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		// This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master start-up to ensure that all data is sent in following
 		// change only commands - if there are sufficient modules
 		MarkAllBinaryPointsAsChanged();
+		// TODO: Should we respond with 1 or 0? Fn9 replys to 0 with 1, and we are seeing this happen for Fn11 on a real RTU. The spec says just respond with the sequence number it has been sent.
 	}
 
 	uint8_t ChangedBlocks = CountBinaryBlocksWithChanges();
