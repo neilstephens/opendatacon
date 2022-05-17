@@ -305,10 +305,8 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 	if (MyPointConf->PointTable.IsStatusByteLocation(Group, payloadlocation))
 	{
 		FoundMatch = true;
-		// So we have some RST bits defined, we will now clear and then OR those bits with the "system maintained" bits.
-		Payload &= ~((0x1 << 11) | (0x1 << 10) | (0x1 << 5)); // Clear (just in case someone defined an RST bit that clashes)
 		// We cant do this in the above lambda as we might getandset the overflow flag multiple times...
-		// Bit Definitions:
+		// Bit Definitions: 0 is MSB!!!!
 		// 0-3 Error Code
 		// 4 - Controls Isolated
 		// 5 - Reset Occurred
@@ -319,7 +317,7 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 		// 10 - SOE Overflow
 		// 11 - SOE Data Available
 		// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
-		Payload |= SystemFlags.GetStatusPayload();
+		Payload = SystemFlags.GetStatusPayload(Payload);
 
 		LOGDEBUG("{} Combining RST bits and Status Word Flags :{} - {} - {}", Name, Group, payloadlocation.to_string(), to_hexstring(Payload));
 	}
@@ -661,12 +659,12 @@ void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_
 
 void CBOutstationPort::RemoteStatusWordResponse(CBBlockData& Header)
 {
-	// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+	// We only implement 4, 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
 	uint16_t Payload = 0;
 
 	// TODO: Need to scan any digitals in this Group/Location..
 
-	Payload |= SystemFlags.GetStatusPayload();
+	Payload = SystemFlags.GetStatusPayload(Payload);
 	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), Payload, true);
 	CBMessage_t ResponseCBMessage;
 	ResponseCBMessage.push_back(firstblock);
@@ -775,7 +773,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 {
 	// The SOE data is built into a stream of bits (that may not be block aligned) and then it is stuffed 12 bits at a time into the available Payload locations - up to 31.
 	// First section format:
-	// 1 - 3 bits group #, 7 bits point number, Status(value) bit, Quality Bit (unused), Time Bit - changes what comes next
+	// 1 - 3 bits group #, 7 bits point number, Status(value) bit (Note MCA Status is inverted??), Quality Bit (unused), Time Bit - changes what comes next
 	// T==1 Time - 27 bits, Hour (0-23, 5 bits), Minute (0-59, 6 bits), Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
 	// T==0 Hours and Minutes same as previous event, 16 bits - Second (0-59, 6 bits), Millisecond (0-999, 10 bits)
 	// Last bit L, when set indicates last record.
@@ -800,26 +798,26 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		}
 
 		// We keep trying to add data until there is none left, or the data will not fit into our bit array.
-		// The time field is the delta between the previous event (if there is one) and the current event (in msec)
+		// The time field hours/minutes/seconds/msec since epoch (adjusted for the time set command)
 		SOEEventFormat PackedEvent;
 		PackedEvent.Group = CurrentPoint.GetGroup() & 0x07; // Bottom three bits of the point group,  not the SOE Group!
 		PackedEvent.Number = CurrentPoint.GetSOEIndex();
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? true : false;
+		if (CurrentPoint.GetPointType() == MCA)
+			PackedEvent.ValueBit = !PackedEvent.ValueBit; // MCA point on the wire is inverted. Closed == 0
+		
 		PackedEvent.QualityBit = false;
 
-		CBTime TimeDelta = CurrentPoint.GetChangedTime() - LastPointTime;
+		CBTime ChangedCorrectedTime = CurrentPoint.GetChangedTime() + (int64_t)(SOETimeOffsetMinutes * 60 * 1000);
 
 		bool FirstEvent = (LastPointTime == 0);
-		LastPointTime = CurrentPoint.GetChangedTime();
 
-		if (FirstEvent)
-		{
-			// Adjust by the OffsetMinutes. Only necessary for the first record, as everything else after this is just a delta anyway in msec.
-			// The SOETimeOffsetMinutes can be +/- so need integer addition (not uint)
-			TimeDelta = (int64_t)TimeDelta + (int64_t)(SOETimeOffsetMinutes * 60 * 1000);
-		}
+		bool SendHoursAndMinutes = HoursMinutesHaveChanged(LastPointTime, ChangedCorrectedTime) || FirstEvent;
+		
+		LastPointTime = ChangedCorrectedTime;
 
-		PackedEvent.SetTimeFields(TimeDelta, FirstEvent);
+		// The time we send gets reduced to H:M:S.msec
+		PackedEvent.SetTimeFields(ChangedCorrectedTime, SendHoursAndMinutes);
 
 		PackedEvent.LastEventFlag = false; // Might be changed on the loop exit, if there is nothing left in the SOE queue.
 
@@ -953,6 +951,40 @@ bool CBOutstationPort::UIFailControl(const std::string &active)
 	{
 		FailControlResponse = false;
 		LOGCRITICAL("{} The Control Response Packet is set to fail - {}", Name, FailControlResponse);
+		return true;
+	}
+	return false;
+}
+bool CBOutstationPort::UISetRTUReStartFlag(const std::string& active)
+{
+	// Set the Watchdog Timer bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetStartupFlag(true);
+		LOGCRITICAL("{} The RTU Reset Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetStartupFlag(false);
+		LOGCRITICAL("{} The RTU Reset Flag has been cleared", Name);
+		return true;
+	}
+	return false;
+}
+bool CBOutstationPort::UISetRTUControlIsolateFlag(const std::string& active)
+{
+	// Set the Control Isolate bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetControlIsolateFlag(true);
+		LOGCRITICAL("{} The RTU Control Isolate Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetControlIsolateFlag(false);
+		LOGCRITICAL("{} The RTU Control Isolate Flag has been cleared", Name);
 		return true;
 	}
 	return false;

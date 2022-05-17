@@ -609,6 +609,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	{
 		FoundMatch = true;
 		// TODO: The SOE data available bit being set can/should trigger a SOE scan of the outstation. SOE Buffer overflow hmm. Power cycle to trigger a complete rescan.
+		// Make sure the bit order matches the (now) correct order in the outstation code
 		LOGDEBUG("{} Received a Status Payload, any defined Digitals will be processed. SOE flags and Power On ignored: {} ", Name, payloadlocation.to_string());
 	}
 	if (!FoundMatch)

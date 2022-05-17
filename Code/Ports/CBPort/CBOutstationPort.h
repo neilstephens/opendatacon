@@ -59,10 +59,10 @@ public:
 		LOGERROR("GetSOEOverflowFlag called without a handler being registered");
 		return false;
 	}
-	uint16_t GetStatusPayload()
+	uint16_t GetStatusPayload(uint16_t Payload)
 	{
 		// We cant do this in the above lambda as we might getandset the overflow flag multiple times...
-		// Bit Definitions:
+		// Bit Definitions: MSB is 0!!!!
 		// 0-3 Error Code
 		// 4 - Controls Isolated
 		// 5 - Reset Occurred
@@ -72,35 +72,46 @@ public:
 		// 9 - Accumulator Overflow Status
 		// 10 - SOE Overflow
 		// 11 - SOE Data Available
-		// We only implement 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
-		uint16_t Payload = 0;
+		// We only implement 4, 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
+				// So we have some RST bits defined, we will now clear and then OR those bits with the "system maintained" bits.
+		Payload &= ~((0x1 << (11-11)) | (0x1 << (11-10)) | (0x1 << (11-5)) | (0x1 << (11-4))); // Clear (just in case someone defined an RST bit that clashes)
+
+		if (ControlIsolate)
+		{
+			// Bit 4 Controls isolated
+			// TODO: Prevent an execute from doing anything when this is set?
+			Payload |= (0x1 << (11-4));
+		}
 		if (StartUp)
 		{
 			// Bit 5 Power Up
-			Payload |= (0x1 << 5);
+			Payload |= (0x1 << (11-5));
 			StartUp = false;
 		}
 		if (GetSOEOverflowFlag())
 		{
 			// Bit 11 SOE Buffer Full
-			Payload |= (0x1 << 10);
+			Payload |= (0x1 << (11-10));
 		}
 		if (GetSOEAvailableFlag())
 		{
 			// Bit 12 SOE Data available
-			Payload |= (0x1 << 11);
+			Payload |= (0x1 << (11-11));
 		}
 		return Payload;
 	}
 
 	void SetSOEAvailableFn(std::function<bool(void)> Fn) { SOEAvailableFn = Fn; }
 	void SetSOEOverflowFn(std::function<bool(void)> Fn) { SOEOverflowFn = Fn; }
+	void SetStartupFlag(bool on) { StartUp = on;  }
+	void SetControlIsolateFlag(bool on) { ControlIsolate = on; }
 
 private:
 	std::function<bool(void)> SOEAvailableFn = nullptr; // SOE Events Pending
 	std::function<bool(void)> SOEOverflowFn = nullptr;  // SOE Overflow
 
 	bool StartUp = true;
+	bool ControlIsolate = false;
 };
 
 
@@ -178,6 +189,9 @@ public:
 	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
 	bool UIRandomReponseDrops(const std::string& probability);    // Zero probability = does not happen. 1 = there is a drop every response packet.
+	bool UISetRTUReStartFlag(const std::string& active);		  // Set the Watchdog Timer bit in the RSW
+	bool UISetRTUControlIsolateFlag(const std::string& active);	  // Set the Control Isolate bit in the RSW
+
 
 	// Testing use only
 	PendingCommandType GetPendingCommand(uint8_t group) { return PendingCommands[group & 0x0F]; } // Return a copy, cannot be changed

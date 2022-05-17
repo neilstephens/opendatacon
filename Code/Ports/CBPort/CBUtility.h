@@ -447,6 +447,33 @@ inline bool TestBit(const uint64_t &data, const uint8_t bitindex)
 	return ((data & testbit) == testbit);
 }
 
+inline void ConvertCBTimeToHMSMSEC(CBTime &dtime, uint8_t &hour, uint8_t& min, uint8_t& sec, uint16_t& msec )
+{
+	CBTime Days = dtime / 1000 / 60 / 60 / 24; // Days is not used...handle just in case
+	CBTime LongHour = dtime / 1000 / 60 / 60 % 24;
+	CBTime Remainder = dtime - (1000 * 60 * 60 * LongHour) - (1000 * 60 * 60 * 24 * Days);
+
+	hour = numeric_cast<uint8_t>(LongHour);
+	min = Remainder / 1000 / 60 % 60;
+	sec = Remainder / 1000 % 60;
+	msec = Remainder % 1000;
+}
+
+inline bool HoursMinutesHaveChanged(CBTime& oldtime, CBTime& newtime)
+{
+	uint8_t hour1;
+	uint8_t min1;
+	uint8_t sec1;
+	uint16_t msec1;
+	uint8_t hour2;
+	uint8_t min2;
+	uint8_t sec2;
+	uint16_t msec2;
+		
+	ConvertCBTimeToHMSMSEC(oldtime, hour1, min1, sec1, msec1);
+	ConvertCBTimeToHMSMSEC(newtime, hour2, min2, sec2, msec2);
+	return (hour1 != hour2) || (min1 != min2);
+}
 // The maximum number of bits we can send is 12 * 31 = 372.
 const uint32_t MaxSOEBits = 12 * 31;
 
@@ -461,7 +488,7 @@ public:
 	SOEEventFormat() {};
 
 	// Use the bitarray to construct an event, return the start of the next event in the bitarray.
-	// The bitarray data may give us a short timed event (only sec and msec received) in this case add the passed in LastEventTime to the seconds/msec value
+	// The bitarray data may give us a short time event (only sec and msec received) in this case use the hour and minute from the LastEventTime
 	// And change the TimeFormatBit to indicate that the Hours/Minutes are valid.
 	SOEEventFormat(std::array<bool, MaxSOEBits> BitArray, uint32_t startbit, uint32_t usedbits, uint32_t &newstartbit, CBTime LastEventTime, bool &success)
 	{
@@ -498,18 +525,19 @@ public:
 				Minute = GetBits8(BitArray, startbit, 6);
 				startbit += 6;
 			}
+			else
+			{
+				// Get the Hour an Minute from the last event time
+				uint8_t sec1;
+				uint16_t msec1;
+				ConvertCBTimeToHMSMSEC(LastEventTime, Hour, Minute, sec1, msec1);
+			}
+
 			Second = GetBits8(BitArray, startbit, 6);
 			startbit += 6;
 			Millisecond = GetBits16(BitArray, startbit, 10);
 			startbit += 10;
 
-			if (!TimeFormatBit) // Short Format, so add the LastEventTime to the delta we have (seconds+mseconds)
-			{
-				bool FirstEvent = (LastEventTime == 0); // Can only be zero for our first event...
-				// Add the LastEventTime to the Second/Millisecond values
-				LastEventTime += (Millisecond + Second * 1000);
-				SetTimeFields(LastEventTime, FirstEvent);
-			}
 			LastEventFlag = BitArray[startbit++];
 
 			newstartbit = startbit;
@@ -537,29 +565,22 @@ public:
 	bool LastEventFlag = false; // Set when no more events are available
 	// 41 or 30 bits
 
-	void SetTimeFields(CBTime TimeDelta, bool FirstEvent)
+	void SetTimeFields(CBTime ChangedTime, bool SendFullTime)
 	{
-		if ((TimeDelta > 1000 * 60) || FirstEvent)
+		// ChangedTime is msec so anything > 1 minute needs a 27 bit entry
+		if (SendFullTime)
 		{
 			// Set full time, with TimeFormatBit == true
 			TimeFormatBit = true;
-
-			CBTime Days = TimeDelta / 1000 / 60 / 60 / 24; // Days is not used...handle just in case
-			CBTime LongHour = TimeDelta / 1000 / 60 / 60 % 24;
-			CBTime Remainder = TimeDelta - (1000 * 60 * 60 * LongHour) - (1000 * 60 * 60 * 24 * Days);
-
-			Hour = numeric_cast<uint8_t>(LongHour);
-			Minute = Remainder / 1000 / 60 % 60;
-			Second = Remainder / 1000 % 60;
-			Millisecond = Remainder % 1000;
+			ConvertCBTimeToHMSMSEC(ChangedTime, Hour, Minute, Second, Millisecond);
 		}
 		else
 		{
-			// Set delta time, with TimeFormatBit == false
+			// Set seconds and msec only, with TimeFormatBit == false
 			TimeFormatBit = false;
 
-			Second = TimeDelta / 1000 % 60;
-			Millisecond = TimeDelta % 1000;
+			Second = (ChangedTime / 1000) % 60;
+			Millisecond = ChangedTime % 1000;
 		}
 	}
 	CBTime GetTotalMsecTime()

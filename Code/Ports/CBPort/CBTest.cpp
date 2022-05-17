@@ -527,15 +527,15 @@ TEST_CASE("Util - SOEEventFormat")
 	SOEEventFormat SOE2(BitArray2, 0, 64, newstartbit, 0, Success); // Build a new SOE record from the BitArray
 
 	REQUIRE(newstartbit == 30);
-	REQUIRE(SOE2.GetResultBitLength() == 41); // Always long
-	REQUIRE(SOE2.GetFormattedData() == 0xb068008601800000);
+	REQUIRE(SOE2.GetResultBitLength() == 30); // We changed this!
+	REQUIRE(SOE2.GetFormattedData() == 0xb064300c00000000); 
 	REQUIRE(SOE2.Group == 5);
 	REQUIRE(SOE2.Number == 0x41);
 	REQUIRE(SOE2.ValueBit == true);
-	REQUIRE(SOE2.TimeFormatBit == true);
+	REQUIRE(SOE2.TimeFormatBit == false);	// We changed this
 	REQUIRE(SOE2.Second == 0x21);
 	REQUIRE(SOE2.Millisecond == 0x201);
-	REQUIRE(SOE2.LastEventFlag == true);
+	REQUIRE(SOE2.LastEventFlag == true);	// We changed this too
 	REQUIRE(Success);
 
 	uint64_t payload = 0x9945455800000000; // From a packet capture
@@ -842,7 +842,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                            "14080022" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "030fffab";
+	                            "050fffa5";
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -896,7 +896,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "24080018" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "810f7d07";
+	                "011f7d2f";
 
 	CBMessage_t Msg = BuildCBMessageFromASCIIHexString(DesiredResult);
 	assert(Msg[2].GetA() == 1024);                       // Checking payload values
@@ -937,7 +937,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "5c08001e" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "800f7d19"; // First 12 bits is RST Word
+	                "001f7d31"; // First 12 bits is RST Word
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -959,7 +959,7 @@ TEST_CASE("Station - ScanRequest F0")
 	                "a008000e" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c00f7d0b"; // The SOE buffer overflow bit should be set here...
+	                "003f7d29"; // The SOE buffer overflow and SOE data available bits are set here - the C value.
 
 	while(!done_flag)
 		IOS->poll_one();
@@ -1046,7 +1046,8 @@ TEST_CASE("Station - SOERequest F10")
 
 	// Now we should get back the SOE queued events.
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == "a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
+						
+	REQUIRE(Response == "a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a1619399888606a6821");
 
 	// Now send the SOE resend command and make sure we get the same result.
 	commandblock = CBBlockData(station, 0, FUNC_REPEAT_SOE, 0, true);
@@ -1060,7 +1061,8 @@ TEST_CASE("Station - SOERequest F10")
 	done_flag = false;
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
-	REQUIRE(Response == "a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
+	REQUIRE(Response == "a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a1619399888606a6821");
+		
 
 	// Check if the lastmessagebit is set, if so request the remaining events - we happen to know it it is, so ask for them.
 	commandblock = CBBlockData(station, 0, FUNC_SEND_NEW_SOE, 0, true);
@@ -1076,7 +1078,7 @@ TEST_CASE("Station - SOERequest F10")
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	// Trim off the time component of the buffer full command.
 	//std::string s = BuildASCIIHexStringfromBinaryString(Response).substr(0, 32);
-	REQUIRE(Response.substr(0,32) ==   "a903011892a8c9a6530800200049fe80");
+	REQUIRE(Response.substr(0,32) == "a903011892a8c9a6530803124d89fe8a");
 
 	CBOSPort->Disable();
 
@@ -1403,7 +1405,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                            "02880010" // Data 2A and 2B
 	                            "00080006"
 	                            "00080006"
-	                            "0a0fff9b";
+	                            "040fffbb";
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == DesiredResult);
@@ -1452,7 +1454,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "0248000a" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "880f7d37";
+	                "001f7d31";
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1485,7 +1487,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "03a80016" // Data 2A and 2B
 	                "400a00b6"
 	                "4028000c"
-	                "880f7d37";
+	                "001f7d31";
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1507,7 +1509,7 @@ TEST_CASE("Station - Baker ScanRequest F0")
 	                "0058003a" // Data 2A and 2B - no change bits set, add status bits set to 0 in 2A
 	                "400a00b6"
 	                "4028000c"
-	                "c80f7d25"; // The SOE buffer overflow bit should be set here...
+	                "003f7d29"; // The SOE buffer overflow bit should be set here... SOE data and SOE overflow set!
 	while(!done_flag)
 		IOS->poll_one();
 	done_flag = false;
@@ -1787,9 +1789,9 @@ TEST_CASE("Master - SOE Request F10")
 
 			// Add some junk to the front to test the TCP Framing code. Then send an almost complete message (which will be dumped), then send the actual message.
 			std::string CommandResponse = BuildBinaryStringFromASCIIHexString("024670") +
-			                              BuildBinaryStringFromASCIIHexString("a953012492a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a0200089884") +
-			                              BuildBinaryStringFromASCIIHexString("a903011892a8c93293090028004e0a1e0008981060080222c248003c130d002a004e1a1000089810e0080206c448003213190000004e2a020008988460080223");
-
+			                              BuildBinaryStringFromASCIIHexString("a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a") +
+			                              BuildBinaryStringFromASCIIHexString("a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a1619399888606a6821");
+																				
 			MAoutput << CommandResponse;
 			CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 

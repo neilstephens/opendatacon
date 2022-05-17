@@ -31,11 +31,12 @@ void BinaryControl::CreateBinaryControl(std::size_t index,
 	const std::shared_ptr<odc::EventInfo>& on,
 	const std::shared_ptr<odc::EventInfo>& off,
 	FeedbackMode mode,
+	uint32_t delay,
 	std::size_t update_interval)
 {
 	{ // for the scope of lock
 		std::unique_lock<std::shared_timed_mutex> lck(feedback_mutex);
-		m_binary_feedbacks[index].emplace_back(std::make_shared<BinaryFeedback>(on, off, mode, update_interval));
+		m_binary_feedbacks[index].emplace_back(std::make_shared<BinaryFeedback>(on, off, mode, delay, update_interval));
 	}
 	if (!IsIndex(index))
 	{
