@@ -285,6 +285,10 @@ public:
 
 	~MD3BinaryPoint();
 
+	static MD3BinaryPoint OverFlowMarkerPoint()
+	{
+		return MD3BinaryPoint(0, 0, 0, 0, BinaryPointType::TIMETAGGEDINPUT, 0, 0, 0);
+	}
 	// Needed for the templated Queue
 	MD3BinaryPoint& operator=(const MD3BinaryPoint& src);
 
@@ -300,6 +304,11 @@ public:
 	void SetBinary(const uint8_t &b, const MD3Time &ctime) { std::unique_lock<std::mutex> lck(PointMutex); HasBeenSet = true; ChangedTime = ctime; Changed = (Binary != b); Binary = b; }
 	void SetChanged(const bool &c) { std::unique_lock<std::mutex> lck(PointMutex); Changed = c; }
 	void SetModuleBinarySnapShot(const uint16_t &bm) { std::unique_lock<std::mutex> lck(PointMutex); ModuleBinarySnapShot = bm; }
+	bool IsOverFlowMarkerPoint()
+	{
+		return (Index == 0) && (ModuleAddress == 0) && (Channel == 0) && (PollGroup == 0) &&
+				(ChangedTime == 0) && (Binary == 0) && (PointType == BinaryPointType::TIMETAGGEDINPUT);
+	}
 
 protected:
 	// Only the values below will be changed in two places
