@@ -855,7 +855,7 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCou
 		if (CurrentPoint.IsOverFlowMarkerPoint())
 		{
 			ResponseWords.push_back(0);
-			ResponseWords.push_back(1);		// Time Tagged Buffer Overflow Flag Value. 2 is time sync failure, 3 is time sync resotation.
+			ResponseWords.push_back(0x0080);		// Time Tagged Buffer Overflow Flag Value is 1 (reverse bit order is 0x8000??. 2 is time sync failure, 3 is time sync resotation.
 		}
 		else
 		{
