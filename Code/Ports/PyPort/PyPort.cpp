@@ -566,7 +566,8 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				event->GetPayloadString(),                                 // 4
 				SenderName,                                                // 5
 				TagValue,                                                  // 6
-				MyConf->pyTagPrefixString);                                // 7
+				MyConf->pyTagPrefixString,                                 // 7
+				event->GetQuality());									   // 8
 			pWrapper->QueueEvent(jsonevent);
 			LOGTRACE("Queued Event {}", jsonevent);
 			PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
