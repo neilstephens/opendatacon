@@ -254,7 +254,7 @@ void PyPort::AddHTTPHandlers()
 	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 		{
 			rep.status = http::reply::ok;
-			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url " the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
+			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
 			rep.headers.resize(2);
 			rep.headers[0].name = "Content-Length";
 			rep.headers[0].value = std::to_string(rep.content.size());
