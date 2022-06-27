@@ -318,7 +318,7 @@ jobs:
   opendatacon-deploy:
     if: always() && contains(github.ref, 'tag')
     needs: [opendatacon-native,opendatacon-docker]
-    runs-on: macos-latest
+    runs-on: windows-latest
     steps:
       - name: Download Installers
         uses: actions/download-artifact@v2
