@@ -246,7 +246,7 @@ inline unsigned int require_connection_increase(std::shared_ptr<ManInTheMiddle> 
 
 TEST_CASE(SUITE("Quality and CommsPoint"))
 {
-	TestSetup();
+	/* TestSetup();
 
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
@@ -383,7 +383,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 	}
 	//Unload the library
 	UnLoadModule(portlib);
-	TestTearDown();
+	TestTearDown(); */
 }
 
 TEST_CASE(SUITE("Single Drop"))
