@@ -30,6 +30,7 @@
 #include "TypeConversion.h"
 #include "OpenDNP3Helpers.h"
 #include <array>
+#include <limits>
 #include <opendnp3/master/IUTCTimeSource.h>
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
@@ -587,10 +588,10 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 				{
 				case EventType::AnalogOutputInt16:
 				{
-					if (value > SHRT_MAX)
-						value = SHRT_MAX;
-					if (value < SHRT_MIN)
-						value = SHRT_MIN;
+					if (value > std::numeric_limits<int16_t>::max())
+						value = std::numeric_limits<int16_t>::max();
+					if (value < std::numeric_limits<int16_t>::min())
+						value = std::numeric_limits<int16_t>::min();
 					opendnp3::AnalogOutputInt16 lCommand;
 					lCommand.value = static_cast<int16_t>(value);
 					lCommand.status = FromODC(status);
@@ -600,10 +601,10 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 				}
 				case EventType::AnalogOutputInt32:
 				{
-					if (value > INT_MAX)
-						value = INT_MAX;
-					if (value < INT_MIN)
-						value = INT_MIN;
+					if (value > std::numeric_limits<int32_t>::max())
+						value = std::numeric_limits<int32_t>::max();
+					if (value < std::numeric_limits<int32_t>::min())
+						value = std::numeric_limits<int32_t>::min();
 					opendnp3::AnalogOutputInt32 lCommand;
 					lCommand.value = static_cast<int32_t>(value);
 					lCommand.status = FromODC(status);
@@ -613,10 +614,10 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 				}
 				case EventType::AnalogOutputFloat32:
 				{
-					if (value > FLT_MAX)
-						value = FLT_MAX;
-					if (value < FLT_MIN)
-						value = FLT_MIN;
+					if (value > std::numeric_limits<float>::max())
+						value = std::numeric_limits<float>::max();
+					if (value < std::numeric_limits<float>::min())
+						value = std::numeric_limits<float>::min();
 					opendnp3::AnalogOutputFloat32 lCommand;
 					lCommand.value = static_cast<float>(value);
 					lCommand.status = FromODC(status);
