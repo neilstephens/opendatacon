@@ -60,8 +60,16 @@ void DNP3MasterPort::Enable()
 			log->error("{}: DNP3 stack not initialised.", Name);
 		return;
 	}
+
 	if(!pCommsRideThroughTimer)
-		pCommsRideThroughTimer = std::make_shared<CommsRideThroughTimer>(*pIOS,pConf->pPointConf->CommsPointRideThroughTimems,[this](){SetCommsGood();},[this](){SetCommsFailed();});
+		pCommsRideThroughTimer = std::make_shared<CommsRideThroughTimer>(*pIOS,
+			pConf->pPointConf->CommsPointRideThroughTimems,
+			[this](){SetCommsGood();},
+			[this](){SetCommsFailed();},
+			[this](bool f){CommsHeartBeat(f);},
+			pConf->pPointConf->CommsPointHeartBeatTimems);
+
+	pCommsRideThroughTimer->StartHeartBeat();
 
 	enabled = true;
 
@@ -77,6 +85,8 @@ void DNP3MasterPort::Disable()
 	if(!enabled)
 		return;
 	enabled = false;
+
+	pCommsRideThroughTimer->StopHeartBeat();
 
 	if(stack_enabled)
 	{
@@ -108,7 +118,7 @@ void DNP3MasterPort::PortDown()
 		pCommsRideThroughTimer->FastForward();
 }
 
-void DNP3MasterPort::SetCommsGood()
+void DNP3MasterPort::UpdateCommsPoint(bool isFailed)
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
@@ -116,15 +126,21 @@ void DNP3MasterPort::SetCommsGood()
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Updating comms point (good).", Name);
+			log->debug("{}: Updating comms point ({}).", Name, isFailed ? "failed" : "good");
 
-		auto commsUpEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
+		auto commsEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
-		commsUpEvent->SetPayload<EventType::Binary>(!failed_val);
-		PublishEvent(commsUpEvent);
-		pDB->Set(commsUpEvent);
+		commsEvent->SetPayload<EventType::Binary>(isFailed ? failed_val : !failed_val);
+		PublishEvent(commsEvent);
+		pDB->Set(commsEvent);
 	}
+}
 
+void DNP3MasterPort::SetCommsGood()
+{
+	UpdateCommsPoint(false);
+
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
 		// Trigger integrity scan to get point quality
@@ -137,8 +153,9 @@ void DNP3MasterPort::SetCommsGood()
 
 void DNP3MasterPort::SetCommsFailed()
 {
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	UpdateCommsPoint(true);
 
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
@@ -173,19 +190,14 @@ void DNP3MasterPort::SetCommsFailed()
 			pDB->Set(new_event);
 		}
 	}
+}
 
-	// Update the comms state point if configured
-	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
-	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Updating comms point (failed).", Name);
-
-		auto commsDownEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
-		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
-		commsDownEvent->SetPayload<EventType::Binary>(std::move(failed_val));
-		PublishEvent(commsDownEvent);
-		pDB->Set(commsDownEvent);
-	}
+void DNP3MasterPort::CommsHeartBeat(bool isFailed)
+{
+	if(isFailed)
+		SetCommsFailed();
+	else
+		UpdateCommsPoint(isFailed); //don't call SetCommsFailed() because it does an integrity scan
 }
 
 // Called by OpenDNP3 Thread Pool
@@ -406,28 +418,21 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 	if(event->GetEventType() == EventType::ConnectState)
 	{
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
 		auto state = event->GetPayload<EventType::ConnectState>();
 
 		if(state == ConnectState::PORT_UP)
 		{
-			// If an upstream port has been enabled after downstream link is up, do an integrity scan
-			if (pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp && IntegrityScan)
-			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->info("{}: Upstream port enabled, performing integrity scan.", Name);
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->info("{}: Upstream port enabled, reasserting comms state.", Name);
+			pCommsRideThroughTimer->ReassertCommsState();
+
+			//Reasserting comms state only does integrity scan if SetQualityOnLinkStatus is true
+			//So do an integrity scan here if needed
+			if (pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp && IntegrityScan && !pConf->pPointConf->SetQualityOnLinkStatus)
 				IntegrityScan->Demand();
-			}
-
-			// If the link is down when a port connects, re-asset the comms-down
-			if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp)
-			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->info("{}: Upstream port enabled, re-asserting comm-lost", Name);
-				PortDown();
-			}
 		}
-
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
 		// If an upstream port is connected, attempt a connection (if on demand)
 		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)

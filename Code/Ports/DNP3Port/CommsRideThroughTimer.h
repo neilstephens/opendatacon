@@ -36,20 +36,36 @@ public:
 	CommsRideThroughTimer(odc::asio_service& ios,
 		const uint32_t aTimeoutms,
 		std::function<void()>&& aCommsGoodCB,
-		std::function<void()>&& aCommsBadCB);
+		std::function<void()>&& aCommsBadCB,
+		std::function<void(bool CommsIsBad)>&& aHeartBeatCB = [](bool){},
+		const uint32_t aHeartBeatTimems = 0);
 	~CommsRideThroughTimer();
+	void ReassertCommsState();
 	void Trigger();
 	void FastForward();
 	void Cancel();
 
+	inline void StartHeartBeat()
+	{
+		HeartBeat();
+	}
+	inline void StopHeartBeat()
+	{
+		pHeartBeatTimer->cancel();
+	}
+
 private:
+	void HeartBeat();
 	const uint32_t Timeoutms;
 	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
 	bool RideThroughInProgress;
 	bool CommsIsBad;
 	std::unique_ptr<asio::steady_timer> pCommsRideThroughTimer;
+	std::unique_ptr<asio::steady_timer> pHeartBeatTimer;
 	const std::function<void()> CommsGoodCB;
 	const std::function<void()> CommsBadCB;
+	const std::function<void(bool CommsIsBad)> HeartBeatCB;
+	const uint32_t HeartBeatTimems;
 };
 
 #endif // COMMSRIDETHROUGHTIMER_H
