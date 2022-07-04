@@ -32,7 +32,7 @@
 #include <regex>
 
 
-DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides) :
+DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),
 	// DNP3 Link Configuration
 	LinkTimeoutms(1000),
@@ -88,7 +88,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
 	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
-	EventAnalogControlResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var1),	// 32 bit no time
+	EventAnalogControlResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var1), // 32 bit no time
 	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
@@ -546,7 +546,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		std::sort(ControlIndexes.begin(),ControlIndexes.end());
 	}
-	
+
 	if (JSONRoot.isMember("AnalogControls"))
 	{
 		//TODO: SJE Probably need to manage a payload type here to support the different options 16bit, 32bit, float, double.

@@ -106,17 +106,17 @@ const Json::Value DNP3Port::GetCurrentState() const
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	auto time_correction = [=](const auto& event)
-	{
-		auto ts = event->GetTimestamp();
-		std::unordered_set<EventType> s = { EventType::ControlRelayOutputBlock, EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
-		if (s.count(event->GetEventType()))
-			return since_epoch_to_datetime(ts);
-		if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
-			|| ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
-			ts = msSinceEpoch();
+				     {
+					     auto ts = event->GetTimestamp();
+					     std::unordered_set<EventType> s = { EventType::ControlRelayOutputBlock, EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
+					     if (s.count(event->GetEventType()))
+						     return since_epoch_to_datetime(ts);
+					     if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
+					         || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
+						     ts = msSinceEpoch();
 
-		return since_epoch_to_datetime(ts);
-	};
+					     return since_epoch_to_datetime(ts);
+				     };
 
 	for(const auto index : pConf->pPointConf->BinaryIndexes)
 	{
@@ -167,7 +167,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	{
 		// Get the dnp3 type for the point, then get the ODC event type, then create an event of that type
 		auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
-		auto event = pDB->Get(evttype, index);	
+		auto event = pDB->Get(evttype, index);
 		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());
 		try
@@ -175,8 +175,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 			state["Value"] = event->GetPayloadString();
 		}
 		catch (std::runtime_error&)
-		{
-		}
+		{}
 		state["Quality"] = ToString(event->GetQuality());
 		state["Timestamp"] = time_correction(event);
 		state["SourcePort"] = event->GetSourcePort();

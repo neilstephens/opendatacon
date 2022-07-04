@@ -167,15 +167,15 @@ void PyPort::Build()
 	LOGDEBUG("pWrapper Created #####");
 	try
 	{
-	// Python code is loaded and class created, __init__ called.
-			pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
+		// Python code is loaded and class created, __init__ called.
+		pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
 
-			pWrapper->Config(JSONMain, JSONOverride);
-			LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
+		pWrapper->Config(JSONMain, JSONOverride);
+		LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
 	}
 	catch (std::exception& e)
 	{
-			LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
+		LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
 	}
 
 	pServer = HttpServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new HttpServerManager if required
@@ -272,25 +272,25 @@ void PyPort::AddHTTPHandlers()
 
 			if (!pWrapper)
 			{
-				LOGERROR("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
-				rep.status = http::reply::not_found;
-				rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
-				contenttype = "text/html";
+			      LOGERROR("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
+			      rep.status = http::reply::not_found;
+			      rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
+			      contenttype = "text/html";
 			}
 			else
 			{
-				result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+			      result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
 
-				if (result.length() > 0)
-				{
-					rep.status = http::reply::ok;
-					rep.content.append(result);
+			      if (result.length() > 0)
+			      {
+			            rep.status = http::reply::ok;
+			            rep.content.append(result);
 				}
-				else
-				{
-					rep.status = http::reply::not_found;
-					rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
-					contenttype = "text/html";
+			      else
+			      {
+			            rep.status = http::reply::not_found;
+			            rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
+			            contenttype = "text/html";
 				}
 			}
 			rep.headers.resize(2);
@@ -309,14 +309,14 @@ void PyPort::AddHTTPHandlers()
 
 			if (result.length() > 0)
 			{
-				rep.status = http::reply::ok;
-				rep.content.append(result);
+			      rep.status = http::reply::ok;
+			      rep.content.append(result);
 			}
 			else
 			{
-				rep.status = http::reply::not_found;
-				rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
-				contenttype = "text/html";
+			      rep.status = http::reply::not_found;
+			      rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
+			      contenttype = "text/html";
 			}
 			rep.headers.resize(2);
 			rep.headers[0].name = "Content-Length";
@@ -334,7 +334,7 @@ void PyPort::RemoveHTTPHandlers()
 	size_t remaininghandlers = HttpServerManager::RemoveHandler(pServer, "POST /" + Name);
 	if (remaininghandlers == 0)
 	{
-		HttpServerManager::StopConnection(pServer);		// Only do this if no one else (other PyPort instances) is listening on the port.
+		HttpServerManager::StopConnection(pServer); // Only do this if no one else (other PyPort instances) is listening on the port.
 	}
 }
 
@@ -661,14 +661,14 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		{
 			if (!err_code)
 			{
-				if (!enabled)
-				{
-					LOGDEBUG("PyPort {} not enabled, Timer callback ignored", Name);
-					return;
+			      if (!enabled)
+			      {
+			            LOGDEBUG("PyPort {} not enabled, Timer callback ignored", Name);
+			            return;
 				}
-				LOGSTRAND("Entered Strand on SetTimer");
-				pWrapper->CallTimerHandler(id);
-				LOGSTRAND("Exit Strand");
+			      LOGSTRAND("Entered Strand on SetTimer");
+			      pWrapper->CallTimerHandler(id);
+			      LOGSTRAND("Exit Strand");
 			}
 		}));
 }
