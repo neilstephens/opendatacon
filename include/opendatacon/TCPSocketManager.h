@@ -24,8 +24,6 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-//TODO: probably move the code into a cpp in ODC library
-
 //Helper class for managing access to a TCP socket, either as server or client
 //Usage:
 //	-- Construct
@@ -49,6 +47,13 @@
 
 namespace odc
 {
+inline std::string GetHandlerID()
+{
+	static std::atomic_size_t thread_counter = 0;
+	thread_local static size_t thread_id = ++thread_counter;
+	thread_local static size_t thread_handler_id = 0;
+	return std::to_string(thread_id)+":"+std::to_string(++thread_handler_id);
+}
 
 typedef asio::basic_streambuf<std::allocator<char>> buf_t;
 
