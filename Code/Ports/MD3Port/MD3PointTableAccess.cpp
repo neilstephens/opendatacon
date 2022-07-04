@@ -436,8 +436,16 @@ void MD3PointTableAccess::AddToDigitalEvents(MD3BinaryPoint &inpt)
 			pt.SetModuleBinarySnapShot(wordres);
 		}
 		// Will fail if full, which is the defined MD3 behaviour. Push takes a copy
-		if(BinaryTimeTaggedEventQueue.size() < BinaryTimeTaggedEventQueueSize)
+		if (BinaryTimeTaggedEventQueue.size() < BinaryTimeTaggedEventQueueSize - 1)
+		{
 			BinaryTimeTaggedEventQueue.push(pt);
+		}
+		else if(BinaryTimeTaggedEventQueue.size() < BinaryTimeTaggedEventQueueSize)
+		{
+			// We need to push a buffer overflow record in here now - everything is zero indicates a buffer overflow.
+			// Need to turn this into a flag block when we see it in the building of the response.
+			BinaryTimeTaggedEventQueue.push(MD3BinaryPoint::OverFlowMarkerPoint());
+		}
 	}
 }
 uint16_t MD3PointTableAccess::CollectModuleBitsIntoWordandResetChangeFlags(const uint8_t ModuleAddress, bool &ModuleFailed)
