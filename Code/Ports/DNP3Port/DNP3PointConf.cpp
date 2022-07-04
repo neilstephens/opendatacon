@@ -70,7 +70,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventClass1ScanRatems(1000),
 	EventClass2ScanRatems(1000),
 	EventClass3ScanRatems(1000),
-	OverrideControlCode(std::pair<opendnp3::OperationType,opendnp3::TripCloseCode>(opendnp3::OperationType::Undefined,opendnp3::TripCloseCode::NUL)),
+	OverrideControlCode(std::pair<opendnp3::OperationType, opendnp3::TripCloseCode>(opendnp3::OperationType::Undefined, opendnp3::TripCloseCode::NUL)),
 	DoAssignClassOnStartup(false),
 	// Outstation configuration
 	MaxControlsPerRequest(16),
@@ -89,6 +89,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
 	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
+	EventAnalogControlResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var1), // 32 bit no time
 	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
@@ -321,6 +322,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
 	if (JSONRoot.isMember("EventCounterResponse"))
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
+	if (JSONRoot.isMember("AnalogControlResponse"))
+		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["EventAnalogResponse"].asString()); // defaults to 32 bit no time
 
 	// Timestamp Override Alternatives
 	if (JSONRoot.isMember("TimestampOverride"))
@@ -449,7 +452,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 			for(auto index = start; index <= stop; index++)
 			{
-
 				bool exists = false;
 				for(auto existing_index : BinaryIndexes)
 					if(existing_index == index)
@@ -546,6 +548,57 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 		}
 		std::sort(ControlIndexes.begin(),ControlIndexes.end());
+	}
+
+	if (JSONRoot.isMember("AnalogControls"))
+	{
+		//TODO: SJE Probably need to manage a payload type here to support the different options 16bit, 32bit, float, double.
+		const auto AnalogControls = JSONRoot["AnalogControls"];
+		for (Json::ArrayIndex n = 0; n < AnalogControls.size(); ++n)
+		{
+			size_t start, stop;
+			if (AnalogControls[n].isMember("Index"))
+				start = stop = AnalogControls[n]["Index"].asUInt();
+			else if (AnalogControls[n]["Range"].isMember("Start") && AnalogControls[n]["Range"].isMember("Stop"))
+			{
+				start = AnalogControls[n]["Range"]["Start"].asUInt();
+				stop = AnalogControls[n]["Range"]["Stop"].asUInt();
+			}
+			else
+			{
+				if (auto log = odc::spdlog_get("DNP3Port"))
+					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", AnalogControls[n].toStyledString());
+				continue;
+			}
+			for (auto index = start; index <= stop; index++)
+			{
+
+				bool exists = false;
+				for (auto existing_index : AnalogControlIndexes)
+					if (existing_index == index)
+						exists = true;
+
+				if (AnalogControls[n].isMember("AnalogControlResponse"))
+					ControlAnalogResponses[index] = StringToEventAnalogControlResponse(AnalogControls[n]["AnalogControlResponse"].asString());
+				else
+					ControlAnalogResponses[index] = EventAnalogControlResponse;
+
+				if (!exists)
+					AnalogControlIndexes.push_back(index);
+
+				auto start_val = AnalogControls[n]["StartVal"].asString();
+				if (start_val == "D")
+				{
+					for (auto it = AnalogControlIndexes.begin(); it != AnalogControlIndexes.end(); it++)
+						if (*it == index)
+						{
+							AnalogControlIndexes.erase(it);
+							break;
+						}
+				}
+			}
+		}
+		std::sort(AnalogControlIndexes.begin(), AnalogControlIndexes.end());
 	}
 }
 

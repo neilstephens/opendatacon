@@ -43,7 +43,7 @@ using namespace odc;
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
-enum PointType { Binary = 0, Analog = 1, BinaryControl = 2};
+enum PointType { Binary = 0, Analog = 1, BinaryControl = 2, AnalogControl = 3};
 
 // We have a map of these structures, for each sender to this port. This way we only need one port to handle all inbound data on the event bus.
 class PortMapClass
@@ -52,6 +52,7 @@ public:
 	std::unordered_map<size_t, std::string> AnalogMap;
 	std::unordered_map<size_t, std::string> BinaryMap;
 	std::unordered_map<size_t, std::string> BinaryControlMap;
+	std::unordered_map<size_t, std::string> AnalogControlMap;
 };
 
 class PyPort: public DataPort
