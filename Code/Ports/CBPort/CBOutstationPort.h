@@ -189,6 +189,7 @@ public:
 	bool UIFailControl(const std::string& active);                // Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
 	bool UIRandomReponseDrops(const std::string& probability);    // Zero probability = does not happen. 1 = there is a drop every response packet.
+	bool UIAdjustTimeOffsetMilliSeconds(const std::string& millisecondoffset);
 	bool UISetRTUReStartFlag(const std::string& active);		  // Set the Watchdog Timer bit in the RSW
 	bool UISetRTUControlIsolateFlag(const std::string& active);	  // Set the Control Isolate bit in the RSW
 
@@ -214,6 +215,7 @@ private:
 	bool SOEOverflowFn(void);
 	bool SOEAvailableFn(void);
 	int SOETimeOffsetMinutes = 0;
+	int SystemClockOffsetMilliSeconds = 0;
 
 	OutstationSystemFlags SystemFlags;
 

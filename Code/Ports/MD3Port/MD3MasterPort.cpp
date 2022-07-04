@@ -782,7 +782,8 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 
 	// Now take the returned values and store them into the points
 	// Process any module data (if any)
-	//NOTE: The module data on initial scan might have two blocks for the one address - the previous and current state????
+	// NOTE: The module data on initial scan might have two blocks for the one address - the previous and current state????
+	// TODO: We should be checking the sequence number so it matches, or if we sent 0, we should get back 1 (but we will allow 0)
 	for (int m = 0; m < ModuleCount; m++)
 	{
 		if (MessageIndex < CompleteMD3Message.size())
