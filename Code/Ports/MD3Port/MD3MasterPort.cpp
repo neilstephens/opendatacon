@@ -115,7 +115,7 @@ void MD3MasterPort::Build()
 	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);
 
 	// Creates internally if necessary, returns a token for the connection
-	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms, MyConf->mAddrConf.TCPThrottleBitrate, MyConf->mAddrConf.TCPThrottleChunksize); //Static method
+	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms, MyConf->mAddrConf.TCPThrottleBitrate, MyConf->mAddrConf.TCPThrottleChunksize, MyConf->mAddrConf.TCPThrottleWriteDelayms); //Static method
 
 
 	MD3Connection::AddMaster(pConnection, MyConf->mAddrConf.OutstationAddr,

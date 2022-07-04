@@ -43,6 +43,7 @@ TCPSocketManager::TCPSocketManager
 	const uint16_t aretry_time_ms,
 	const uint64_t athrottle_bitrate,
 	const uint64_t athrottle_chunksize,
+	const uint64_t athrottle_writedelay_ms,
 	const std::function<void(const std::string&,const std::string&)>& aLogCallback,
 	const bool useKeepalives,
 	const unsigned int KeepAliveTimeout_s,
@@ -70,6 +71,7 @@ TCPSocketManager::TCPSocketManager
 	ramp_time_ms(0),
 	throttle_bitrate(athrottle_bitrate),
 	throttle_chunksize(athrottle_chunksize),
+	throttle_writedelay_ms(athrottle_writedelay_ms),
 	host_name(aEndPoint),
 	service_name(aPort),
 	EndpointIterator(),
@@ -120,7 +122,7 @@ TCPSocketManager::~TCPSocketManager()
 void TCPSocketManager::Write(shared_const_buffer buf)
 {
 	auto tracker = handler_tracker;
-	pSockStrand->post([this,tracker,buf]()
+	auto write_execute = pSockStrand->wrap([this,tracker,buf](asio::error_code)
 		{
 			if(!isConnected || manuallyClosed || pending_write)
 			{
@@ -172,6 +174,19 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 			else
 				asio::async_write(*pWriteSock,buf,asio::transfer_all(),write_handler);
 		});
+
+	//TODO: refactor throttling code, below delay and the CheckThrottle() code above was an after-thought
+	// CheckThrottle() only throttles a multi-chunk write, not the first chunk
+	// this delay could possibly re-order writes in quick succession if the asio timers are expired together in the task pool
+	// A better way would be to use a queue to manage all the throttled writes when throttling is enabled
+	if(throttle_writedelay_ms)
+	{
+		std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+		pTimer->expires_from_now(std::chrono::milliseconds(throttle_writedelay_ms));
+		pTimer->async_wait(write_execute);
+	}
+	else
+		write_execute(asio::error_code());
 }
 
 void TCPSocketManager::Open(std::shared_ptr<void> tracker)

@@ -115,6 +115,7 @@ public:
 		const uint16_t aretry_time_ms = 0,                                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
 		const uint64_t athrottle_bitrate = 0,                             //You can throttle the throughput, zero means don't throttle
 		const uint64_t athrottle_chunksize = 0,                           //You can define the max chunksize in bytes to write in one go when throttling, zero means dont chunk writes
+		const uint64_t athrottle_writedelay_ms = 0,                       //You can define a delay (in milliseconds) before data is written
 		const std::function<void(const std::string&,const std::string&)>& //
 		aLogCallback = [](const std::string&, const std::string&){},      //Handler for log messages
 		const bool useKeepalives = true,                                  //Set TCP keepalive socket option
@@ -175,6 +176,7 @@ private:
 	//throttling
 	const uint64_t throttle_bitrate;
 	const uint64_t throttle_chunksize;
+	const uint64_t throttle_writedelay_ms;
 
 	//Host/IP and Port resolution:
 	const std::string host_name;

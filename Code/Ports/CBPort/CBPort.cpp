@@ -96,6 +96,8 @@ void CBPort::ProcessElements(const Json::Value& JSONRoot)
 		static_cast<CBPortConf*>(pConf.get())->mAddrConf.TCPThrottleBitrate = JSONRoot["TCPThrottleBitrate"].asUInt64();
 	if (JSONRoot.isMember("TCPThrottleChunksize"))
 		static_cast<CBPortConf*>(pConf.get())->mAddrConf.TCPThrottleChunksize = JSONRoot["TCPThrottleChunksize"].asUInt64();
+	if (JSONRoot.isMember("TCPThrottleWriteDelayms"))
+		static_cast<CBPortConf*>(pConf.get())->mAddrConf.TCPThrottleWriteDelayms = JSONRoot["TCPThrottleWriteDelayms"].asUInt64();
 
 }
 

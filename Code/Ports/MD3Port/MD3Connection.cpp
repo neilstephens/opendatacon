@@ -66,7 +66,8 @@ MD3Connection::MD3Connection
 	const std::string& aPort,                  //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms,
 	uint64_t throttle_bitrate,
-	uint64_t throttle_chunksize):
+	uint64_t throttle_chunksize,
+	uint64_t throttle_writedelay_ms):
 	pIOS(std::move(apIOS)),
 	EndPoint(aEndPoint),
 	Port(aPort),
@@ -77,7 +78,7 @@ MD3Connection::MD3Connection
 			std::bind(&MD3Connection::SocketStateHandler, this, std::placeholders::_1),
 			std::numeric_limits<size_t>::max(),
 			true,
-			retry_time_ms,throttle_bitrate,throttle_chunksize))
+			retry_time_ms,throttle_bitrate,throttle_chunksize,throttle_writedelay_ms))
 {
 	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
@@ -93,7 +94,8 @@ ConnectionTokenType MD3Connection::AddConnection
 	const std::string& aPort,                 //Port to connect to if client, or listen on if server
 	uint16_t retry_time_ms,
 	uint64_t throttle_bitrate,
-	uint64_t throttle_chunksize
+	uint64_t throttle_chunksize,
+	uint64_t throttle_writedelay_ms
 )
 {
 	std::string ChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
@@ -106,7 +108,7 @@ ConnectionTokenType MD3Connection::AddConnection
 		// If we give each connectiontoken a shared_ptr to the connection, then in the Connectiontoken destructors,
 		// when the use_count is 2 (the map and the connectiontoken), then it is time to destroy the connection.
 
-		ConnectionMap[ChannelID] = std::make_shared<MD3Connection>(apIOS, aisServer, aEndPoint, aPort, retry_time_ms,throttle_bitrate,throttle_chunksize);
+		ConnectionMap[ChannelID] = std::make_shared<MD3Connection>(apIOS, aisServer, aEndPoint, aPort, retry_time_ms,throttle_bitrate,throttle_chunksize,throttle_writedelay_ms);
 	}
 	else
 		LOGDEBUG("MD3 Connection already exists, using that connection - {}", ChannelID);

@@ -56,6 +56,7 @@ struct MD3AddrConf
 	uint16_t TCPConnectRetryPeriodms;
 	uint64_t TCPThrottleBitrate;
 	uint64_t TCPThrottleChunksize;
+	uint64_t TCPThrottleWriteDelayms;
 
 	// Default address values can minimally set IP.
 	MD3AddrConf():
@@ -65,7 +66,8 @@ struct MD3AddrConf
 		OutstationAddr(1),
 		TCPConnectRetryPeriodms(500),
 		TCPThrottleBitrate(0),
-		TCPThrottleChunksize(0)
+		TCPThrottleChunksize(0),
+		TCPThrottleWriteDelayms(0)
 	{}
 	std::string ChannelID()
 	{
