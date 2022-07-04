@@ -586,6 +586,8 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 						status = pld.second;
 						break;
 					}
+					default:
+						break;
 				}
 
 				// Now need to create the new payload, of the correct type
@@ -639,6 +641,8 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
 						break;
 					}
+					default:
+						break;
 				}
 			}
 			else
