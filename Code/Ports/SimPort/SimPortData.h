@@ -74,6 +74,7 @@ public:
 		const std::shared_ptr<odc::EventInfo>& on,
 		const std::shared_ptr<odc::EventInfo>& off,
 		FeedbackMode mode,
+		uint32_t delay,
 		std::size_t update_interval);
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
 

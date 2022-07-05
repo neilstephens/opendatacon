@@ -55,6 +55,38 @@ public:
 
 			},"Specify that any control response gets migrated one bit left and returns if the operation was succesful. Syntax: 'FailControlResponse <CBOutstationPort|Regex> <True/False>");
 
+		this->AddCommand("RTUStartupFlag", [this](const ParamCollection& params) -> const Json::Value
+			{
+				auto target = GetTarget(params).lock();
+				if (!target)
+					return IUIResponder::GenerateResult("No CBOutstationPort matched");
+
+				// Active - True or False
+				if (params.count("0") == 0)
+				{
+					return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
+				}
+				auto active = params.at("0");
+				return target->UISetRTUReStartFlag(active) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
+
+			}, "Set or Clear the RTU power on flag. Syntax: 'RTUStartupFlag <CBOutstationPort|Regex> <True/False>");
+
+		this->AddCommand("IsolateControls", [this](const ParamCollection& params) -> const Json::Value
+			{
+				auto target = GetTarget(params).lock();
+				if (!target)
+					return IUIResponder::GenerateResult("No CBOutstationPort matched");
+
+				// Active - True or False
+				if (params.count("0") == 0)
+				{
+					return IUIResponder::GenerateResult("Bad parameter - Pass True to set or False to clear");
+				}
+				auto active = params.at("0");
+				return target->UISetRTUControlIsolateFlag(active) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
+
+			}, "Set or Clear the Controls Isolate flag. Syntax: 'IsolateControls <CBOutstationPort|Regex> <True/False>");
+
 		this->AddCommand("RandomBitFlips", [this](const ParamCollection &params) -> const Json::Value
 			{
 				auto target = GetTarget(params).lock();
@@ -86,6 +118,22 @@ public:
 				return target->UIRandomReponseDrops(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
 
 			}, "Sets the probability of a dropped response packet and returns if the operation was successful. Syntax: 'RandomResponseDrops <CBOutstationPort|Regex> <Probability (float)>");
+
+		this->AddCommand("AdjustTimeOffsetMilliSeconds", [this](const ParamCollection& params) -> const Json::Value
+			{
+				auto target = GetTarget(params).lock();
+				if (!target)
+					return IUIResponder::GenerateResult("No CBOutstationPort matched");
+
+				//param 0: Probability 0 to 1
+				if (params.count("0") == 0)
+				{
+					return IUIResponder::GenerateResult("Bad parameter - Pass in the millisecond offset for RTU clock");
+				}
+				auto timeoffset = params.at("0");
+				return target->UIAdjustTimeOffsetMilliSeconds(timeoffset) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
+
+			}, "Sets the millisecond offset from the system clock. Syntax: AdjustTimeOffsetMilliSeconds <CBOutstationPort|Regex> <MillisecondOffset (int)>");
 	}
 	virtual ~CBOutstationPortCollection(){}
 };

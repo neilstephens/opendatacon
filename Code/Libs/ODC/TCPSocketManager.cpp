@@ -26,6 +26,7 @@
 
 
 #include <opendatacon/TCPSocketManager.h>
+#include <sstream>
 
 namespace odc
 {
@@ -43,6 +44,7 @@ TCPSocketManager::TCPSocketManager
 	const uint16_t aretry_time_ms,
 	const uint64_t athrottle_bitrate,
 	const uint64_t athrottle_chunksize,
+	const uint64_t athrottle_writedelay_ms,
 	const std::function<void(const std::string&,const std::string&)>& aLogCallback,
 	const bool useKeepalives,
 	const unsigned int KeepAliveTimeout_s,
@@ -70,6 +72,7 @@ TCPSocketManager::TCPSocketManager
 	ramp_time_ms(0),
 	throttle_bitrate(athrottle_bitrate),
 	throttle_chunksize(athrottle_chunksize),
+	throttle_writedelay_ms(athrottle_writedelay_ms),
 	host_name(aEndPoint),
 	service_name(aPort),
 	EndpointIterator(),
@@ -111,7 +114,7 @@ TCPSocketManager::~TCPSocketManager()
 	while(!tracker.expired() && !pIOS->stopped())
 		pIOS->poll_one();
 
-	LogCallback("debug","Write total "+std::to_string(write_count)+" bytes");
+	LogCallback("debug","Write total "+std::to_string(write_count)+" bytes for "+host_name+":"+service_name);
 }
 
 //----------------Public^^^
@@ -120,14 +123,19 @@ TCPSocketManager::~TCPSocketManager()
 void TCPSocketManager::Write(shared_const_buffer buf)
 {
 	auto tracker = handler_tracker;
-	pSockStrand->post([this,tracker,buf]()
+	std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+	auto write_execute = pSockStrand->wrap([this,tracker,buf,pTimer](asio::error_code)
 		{
 			if(!isConnected || manuallyClosed || pending_write)
 			{
 			      queue_writebufs->push_back(buf);
 			      if(queue_writebufs->size() > buffer_limit)
 			      {
-			            LogCallback("warning","Write queue full: dropping "+std::to_string(queue_writebufs->begin()->size())+" bytes.");
+			            std::stringstream ss;
+			            ss << "Write queue full: dropping " << queue_writebufs->begin()->size() << " bytes. ";
+			            ss << "isConnected|manuallyClosed|pending_write == " << isConnected <<"|"<< manuallyClosed <<"|"<< pending_write << ".";
+			            LogCallback("warning",ss.str());
+
 			            queue_writebufs->erase(queue_writebufs->begin());
 				}
 			      return;
@@ -146,8 +154,10 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 
 			auto throttle_data = CheckThrottle(buf.size());
 
-			auto write_handler = pSockStrand->wrap([this,tracker,buf,pWriteSock,throttle_data,remote_addr_str](asio::error_code err_code, std::size_t n)
+			auto handler_id = GetHandlerID();
+			auto write_handler = pSockStrand->wrap([this,tracker,buf,pWriteSock,throttle_data,remote_addr_str,handler_id](asio::error_code err_code, std::size_t n)
 				{
+					LogCallback("trace","Executing async write handler "+handler_id);
 					write_count += n;
 					if(err_code || buf.size() > n)
 					{
@@ -167,11 +177,25 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 					}
 					ThrottleCheckLastWrite(pWriteSock,remote_addr_str,throttle_data,tracker);
 				});
+
+			LogCallback("trace","Posting async write, handler "+handler_id);
 			if(throttle_data.is_active)
 				asio::async_write(*pWriteSock,buf,asio::transfer_exactly(buf.size()),write_handler);
 			else
 				asio::async_write(*pWriteSock,buf,asio::transfer_all(),write_handler);
 		});
+
+	//TODO: refactor throttling code, below delay and the CheckThrottle() code above was an after-thought
+	// CheckThrottle() only throttles a multi-chunk write, not the first chunk
+	// this delay could possibly re-order writes in quick succession if the asio timers are expired together in the task pool
+	// A better way would be to use a queue to manage all the throttled writes when throttling is enabled
+	if(throttle_writedelay_ms)
+	{
+		pTimer->expires_from_now(std::chrono::milliseconds(throttle_writedelay_ms));
+		pTimer->async_wait(write_execute);
+	}
+	else
+		write_execute(asio::error_code());
 }
 
 void TCPSocketManager::Open(std::shared_ptr<void> tracker)
@@ -349,8 +373,10 @@ void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWrite
 
 		auto throttle_data = CheckThrottle(data_size);
 
-		auto write_handler = pSockStrand->wrap([this,pWriteSock,data_size,throttle_data,remote_addr_str,tracker](asio::error_code err_code, std::size_t n)
+		auto handler_id = GetHandlerID();
+		auto write_handler = pSockStrand->wrap([this,pWriteSock,data_size,throttle_data,remote_addr_str,handler_id,tracker](asio::error_code err_code, std::size_t n)
 			{
+				LogCallback("trace","WriteBuffer() - Executing async write handler "+handler_id);
 				write_count += n;
 
 				if(err_code || data_size > n)
@@ -380,11 +406,14 @@ void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWrite
 				ThrottleCheckLastWrite(pWriteSock,remote_addr_str,throttle_data,tracker);
 			});
 
+		LogCallback("trace","WriteBuffer() - Posting async write, handler "+handler_id);
 		if(throttle_data.is_active)
 			asio::async_write(*pWriteSock,*dispatch_writebufs,asio::transfer_exactly(throttle_data.transfer_size),write_handler);
 		else
 			asio::async_write(*pWriteSock,*dispatch_writebufs,asio::transfer_all(),write_handler);
 	}
+	//else FIXME: if there was a pending write (the last connection still half open) but there's buffered data, it won't get written.
+	//need to schedule another WriteBuffer()
 }
 
 void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str)
@@ -471,8 +500,11 @@ void TCPSocketManager::ThrottleReadHandler(const size_t n, asio::error_code err_
 void TCPSocketManager::Read(std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	pending_read = true;
-	asio::async_read(*pSock, readbuf.prepare(65536), asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str](asio::error_code err_code, std::size_t n)
+	auto handler_id = GetHandlerID();
+	LogCallback("trace","Posting async read, handler "+handler_id);
+	asio::async_read(*pSock, readbuf.prepare(65536), asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str,handler_id](asio::error_code err_code, std::size_t n)
 		{
+			LogCallback("trace","Executing async read handler "+handler_id);
 			ThrottleReadHandler(n,err_code,remote_addr_str,tracker);
 		}));
 }
@@ -535,6 +567,20 @@ void TCPSocketManager::AutoClose(std::shared_ptr<void> tracker)
 			      pSock->cancel(err);
 			      if(err)
 					LogCallback("debug","Cancel pending write failed from auto-close: "+err.message());
+			//sometimes cancelling write tasks fails silently under windows
+			//post a backup task 3s in the future to call close if needed
+			//close will cause the gracefull socket::shutdown_send in the write handler to fail, but nothing better to do
+			      std::weak_ptr<asio::ip::tcp::socket> pSockWeak = pSock;
+			      std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+			      pTimer->expires_from_now(std::chrono::seconds(3));
+			      pTimer->async_wait(pSockStrand->wrap([this,pSockWeak,pTimer,tracker](asio::error_code)
+					{
+						if(auto pSock = pSockWeak.lock())
+						{
+						      LogCallback("debug","Timeout waiting for socket::shutdown_send in the write handler. Closing ungracefully.");
+						      pSock->close();
+						}
+					}));
 			}
 			isConnected = false;
 			StateCallback(isConnected);

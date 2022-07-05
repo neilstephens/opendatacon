@@ -176,9 +176,10 @@ void SimPortData::CreateBinaryControl(std::size_t index,
 	const std::shared_ptr<odc::EventInfo>& on,
 	const std::shared_ptr<odc::EventInfo>& off,
 	FeedbackMode mode,
+	uint32_t delay,
 	std::size_t update_interal)
 {
-	m_ppoint_data->CreateBinaryControl(index, on, off, mode, update_interal);
+	m_ppoint_data->CreateBinaryControl(index, on, off, mode, delay, update_interal);
 }
 
 std::vector<std::shared_ptr<BinaryFeedback>> SimPortData::BinaryFeedbacks(std::size_t index) const

@@ -27,6 +27,7 @@
 #include "ChannelStateSubscriber.h"
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
+#include "OpenDNP3Helpers.h"
 #include <opendatacon/util.h>
 #include <opendnp3/gen/Parity.h>
 #include <opendnp3/logging/LogLevels.h>
@@ -82,6 +83,13 @@ void DNP3Port::InitEventDB()
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART,0));
 	for(auto index : pConf->pPointConf->ControlIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
+	for (auto index : pConf->pPointConf->AnalogControlIndexes)
+	{
+		// Need to work out which type of event we should be queuing - using the information from the configuration
+		// Get the dnp3 type for the point, then get the ODC event type, then create an event of that type
+		auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
+		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART, 0));
+	}
 
 	pDB = std::make_unique<EventDB>(init_events);
 }
@@ -94,12 +102,14 @@ const Json::Value DNP3Port::GetCurrentState() const
 	ret[time_str]["Analogs"] = Json::arrayValue;
 	ret[time_str]["Binaries"] = Json::arrayValue;
 	ret[time_str]["BinaryControls"] = Json::arrayValue;
+	ret[time_str]["AnalogControls"] = Json::arrayValue;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	auto time_correction = [=](const auto& event)
 				     {
 					     auto ts = event->GetTimestamp();
-					     if(event->GetEventType() == EventType::ControlRelayOutputBlock)
+					     std::unordered_set<EventType> s = { EventType::ControlRelayOutputBlock, EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
+					     if (s.count(event->GetEventType()))
 						     return since_epoch_to_datetime(ts);
 					     if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
 					         || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
@@ -148,6 +158,23 @@ const Json::Value DNP3Port::GetCurrentState() const
 			state["Value"] = event->GetPayloadString();
 		}
 		catch(std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = time_correction(event);
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
+	{
+		// Get the dnp3 type for the point, then get the ODC event type, then create an event of that type
+		auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
+		auto event = pDB->Get(evttype, index);
+		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
+		state["Index"] = Json::UInt(event->GetIndex());
+		try
+		{
+			state["Value"] = event->GetPayloadString();
+		}
+		catch (std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
 		state["Timestamp"] = time_correction(event);

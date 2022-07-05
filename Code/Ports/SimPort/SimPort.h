@@ -115,6 +115,8 @@ private:
 	void PortDown();
 	std::vector<std::size_t> IndexesFromString(const std::string& index_str, odc::EventType type);
 
+	std::pair<CommandStatus,std::string>
+	SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const std::size_t index, const odc::ControlRelayOutputBlock& command);
 	CommandStatus HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, const odc::ControlRelayOutputBlock& command, std::string& message);
 	CommandStatus HandlePositionFeedback(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message);
 	CommandStatus HandlePositionFeedbackForAnalog(const std::shared_ptr<PositionFeedback>& binary_position, const odc::ControlRelayOutputBlock& command, std::string& message);

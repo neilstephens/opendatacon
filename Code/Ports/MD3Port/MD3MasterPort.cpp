@@ -115,7 +115,7 @@ void MD3MasterPort::Build()
 	MyPointConf->PointTable.Build(IsOutStation, MyPointConf->NewDigitalCommands, *pIOS);
 
 	// Creates internally if necessary, returns a token for the connection
-	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms, MyConf->mAddrConf.TCPThrottleBitrate, MyConf->mAddrConf.TCPThrottleChunksize); //Static method
+	pConnection = MD3Connection::AddConnection(pIOS, IsServer(), MyConf->mAddrConf.IP, MyConf->mAddrConf.Port, MyConf->mAddrConf.TCPConnectRetryPeriodms, MyConf->mAddrConf.TCPThrottleBitrate, MyConf->mAddrConf.TCPThrottleChunksize, MyConf->mAddrConf.TCPThrottleWriteDelayms); //Static method
 
 
 	MD3Connection::AddMaster(pConnection, MyConf->mAddrConf.OutstationAddr,
@@ -782,7 +782,8 @@ bool MD3MasterPort::ProcessDigitalScan(MD3BlockFormatted & Header, const MD3Mess
 
 	// Now take the returned values and store them into the points
 	// Process any module data (if any)
-	//NOTE: The module data on initial scan might have two blocks for the one address - the previous and current state????
+	// NOTE: The module data on initial scan might have two blocks for the one address - the previous and current state????
+	// TODO: We should be checking the sequence number so it matches, or if we sent 0, we should get back 1 (but we will allow 0)
 	for (int m = 0; m < ModuleCount; m++)
 	{
 		if (MessageIndex < CompleteMD3Message.size())

@@ -774,61 +774,24 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	EventResponse(message, index, pStatusCallback, status);
 }
 
-CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, const odc::ControlRelayOutputBlock& command, std::string& message)
+std::pair<CommandStatus,std::string>
+SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const std::size_t index, const odc::ControlRelayOutputBlock& command)
 {
 	CommandStatus status = CommandStatus::SUCCESS;
-	message = "Binary feedback event processing is a success";
+	std::string message = "Binary feedback event processing is a success";
 	bool forced = false;
-	for(auto& fb : feedbacks)
+	if(fb->mode == FeedbackMode::PULSE)
 	{
-		if(fb->mode == FeedbackMode::PULSE)
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
+		switch(command.functionCode)
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
-			switch(command.functionCode)
+			case ControlCode::PULSE_ON:
+			case ControlCode::LATCH_ON:
+			case ControlCode::LATCH_OFF:
+			case ControlCode::CLOSE_PULSE_ON:
+			case ControlCode::TRIP_PULSE_ON:
 			{
-				case ControlCode::PULSE_ON:
-				case ControlCode::LATCH_ON:
-				case ControlCode::LATCH_OFF:
-				case ControlCode::CLOSE_PULSE_ON:
-				case ControlCode::TRIP_PULSE_ON:
-				{
-					if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
-					{
-						auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
-						event->SetTimestamp();
-						PostPublishEvent(event);
-					}
-					else
-						forced = true;
-					ptimer_t ptimer = pIOS->make_steady_timer();
-					ptimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
-					ptimer->async_wait([ptimer,fb,this](asio::error_code err_code)
-						{
-							//FIXME: check err_code?
-							if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
-							{
-							      auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
-							      event->SetTimestamp();
-							      PostPublishEvent(event);
-							}
-						});
-					//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
-					break;
-				}
-				default:
-					message = "Binary feedback is not supported";
-					status = CommandStatus::NOT_SUPPORTED;
-			}
-		}
-		else //LATCH
-		{
-			if (IsOnCommand(command.functionCode))
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->trace("{}: Control {}: Latch on feedback to Binary {}.",
-						Name, index,fb->on_value->GetIndex());
-				fb->on_value->SetTimestamp();
 				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
 				{
 					auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
@@ -837,33 +800,95 @@ CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<Bi
 				}
 				else
 					forced = true;
+				ptimer_t ptimer = pIOS->make_steady_timer();
+				ptimer->expires_from_now(std::chrono::milliseconds(command.onTimeMS));
+				ptimer->async_wait([ptimer,fb,this](asio::error_code)
+					{
+						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+						{
+						      auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
+						      event->SetTimestamp();
+						      PostPublishEvent(event);
+						}
+					});
+				//TODO: (maybe) implement multiple pulses - command has count and offTimeMS
+				break;
 			}
-			else if (IsOffCommand(command.functionCode))
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->trace("{}: Control {}: Latch off feedback to Binary {}.",
-						Name, index, fb->off_value->GetIndex());
-				fb->off_value->SetTimestamp();
-				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
-				{
-					auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
-					event->SetTimestamp();
-					PostPublishEvent(event);
-				}
-				else
-					forced = true;
-			}
-			else
-			{
+			default:
 				message = "Binary feedback is not supported";
 				status = CommandStatus::NOT_SUPPORTED;
+		}
+	}
+	else //LATCH
+	{
+		if (IsOnCommand(command.functionCode))
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->trace("{}: Control {}: Latch on feedback to Binary {}.",
+					Name, index,fb->on_value->GetIndex());
+			fb->on_value->SetTimestamp();
+			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
+			{
+				auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
+				event->SetTimestamp();
+				PostPublishEvent(event);
 			}
+			else
+				forced = true;
+		}
+		else if (IsOffCommand(command.functionCode))
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->trace("{}: Control {}: Latch off feedback to Binary {}.",
+					Name, index, fb->off_value->GetIndex());
+			fb->off_value->SetTimestamp();
+			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
+			{
+				auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
+				event->SetTimestamp();
+				PostPublishEvent(event);
+			}
+			else
+				forced = true;
+		}
+		else
+		{
+			message = "Binary feedback is not supported";
+			status = CommandStatus::NOT_SUPPORTED;
 		}
 	}
 	if (forced)
 	{
 		message = "This binary control point is blocked because it is forced";
 		status = CommandStatus::BLOCKED;
+	}
+	return {status,message};
+}
+
+CommandStatus SimPort::HandleBinaryFeedback(const std::vector<std::shared_ptr<BinaryFeedback>>& feedbacks, std::size_t index, const odc::ControlRelayOutputBlock& command, std::string& message)
+{
+	CommandStatus status = CommandStatus::SUCCESS;
+	message = "Binary feedback event processing is a success";
+	for(auto& fb : feedbacks)
+	{
+		if(fb->delay != 0)
+		{
+			ptimer_t ptimer = pIOS->make_steady_timer();
+			ptimer->expires_from_now(std::chrono::milliseconds(fb->delay));
+			ptimer->async_wait([this,fb,index,command,ptimer](asio::error_code)
+				{
+					SendOneBinaryFeedback(fb,index,command);
+				});
+		}
+		else
+		{
+			auto stat_msg = SendOneBinaryFeedback(fb,index,command);
+			if(stat_msg.first != CommandStatus::SUCCESS)
+			{
+				status = stat_msg.first;
+				message = stat_msg.second;
+			}
+		}
 	}
 	return status;
 }

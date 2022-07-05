@@ -251,7 +251,7 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		INFO("Asio liftime")
+		INFO("Asio lifetime")
 		auto ios = odc::asio_service::Get();
 		auto work = ios->make_work();
 		std::thread t([ios](){ios->run();});

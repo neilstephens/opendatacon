@@ -415,6 +415,7 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 		bool on_val = true;
 		bool off_val = false;
 		auto mode = FeedbackMode::LATCH;
+		uint32_t delay = 0;
 
 		if (feedback_binaries[fbn].isMember("OnValue"))
 		{
@@ -444,12 +445,16 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 					log->warn("Unrecognised feedback mode: '{}'", feedback_binaries[fbn].toStyledString());
 			}
 		}
+		if (feedback_binaries[fbn].isMember("Delayms"))
+		{
+			delay = feedback_binaries[fbn]["Delayms"].asUInt();
+		}
 
 		auto on = std::make_shared<EventInfo>(EventType::Binary, fb_index, m_name, on_qual);
 		on->SetPayload<EventType::Binary>(std::move(on_val));
 		auto off = std::make_shared<EventInfo>(EventType::Binary, fb_index, m_name, off_qual);
 		off->SetPayload<EventType::Binary>(std::move(off_val));
-		m_pport_data->CreateBinaryControl(index, on, off, mode, update_interval);
+		m_pport_data->CreateBinaryControl(index, on, off, mode, delay, update_interval);
 	}
 }
 

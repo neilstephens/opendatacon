@@ -167,15 +167,15 @@ void PyPort::Build()
 	LOGDEBUG("pWrapper Created #####");
 	try
 	{
-	// Python code is loaded and class created, __init__ called.
-			pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
+		// Python code is loaded and class created, __init__ called.
+		pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
 
-			pWrapper->Config(JSONMain, JSONOverride);
-			LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
+		pWrapper->Config(JSONMain, JSONOverride);
+		LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
 	}
 	catch (std::exception& e)
 	{
-			LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
+		LOGERROR("Exception Importing Module and Creating Class instance - {}", e.what());
 	}
 
 	pServer = HttpServerManager::AddConnection(pIOS, MyConf->pyHTTPAddr, MyConf->pyHTTPPort); //Static method - creates a new HttpServerManager if required
@@ -272,25 +272,25 @@ void PyPort::AddHTTPHandlers()
 
 			if (!pWrapper)
 			{
-				LOGERROR("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
-				rep.status = http::reply::not_found;
-				rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
-				contenttype = "text/html";
+			      LOGERROR("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
+			      rep.status = http::reply::not_found;
+			      rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
+			      contenttype = "text/html";
 			}
 			else
 			{
-				result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+			      result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
 
-				if (result.length() > 0)
-				{
-					rep.status = http::reply::ok;
-					rep.content.append(result);
+			      if (result.length() > 0)
+			      {
+			            rep.status = http::reply::ok;
+			            rep.content.append(result);
 				}
-				else
-				{
-					rep.status = http::reply::not_found;
-					rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
-					contenttype = "text/html";
+			      else
+			      {
+			            rep.status = http::reply::not_found;
+			            rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
+			            contenttype = "text/html";
 				}
 			}
 			rep.headers.resize(2);
@@ -309,14 +309,14 @@ void PyPort::AddHTTPHandlers()
 
 			if (result.length() > 0)
 			{
-				rep.status = http::reply::ok;
-				rep.content.append(result);
+			      rep.status = http::reply::ok;
+			      rep.content.append(result);
 			}
 			else
 			{
-				rep.status = http::reply::not_found;
-				rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
-				contenttype = "text/html";
+			      rep.status = http::reply::not_found;
+			      rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
+			      contenttype = "text/html";
 			}
 			rep.headers.resize(2);
 			rep.headers[0].name = "Content-Length";
@@ -334,7 +334,7 @@ void PyPort::RemoveHTTPHandlers()
 	size_t remaininghandlers = HttpServerManager::RemoveHandler(pServer, "POST /" + Name);
 	if (remaininghandlers == 0)
 	{
-		HttpServerManager::StopConnection(pServer);		// Only do this if no one else (other PyPort instances) is listening on the port.
+		HttpServerManager::StopConnection(pServer); // Only do this if no one else (other PyPort instances) is listening on the port.
 	}
 }
 
@@ -384,7 +384,6 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				pubevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, QualityResult);
 				double dval = std::stod(PayloadStr);
 				pubevent->SetPayload<EventType::Analog>(std::move(dval));
-
 			}
 			catch (std::exception& e)
 			{
@@ -432,6 +431,62 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				LOGERROR("ControlRelayOutputBlock Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
 			}
 			break;
+		case EventType::AnalogOutputInt16:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputInt16>::type val;
+				int16_t ival = std::stoi(PayloadStr);
+				val.first = ival;
+				// val.second = odc::CommandStatus::SUCCESS;	// Should this be set at all - NO
+				pubevent->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputInt16 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
+			break;
+		case EventType::AnalogOutputInt32:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputInt32>::type val;
+				int32_t ival = std::stoi(PayloadStr);
+				val.first = ival;
+				pubevent->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputInt32 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
+			break;
+		case EventType::AnalogOutputFloat32:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputFloat32, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputFloat32>::type val;
+				float fval = std::stof(PayloadStr);
+				val.first = fval;
+				pubevent->SetPayload<EventType::AnalogOutputFloat32>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputFloat32 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
+			break;
+		case EventType::AnalogOutputDouble64:
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name, QualityResult);
+				EventTypePayload<EventType::AnalogOutputDouble64>::type val;
+				double dval = std::stod(PayloadStr);
+				val.first = dval;
+				pubevent->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
+			}
+			catch (std::exception& e)
+			{
+				LOGERROR("AnalogOutputDouble64 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
+			}
 		case EventType::OctetString:
 			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
@@ -519,6 +574,7 @@ std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt
 			if (search != foundport->BinaryControlMap.end())
 				Tag = search->second;
 		}
+		// TODO: AnalogControlMap
 	}
 	LOGTRACE("PyPort {} GetTagValue {} {} {} {}", Name, SenderName, Index, ToString(Eventt), Tag);
 	return Tag;
@@ -566,7 +622,8 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				event->GetPayloadString(),                                 // 4
 				SenderName,                                                // 5
 				TagValue,                                                  // 6
-				MyConf->pyTagPrefixString);                                // 7
+				MyConf->pyTagPrefixString,                                 // 7
+				event->GetQuality());									   // 8
 			pWrapper->QueueEvent(jsonevent);
 			LOGTRACE("Queued Event {}", jsonevent);
 			PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
@@ -605,14 +662,14 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 		{
 			if (!err_code)
 			{
-				if (!enabled)
-				{
-					LOGDEBUG("PyPort {} not enabled, Timer callback ignored", Name);
-					return;
+			      if (!enabled)
+			      {
+			            LOGDEBUG("PyPort {} not enabled, Timer callback ignored", Name);
+			            return;
 				}
-				LOGSTRAND("Entered Strand on SetTimer");
-				pWrapper->CallTimerHandler(id);
-				LOGSTRAND("Exit Strand");
+			      LOGSTRAND("Entered Strand on SetTimer");
+			      pWrapper->CallTimerHandler(id);
+			      LOGSTRAND("Exit Strand");
 			}
 		}));
 }
@@ -745,6 +802,8 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 		Name = "Binary";
 	if (ptype == BinaryControl)
 		Name = "Control";
+	if (ptype == AnalogControl)
+		Name = "AnalogControl";
 
 	LOGDEBUG("Conf processing - {}", Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
@@ -755,11 +814,7 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 		if (JSONNode[n].isMember("Index"))
 		{
 			index = JSONNode[n]["Index"].asUInt();
-		}
-		else
-		{
-			throw std::invalid_argument("A point needs an \"Index\" : " + JSONNode[n].toStyledString());
-		}
+		}	
 
 		if (JSONNode[n].isMember("Sender"))
 		{
@@ -794,6 +849,8 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 				foundport->BinaryMap.emplace(std::make_pair(index, Tag));
 			else if (ptype == BinaryControl)
 				foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
+			else if (ptype == AnalogControl)
+				foundport->AnalogControlMap.emplace(std::make_pair(index, Tag));
 			else
 			{
 				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());

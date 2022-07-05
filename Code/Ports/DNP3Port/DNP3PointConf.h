@@ -74,6 +74,7 @@ public:
 	odc::QualityFlags FlagsToSetOnLinkStatus;   /// The flags to Set when SetQualityOnLinkStatus is true
 	odc::QualityFlags FlagsToClearOnLinkStatus; /// The flags to Clear when SetQualityOnLinkStatus is true
 	uint32_t CommsPointRideThroughTimems;       /// How long to wait before admitting the link is down
+	uint32_t CommsPointHeartBeatTimems;         /// Send a periodic comms event with this period if non zero
 	/// Which classes should be requested in a startup integrity scan
 	opendnp3::ClassField GetStartupIntegrityClassMask();
 	bool StartupIntegrityClass0;
@@ -114,6 +115,8 @@ public:
 	opendnp3::EventAnalogVariation EventAnalogResponse;
 	opendnp3::EventCounterVariation EventCounterResponse;
 
+	opendnp3::EventAnalogOutputStatusVariation EventAnalogControlResponse;
+
 	// Timestamp override options
 	enum class TimestampOverride_t { ALWAYS, ZERO, NEVER };
 	TimestampOverride_t TimestampOverride;
@@ -139,6 +142,8 @@ public:
 	std::map<uint16_t, opendnp3::PointClass> AnalogClasses;
 	std::map<uint16_t, double> AnalogDeadbands;
 	std::vector<uint16_t> ControlIndexes;
+	std::vector<uint16_t> AnalogControlIndexes;
+	std::map<uint16_t, opendnp3::EventAnalogOutputStatusVariation> ControlAnalogResponses;
 };
 
 #endif /* DNP3POINTCONF_H_ */

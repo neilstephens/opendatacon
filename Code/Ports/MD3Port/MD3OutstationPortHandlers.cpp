@@ -668,6 +668,7 @@ void MD3OutstationPort::Fn9AddTimeTaggedDataToResponseWords( uint8_t MaxEventCou
 
 			MyPointConf->PointTable.PopNextTaggedEventPoint();
 			EventCount++;
+			// TODO: Handle buffer overflow timetagged events - Point that is if (CurrentPoint.IsOverFlowMarkerPoint()){
 		}
 	}
 }
@@ -751,6 +752,7 @@ void MD3OutstationPort::DoDigitalScan(MD3BlockFn11MtoS &Header)
 		// This will be called when we get a zero sequence number for Fn 11 or 12. It is sent on Master start-up to ensure that all data is sent in following
 		// change only commands - if there are sufficient modules
 		MarkAllBinaryPointsAsChanged();
+		// TODO: Should we respond with 1 or 0? Fn9 replys to 0 with 1, and we are seeing this happen for Fn11 on a real RTU. The spec says just respond with the sequence number it has been sent.
 	}
 
 	uint8_t ChangedBlocks = CountBinaryBlocksWithChanges();
@@ -848,42 +850,52 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCou
 		// The time date is seconds, the data block contains a msec entry.
 		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
 		// add a time packet to bridge the gap.
+		
+		// Handle buffer overflow timetagged events - Point that is all zeros pt = MD3BinaryPoint(0, 0, 0, 0, BinaryPointType::TIMETAGGEDINPUT, 0, 0, 0);
 
-		if (EventCount == 0)
+		if (CurrentPoint.IsOverFlowMarkerPoint())
 		{
-			// First packet is the time/date block - adjust for SOEOffset (handles local utc time translation)
-			// We dont currently do anything with the timezone sent in a 44 command
-			auto FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000 + SOETimeOffsetMinutes*60);
-			ResponseWords.push_back(FirstEventSeconds >> 16);
-			ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
-			LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
+			ResponseWords.push_back(0);
+			ResponseWords.push_back(1);		// Time Tagged Buffer Overflow Flag Value. 2 is time sync failure, 3 is time sync resotation.
 		}
-
-		uint64_t msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
-
-		if (msecoffset > 255) // Do we need a Milliseconds extension packet? A TimeBlock
+		else
 		{
-			uint64_t msecoffsetdiv256 = msecoffset / 256;
-
-			if (msecoffsetdiv256 > 255)
+			if (EventCount == 0)
 			{
-				// Huston we have a problem, to much time offset..
-				// The master will have to do another scan to get this data. So here we will just return as if we have sent all we can
-				// The point we were looking at remains on the queue to be processed on the next call.
-				return;
+				// First packet is the time/date block - adjust for SOEOffset (handles local utc time translation)
+				// We dont currently do anything with the timezone sent in a 44 command
+				auto FirstEventSeconds = static_cast<uint32_t>(CurrentPoint.GetChangedTime() / 1000 + SOETimeOffsetMinutes * 60);
+				ResponseWords.push_back(FirstEventSeconds >> 16);
+				ResponseWords.push_back(FirstEventSeconds & 0x0FFFF);
+				LastPointmsec = CurrentPoint.GetChangedTime() - CurrentPoint.GetChangedTime() % 1000; // The first one is seconds only. Later events have actual msec
 			}
-			assert(msecoffsetdiv256 < 256);
-			ResponseWords.push_back(numeric_cast<uint16_t>(msecoffsetdiv256));
-			LastPointmsec += msecoffsetdiv256 * 256; // The last point time moves with time added by the msec packet
-			msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
+
+			uint64_t msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
+
+			if (msecoffset > 255) // Do we need a Milliseconds extension packet? A TimeBlock
+			{
+				uint64_t msecoffsetdiv256 = msecoffset / 256;
+
+				if (msecoffsetdiv256 > 255)
+				{
+					// Huston we have a problem, to much time offset..
+					// The master will have to do another scan to get this data. So here we will just return as if we have sent all we can
+					// The point we were looking at remains on the queue to be processed on the next call.
+					return;
+				}
+				assert(msecoffsetdiv256 < 256);
+				ResponseWords.push_back(numeric_cast<uint16_t>(msecoffsetdiv256));
+				LastPointmsec += msecoffsetdiv256 * 256; // The last point time moves with time added by the msec packet
+				msecoffset = CurrentPoint.GetChangedTime() - LastPointmsec;
+			}
+
+			// Push the block onto the response word list
+			assert(msecoffset < 256);
+			ResponseWords.push_back(ShiftLeft8Result16Bits(CurrentPoint.GetModuleAddress()) | numeric_cast<uint16_t>(msecoffset));
+			ResponseWords.push_back(CurrentPoint.GetModuleBinarySnapShot());
+
+			LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
 		}
-
-		// Push the block onto the response word list
-		assert(msecoffset < 256);
-		ResponseWords.push_back(ShiftLeft8Result16Bits(CurrentPoint.GetModuleAddress()) | numeric_cast<uint16_t>(msecoffset));
-		ResponseWords.push_back(CurrentPoint.GetModuleBinarySnapShot());
-
-		LastPointmsec = CurrentPoint.GetChangedTime(); // Update the last changed time to match what we have just sent.
 		MyPointConf->PointTable.PopNextTaggedEventPoint();
 		EventCount++;
 	}
@@ -1716,6 +1728,41 @@ bool MD3OutstationPort::UIFailControl(const std::string& active)
 	}
 	return false;
 }
+bool MD3OutstationPort::UISetRTUReStartFlag(const std::string& active)
+{
+	// Set the Watchdog Timer bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetSystemPoweredUpFlag(true);
+		LOGCRITICAL("{} The RTU Reset Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetSystemPoweredUpFlag(false);
+		LOGCRITICAL("{} The RTU Reset Flag has been cleared", Name);
+		return true;
+	}
+	return false;
+}
+bool MD3OutstationPort::UISetSystemTimeIncorrectFlag(const std::string& active)
+{
+	// Set the Watchdog Timer bit in the RSW
+	if (iequals(active, "true"))
+	{
+		SystemFlags.SetSystemTimeIncorrectFlag(true);
+		LOGCRITICAL("{} The System Time Incorrect Flag has been set", Name);
+		return true;
+	}
+	if (iequals(active, "false"))
+	{
+		SystemFlags.SetSystemTimeIncorrectFlag(false);
+		LOGCRITICAL("{} The System Time Incorrect Flag has been cleared", Name);
+		return true;
+	}
+	return false;
+}
+
 bool MD3OutstationPort::UIRandomReponseBitFlips(const std::string& probability)
 {
 	try

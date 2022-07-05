@@ -123,8 +123,10 @@ private:
 	std::shared_ptr<opendnp3::IMasterScan> IntegrityScan;
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
+	void UpdateCommsPoint(bool isFailed);
 	void SetCommsGood();
 	void SetCommsFailed();
+	void CommsHeartBeat(bool isFailed);
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}
