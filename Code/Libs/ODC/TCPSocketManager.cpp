@@ -123,7 +123,8 @@ TCPSocketManager::~TCPSocketManager()
 void TCPSocketManager::Write(shared_const_buffer buf)
 {
 	auto tracker = handler_tracker;
-	auto write_execute = pSockStrand->wrap([this,tracker,buf](asio::error_code)
+	std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+	auto write_execute = pSockStrand->wrap([this,tracker,buf,pTimer](asio::error_code)
 		{
 			if(!isConnected || manuallyClosed || pending_write)
 			{
@@ -190,7 +191,6 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 	// A better way would be to use a queue to manage all the throttled writes when throttling is enabled
 	if(throttle_writedelay_ms)
 	{
-		std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
 		pTimer->expires_from_now(std::chrono::milliseconds(throttle_writedelay_ms));
 		pTimer->async_wait(write_execute);
 	}

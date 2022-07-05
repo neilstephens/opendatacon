@@ -1,4 +1,14 @@
-# opendatacon version 1.7.9
+# opendatacon version 1.7.10
+
+## 1.7.10
+  * Conitel/MD3 status word UI commands
+  * DNP3MasterPort HeartBeatTimems added to CommsPoint options
+  * SimPort binary feedback Delayms option
+  * TCPThrottleWriteDelayms option for Conitel/MD3 Ports
+  * Conitel/Baker port AdjustTimeOffsetMilliSeconds UI command
+  * DNP3Port Analog Output/Controls
+  * MD3 Wireshark disector improvements
+  * Misc bug fixes
 
 ## 1.7.9
   * Conitel/Baker/MD3/Sim/Py port bugfixes
