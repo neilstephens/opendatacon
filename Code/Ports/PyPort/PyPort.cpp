@@ -487,6 +487,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 			{
 				LOGERROR("AnalogOutputDouble64 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
 			}
+			break;
 		case EventType::OctetString:
 			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
@@ -623,7 +624,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				SenderName,                                                // 5
 				TagValue,                                                  // 6
 				MyConf->pyTagPrefixString,                                 // 7
-				event->GetQuality());									   // 8
+				event->GetQuality());                                      // 8
 			pWrapper->QueueEvent(jsonevent);
 			LOGTRACE("Queued Event {}", jsonevent);
 			PostCallbackCall(pStatusCallback, CommandStatus::SUCCESS);
@@ -814,7 +815,7 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 		if (JSONNode[n].isMember("Index"))
 		{
 			index = JSONNode[n]["Index"].asUInt();
-		}	
+		}
 
 		if (JSONNode[n].isMember("Sender"))
 		{
