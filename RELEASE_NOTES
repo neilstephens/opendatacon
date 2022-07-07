@@ -1,5 +1,9 @@
-# opendatacon version 1.7.10
+# opendatacon version 1.7.11
 
+## 1.7.11
+  * Fixed lack of string conversion for analog output events
+  * Fixed spurious PyPort log message
+  
 ## 1.7.10
   * Conitel/MD3 status word UI commands
   * DNP3MasterPort HeartBeatTimems added to CommsPoint options
