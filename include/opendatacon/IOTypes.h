@@ -695,6 +695,14 @@ public:
 				return std::to_string(GetPayload<EventType::AnalogOutputStatus>());
 			case EventType::ControlRelayOutputBlock:
 				return std::string(GetPayload<EventType::ControlRelayOutputBlock>());
+			case EventType::AnalogOutputInt16:
+				return std::to_string(GetPayload<EventType::AnalogOutputInt16>().first);
+			case EventType::AnalogOutputInt32:
+				return std::to_string(GetPayload<EventType::AnalogOutputInt32>().first);
+			case EventType::AnalogOutputFloat32:
+				return std::to_string(GetPayload<EventType::AnalogOutputFloat32>().first);
+			case EventType::AnalogOutputDouble64:
+				return std::to_string(GetPayload<EventType::AnalogOutputDouble64>().first);
 			case EventType::OctetString:
 				return GetPayload<EventType::OctetString>();
 			case EventType::BinaryQuality:
