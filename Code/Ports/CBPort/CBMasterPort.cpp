@@ -1034,13 +1034,13 @@ void CBMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::stri
 		case EventType::ControlRelayOutputBlock:
 			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::AnalogOutputInt16:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().value, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::AnalogOutputInt32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt32>().value, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::AnalogOutputFloat32:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputFloat32>().value, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::AnalogOutputDouble64:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputDouble64>().value, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::ConnectState:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();

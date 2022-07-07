@@ -561,29 +561,29 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 					case EventType::AnalogOutputInt16:
 					{
 						auto pld = event->GetPayload<EventType::AnalogOutputInt16>();
-						value = pld.first; // Int16 to Double64
-						status = pld.second;
+						value = pld.value; // Int16 to Double64
+						status = pld.status;
 						break;
 					}
 					case EventType::AnalogOutputInt32:
 					{
 						auto pld = event->GetPayload<EventType::AnalogOutputInt32>();
-						value = pld.first; // Int32 to Double64
-						status = pld.second;
+						value = pld.value; // Int32 to Double64
+						status = pld.status;
 						break;
 					}
 					case EventType::AnalogOutputFloat32:
 					{
 						auto pld = event->GetPayload<EventType::AnalogOutputFloat32>();
-						value = pld.first; // Float32 to Double64
-						status = pld.second;
+						value = pld.value; // Float32 to Double64
+						status = pld.status;
 						break;
 					}
 					case EventType::AnalogOutputDouble64:
 					{
 						auto pld = event->GetPayload<EventType::AnalogOutputDouble64>();
-						value = pld.first; // Double64 to Double64
-						status = pld.second;
+						value = pld.value; // Double64 to Double64
+						status = pld.status;
 						break;
 					}
 					default:

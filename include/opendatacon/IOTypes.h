@@ -316,6 +316,43 @@ struct ControlRelayOutputBlock
 	}
 };
 
+struct AO16
+{
+	int16_t value = 0;
+	CommandStatus status = CommandStatus::SUCCESS;
+	explicit operator std::string() const
+	{
+		return std::to_string(value);
+	}
+};
+struct AO32
+{
+	int32_t value = 0;
+	CommandStatus status = CommandStatus::SUCCESS;
+	explicit operator std::string() const
+	{
+		return std::to_string(value);
+	}
+};
+struct AOF
+{
+	float value = 0;
+	CommandStatus status = CommandStatus::SUCCESS;
+	explicit operator std::string() const
+	{
+		return std::to_string(value);
+	}
+};
+struct AOD
+{
+	double value = 0;
+	CommandStatus status = CommandStatus::SUCCESS;
+	explicit operator std::string() const
+	{
+		return std::to_string(value);
+	}
+};
+
 enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 inline std::string ToString(const ConnectState cs)
 {
@@ -454,10 +491,7 @@ template<EventType t> struct EventTypePayload { typedef void type; };
 typedef std::pair<bool,bool> DBB;
 typedef std::tuple<msSinceEpoch_t,uint32_t,uint8_t> TAI;
 typedef std::pair<uint16_t,uint32_t> SS;
-typedef std::pair<int16_t,CommandStatus> AO16;
-typedef std::pair<int32_t,CommandStatus> AO32;
-typedef std::pair<float,CommandStatus> AOF;
-typedef std::pair<double,CommandStatus> AOD;
+
 
 EVENTPAYLOAD(EventType::Binary                   , bool)
 EVENTPAYLOAD(EventType::DoubleBitBinary          , DBB)
@@ -695,6 +729,14 @@ public:
 				return std::to_string(GetPayload<EventType::AnalogOutputStatus>());
 			case EventType::ControlRelayOutputBlock:
 				return std::string(GetPayload<EventType::ControlRelayOutputBlock>());
+			case EventType::AnalogOutputInt16:
+				return std::string(GetPayload<EventType::AnalogOutputInt16>());
+			case EventType::AnalogOutputInt32:
+				return std::string(GetPayload<EventType::AnalogOutputInt32>());
+			case EventType::AnalogOutputFloat32:
+				return std::string(GetPayload<EventType::AnalogOutputFloat32>());
+			case EventType::AnalogOutputDouble64:
+				return std::string(GetPayload<EventType::AnalogOutputDouble64>());
 			case EventType::OctetString:
 				return GetPayload<EventType::OctetString>();
 			case EventType::BinaryQuality:

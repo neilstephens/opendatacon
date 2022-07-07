@@ -569,7 +569,7 @@ bool CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint
 	MyPointConf->PointTable.SetAnalogControlValueUsingODCIndex(ODCIndex, data, CBNowUTC());
 
 	EventTypePayload<EventType::AnalogOutputInt16>::type val;
-	val.first = numeric_cast<short>(data);
+	val.value = numeric_cast<short>(data);
 
 	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
 	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));

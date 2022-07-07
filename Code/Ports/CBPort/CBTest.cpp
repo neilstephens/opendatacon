@@ -2093,7 +2093,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	ODCIndex = 1;
 
 	EventTypePayload<EventType::AnalogOutputInt16>::type val3;
-	val3.first = 0xaaa;
+	val3.value = 0xaaa;
 
 	auto event3 = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, "TestHarness");
 	event3->SetPayload<EventType::AnalogOutputInt16>(std::move(val3));

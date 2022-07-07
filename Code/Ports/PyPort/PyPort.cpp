@@ -437,7 +437,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name, QualityResult);
 				EventTypePayload<EventType::AnalogOutputInt16>::type val;
 				int16_t ival = std::stoi(PayloadStr);
-				val.first = ival;
+				val.value = ival;
 				// val.second = odc::CommandStatus::SUCCESS;	// Should this be set at all - NO
 				pubevent->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
 			}
@@ -452,7 +452,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name, QualityResult);
 				EventTypePayload<EventType::AnalogOutputInt32>::type val;
 				int32_t ival = std::stoi(PayloadStr);
-				val.first = ival;
+				val.value = ival;
 				pubevent->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
 			}
 			catch (std::exception& e)
@@ -466,7 +466,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputFloat32, ODCIndex, Name, QualityResult);
 				EventTypePayload<EventType::AnalogOutputFloat32>::type val;
 				float fval = std::stof(PayloadStr);
-				val.first = fval;
+				val.value = fval;
 				pubevent->SetPayload<EventType::AnalogOutputFloat32>(std::move(val));
 			}
 			catch (std::exception& e)
@@ -480,13 +480,14 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name, QualityResult);
 				EventTypePayload<EventType::AnalogOutputDouble64>::type val;
 				double dval = std::stod(PayloadStr);
-				val.first = dval;
+				val.value = dval;
 				pubevent->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
 			}
 			catch (std::exception& e)
 			{
 				LOGERROR("AnalogOutputDouble64 Value passed from Python failed to be converted - {}, {}", PayloadStr, e.what());
 			}
+			break;
 		case EventType::OctetString:
 			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;

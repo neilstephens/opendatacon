@@ -1448,7 +1448,7 @@ void MD3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::str
 		case EventType::ControlRelayOutputBlock:
 			return WriteObject(event->GetPayload<EventType::ControlRelayOutputBlock>(), numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::AnalogOutputInt16:
-			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().first, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
+			return WriteObject(event->GetPayload<EventType::AnalogOutputInt16>().value, numeric_cast<uint32_t>(event->GetIndex()), pStatusCallback);
 		case EventType::ConnectState:
 		{
 			auto state = event->GetPayload<EventType::ConnectState>();

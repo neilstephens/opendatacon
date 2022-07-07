@@ -1405,7 +1405,7 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 		if (Header.GetControlSelection() == SETPOINT) // Analog Setpoint command
 		{
 			EventTypePayload<EventType::AnalogOutputInt16>::type val;
-			val.first = numeric_cast<int16_t>(output);
+			val.value= numeric_cast<int16_t>(output);
 
 			auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
 			event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
@@ -1503,7 +1503,7 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &Com
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
 	EventTypePayload<EventType::AnalogOutputInt16>::type val;
-	val.first = numeric_cast<int16_t>(output);
+	val.value = numeric_cast<int16_t>(output);
 
 	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
 	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));

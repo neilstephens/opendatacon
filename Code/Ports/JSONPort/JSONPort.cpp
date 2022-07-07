@@ -448,6 +448,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			}
 		}
 
+		// TODO: Other AnalogControl formats?
 		for (auto& point_pair : pConf->pPointConf->AnalogControls)
 		{
 			if (!point_pair.second.isMember("JSONPath"))
@@ -458,20 +459,20 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			// Now decode the val JSON string to get the index and value and process that
 			if (!val.isNull())
 			{
-				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
-				AO16 analogpayload;
-				analogpayload.second = CommandStatus::SUCCESS;
+				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
+				AO32 analogpayload;
+				analogpayload.status = CommandStatus::SUCCESS;
 
 				if (auto log = odc::spdlog_get("JSONPort"))
 					log->debug("JSNOn AnalogControl Command - {}", val.asString());
 
 				if (val.isNumeric())
-					analogpayload.first = val.asUInt();
+					analogpayload.value = val.asInt();
 				else if (val.isString())
 				{
 					try
 					{
-						analogpayload.first = std::stoul(val.asString());
+						analogpayload.value = std::stoi(val.asString());
 					}
 					catch (std::exception&)
 					{
@@ -485,7 +486,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						log->error("Error decoding AnalogControl value for index {}", point_pair.first);
 					return;
 				}
-				event->SetPayload<EventType::AnalogOutputInt16>(move(analogpayload));
+				event->SetPayload<EventType::AnalogOutputInt32>(std::move(analogpayload));
 
 				auto pStatusCallback =
 					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)

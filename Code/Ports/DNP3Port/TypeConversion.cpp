@@ -581,8 +581,8 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputInt16& dnp3, const 
 
 	EventTypePayload<EventType::AnalogOutputInt16>::type val;
 
-	val.first = dnp3.value;
-	val.second = ToODC(dnp3.status);
+	val.value = dnp3.value;
+	val.status = ToODC(dnp3.status);
 
 	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
 	event->SetQuality(QualityFlags::NONE); //controls don't have quality
@@ -597,8 +597,8 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputInt32& dnp3, const 
 
 	EventTypePayload<EventType::AnalogOutputInt32>::type val;
 
-	val.first = dnp3.value;
-	val.second = ToODC(dnp3.status);
+	val.value = dnp3.value;
+	val.status = ToODC(dnp3.status);
 
 	event->SetPayload<EventType::AnalogOutputInt32>(std::move(val));
 	event->SetQuality(QualityFlags::NONE); //controls don't have quality
@@ -613,8 +613,8 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputFloat32& dnp3, cons
 
 	EventTypePayload<EventType::AnalogOutputFloat32>::type val;
 
-	val.first = dnp3.value;
-	val.second = ToODC(dnp3.status);
+	val.value = dnp3.value;
+	val.status = ToODC(dnp3.status);
 
 	event->SetPayload<EventType::AnalogOutputFloat32>(std::move(val));
 	event->SetQuality(QualityFlags::NONE); //controls don't have quality
@@ -629,8 +629,8 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputDouble64& dnp3, con
 
 	EventTypePayload<EventType::AnalogOutputDouble64>::type val;
 
-	val.first = dnp3.value;
-	val.second = ToODC(dnp3.status);
+	val.value = dnp3.value;
+	val.status = ToODC(dnp3.status);
 
 	event->SetPayload<EventType::AnalogOutputDouble64>(std::move(val));
 	event->SetQuality(QualityFlags::NONE); //controls don't have quality
@@ -938,8 +938,8 @@ template<> opendnp3::AnalogOutputInt16 FromODC<opendnp3::AnalogOutputInt16>(cons
 	opendnp3::AnalogOutputInt16 dnp3;
 
 	auto control = event->GetPayload<EventType::AnalogOutputInt16>();
-	dnp3.value = control.first;
-	dnp3.status = FromODC(control.second);
+	dnp3.value = control.value;
+	dnp3.status = FromODC(control.status);
 
 	return dnp3;
 }
@@ -948,8 +948,8 @@ template<> opendnp3::AnalogOutputInt32 FromODC<opendnp3::AnalogOutputInt32>(cons
 	opendnp3::AnalogOutputInt32 dnp3;
 
 	auto control = event->GetPayload<EventType::AnalogOutputInt32>();
-	dnp3.value = control.first;
-	dnp3.status = FromODC(control.second);
+	dnp3.value = control.value;
+	dnp3.status = FromODC(control.status);
 
 	return dnp3;
 }
@@ -958,8 +958,8 @@ template<> opendnp3::AnalogOutputFloat32 FromODC<opendnp3::AnalogOutputFloat32>(
 	opendnp3::AnalogOutputFloat32 dnp3;
 
 	auto control = event->GetPayload<EventType::AnalogOutputFloat32>();
-	dnp3.value = control.first;
-	dnp3.status = FromODC(control.second);
+	dnp3.value = control.value;
+	dnp3.status = FromODC(control.status);
 
 	return dnp3;
 }
@@ -968,8 +968,8 @@ template<> opendnp3::AnalogOutputDouble64 FromODC<opendnp3::AnalogOutputDouble64
 	opendnp3::AnalogOutputDouble64 dnp3;
 
 	auto control = event->GetPayload<EventType::AnalogOutputDouble64>();
-	dnp3.value = control.first;
-	dnp3.status = FromODC(control.second);
+	dnp3.value = control.value;
+	dnp3.status = FromODC(control.status);
 
 	return dnp3;
 }
