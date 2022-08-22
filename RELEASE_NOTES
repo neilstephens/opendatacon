@@ -1,4 +1,7 @@
-# opendatacon version 1.7.11
+# opendatacon version 1.7.12
+
+## 1.7.12
+  * Bugfix in opendnp3 library (link layer state machine could lock up on simultaneous timeout/reconnect)
 
 ## 1.7.11
   * Fixed lack of string conversion for analog output events
