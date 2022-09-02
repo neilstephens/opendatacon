@@ -83,7 +83,7 @@ void CommsRideThroughTimer::Trigger()
 			if(!self)
 				return;
 
-			if(self->RideThroughInProgress)
+			if(self->RideThroughInProgress || self->CommsIsBad)
 				return;
 
 			self->RideThroughInProgress = true;
@@ -100,10 +100,6 @@ void CommsRideThroughTimer::Trigger()
 					}
 					self->RideThroughInProgress = false;
 				}));
-
-			//if comms is already bad - don't wait
-			if(self->CommsIsBad)
-				self->FastForward();
 		});
 }
 
