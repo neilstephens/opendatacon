@@ -75,6 +75,9 @@ void DNP3MasterPort::Enable()
 
 	enabled = true;
 
+	//initialise as comms down - in case they never come up
+	PortDown();
+
 	if(!stack_enabled && !(pConf->mAddrConf.ServerType == server_type_t::MANUAL))
 	{
 		if(pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || InDemand())
