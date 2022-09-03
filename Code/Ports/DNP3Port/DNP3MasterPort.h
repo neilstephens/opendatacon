@@ -134,7 +134,6 @@ private:
 	void PortDown();
 	inline void EnableStack()
 	{
-		PortDown(); //initialise as comms down - in case they never come up
 		pMaster->Enable();
 		stack_enabled = true;
 
