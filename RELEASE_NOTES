@@ -1,4 +1,7 @@
-# opendatacon version 1.7.12
+# opendatacon version 1.7.13
+
+## 1.7.13
+  * Bugfix for DNP3MasterPort comms point getting stuck in failed state
 
 ## 1.7.12
   * Bugfix in opendnp3 library (link layer state machine could lock up on simultaneous timeout/reconnect)
