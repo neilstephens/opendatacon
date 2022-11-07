@@ -56,6 +56,7 @@ public:
 	void Payload(odc::EventType type, std::size_t index, double payload);
 	double Payload(odc::EventType type, std::size_t index) const;
 	double StartValue(odc::EventType type, std::size_t index) const;
+	odc::QualityFlags StartQuality(odc::EventType type, std::size_t index) const;
 	double StdDev(std::size_t index) const;
 
 	std::vector<std::size_t> Indexes(odc::EventType type) const;

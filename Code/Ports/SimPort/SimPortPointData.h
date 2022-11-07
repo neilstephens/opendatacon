@@ -29,6 +29,7 @@
 #define SIMPORTPOINTDATA_H
 
 #include "BinaryControl.h"
+#include <opendatacon/IOTypes.h>
 
 typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 typedef std::shared_ptr<Timer_t> ptimer_t;
@@ -41,6 +42,7 @@ struct Point
 		std_dev(0.0f),
 		update_interval(0),
 		start_value(0.0f),
+		start_quality(odc::QualityFlags::ONLINE),
 		forced_state(false) {}
 
 	std::shared_ptr<odc::EventInfo> event;
@@ -48,6 +50,7 @@ struct Point
 	// This refresh rate is in milliseconds
 	std::size_t update_interval;
 	double start_value;
+	odc::QualityFlags start_quality;
 	bool forced_state;
 };
 
@@ -166,6 +169,15 @@ public:
 	  return           : payload for the data point
 	*/
 	double StartValue(odc::EventType type, std::size_t index);
+
+	/*
+	  function         : StartQuality
+	  description      : this function will get the starting quality for the data point
+	  param type       : the event type
+	  param index      : index of the data point
+	  return           : starting quality for the data point
+	*/
+	odc::QualityFlags StartQuality(odc::EventType type, std::size_t index);
 
 	/*
 	  function         : StdDev

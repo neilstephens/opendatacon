@@ -213,7 +213,8 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 	msSinceEpoch_t ts = msSinceEpoch();
 	try
 	{
-		val = std::stod(value);
+		if(value != "StartVal")
+			val = std::stod(value);
 		if (!timestamp.empty())
 			ts = std::stoull(timestamp);
 	}
@@ -222,20 +223,30 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 		return false;
 	}
 
-	QualityFlags Q = quality.empty() ? QualityFlags::ONLINE : QualityFlagsFromString(quality);
-	if (Q == QualityFlags::NONE)
+	QualityFlags Q = quality.empty() ?
+	                 (value == "StartVal" ? QualityFlags::NONE : QualityFlags::ONLINE)
+	                 : QualityFlagsFromString(quality);
+
+	if (Q == QualityFlags::NONE && value != "StartVal")
 		return false;
 
 	auto indexes = IndexesFromString(index, type);
 	if (ValidEventType(type) && (indexes.size() > 0))
 	{
+		auto point_qual = Q;
 		for (std::size_t index : indexes)
 		{
-			if (force)
+			if(force)
 			{
 				pSimConf->ForcedState(type, index, true);
 			}
-			auto event = std::make_shared<EventInfo>(type, index, Name, Q, ts);
+			if(value == "StartVal")
+			{
+				val = pSimConf->StartValue(type, index);
+				if(Q == QualityFlags::NONE)
+					point_qual = pSimConf->StartQuality(type, index);
+			}
+			auto event = std::make_shared<EventInfo>(type, index, Name, point_qual, ts);
 			if (type == EventType::Binary)
 				event->SetPayload<EventType::Binary>(std::move(val));
 			if (type == EventType::Analog)
@@ -302,6 +313,16 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 	return true;
 }
 
+void SimPort::UISetStdDevScaling(double scale_factor)
+{
+	pSimConf->std_dev_scaling = scale_factor;
+}
+bool SimPort::UIToggleAbsAnalogs()
+{
+	pSimConf->abs_analogs = !pSimConf->abs_analogs;
+	return pSimConf->abs_analogs;
+}
+
 bool SimPort::UIRelease(EventType type, const std::string& index)
 {
 	return SetForcedState(index, type, false);
@@ -321,6 +342,23 @@ bool SimPort::SetForcedState(const std::string& index, EventType type, bool forc
 		result = false;
 	}
 	return result;
+}
+
+template<odc::EventType event_type>
+void SimPort::ResetPoint(std::size_t index)
+{
+	auto event = pSimConf->Event(event_type, index);
+	event->SetTimestamp(msSinceEpoch());
+	event->SetPayload<event_type>(pSimConf->StartValue(event_type, index));
+	event->SetQuality(pSimConf->StartQuality(event_type, index));
+	PostPublishEvent(event);
+}
+
+template<odc::EventType event_type>
+void SimPort::ResetPoints()
+{
+	for(auto index : pSimConf->Indexes(event_type))
+		ResetPoint<event_type>(index);
 }
 
 void SimPort::PortUp()

@@ -127,6 +127,11 @@ double SimPortData::StartValue(odc::EventType type, std::size_t index) const
 	return m_ppoint_data->StartValue(type, index);
 }
 
+odc::QualityFlags SimPortData::StartQuality(odc::EventType type, std::size_t index) const
+{
+	return m_ppoint_data->StartQuality(type, index);
+}
+
 double SimPortData::StdDev(std::size_t index) const
 {
 	return m_ppoint_data->StdDev(index);

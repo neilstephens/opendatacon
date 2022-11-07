@@ -91,6 +91,7 @@ public:
 	void Payload(odc::EventType type, std::size_t index, double payload);
 	double Payload(odc::EventType type, std::size_t index) const;
 	double StartValue(odc::EventType type, std::size_t index) const;
+	odc::QualityFlags StartQuality(odc::EventType type, std::size_t index) const;
 	void ForcedState(odc::EventType type, std::size_t index, bool value);
 	bool ForcedState(odc::EventType type, std::size_t index) const;
 	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
@@ -105,6 +106,9 @@ public:
 
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
 	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index) const;
+
+	std::atomic_bool abs_analogs;
+	std::atomic<double> std_dev_scaling;
 
 private:
 	std::string m_name;

@@ -28,6 +28,8 @@
 #include "SimPortConf.h"
 
 SimPortConf::SimPortConf():
+	abs_analogs(false),
+	std_dev_scaling(1),
 	m_name(""),
 	m_timestamp_handling(TimestampMode::FIRST)
 {
@@ -42,6 +44,11 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		m_pport_data->HttpPort(json_root["HttpPort"].asString());
 	if (json_root.isMember("Version"))
 		m_pport_data->Version(json_root["Version"].asString());
+
+	if (json_root.isMember("AbsAnalogs"))
+		abs_analogs = json_root["AbsAnalogs"].asBool();
+	if (json_root.isMember("StdDevScaling"))
+		std_dev_scaling = json_root["StdDevScaling"].asDouble();
 
 	if(json_root.isMember("Analogs"))
 		m_ProcessAnalogs(json_root["Analogs"]);
@@ -119,6 +126,11 @@ double SimPortConf::Payload(odc::EventType type, std::size_t index) const
 double SimPortConf::StartValue(odc::EventType type, std::size_t index) const
 {
 	return m_pport_data->StartValue(type, index);
+}
+
+odc::QualityFlags SimPortConf::StartQuality(odc::EventType type, std::size_t index) const
+{
+	return m_pport_data->StartQuality(type, index);
 }
 
 void SimPortConf::ForcedState(odc::EventType type, std::size_t index, bool value)
@@ -220,6 +232,7 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 			double start_val = 0.0f;
 			double std_dev = 0.0f;
 			std::size_t update_interval = 0;
+			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
 			if (analogs[i].isMember("SQLite3"))
 				m_ProcessSQLite3(analogs[i]["SQLite3"], index);
 			if (analogs[i].isMember("StdDev"))
@@ -229,7 +242,6 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 			if (analogs[i].isMember("StartVal"))
 			{
 				std::string str_start_val = to_lower(analogs[i]["StartVal"].asString());
-				odc::QualityFlags flag = odc::QualityFlags::ONLINE;
 				if (str_start_val == "nan")
 					start_val = std::numeric_limits<double>::quiet_NaN();
 				else if (str_start_val == "inf")
@@ -240,8 +252,11 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 					flag = odc::QualityFlags::COMM_LOST;
 				else
 					start_val = std::stod(str_start_val);
-				m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, flag, std_dev, update_interval, start_val);
 			}
+			else
+				flag = (odc::QualityFlags::COMM_LOST | odc::QualityFlags::RESTART);
+
+			m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, flag, std_dev, update_interval, start_val);
 		}
 	}
 }
@@ -270,8 +285,6 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 			double std_dev = 0.0f;
 			std::size_t update_interval = 0;
 			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
-			if (binaries[n].isMember("StdDev"))
-				std_dev = binaries[n]["StdDev"].asDouble();
 			if (binaries[n].isMember("UpdateIntervalms"))
 				update_interval = binaries[n]["UpdateIntervalms"].asUInt();
 			if (binaries[n].isMember("StartVal"))
@@ -281,6 +294,8 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 				else
 					val = binaries[n]["StartVal"].asBool();
 			}
+			else
+				flag = (odc::QualityFlags::COMM_LOST | odc::QualityFlags::RESTART);
 			m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, flag, std_dev, update_interval, val);
 		}
 	}

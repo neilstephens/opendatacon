@@ -38,11 +38,9 @@ void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const
 		p.std_dev = s_dev;
 		p.update_interval = u_interval;
 		p.start_value = val;
+		p.start_quality = flag;
 
-		odc::QualityFlags qflag = flag;
-		if (!s_dev && !u_interval && !val)
-			qflag = odc::QualityFlags::COMM_LOST;
-		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Analog, index, name, qflag);
+		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Analog, index, name, flag);
 		evt->SetPayload<odc::EventType::Analog>(std::move(val));
 		p.event = evt;
 		{ // lock scope
@@ -56,6 +54,8 @@ void SimPortPointData::CreateEvent(odc::EventType type, std::size_t index, const
 		Point p;
 		p.std_dev = s_dev;
 		p.update_interval = u_interval;
+		p.start_value = val;
+		p.start_quality = flag;
 
 		auto evt = std::make_shared<odc::EventInfo>(odc::EventType::Binary, index, name, flag);
 		bool v = static_cast<bool>(val);
@@ -152,6 +152,12 @@ double SimPortPointData::StartValue(odc::EventType type, std::size_t index)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
 	return m_points[type][index]->start_value;
+}
+
+odc::QualityFlags SimPortPointData::StartQuality(odc::EventType type, std::size_t index)
+{
+	std::shared_lock<std::shared_timed_mutex> lck(point_mutex);
+	return m_points[type][index]->start_quality;
 }
 
 double SimPortPointData::StdDev(std::size_t index)

@@ -60,6 +60,8 @@ public:
 	bool UIRelease(odc::EventType type, const std::string& index);
 	bool SetForcedState(const std::string& index, odc::EventType type, bool forced);
 	bool UISetUpdateInterval(odc::EventType type, const std::string& index, const std::string& period);
+	void UISetStdDevScaling(double scale_factor);
+	bool UIToggleAbsAnalogs();
 
 private:
 	// use this instead of PublishEvent, it catches current values and saves them.
@@ -72,17 +74,18 @@ private:
 	inline void RandomiseAnalog(std::shared_ptr<odc::EventInfo> event)
 	{
 		double mean = pSimConf->StartValue(odc::EventType::Analog, event->GetIndex());
-		double std_dev = pSimConf->StdDev(event->GetIndex());
-		//change value around mean - handle 0 which windows does not...
+		double std_dev = pSimConf->std_dev_scaling * pSimConf->StdDev(event->GetIndex());
+		double rand_val = mean;
+
 		if (std_dev != 0)
 		{
 			std::normal_distribution<double> distribution(mean, std_dev);
-			event->SetPayload<odc::EventType::Analog>(distribution(RandNumGenerator));
+			rand_val = distribution(RandNumGenerator);
 		}
-		else
-		{
-			event->SetPayload<odc::EventType::Analog>(std::move(mean));
-		}
+		if (pSimConf->abs_analogs)
+			rand_val = std::abs(rand_val);
+
+		event->SetPayload<odc::EventType::Analog>(std::move(rand_val));
 	}
 	inline void StartAnalogEvents(size_t index)
 	{
@@ -111,6 +114,8 @@ private:
 		auto pTimer = pSimConf->Timer(ToString(event->GetEventType()) + std::to_string(event->GetIndex()));
 		SpawnEvent(event, pTimer);
 	}
+	template<odc::EventType> void ResetPoint(std::size_t index);
+	template<odc::EventType> void ResetPoints();
 	void PortUp();
 	void PortDown();
 	std::vector<std::size_t> IndexesFromString(const std::string& index_str, odc::EventType type);
