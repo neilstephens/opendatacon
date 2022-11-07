@@ -228,7 +228,7 @@ function DecodeSOERecord(payloads, payloadbitindex, maxpayloadbitindex)
 	TimeFormatBit,payloadbitindex = ExtractBits(payloads, payloadbitindex,1)
 
 	if (TimeFormatBit == 1) then -- Long time
-		print("Long Time SOE")
+		--print("Long Time SOE")
 		Hour,payloadbitindex = ExtractBits(payloads, payloadbitindex,5)
 		Minute,payloadbitindex = ExtractBits(payloads, payloadbitindex,6)
 	end
@@ -248,7 +248,7 @@ function ExtractBits(payloads, payloadbitindex, numberofbits)
 		result = result + GetBit(payloads, payloadbitindex, bit)
 		payloadbitindex = payloadbitindex + 1
 	end
-	print("Result, numbits "..result..", "..numberofbits)
+	--print("Result, numbits "..result..", "..numberofbits)
 	return result, payloadbitindex
 end
 

@@ -63,10 +63,11 @@ f.md3seq = ProtoField.uint8 ("md3.md3seq",  "Sequence Number", base.DEC)
 f.station  = ProtoField.uint8 ("md3.station",  "Station", base.HEX)
 f.mtos = ProtoField.bool ("md3.mtos", "MasterCommand")
 f.module = ProtoField.uint8 ("md3.module",  "Module Addr", base.HEX)
-f.taggedcount = ProtoField.uint8 ("md3.taggedcount",  "TaggedCount", base.HEX)
-f.modulecount = ProtoField.uint8 ("md3.modulecount",  "ModuleCount", base.HEX)
+f.taggedcount = ProtoField.uint8 ("md3.taggedcount",  "TaggedCount", base.DEC)
+f.modulecount = ProtoField.uint8 ("md3.modulecount",  "ModuleCount", base.DEC)
 f.data = ProtoField.bytes  ("md3.data", "Data")
 f.decode = ProtoField.bytes  ("md3.decode", "Decode DCOS")
+f.flags = ProtoField.bool ("md3.flags", "Flag Block Present")
 
 function CheckMD3CRC(data0,data1,data2,data3, crcbyte)
 
@@ -140,27 +141,30 @@ function md3_proto.dissector(buffer,pinfo,tree)
 		extra_info = " - Slave"
 	end
 	subtree:add(f.mtos, ismaster)
+	pinfo.cols.info = functionname .. extra_info
 
 	-- Add sequence number only for those function codes that use it
-	if functioncode == 11 or fucntioncode == 12 or functioncode == 14 then
+	if functioncode == 11 or functioncode == 12 or functioncode == 14 then
 		if ismaster == false then
 			subtree:add(f.md3seq,buffer(2,1):bitfield(4,4))
 		else
 			subtree:add(f.md3seq,buffer(3,1):bitfield(0,4))
 		end
 	end
-	pinfo.cols.info = functionname .. extra_info
+	
+	-- Add module count only for those function codes that use it
+	local modulecount = 0
+	if functioncode == 5 or functioncode == 6 or functioncode == 7 or functioncode == 8 or functioncode == 10 or
+	   functioncode == 11 or functioncode == 12 or functioncode == 13 or functioncode == 14 or
+	   functioncode == 30 or functioncode == 31
+	then
+		subtree:add(f.modulecount, buffer(3,1):bitfield(4,4))
+		modulecount = buffer(3,1):bitfield(4,4)
+	end
 
 	-- This only applies to Fn 11 digital COS, master and slave
-	local modulecount = 0
 	if functioncode == 11 then
-		subtree:add(f.modulecount, buffer(3,1):bitfield(4,4))
 		subtree:add(f.taggedcount, buffer(2,1):bitfield(0,4))
-		modulecount = buffer(3,1):bitfield(4,4)
-	elseif functioncode == 12 then
-		subtree:add(f.module, buffer(2,1):uint(0,8))
-		subtree:add(f.modulecount, buffer(3,1):bitfield(4,4))
-		modulecount = buffer(3,1):bitfield(4,4)
 	else
 		subtree:add(f.module, buffer(2,1):uint())
 	end
@@ -214,7 +218,7 @@ function md3_proto.dissector(buffer,pinfo,tree)
 		local i = 6
 		local newi = 0
 		local dcoshex = " "
-		print("Pktlen "..pktlen)
+		-- print("Pktlen "..pktlen)
 
 		while i < pktlen
 		do
@@ -232,9 +236,10 @@ function md3_proto.dissector(buffer,pinfo,tree)
 			i = i + 1
 			::skip_to_next1::
 		end
-		print(dcoshex)
+		-- print(dcoshex)
 		local datatree = subtree:add(f.decode)
 		datatree:add("Data ", newi.." - "..dcoshex)
+		local has_flag_block = false
 		i = 0
 		while i < newi - 3
 		do
@@ -254,6 +259,7 @@ function md3_proto.dissector(buffer,pinfo,tree)
 					if dcosbuffer[i+1] == 0 then
 						if dcosbuffer[i+2] == 0 then
 							--Flag block
+							has_flag_block = true
 							if dcosbuffer[i+3] == 1 then
 								dcos = dcos.." - Flag Block - COS BUFFER OVERFLOW!"
 							else
@@ -282,6 +288,7 @@ function md3_proto.dissector(buffer,pinfo,tree)
 			i = i + 4
 			::skip_to_next::
 		end
+		subtree:add(f.flags, has_flag_block)
 	end
 	-- If not our protocol, we should return 0. If it is ours, return nothing.
 	--mark the conversation as md3 - this is just for when we're called as a heuristic
