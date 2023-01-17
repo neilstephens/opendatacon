@@ -63,6 +63,8 @@ inline msSinceEpoch_t msSinceEpoch()
 
 std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds);
 
+std::string buf2hex(const uint8_t *data, size_t size);
+
 } //namspace odc
 
 #endif //UTIL_H

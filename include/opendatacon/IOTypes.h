@@ -32,6 +32,7 @@
 #include <tuple>
 #include <opendatacon/EnumClassFlags.h>
 #include <opendatacon/util.h>
+#include <opendatacon/asio.h>
 
 namespace odc
 {
@@ -459,6 +460,36 @@ typedef std::pair<int32_t,CommandStatus> AO32;
 typedef std::pair<float,CommandStatus> AOF;
 typedef std::pair<double,CommandStatus> AOD;
 
+//payload for odc octet strings derrive from asio::const_buffer,
+//	so it can be written directly to a socket, or added to a collection to be written to socket etc.
+struct OctetStringBuffer: public shared_const_buffer
+{
+	OctetStringBuffer(): //by default, make a 'null string'
+		shared_const_buffer(std::make_shared<std::string>(""))
+	{}
+
+//FIXME: using a template makes the calls to ToString for other types that use implicit conversion ambiguous
+//	template <typename T> //T must be a container with a data(), size() and get_allocator() members
+//	OctetStringBuffer(T&& aContainer):
+//		//shared_const_buffer is a ref counted wraper that will delete the data in good time
+//		shared_const_buffer(std::make_shared<T>(std::move(aContainer)))
+//	{}
+
+	//allow string and vector until the above issue is fixed to allow any containers with data(), size() and get_allocator() members
+	OctetStringBuffer(std::string&& aContainer):
+		shared_const_buffer(std::make_shared<std::string>(std::move(aContainer)))
+	{}
+	template <typename T>
+	OctetStringBuffer(std::vector<T>&& aContainer):
+		shared_const_buffer(std::make_shared<std::vector<T>>(std::move(aContainer)))
+	{}
+
+	template <typename T>
+	OctetStringBuffer(std::shared_ptr<T> aPtr):
+		shared_const_buffer(aPtr)
+	{}
+};
+
 EVENTPAYLOAD(EventType::Binary                   , bool)
 EVENTPAYLOAD(EventType::DoubleBitBinary          , DBB)
 EVENTPAYLOAD(EventType::Analog                   , double)
@@ -468,7 +499,7 @@ EVENTPAYLOAD(EventType::BinaryOutputStatus       , bool)
 EVENTPAYLOAD(EventType::AnalogOutputStatus       , double)
 EVENTPAYLOAD(EventType::BinaryCommandEvent       , CommandStatus)
 EVENTPAYLOAD(EventType::AnalogCommandEvent       , CommandStatus)
-EVENTPAYLOAD(EventType::OctetString              , std::string)
+EVENTPAYLOAD(EventType::OctetString              , OctetStringBuffer)
 EVENTPAYLOAD(EventType::TimeAndInterval          , TAI)
 EVENTPAYLOAD(EventType::SecurityStat             , SS)
 EVENTPAYLOAD(EventType::ControlRelayOutputBlock  , ControlRelayOutputBlock)
@@ -504,6 +535,22 @@ EVENTPAYLOAD(EventType::Reserved10               , char) //stub
 EVENTPAYLOAD(EventType::Reserved11               , char) //stub
 EVENTPAYLOAD(EventType::Reserved12               , char) //stub
 //TODO: map the rest
+
+enum class DataToStringMethod : uint8_t {Raw,Hex};
+inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod method = DataToStringMethod::Hex)
+{
+	auto chardata = static_cast<const char*>(OSB.data());
+	auto rawdata = static_cast<const uint8_t*>(OSB.data());
+	switch(method)
+	{
+		case DataToStringMethod::Raw:
+			return std::string(chardata,OSB.size());
+		case DataToStringMethod::Hex:
+			return buf2hex(rawdata,OSB.size());
+		default:
+			return fmt::format("Unsupported data to string method {}",method);
+	}
+}
 
 #define DELETEPAYLOADCASE(T)\
 	case T: \
@@ -704,7 +751,7 @@ public:
 			case EventType::AnalogOutputDouble64:
 				return std::to_string(GetPayload<EventType::AnalogOutputDouble64>().first);
 			case EventType::OctetString:
-				return GetPayload<EventType::OctetString>();
+				return ToString(GetPayload<EventType::OctetString>());
 			case EventType::BinaryQuality:
 				return ToString(GetPayload<EventType::BinaryQuality>());
 			case EventType::DoubleBitBinaryQuality:
