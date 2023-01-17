@@ -292,5 +292,25 @@ std::string buf2hex(const uint8_t* data, size_t size)
 	}
 	return str;
 }
+uint8_t hexchar2byte(const char& hexChar)
+{
+	if(hexChar >= '0' && hexChar <= '9')
+		return hexChar-'0';
+	if(hexChar >= 'a' && hexChar <= 'f')
+		return hexChar-'a'+10;
+	if(hexChar >= 'A' && hexChar <= 'F')
+		return hexChar-'A'+10;
+	throw std::invalid_argument("hexchar2byte(): require characters [0-9a-fA-F]");
+}
+std::vector<uint8_t> hex2buf(const std::string& hexStr)
+{
+	if(hexStr.size()%2)
+		throw std::invalid_argument("hex2buf(): require even number of hex nibbles to covert to bytes");
+	const size_t bufSize = hexStr.size()/2;
+	std::vector<uint8_t> buf(bufSize);
+	for(size_t i = 0; i < bufSize; i++)
+		buf[i] = (hexchar2byte(hexStr[i*2]) << 4) + hexchar2byte(hexStr[i*2+1]);
+	return buf;
+}
 
 } // namespace odc

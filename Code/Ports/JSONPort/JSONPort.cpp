@@ -346,9 +346,18 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						event->SetPayload<EventType::OctetString>(std::move(unmodified_string));
 						break;
 					case DataToStringMethod::Hex:
-					//TODO:
-					//event->SetPayload<EventType::OctetString>(hex2buf(unmodified_string));
-					//break;
+						try
+						{
+							event->SetPayload<EventType::OctetString>(hex2buf(unmodified_string));
+						}
+						catch(const std::exception& e)
+						{
+							auto msg = fmt::format("Invalid hex string '{}': {}", unmodified_string, e.what());
+							if(auto log = odc::spdlog_get("JSONPort"))
+								log->warn(msg);
+							event->SetPayload<EventType::OctetString>(std::move(msg));
+						}
+						break;
 					default:
 						if(auto log = odc::spdlog_get("JSONPort"))
 							log->warn("Unsupported string to data method {}",format);
