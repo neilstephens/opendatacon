@@ -324,7 +324,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("EventCounterResponse"))
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
 	if (JSONRoot.isMember("AnalogControlResponse"))
-		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["EventAnalogResponse"].asString()); // defaults to 32 bit no time
+		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["AnalogControlResponse"].asString());
 
 	// Timestamp Override Alternatives
 	if (JSONRoot.isMember("TimestampOverride"))
