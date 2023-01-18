@@ -280,4 +280,37 @@ std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds)
 	return std::string(buff);
 }
 
+//this is faster than using stringstream to format to hex - minimises allocations
+constexpr char hexnibble[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+std::string buf2hex(const uint8_t* data, size_t size)
+{
+	std::string str(size*2,'.');
+	for (size_t i = 0; i < size; i++)
+	{
+		str[2*i] = hexnibble[(data[i] & 0xF0) >> 4];
+		str[2*i+1] = hexnibble[data[i] & 0x0F];
+	}
+	return str;
+}
+uint8_t hexchar2byte(const char& hexChar)
+{
+	if(hexChar >= '0' && hexChar <= '9')
+		return hexChar-'0';
+	if(hexChar >= 'a' && hexChar <= 'f')
+		return hexChar-'a'+10;
+	if(hexChar >= 'A' && hexChar <= 'F')
+		return hexChar-'A'+10;
+	throw std::invalid_argument("hexchar2byte(): require characters [0-9a-fA-F]");
+}
+std::vector<uint8_t> hex2buf(const std::string& hexStr)
+{
+	if(hexStr.size()%2)
+		throw std::invalid_argument("hex2buf(): require even number of hex nibbles to covert to bytes");
+	const size_t bufSize = hexStr.size()/2;
+	std::vector<uint8_t> buf(bufSize);
+	for(size_t i = 0; i < bufSize; i++)
+		buf[i] = (hexchar2byte(hexStr[i*2]) << 4) + hexchar2byte(hexStr[i*2+1]);
+	return buf;
+}
+
 } // namespace odc

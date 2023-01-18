@@ -57,31 +57,6 @@ inline std::string GetHandlerID()
 
 typedef asio::basic_streambuf<std::allocator<char>> buf_t;
 
-//buffer to track a data container
-class shared_const_buffer: public asio::const_buffer
-{
-public:
-	template <typename T> //T must be a container with a data(), size() and get_allocator() members
-	shared_const_buffer(std::shared_ptr<T> pCon):
-		asio::const_buffer(pCon->data(),pCon->size()*sizeof(pCon->get_allocator())),
-		con(pCon)
-	{}
-	//Implement the ConstBufferSequence requirements
-	//(so I don't have to put a single one in a container)
-	typedef const shared_const_buffer* const_iterator;
-	const_iterator begin() const
-	{
-		return this;
-	}
-	const_iterator end() const
-	{
-		return this + 1;
-	}
-
-private:
-	std::shared_ptr<void> con;
-};
-
 struct TCPKeepaliveOpts
 {
 	TCPKeepaliveOpts(bool enabled, unsigned int idle_timeout_s, unsigned int retry_interval_s, unsigned int fail_count):

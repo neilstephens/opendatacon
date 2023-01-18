@@ -106,6 +106,7 @@ private:
 
 	void UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual);
 	template<typename T> void EventT(T meas, uint16_t index);
+	template<> void EventT<opendnp3::OctetString>(opendnp3::OctetString meas, uint16_t index);
 	template<typename T> void EventT(T qual, uint16_t index, opendnp3::FlagsType FT);
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);

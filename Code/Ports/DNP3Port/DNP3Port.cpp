@@ -75,12 +75,16 @@ void DNP3Port::InitEventDB()
 	std::vector<std::shared_ptr<const EventInfo>> init_events;
 	init_events.reserve(pConf->pPointConf->AnalogIndexes.size()+
 		pConf->pPointConf->BinaryIndexes.size()+
-		pConf->pPointConf->ControlIndexes.size());
+		pConf->pPointConf->OctetStringIndexes.size()+
+		pConf->pPointConf->ControlIndexes.size()+
+		pConf->pPointConf->AnalogControlIndexes.size());
 
 	for(auto index : pConf->pPointConf->AnalogIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART,0));
 	for(auto index : pConf->pPointConf->BinaryIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART,0));
+	for(auto index : pConf->pPointConf->OctetStringIndexes)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::OctetString,index,"",QualityFlags::RESTART,0));
 	for(auto index : pConf->pPointConf->ControlIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
 	for (auto index : pConf->pPointConf->AnalogControlIndexes)

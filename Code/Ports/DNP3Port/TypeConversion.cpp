@@ -403,6 +403,20 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputStatus& dnp3, const
 	return event;
 }
 
+std::shared_ptr<EventInfo> ToODC(const opendnp3::OctetString& dnp3, const size_t ind, const std::string& source)
+{
+	auto event = std::make_shared<EventInfo>(EventType::OctetString, ind, source);
+
+	uint8_t size = dnp3.ToBuffer().length;
+	std::vector<uint8_t> data(size);
+	memcpy(data.data(),dnp3.ToBuffer().data,size);
+
+	event->SetPayload<EventType::OctetString>(std::move(data));
+	event->SetQuality(QualityFlags::NONE);
+
+	return event;
+}
+
 std::shared_ptr<EventInfo> ToODC(const opendnp3::BinaryQuality& dnp3, const size_t ind, const std::string& source)
 {
 	auto event = std::make_shared<EventInfo>(EventType::BinaryQuality, ind, source);
@@ -825,6 +839,23 @@ template<> opendnp3::AnalogOutputStatus FromODC<opendnp3::AnalogOutputStatus>(co
 	dnp3.flags.Set(qual);
 	dnp3.time.value = event->GetTimestamp();
 
+	return dnp3;
+}
+template<> opendnp3::OctetString FromODC<opendnp3::OctetString>(const std::shared_ptr<const EventInfo>& event)
+{
+	auto pData = static_cast<const uint8_t*>(event->GetPayload<EventType::OctetString>().data());
+	auto sizeData = event->GetPayload<EventType::OctetString>().size();
+
+	opendnp3::Buffer buf(pData,sizeData);
+	opendnp3::OctetString dnp3;
+	//must use Set, not c'tor that takes buffer, because set allows size=0
+	//I think this is actually unintentinal on the part of opendnp3, but let's exploit it
+	dnp3.Set(buf);
+	if(sizeData == 0 && dnp3.Size() != 0)
+		throw std::runtime_error("Data conversion ODC -> DNP3 OctetString failed for zero sized buffer");
+	else if(sizeData != dnp3.Size())
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->warn("Data conversion ODC -> DNP3 OctetString truncation: {} -> {}", sizeData, dnp3.Size());
 	return dnp3;
 }
 template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::shared_ptr<const EventInfo>& event)

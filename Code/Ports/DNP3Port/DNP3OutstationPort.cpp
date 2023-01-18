@@ -295,6 +295,10 @@ void DNP3OutstationPort::Build()
 		StackConfig.database.binary_input[index].evariation = pConf->pPointConf->EventBinaryResponses[index];
 		StackConfig.database.binary_input[index].svariation = pConf->pPointConf->StaticBinaryResponses[index];
 	}
+	for(auto index : pConf->pPointConf->OctetStringIndexes)
+	{
+		StackConfig.database.octet_string[index].clazz = pConf->pPointConf->OctetStringClasses[index];
+	}
 
 	InitEventDB();
 
@@ -321,9 +325,10 @@ void DNP3OutstationPort::Build()
 	StackConfig.outstation.params.unsolConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
 
 	// TODO: Expose event limits for any new event types to be supported by opendatacon
-	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;   /// The number of binary events the outstation will buffer before overflowing
-	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;   /// The number of analog events the outstation will buffer before overflowing
-	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;          /// The number of binary events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;          /// The number of analog events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;        /// The number of counter events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxOctetStringEvents =pConf->pPointConf->MaxOctetStringEvents; /// The number of octet string events the outstation will buffer before overflowing
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
@@ -496,6 +501,9 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		case EventType::Analog:
 			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
+		case EventType::OctetString:
+			EventT(FromODC<opendnp3::OctetString>(event), event->GetIndex());
+			break;
 		case EventType::BinaryQuality:
 			UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());
 			EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
@@ -534,6 +542,14 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 
 	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index);
+	pOutstation->Apply(builder.Build());
+}
+
+template<>
+inline void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetString meas, uint16_t index)
+{
+	opendnp3::UpdateBuilder builder;
+	builder.Update(meas, index, opendnp3::EventMode::Force);
 	pOutstation->Apply(builder.Build());
 }
 

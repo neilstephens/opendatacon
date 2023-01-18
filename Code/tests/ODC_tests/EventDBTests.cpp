@@ -55,21 +55,21 @@ TEST_CASE(SUITE("Get Set Swap"))
 	for(int i=0; i<100; i++)
 	{
 		auto event = pDB->Get(EventType::OctetString,i);
-		REQUIRE(event->GetPayload<EventType::OctetString>() == std::to_string(i));
+		REQUIRE(ToString(event->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw) == std::to_string(i));
 		event.reset();
 
 		auto new_event = std::make_shared<EventInfo>(EventType::OctetString,i,"EventDBTestSuite");
 		new_event->SetPayload<EventType::OctetString>(std::to_string(i*2));
 		pDB->Set(new_event);
 		new_event.reset();
-		REQUIRE(pDB->Get(EventType::OctetString,i)->GetPayload<EventType::OctetString>() == std::to_string(i*2));
+		REQUIRE(ToString(pDB->Get(EventType::OctetString,i)->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw) == std::to_string(i*2));
 
 		auto swap_in = std::make_shared<EventInfo>(EventType::OctetString,i,"EventDBTestSuite");
 		swap_in->SetPayload<EventType::OctetString>(std::to_string(i*3));
 		auto swap_out = pDB->Swap(swap_in);
 		swap_in.reset();
-		REQUIRE(pDB->Get(EventType::OctetString,i)->GetPayload<EventType::OctetString>() == std::to_string(i*3));
-		REQUIRE(swap_out->GetPayload<EventType::OctetString>() == std::to_string(i*2));
+		REQUIRE(ToString(pDB->Get(EventType::OctetString,i)->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw) == std::to_string(i*3));
+		REQUIRE(ToString(swap_out->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw) == std::to_string(i*2));
 	}
 	TestTearDown();
 }
@@ -94,7 +94,7 @@ TEST_CASE(SUITE("Thread Safety"))
 				      REQUIRE(old_evt);
 
 				//access the data - randomly print
-				      if(std::stoi(old_evt->GetPayload<EventType::OctetString>())%10000 == 0 && old_evt->GetIndex() == 5)
+				      if(std::stoi(ToString(old_evt->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw))%10000 == 0 && old_evt->GetIndex() == 5)
 						odc::spdlog_get("opendatacon")->info("Replaced {} with {}",
 							old_evt->GetPayloadString(),
 							new_evt->GetPayloadString());
