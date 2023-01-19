@@ -573,7 +573,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			{
 				// Turn the payload into double64, then convert to the target.
 				double value = 0;
-				CommandStatus status;
+				CommandStatus status = CommandStatus::UNDEFINED;
 				switch (event->GetEventType())
 				{
 					case EventType::AnalogOutputInt16:
