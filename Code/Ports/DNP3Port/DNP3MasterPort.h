@@ -163,7 +163,8 @@ private:
 	}
 
 	template<typename T> void LoadT(const opendnp3::ICollection<opendnp3::Indexed<T> >& meas);
-	template<> void LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas);
 };
+
+template<> void DNP3MasterPort::LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas);
 
 #endif /* DNP3CLIENTPORT_H_ */

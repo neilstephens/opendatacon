@@ -221,11 +221,12 @@ bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timesta
 	//take care because we're using unsigned types - get the absolute offset
 	auto offset = (master_time > now) ? (master_time - now) : (now - master_time);
 
-	if(offset > std::numeric_limits<int64_t>::max())
+	constexpr const decltype(offset) signed_max = std::numeric_limits<int64_t>::max();
+	if(offset > signed_max)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->error("{}: Time offset overflow - using max offset", Name);
-		offset = std::numeric_limits<int64_t>::max();
+		offset = signed_max;
 		//also make sure the stack responds with param error
 		ret = false;
 	}
