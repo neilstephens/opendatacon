@@ -26,20 +26,49 @@
 
 #ifndef FileTransferPortConf_H_
 #define FileTransferPortConf_H_
-#include "FileTransferPointConf.h"
 #include <opendatacon/DataPort.h>
+#include <regex>
+#include <vector>
 
-enum class TranferDirection { TX, RX };
+using namespace odc;
+
+enum class TransferDirection { TX, RX };
+enum class OverwriteMode { OVERWRITE, FAIL, APPEND };
+enum class TriggerType { Periodic, BinaryControl, AnalogControl, OctetStringPath };
+
+struct TransferTrigger
+{
+	bool OnlyWhenModified = true;
+	TriggerType Type = TriggerType::Periodic;
+	size_t Periodms = 0;
+	size_t Index = 0;
+	int64_t Value = 0;
+};
+
+struct FilenameConf
+{
+	std::string InitialName = "UninitialisedFilename.txt";
+	std::string Template = "<NAME>";
+	std::string DateToken = "";
+	std::string DateFormat = "%Y-%m-%d %H:%M:%S.%e";
+	std::string EventToken = "<NAME>";
+	std::shared_ptr<const EventInfo> Event = nullptr;
+};
 
 class FileTransferPortConf: public DataPortConf
 {
 public:
-	FileTransferPortConf(const std::string& FileName)
-	{
-		pPointConf = std::make_unique<FileTransferPointConf>(FileName);
-	}
-
-	std::unique_ptr<FileTransferPointConf> pPointConf;
+	TransferDirection Direction = TransferDirection::RX;
+	std::string Directory = ".";
+	bool Recursive = false;
+	std::unique_ptr<std::regex> pFilenameRegex = nullptr;
+	size_t FileNameTransmissionMatchGroup = 0;
+	std::shared_ptr<const EventInfo> FileNameTransmissionEvent = nullptr;
+	size_t SequenceIndexStart = 0;
+	size_t SequenceIndexStop = 0;
+	std::vector<TransferTrigger> TransferTriggers;
+	FilenameConf FilenameInfo;
+	OverwriteMode Mode = OverwriteMode::FAIL;
 };
 
 #endif /* FileTransferPortConf_H_ */
