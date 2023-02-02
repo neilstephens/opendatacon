@@ -50,6 +50,7 @@ public:
 		load_map("AnalogMap",AnalogMap);
 		load_map("BinaryMap",BinaryMap);
 		load_map("ControlMap",ControlMap);
+		load_map("OctetStringMap",OctetStringMap);
 	}
 
 	bool Event(std::shared_ptr<EventInfo> event) override
@@ -65,6 +66,9 @@ public:
 			case EventType::ControlRelayOutputBlock:
 				map = &ControlMap;
 				break;
+			case EventType::OctetString:
+				map = &OctetStringMap;
+				break;
 			default:
 				return true;
 		}
@@ -79,6 +83,7 @@ public:
 	std::unordered_map<uint16_t,uint16_t> AnalogMap;
 	std::unordered_map<uint16_t,uint16_t> BinaryMap;
 	std::unordered_map<uint16_t,uint16_t> ControlMap;
+	std::unordered_map<uint16_t,uint16_t> OctetStringMap;
 };
 
 #endif /* INDEXMAPTRANSFORM_H_ */

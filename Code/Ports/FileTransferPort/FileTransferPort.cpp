@@ -34,18 +34,40 @@ FileTransferPort::FileTransferPort(const std::string& aName, const std::string& 
 	ProcessFile();
 }
 
-void FileTransferPort::Enable()
-{}
-void FileTransferPort::Disable()
-{}
-void FileTransferPort::Build()
-{}
-void FileTransferPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+void FileTransferPort::Enable_()
 {
-	if(auto log = spdlog::get("FileTransferPort"))
-		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
+	enabled = true;
+}
+void FileTransferPort::Disable_()
+{
+	enabled =false;
+}
+void FileTransferPort::Build()
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	Filename = pConf->FilenameInfo.InitialName;
+
+	if(pConf->Direction == TransferDirection::TX)
+	{
+		//TODO: setup periodic triggers
+	}
+}
+void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	if(!enabled)
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->trace("{}: Disabled - ignoring {} event from {}", Name, ToString(event->GetEventType()), SenderName);
+		return;
+	}
 
 	(*pStatusCallback)(CommandStatus::SUCCESS);
+}
+
+void FileTransferPort::Tx()
+{
+	if(!enabled)
+		return;
 }
 
 void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)

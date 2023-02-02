@@ -36,15 +36,35 @@ class FileTransferPort: public DataPort
 public:
 	FileTransferPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 
-	void Enable() override;
-	void Disable() override;
+	void Enable() override
+	{
+		pSyncStrand->dispatch([this](){Enable_();});
+	}
+
+	void Disable() override
+	{
+		pSyncStrand->dispatch([this](){Disable_();});
+	}
+
 	void Build() override;
 
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
+	{
+		pSyncStrand->dispatch([=](){Event_(event,SenderName,pStatusCallback);});
+	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 private:
+	//these run only on the synchronising strand
+	void Enable_();
+	void Disable_();
+	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void Tx();
+
+	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	std::string Filename = "";
+	bool enabled = false;
 };
 
 #endif /* FileTransferPort_H_ */
