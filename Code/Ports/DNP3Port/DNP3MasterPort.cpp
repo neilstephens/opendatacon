@@ -641,8 +641,8 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 					{
 						if (value > std::numeric_limits<float>::max())
 							value = std::numeric_limits<float>::max();
-						if (value < std::numeric_limits<float>::min())
-							value = std::numeric_limits<float>::min();
+						if (value < std::numeric_limits<float>::lowest())
+							value = std::numeric_limits<float>::lowest();
 						opendnp3::AnalogOutputFloat32 lCommand;
 						lCommand.value = static_cast<float>(value);
 						lCommand.status = FromODC(status);
