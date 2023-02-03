@@ -388,6 +388,14 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
 // Run() will act as the 'Main' thread
 void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 {
+	//some linux distros don't link some python libraries to the main libpython library
+	//resulting in unresolved symbols when loading those libs
+	//	observed on OEL/Redhat python 3.6, Ubuntu 20.04 python 3.8
+	//	the work-around is to load libpython globally to make the symbols available
+	#ifdef PYTHON_LINK_WO
+	auto python_lib = dlopen(PYTHON_LINK_WO, RTLD_LAZY|RTLD_GLOBAL);
+	#endif
+
 	try
 	{
 		LOGDEBUG("Py_Initialize");
@@ -492,6 +500,9 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 	{
 		LOGERROR("Exception on main Python thread De-init - {}", e.what());
 	}
+	#ifdef PYTHON_LINK_WO
+	if(python_lib) dlclose(python_lib);
+	#endif
 }
 
 PythonInitWrapper::~PythonInitWrapper()
