@@ -27,6 +27,8 @@
 #include "FileTransferPort.h"
 #include <opendatacon/util.h>
 
+using namespace odc;
+
 FileTransferPort::FileTransferPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
@@ -42,6 +44,21 @@ void FileTransferPort::Disable_()
 {
 	enabled =false;
 }
+
+void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::steady_timer> pTimer, size_t periodms, bool only_modified)
+{
+	if(err)
+		return;
+
+	Tx(only_modified);
+
+	pTimer->expires_from_now(std::chrono::milliseconds(periodms));
+	pTimer->async_wait([=](asio::error_code err)
+		{
+			Periodic(err,pTimer,periodms,only_modified);
+		});
+}
+
 void FileTransferPort::Build()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -49,7 +66,16 @@ void FileTransferPort::Build()
 
 	if(pConf->Direction == TransferDirection::TX)
 	{
-		//TODO: setup periodic triggers
+		//Setup periodic checks/triggers
+		for(const auto& t : pConf->TransferTriggers)
+		{
+			if(t.Type == TriggerType::Periodic)
+			{
+				//FIXME: store timer in a member container so we can cancel them when needed
+				std::shared_ptr<asio::steady_timer> pTimer = asio_service::Get()->make_steady_timer();
+				Periodic(asio::error_code(),pTimer,t.Periodms,t.OnlyWhenModified);
+			}
+		}
 	}
 }
 void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -61,13 +87,52 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 		return;
 	}
 
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	if(pConf->Direction == TransferDirection::TX)
+	{
+		//check if the event is a trigger to tx files
+		TransferTrigger trig;
+		trig.Index = event->GetIndex();
+		switch(event->GetEventType())
+		{
+			case EventType::OctetString:
+				trig.Type = TriggerType::OctetStringPath;
+				break;
+			case EventType::AnalogOutputInt16:
+				trig.Type = TriggerType::AnalogControl;
+				trig.Value = event->GetPayload<EventType::AnalogOutputInt16>().first;
+				break;
+			case EventType::AnalogOutputInt32:
+				trig.Type = TriggerType::AnalogControl;
+				trig.Value = event->GetPayload<EventType::AnalogOutputInt32>().first;
+				break;
+			case EventType::BinaryCommandEvent:
+				trig.Type = TriggerType::BinaryControl;
+				break;
+			default:
+				return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		}
+
+		auto t = pConf->TransferTriggers.find(trig);
+		if(t != pConf->TransferTriggers.end())
+		{
+			Tx(t->OnlyWhenModified);
+			return (*pStatusCallback)(CommandStatus::SUCCESS);
+		}
+
+		return (*pStatusCallback)(CommandStatus::UNDEFINED);
+	}
+
+
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
-void FileTransferPort::Tx()
+void FileTransferPort::Tx(bool only_modified)
 {
 	if(!enabled)
 		return;
+	//FIXME: stub
 }
 
 void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
@@ -136,14 +201,14 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 			{
 				if(jTXTrig.isMember("Type"))
 				{
+					TransferTrigger trig;
 					const auto typ = jTXTrig["Type"].asString();
 					if(typ == "Periodic")
 					{
 						if(jTXTrig.isMember("Periodms"))
 						{
-							pConf->TransferTriggers.emplace_back();
-							pConf->TransferTriggers.back().Type = TriggerType::Periodic;
-							pConf->TransferTriggers.back().Periodms = jTXTrig["Periodms"].asUInt();
+							trig.Type = TriggerType::Periodic;
+							trig.Periodms = jTXTrig["Periodms"].asUInt();
 						}
 						else
 						{
@@ -156,9 +221,8 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(jTXTrig.isMember("Index"))
 						{
-							pConf->TransferTriggers.emplace_back();
-							pConf->TransferTriggers.back().Type = TriggerType::BinaryControl;
-							pConf->TransferTriggers.back().Index = jTXTrig["Index"].asUInt();
+							trig.Type = TriggerType::BinaryControl;
+							trig.Index = jTXTrig["Index"].asUInt();
 						}
 						else
 						{
@@ -171,10 +235,9 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(jTXTrig.isMember("Index") && jTXTrig.isMember("Value"))
 						{
-							pConf->TransferTriggers.emplace_back();
-							pConf->TransferTriggers.back().Type = TriggerType::AnalogControl;
-							pConf->TransferTriggers.back().Index = jTXTrig["Index"].asUInt();
-							pConf->TransferTriggers.back().Value = jTXTrig["Value"].asInt64();
+							trig.Type = TriggerType::AnalogControl;
+							trig.Index = jTXTrig["Index"].asUInt();
+							trig.Value = jTXTrig["Value"].asInt64();
 						}
 						else
 						{
@@ -187,9 +250,8 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 					{
 						if(jTXTrig.isMember("Index"))
 						{
-							pConf->TransferTriggers.emplace_back();
-							pConf->TransferTriggers.back().Type = TriggerType::OctetStringPath;
-							pConf->TransferTriggers.back().Index = jTXTrig["Index"].asUInt();
+							trig.Type = TriggerType::OctetStringPath;
+							trig.Index = jTXTrig["Index"].asUInt();
 						}
 						else
 						{
@@ -206,8 +268,9 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 					}
 					if(jTXTrig.isMember("OnlyWhenModified"))
 					{
-						pConf->TransferTriggers.back().OnlyWhenModified = jTXTrig["OnlyWhenModified"].asBool();
+						trig.OnlyWhenModified = jTXTrig["OnlyWhenModified"].asBool();
 					}
+					pConf->TransferTriggers.insert(trig);
 				}
 				else if(log)
 					log->error("{}: A TransferTrigger needs a 'Type'. Got: {}", Name, jTXTrig.toStyledString());

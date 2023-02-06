@@ -42,8 +42,65 @@ struct TransferTrigger
 	TriggerType Type = TriggerType::Periodic;
 	size_t Periodms = 0;
 	size_t Index = 0;
-	int64_t Value = 0;
+	int32_t Value = 0;
 };
+
+template <typename T, typename ... Rest>
+void hash_combine(std::size_t& seed, const T& v, const Rest& ... rest)
+{
+	if constexpr (sizeof(size_t) >= 8)
+		seed ^= std::hash<T>{} (v) + 0x517cc1b727220a95 + (seed << 6) + (seed >> 2);
+	else
+		seed ^= std::hash<T>{} (v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	(hash_combine(seed, rest), ...);
+}
+
+namespace std
+{
+//Provide a specialisation of std::hash for TransferTrigger
+// this way we can use it directly as a key for std:: unordered containers
+template <> struct hash<TransferTrigger>
+{
+	std::size_t operator()(const TransferTrigger& key) const noexcept
+	{
+		std::size_t hash = 0;
+		switch(key.Type)
+		{
+			case TriggerType::Periodic:
+				hash_combine(hash, key.Type, key.Periodms);
+				break;
+			case TriggerType::AnalogControl:
+				hash_combine(hash, key.Type, key.Index, key.Value);
+				break;
+			case TriggerType::BinaryControl:
+			case TriggerType::OctetStringPath:
+				hash_combine(hash, key.Type, key.Index);
+				break;
+		}
+		return hash;
+	}
+};
+template <> struct equal_to<TransferTrigger>
+{
+	bool operator()(const TransferTrigger& lhs, const TransferTrigger& rhs) const
+	{
+		if(lhs.Type != rhs.Type)
+			return false;
+		switch(lhs.Type)
+		{
+			case TriggerType::Periodic:
+				return lhs.Periodms == rhs.Periodms;
+			case TriggerType::AnalogControl:
+				return lhs.Index == rhs.Index && lhs.Value == rhs.Value;
+			case TriggerType::BinaryControl:
+			case TriggerType::OctetStringPath:
+				return lhs.Index == rhs.Index;
+			default:
+				throw runtime_error("Unknown TransferTrigger Type");
+		}
+	}
+};
+} //std
 
 struct FilenameConf
 {
@@ -66,7 +123,7 @@ public:
 	std::shared_ptr<const EventInfo> FileNameTransmissionEvent = nullptr;
 	size_t SequenceIndexStart = 0;
 	size_t SequenceIndexStop = 0;
-	std::vector<TransferTrigger> TransferTriggers;
+	std::unordered_set<TransferTrigger> TransferTriggers;
 	FilenameConf FilenameInfo;
 	OverwriteMode Mode = OverwriteMode::FAIL;
 };

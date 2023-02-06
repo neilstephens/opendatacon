@@ -57,10 +57,11 @@ public:
 
 private:
 	//these run only on the synchronising strand
+	void Periodic(asio::error_code err, std::shared_ptr<asio::steady_timer> pTimer, size_t periodms, bool only_modified);
 	void Enable_();
 	void Disable_();
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
-	void Tx();
+	void Tx(bool only_modified);
 
 	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
 	std::string Filename = "";
