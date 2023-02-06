@@ -3,6 +3,7 @@ import json
 import sys
 from datetime import datetime
 import odc
+import readline
 
 # Logging Levels
 Trace = 0

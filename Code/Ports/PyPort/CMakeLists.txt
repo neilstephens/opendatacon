@@ -43,8 +43,15 @@ message("Python Debug Library ${PYTHON_LIBRARY_DEBUG} ")
 message("Python Release Library ${PYTHON_LIBRARY_RELEASE} ")
 message("Python link target string '${PYTHON_LIBRARIES}'")
 
-get_filename_component(PYTHON_LIBRARY_DEBUG_FILE ${PYTHON_LIBRARY_DEBUG} NAME)
-get_filename_component(PYTHON_LIBRARY_RELEASE_FILE ${PYTHON_LIBRARY_RELEASE} NAME)
+#get the real file if it's a symlink - it will be the last link in the chain:
+file_w_symlinks(PYTHON_LIBRARY_DEBUG_CHAIN ${PYTHON_LIBRARY_DEBUG})
+list(GET PYTHON_LIBRARY_DEBUG_CHAIN -1 PYTHON_LIBRARY_DEBUG_REAL)
+file_w_symlinks(PYTHON_LIBRARY_RELEASE_CHAIN ${PYTHON_LIBRARY_RELEASE})
+list(GET PYTHON_LIBRARY_RELEASE_CHAIN -1 PYTHON_LIBRARY_RELEASE_REAL)
+
+#strip off the directory
+get_filename_component(PYTHON_LIBRARY_DEBUG_FILE ${PYTHON_LIBRARY_DEBUG_REAL} NAME)
+get_filename_component(PYTHON_LIBRARY_RELEASE_FILE ${PYTHON_LIBRARY_RELEASE_REAL} NAME)
 
 if("${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
 	configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/PyPortSim.py COPYONLY )
