@@ -43,6 +43,16 @@ message("Python Debug Library ${PYTHON_LIBRARY_DEBUG} ")
 message("Python Release Library ${PYTHON_LIBRARY_RELEASE} ")
 message("Python link target string '${PYTHON_LIBRARIES}'")
 
+#get the real file if it's a symlink - it will be the last link in the chain:
+file_w_symlinks(PYTHON_LIBRARY_DEBUG_CHAIN ${PYTHON_LIBRARY_DEBUG})
+list(GET PYTHON_LIBRARY_DEBUG_CHAIN -1 PYTHON_LIBRARY_DEBUG_REAL)
+file_w_symlinks(PYTHON_LIBRARY_RELEASE_CHAIN ${PYTHON_LIBRARY_RELEASE})
+list(GET PYTHON_LIBRARY_RELEASE_CHAIN -1 PYTHON_LIBRARY_RELEASE_REAL)
+
+#strip off the directory
+get_filename_component(PYTHON_LIBRARY_DEBUG_FILE ${PYTHON_LIBRARY_DEBUG_REAL} NAME)
+get_filename_component(PYTHON_LIBRARY_RELEASE_FILE ${PYTHON_LIBRARY_RELEASE_REAL} NAME)
+
 if("${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
 	configure_file(PythonCode/PyPortSim.py ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/PyPortSim.py COPYONLY )
 else()
@@ -55,6 +65,12 @@ endif()
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_include_directories(${PROJECT_NAME} PRIVATE "${PYTHON_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} ODC HTTP ${PYTHON_LIBRARIES})
+
+set(PYTHON_LINK_DEF $<IF:$<CONFIG:DEBUG>,PYTHON_LINK_WO="${PYTHON_LIBRARY_DEBUG_FILE}",PYTHON_LINK_WO="${PYTHON_LIBRARY_RELEASE_FILE}">)
+if(PYTHON_LINK_DEF MATCHES "\.so" AND UNIX)
+	message("Setting ${PYTHON_LINK_DEF} for linux python lib linking issues")
+	target_compile_definitions(${PROJECT_NAME} PUBLIC ${PYTHON_LINK_DEF})
+endif()
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
