@@ -48,13 +48,17 @@ TEST_CASE(SUITE("Triggers"))
 		auto conf = GetTXConfigJSON();
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", conf), deletePort);
 
-		NullPort Null("Null","","");
+		NullPort Null("Null","",""); //Overload NullPort to collect some stats
 		PUT->Subscribe(&Null,"Null");
 
 		PUT->Build();
 		PUT->Enable();
 
+		//TODO: write a file
+
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		//TODO: check stats
 
 		PUT->Disable();
 
