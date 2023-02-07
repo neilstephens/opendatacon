@@ -33,24 +33,29 @@ using namespace odc;
 
 class FileTransferPort: public DataPort
 {
+private:
+	//copy this to posted handlers so we can manage lifetime
+	//std::shared_ptr<void> handler_tracker;
+
 public:
 	FileTransferPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
+	~FileTransferPort();
 
 	void Enable() override
 	{
-		pSyncStrand->dispatch([this](){Enable_();});
+		pSyncStrand->dispatch([this,h{handler_tracker}](){Enable_();});
 	}
 
 	void Disable() override
 	{
-		pSyncStrand->dispatch([this](){Disable_();});
+		pSyncStrand->dispatch([this,h{handler_tracker}](){Disable_();});
 	}
 
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
 	{
-		pSyncStrand->dispatch([=](){Event_(event,SenderName,pStatusCallback);});
+		pSyncStrand->dispatch([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
 	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
@@ -61,11 +66,18 @@ private:
 	void Enable_();
 	void Disable_();
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void TxPath(std::string path, std::string tx_name, bool only_modified);
 	void Tx(bool only_modified);
 
+	//copy this to posted handlers so we can manage lifetime
+	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
-	std::string Filename = "";
+
 	bool enabled = false;
+	size_t seq = 0;
+	std::string Filename = "";
+	std::vector<std::shared_ptr<asio::steady_timer>> Timers;
+	std::unordered_map<std::string,std::filesystem::file_time_type> FileModTimes;
 };
 
 #endif /* FileTransferPort_H_ */

@@ -36,34 +36,23 @@ FileTransferPort::FileTransferPort(const std::string& aName, const std::string& 
 	ProcessFile();
 }
 
+FileTransferPort::~FileTransferPort()
+{
+	for(const auto& t : Timers)
+		t->cancel();
+
+	//There may be some outstanding handlers
+	std::weak_ptr<void> tracker = handler_tracker;
+	handler_tracker.reset();
+
+	while(!tracker.expired() && !pIOS->stopped())
+		pIOS->poll_one();
+}
+
 void FileTransferPort::Enable_()
 {
-	enabled = true;
-}
-void FileTransferPort::Disable_()
-{
-	enabled =false;
-}
-
-void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::steady_timer> pTimer, size_t periodms, bool only_modified)
-{
-	if(err)
-		return;
-
-	Tx(only_modified);
-
-	pTimer->expires_from_now(std::chrono::milliseconds(periodms));
-	pTimer->async_wait([=](asio::error_code err)
-		{
-			Periodic(err,pTimer,periodms,only_modified);
-		});
-}
-
-void FileTransferPort::Build()
-{
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-	Filename = pConf->FilenameInfo.InitialName;
-
+	enabled = true;
 	if(pConf->Direction == TransferDirection::TX)
 	{
 		//Setup periodic checks/triggers
@@ -71,12 +60,39 @@ void FileTransferPort::Build()
 		{
 			if(t.Type == TriggerType::Periodic)
 			{
-				//FIXME: store timer in a member container so we can cancel them when needed
-				std::shared_ptr<asio::steady_timer> pTimer = asio_service::Get()->make_steady_timer();
-				Periodic(asio::error_code(),pTimer,t.Periodms,t.OnlyWhenModified);
+				Timers.push_back(asio_service::Get()->make_steady_timer());
+				pSyncStrand->dispatch([=,h{handler_tracker}] {Periodic(asio::error_code(),Timers.back(),t.Periodms,t.OnlyWhenModified);});
 			}
 		}
 	}
+}
+void FileTransferPort::Disable_()
+{
+	enabled =false;
+	for(const auto& t : Timers)
+		t->cancel();
+	Timers.clear();
+}
+
+void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::steady_timer> pTimer, size_t periodms, bool only_modified)
+{
+	if(err || !enabled)
+		return;
+
+	Tx(only_modified);
+
+	pTimer->expires_from_now(std::chrono::milliseconds(periodms));
+	pTimer->async_wait(pSyncStrand->wrap([=,h{handler_tracker}](asio::error_code err)
+		{
+			Periodic(err,pTimer,periodms,only_modified);
+		}));
+}
+
+void FileTransferPort::Build()
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	Filename = pConf->FilenameInfo.InitialName;
+	seq = pConf->SequenceIndexStart;
 }
 void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
@@ -128,17 +144,120 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
+void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_modified)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	//convert path to a standard format
+	auto base_path = std::filesystem::path(pConf->Directory);
+	auto std_path = std::filesystem::path(path);
+	if(std_path.is_relative())
+		std_path = base_path/std_path;
+	std_path = std::filesystem::weakly_canonical(std_path);
+
+	//now make sure it's a subdirectory of our configered dir
+	auto rel_path = std::filesystem::relative(std_path,base_path);
+	if(rel_path.string() == "" || rel_path.string().substr(0,2) == "..")
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->warn("{}: Requested path not in transfer directory: '{}'", Name, std_path.string());
+		return;
+	}
+
+	path = std_path.string();
+
+	if(!std::filesystem::exists(path))
+	{
+		FileModTimes.erase(path);
+		return;
+	}
+
+	if(only_modified)
+	{
+		auto updated_time = std::filesystem::last_write_time(path);
+		auto last_update_it = FileModTimes.find(path);
+		if(last_update_it != FileModTimes.end())
+		{
+			if(updated_time > last_update_it->second)
+				FileModTimes[path] = updated_time;
+			else //not modified
+				return;
+		}
+		else //it's new
+			FileModTimes[path] = updated_time;
+	}
+
+	if(!tx_name.empty())
+	{
+		auto name_event = std::make_shared<EventInfo>(*pConf->FileNameTransmissionEvent);
+		name_event->SetTimestamp();
+		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(tx_name)));
+		std::atomic_bool recv(false);
+		PublishEvent(name_event,std::make_shared<std::function<void (CommandStatus)>>([&recv](CommandStatus){recv = true;}));
+		//TODO: make a timeout or an option to not sync
+		while(!recv)
+			pIOS->poll_one();
+	}
+
+	std::ifstream fin(path, std::ios::binary);
+	if (fin.fail())
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->error("{}: Failed to open file path for reading: '{}'",Name,path);
+		return;
+	}
+
+	do
+	{
+		auto file_data_chunk = std::vector<char>(255);
+		fin.read(file_data_chunk.data(),255);
+		if(auto data_size = fin.gcount() < 255)
+			file_data_chunk.resize(data_size);
+
+		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
+		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
+		PublishEvent(chunk_event);
+		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+	}
+	while(fin);
+	fin.close();
+
+	//Send an empty OctetString as EOF
+	auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
+	eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
+	PublishEvent(eof_event);
+	seq = pConf->SequenceIndexStart;
+}
+
 void FileTransferPort::Tx(bool only_modified)
 {
-	if(!enabled)
-		return;
-	//FIXME: stub
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	for(auto& file : std::filesystem::recursive_directory_iterator(pConf->Directory))
+	{
+		auto filename = file.path().filename().string();
+		std::smatch match_results;
+		if(std::regex_match(filename, match_results, *pConf->pFilenameRegex))
+		{
+			std::string tx_name = "";
+			if(pConf->FileNameTransmissionEvent)
+			{
+				if(pConf->FileNameTransmissionMatchGroup > match_results.size())
+					tx_name = match_results.position(pConf->FileNameTransmissionMatchGroup);
+				else
+					tx_name = filename;
+			}
+			TxPath(file.path().string(), tx_name, only_modified);
+		}
+	}
 }
 
 void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 {
+	if(!JSONRoot.isObject()) return;
+
 	auto log = spdlog::get("FileTransferPort");
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
 	if(JSONRoot.isMember("Direction"))
 	{
 		const auto dir = JSONRoot["Direction"].asString();
@@ -152,6 +271,16 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("Directory"))
 	{
 		pConf->Directory = JSONRoot["Directory"].asString();
+		try
+		{
+			pConf->Directory = std::filesystem::canonical(pConf->Directory).string();
+		}
+		catch(const std::exception& ex)
+		{
+			auto default_path = std::filesystem::current_path().string();
+			if(log) log->error("{}: Problem using '{}' as directory: '{}'. Using {}", Name, pConf->Directory, ex.what(), default_path);
+			pConf->Directory = default_path;
+		}
 	}
 	if(JSONRoot.isMember("FilenameRegex"))
 	{
@@ -175,7 +304,7 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 		Json::Value jFNTX = JSONRoot["FileNameTransmission"];
 		if(jFNTX.isMember("Index") && jFNTX.isMember("MatchGroup"))
 		{
-			pConf->FileNameTransmissionEvent = std::make_shared<EventInfo>(EventType::OctetString, jFNTX["Index"].asUInt());
+			pConf->FileNameTransmissionEvent = std::make_shared<EventInfo>(EventType::OctetString, jFNTX["Index"].asUInt(), Name);
 			pConf->FileNameTransmissionMatchGroup = jFNTX["MatchGroup"].asUInt();
 		}
 		else if(log)
