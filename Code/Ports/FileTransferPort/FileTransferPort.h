@@ -28,6 +28,10 @@
 #define FileTransferPort_H_
 #include "FileTransferPortConf.h"
 #include <opendatacon/DataPort.h>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 using namespace odc;
 
@@ -68,6 +72,7 @@ private:
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void TxPath(std::string path, std::string tx_name, bool only_modified);
 	void Tx(bool only_modified);
+	std::pair<bool,std::string> FileNameTransmissionMatch(const std::string& filename);
 
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
@@ -78,6 +83,7 @@ private:
 	std::string Filename = "";
 	std::vector<std::shared_ptr<asio::steady_timer>> Timers;
 	std::unordered_map<std::string,std::filesystem::file_time_type> FileModTimes;
+	bool rx_in_progress = false;
 };
 
 #endif /* FileTransferPort_H_ */
