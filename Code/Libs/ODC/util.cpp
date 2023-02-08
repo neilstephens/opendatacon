@@ -28,6 +28,8 @@
 #include <regex>
 #include <utility>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 
 const std::size_t bcd_pack_size = 4;
 
@@ -270,14 +272,25 @@ std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size)
 	return decimal.substr(decimal.size() - size, size);
 }
 
-std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds)
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string format)
 {
 	auto tm = spdlog::details::os::localtime(milliseconds / 1000);
-	char buff[64] = {0};
-	std::sprintf(buff, "%04d-%02d-%02d %02d:%02d:%02d.%03d",
-		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-		tm.tm_hour, tm.tm_min, tm.tm_sec, static_cast<int>(milliseconds % 1000));
-	return std::string(buff);
+
+	//do milliseconds ourself
+	std::string milli_padded = "000";
+	std::sprintf(milli_padded.data(),"%03d",static_cast<int>(milliseconds % 1000));
+	auto milli_pos = format.find("%e");
+	while(milli_pos != format.npos)
+	{
+		format.erase(milli_pos, 2);
+		format.insert(milli_pos, milli_padded);
+		milli_pos = format.find("%e",milli_pos);
+	}
+
+	std::ostringstream ss;
+	ss << std::put_time(&tm, format.c_str());
+
+	return ss.str();
 }
 
 //this is faster than using stringstream to format to hex - minimises allocations
