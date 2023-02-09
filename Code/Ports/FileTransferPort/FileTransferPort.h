@@ -32,6 +32,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <fstream>
+#include <deque>
 
 using namespace odc;
 
@@ -84,6 +86,8 @@ private:
 	std::vector<std::shared_ptr<asio::steady_timer>> Timers;
 	std::unordered_map<std::string,std::filesystem::file_time_type> FileModTimes;
 	bool rx_in_progress = false;
+	std::ofstream fout;
+	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> event_buffer;
 };
 
 #endif /* FileTransferPort_H_ */

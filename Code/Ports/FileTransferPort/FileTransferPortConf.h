@@ -123,6 +123,7 @@ public:
 	std::shared_ptr<const EventInfo> FileNameTransmissionEvent = nullptr;
 	size_t SequenceIndexStart = 0;
 	size_t SequenceIndexStop = 0;
+	int64_t SequenceIndexEOF = -1;
 	std::unordered_set<TransferTrigger> TransferTriggers;
 	FilenameConf FilenameInfo;
 	OverwriteMode Mode = OverwriteMode::FAIL;
