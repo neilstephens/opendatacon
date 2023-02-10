@@ -240,7 +240,7 @@ jobs:
       name: Setup i386 Environment
       run: |
         apt-get update
-        apt-get install -y libmodbus-dev socat psmisc openssl libssl-dev g++ git cmake make binutils python3 python3-dev
+        apt-get install -y libmodbus-dev socat psmisc openssl libssl-dev g++ git cmake file make binutils python3 python3-dev
         echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic -DARCH_DESC=x86' >> $GITHUB_ENV
 
     - name: Finish run wrapper
