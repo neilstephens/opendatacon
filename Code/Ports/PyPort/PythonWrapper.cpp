@@ -903,31 +903,6 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 	return pyFunc;
 }
 
-void PythonWrapper::DumpStackTrace()
-{
-	PyThreadState* tstate = PyThreadState_GET();
-	if (nullptr != tstate && nullptr != tstate->frame)
-	{
-		PyFrameObject* frame = tstate->frame;
-
-		LOGERROR("Python stack trace:");
-		while (nullptr != frame)
-		{
-			// int line = frame->f_lineno;
-			/*
-			 frame->f_lineno will not always return the correct line number
-			 you need to call PyCode_Addr2Line().
-			*/
-			int line = PyCode_Addr2Line(frame->f_code, frame->f_lasti);
-			const char* filename = PyUnicode_AsUTF8(frame->f_code->co_filename);
-			const char* funcname = PyUnicode_AsUTF8(frame->f_code->co_name);
-			printf("    %s(%d): %s\n", filename, line, funcname);
-			LOGERROR(fmt::format("Trace : {}({}): {}", filename, line, funcname));
-			frame = frame->f_back;
-		}
-	}
-}
-
 void PythonWrapper::PyErrOutput()
 {
 	//TODO Look at https://stackoverflow.com/questions/1796510/accessing-a-python-traceback-from-the-c-api
@@ -949,7 +924,6 @@ void PythonWrapper::PyErrOutput()
 			if (err_msg)
 			{
 				LOGERROR("Python Error {}", err_msg);
-				PythonWrapper::DumpStackTrace();
 			}
 		}
 		PyErr_Restore(ptype, pvalue, ptraceback); // Do we need to do this or DECREF the variables? This seems to work.

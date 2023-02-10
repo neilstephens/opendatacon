@@ -113,7 +113,6 @@ public:
 	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.
 
 	static void PyErrOutput();
-	static void DumpStackTrace();
 
 	std::string Name;
 
