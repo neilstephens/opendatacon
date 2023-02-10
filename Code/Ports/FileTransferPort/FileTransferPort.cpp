@@ -117,6 +117,7 @@ void FileTransferPort::Build()
 		}
 	}
 }
+
 void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
@@ -134,6 +135,7 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 	if(pConf->Direction == TransferDirection::RX)
 		return RxEvent(event, SenderName, pStatusCallback);
 }
+
 void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -179,6 +181,7 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 
 	return (*pStatusCallback)(CommandStatus::UNDEFINED);
 }
+
 void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -212,7 +215,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	{
 		if(rx_in_progress)
 		{
-			//FIXME: the last events of the previous file are still in flight - what to do?
+			event_buffer[index].push_back(event);
+			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
 		//We need to fill out filename template with event and optionally date
 		std::string templated_name = pConf->FilenameInfo.Template;
@@ -266,6 +270,9 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		//push and pop everything through the Q for simplicity - optimise if it pops up in a profile as a hot path
 		//TODO: somehow limit the buffer size
 		event_buffer[index].push_back(event);
+		//call the callback now because we've successfully queued the event
+		(*pStatusCallback)(CommandStatus::SUCCESS);
+
 		while(!event_buffer[seq].empty())
 		{
 			auto popped = event_buffer[seq].front();
@@ -282,14 +289,19 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 					if(auto log = spdlog::get("FileTransferPort"))
 						log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 
-					//In the case susequent file transfers aren't sync'd by sending the name first, we could already have an event from the next file
+					//we could already have events from the next file
+					auto process_event =
+						[&](size_t idx)
+						{
+							auto popped = event_buffer[idx].front();
+							event_buffer[idx].pop_front();
+							Event_(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+						};
+					if(!event_buffer[pConf->FilenameInfo.Event->GetIndex()].empty())
+						process_event(pConf->FilenameInfo.Event->GetIndex());
 					if(!event_buffer[seq].empty())
-					{
-						auto popped = event_buffer[seq].front();
-						event_buffer[seq].pop_front();
-						Event_(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
-					}
-					return (*pStatusCallback)(CommandStatus::SUCCESS);
+						process_event(seq);
+					return;
 				}
 				if(!fout.write(static_cast<const char*>(OSBuffer.data()),OSBuffer.size()))
 				{
@@ -301,7 +313,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			}
 			//else - we should have already logged an error when fout went bad.
 		}
-		return (*pStatusCallback)(CommandStatus::SUCCESS);
+		return;
 	}
 
 	//it's not a filename, or file data at this point
