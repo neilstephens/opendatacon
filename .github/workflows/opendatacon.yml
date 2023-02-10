@@ -193,7 +193,7 @@ jobs:
       fail-fast: false
       matrix:
         build-type: [Release,Debug]
-        docker: ['library/oraclelinux:7.6','i386/ubuntu:bionic']
+        docker: ['library/oraclelinux:7.6','i386/debian:bookworm-slim']
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.docker }}
@@ -240,12 +240,7 @@ jobs:
       name: Setup i386 Environment
       run: |
         apt-get update
-        apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
-        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-        apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
-        apt-get update
-        apt-get install -y libmodbus-dev socat psmisc libc6-dev openssl libssl-dev
-        apt-get install -y python3.6 python3.6-dev g++ git cmake make binutils
+        apt-get install -y libmodbus-dev socat psmisc openssl libssl-dev g++ git cmake make binutils python3 python3-dev
         echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic -DARCH_DESC=x86' >> $GITHUB_ENV
 
     - name: Finish run wrapper

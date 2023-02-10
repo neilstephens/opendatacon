@@ -190,6 +190,7 @@ else()
 		message("using special options for GNU compiler")
 		#--no-gnu-unique is required for true dynamic loading and unloading of shared libs
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --no-gnu-unique")
+		set(FS "stdc++fs")
 		#now some trickery to see which glibc
 		execute_process(
 			COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libc.so.6
