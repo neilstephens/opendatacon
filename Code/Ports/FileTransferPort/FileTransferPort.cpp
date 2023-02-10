@@ -269,6 +269,7 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 						fout.close();
 						rx_in_progress = false;
 						seq = pConf->SequenceIndexStart;
+						++FilesTransferred;
 						if(auto log = spdlog::get("FileTransferPort"))
 							log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 
@@ -286,6 +287,7 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 						if(auto log = spdlog::get("FileTransferPort"))
 							log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 					}
+					FileBytesTransferred += OSBuffer.size();
 					++seq;
 				}
 				//else - we should have already logged an error when fout went bad.
@@ -377,6 +379,7 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
 		PublishEvent(chunk_event);
 		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+		FileBytesTransferred += data_size;
 	}
 	fin.close();
 
@@ -395,17 +398,36 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 		PublishEvent(eof_event);
 	}
 	seq = pConf->SequenceIndexStart;
+	++FilesTransferred;
 }
 
 void FileTransferPort::Tx(bool only_modified)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-	for(auto& file : std::filesystem::recursive_directory_iterator(pConf->Directory))
+	size_t dir_count = 0, match_count = 0;
+	auto file_visit = [&](const auto& file)
+				{
+					++dir_count;
+					auto [match,tx_name] = FileNameTransmissionMatch(file.path().filename().string());
+					if(match)
+					{
+						++match_count;
+						TxPath(file.path().string(), tx_name, only_modified);
+					}
+				};
+	if(pConf->Recursive)
 	{
-		auto [match,tx_name] = FileNameTransmissionMatch(file.path().filename().string());
-		if(match)
-			TxPath(file.path().string(), tx_name, only_modified);
+		for(const auto& file : std::filesystem::recursive_directory_iterator(pConf->Directory))
+			file_visit(file);
 	}
+	else
+	{
+		for(const auto& file : std::filesystem::directory_iterator(pConf->Directory))
+			file_visit(file);
+	}
+
+	TxFileDirCount = dir_count;
+	TxFileMatchCount = match_count;
 }
 
 std::pair<bool,std::string> FileTransferPort::FileNameTransmissionMatch(const std::string& filename)
@@ -635,3 +657,12 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
+const Json::Value FileTransferPort::GetStatistics() const
+{
+	Json::Value ret;
+	ret["FilesTransferred"] = size_t(FilesTransferred);
+	ret["FileBytesTransferred"] = size_t(FileBytesTransferred);
+	ret["TxFileDirCount"] = size_t(TxFileDirCount);
+	ret["TxFileMatchCount"] = size_t(TxFileMatchCount);
+	return ret;
+}

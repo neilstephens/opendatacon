@@ -34,6 +34,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <deque>
+#include <atomic>
 
 using namespace odc;
 
@@ -65,6 +66,7 @@ public:
 	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
+	const Json::Value GetStatistics() const override;
 
 private:
 	//these run only on the synchronising strand
@@ -88,6 +90,12 @@ private:
 	bool rx_in_progress = false;
 	std::ofstream fout;
 	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> event_buffer;
+
+	//statistics
+	std::atomic<size_t> FilesTransferred = 0;
+	std::atomic<size_t> FileBytesTransferred = 0;
+	std::atomic<size_t> TxFileDirCount = 0;
+	std::atomic<size_t> TxFileMatchCount = 0;
 };
 
 #endif /* FileTransferPort_H_ */

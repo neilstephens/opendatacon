@@ -65,7 +65,7 @@ inline Json::Value GetTXConfigJSON()
 		"Directory" : "./",
 		"FilenameRegex" : "(.*\\.bin)",
 		"Recursive" : true,
-		"FileNameTransmission" : {"Index" : 0, "MatchGroup" : 1},	//send filename and get confirmation before starting transfer (start tx in callback)
+		"FileNameTransmission" : {"Index" : 0, "MatchGroup" : 1},	//send filename and get confirmation before starting transfer
 		"SequenceIndexRange" : {"Start" : 1, "Stop" : 15},
 		"TransferTriggers" :
 		[
