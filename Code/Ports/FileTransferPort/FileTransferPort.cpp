@@ -242,9 +242,9 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 						log->error("{}: File '{}' already exists and OverwriteMode::FAIL", Name, path.string());
 					return (*pStatusCallback)(CommandStatus::BLOCKED);
 				}
-				auto open_flags = std::ios_base::binary;
+				std::ios::openmode open_flags = std::ios::binary;
 				if(pConf->Mode == OverwriteMode::APPEND)
-					open_flags |= std::ios_base::app;
+					open_flags |= std::ios::app;
 				fout.open(path,open_flags);
 				if(fout.fail())
 				{
