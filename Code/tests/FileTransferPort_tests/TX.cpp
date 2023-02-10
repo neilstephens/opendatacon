@@ -27,8 +27,11 @@
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
+#include <filesystem>
 
 #define SUITE(name) "FileTransferPortTXTestSuite - " name
+
+const unsigned int test_timeout = 30000;
 
 TEST_CASE(SUITE("Triggers"))
 {
@@ -48,17 +51,56 @@ TEST_CASE(SUITE("Triggers"))
 		auto conf = GetTXConfigJSON();
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", conf), deletePort);
 
-		NullPort Null("Null","",""); //Overload NullPort to collect some stats
+		NullPort Null("Null","","");
 		PUT->Subscribe(&Null,"Null");
 
 		PUT->Build();
+
+		//clear the slate
+		std::remove("FileTxTest1.bin");
+		std::remove("FileTxTest2.bin");
+		std::remove("sub/FileTxTest3.bin");
+		std::remove("sub/FileTxTest4.bin");
+		std::remove("sub/sub/FileTxTest5.bin");
+		std::remove("sub/sub/FileTxTest6.bin");
+		std::remove("FileTxTest7.notbin");
+		std::remove("FileTxTest8.notbin");
+		std::remove("sub/FileTxTest9.notbin");
+		std::remove("sub/FileTxTest10.notbin");
+		std::remove("sub/sub/FileTxTest11.notbin");
+		std::remove("sub/sub/FileTxTest12.notbin");
+
 		PUT->Enable();
 
-		//TODO: write a file
+		//create some files that match our transfer pattern
+		std::filesystem::create_directories(std::filesystem::path("sub/sub"));
+		WriteFile("FileTxTest1.bin",1300); //1300 not a multiple of 255
+		WriteFile("FileTxTest2.bin",5100); //5100 is a multiple of 255
+		WriteFile("sub/FileTxTest3.bin",1300);
+		WriteFile("sub/FileTxTest4.bin",5100);
+		WriteFile("sub/sub/FileTxTest5.bin",1300);
+		WriteFile("sub/sub/FileTxTest6.bin",5100);
+		//and a few that don't match (just in case there aren't any)
+		WriteFile("FileTxTest7.notbin",13);
+		WriteFile("FileTxTest8.notbin",51);
+		WriteFile("sub/FileTxTest9.notbin",13);
+		WriteFile("sub/FileTxTest10.notbin",51);
+		WriteFile("sub/sub/FileTxTest11.notbin",13);
+		WriteFile("sub/sub/FileTxTest12.notbin",51);
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		size_t count = 0;
+		auto stats = PUT->GetStatistics();
+		while(stats["FilesTransferred"].asUInt() < 6 && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+			stats = PUT->GetStatistics();
+		}
 
-		//TODO: check stats
+		REQUIRE(stats["TxFileMatchCount"].asUInt() == 6);
+		REQUIRE(stats["FilesTransferred"].asUInt() == 6);
+		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200);
+		REQUIRE((stats["TxFileDirCount"].asUInt() - stats["TxFileMatchCount"].asUInt()) >= 6);
 
 		PUT->Disable();
 

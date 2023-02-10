@@ -31,6 +31,7 @@
 #include <opendatacon/util.h>
 #include <opendatacon/Platform.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <fstream>
 
 extern spdlog::level::level_enum log_level;
 
@@ -63,7 +64,7 @@ inline Json::Value GetTXConfigJSON()
 	{
 		"Direction" : "TX",
 		"Directory" : "./",
-		"FilenameRegex" : "(.*\\.bin)",
+		"FilenameRegex" : "(FileTxTest.*\\.bin)",
 		"Recursive" : true,
 		"FileNameTransmission" : {"Index" : 0, "MatchGroup" : 1},	//send filename and get confirmation before starting transfer
 		"SequenceIndexRange" : {"Start" : 1, "Stop" : 15},
@@ -87,6 +88,20 @@ inline Json::Value GetTXConfigJSON()
 			log->error("Failed to parse configuration: '{}'", err_str);
 	}
 	return json_conf;
+}
+
+inline bool WriteFile(const std::string& name, size_t size)
+{
+	std::ofstream fout(name, std::ios::binary);
+	if(fout.fail())
+		return false;
+	size_t i = 0;
+	while(i++ < size && fout)
+		fout<<uint8_t(rand()%255);
+	if(fout.fail())
+		return false;
+	fout.close();
+	return true;
 }
 
 #endif // TESTHELPERS_H
