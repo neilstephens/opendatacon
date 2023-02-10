@@ -129,175 +129,183 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
 	if(pConf->Direction == TransferDirection::TX)
-	{
-		//check if the event is a trigger to tx files
-		TransferTrigger trig;
-		trig.Index = event->GetIndex();
-		switch(event->GetEventType())
-		{
-			case EventType::OctetString:
-				trig.Type = TriggerType::OctetStringPath;
-				break;
-			case EventType::AnalogOutputInt16:
-				trig.Type = TriggerType::AnalogControl;
-				trig.Value = event->GetPayload<EventType::AnalogOutputInt16>().first;
-				break;
-			case EventType::AnalogOutputInt32:
-				trig.Type = TriggerType::AnalogControl;
-				trig.Value = event->GetPayload<EventType::AnalogOutputInt32>().first;
-				break;
-			case EventType::BinaryCommandEvent:
-				trig.Type = TriggerType::BinaryControl;
-				break;
-			default:
-				return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-		}
+		return TxEvent(event, SenderName, pStatusCallback);
 
-		auto t = pConf->TransferTriggers.find(trig);
-		if(t != pConf->TransferTriggers.end())
-		{
-			if(t->Type == TriggerType::OctetStringPath)
-			{
-				auto path = ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw);
-				auto [match,tx_name] = FileNameTransmissionMatch(std::filesystem::path(path).filename().string());
-				if(match)
-					TxPath(path,tx_name,t->OnlyWhenModified);
-				else if(auto log = spdlog::get("FileTransferPort"))
-					log->warn("{}: OctetString path event '{}' doesn't match filename regex.", Name, path);
-			}
-			else
-				Tx(t->OnlyWhenModified);
-			return (*pStatusCallback)(CommandStatus::SUCCESS);
-		}
-
-		return (*pStatusCallback)(CommandStatus::UNDEFINED);
-	}
-	else //RX
+	if(pConf->Direction == TransferDirection::RX)
+		return RxEvent(event, SenderName, pStatusCallback);
+}
+void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	//check if the event is a trigger to tx files
+	TransferTrigger trig;
+	trig.Index = event->GetIndex();
+	switch(event->GetEventType())
 	{
-		if(event->GetEventType() != EventType::OctetString)
+		case EventType::OctetString:
+			trig.Type = TriggerType::OctetStringPath;
+			break;
+		case EventType::AnalogOutputInt16:
+			trig.Type = TriggerType::AnalogControl;
+			trig.Value = event->GetPayload<EventType::AnalogOutputInt16>().first;
+			break;
+		case EventType::AnalogOutputInt32:
+			trig.Type = TriggerType::AnalogControl;
+			trig.Value = event->GetPayload<EventType::AnalogOutputInt32>().first;
+			break;
+		case EventType::BinaryCommandEvent:
+			trig.Type = TriggerType::BinaryControl;
+			break;
+		default:
 			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+	}
 
-		auto index = event->GetIndex();
-
-		if(static_cast<int64_t>(index) == pConf->SequenceIndexEOF)
+	auto t = pConf->TransferTriggers.find(trig);
+	if(t != pConf->TransferTriggers.end())
+	{
+		if(t->Type == TriggerType::OctetStringPath)
 		{
-			//this is a stand-in for a zero length event reprsenting EOF
-			//the payload is the real sequence number in ascii
-			try
-			{
-				index = std::stoul(ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
-			}
-			catch(const std::exception& e)
-			{
-				if(auto log = spdlog::get("FileTransferPort"))
-					log->error("{}: OctetString EOF event with unparsable payload: '{}'.", Name, e.what());
-				return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-			}
-			//replace the event with the same thing, but new (sequence number) index and zero-length payload
-			EventInfo newevent(event->GetEventType(), index, event->GetSourcePort(), event->GetQuality(), event->GetTimestamp());
-			newevent.SetPayload<EventType::OctetString>(OctetStringBuffer());
-			event = std::make_shared<const EventInfo>(newevent);
+			auto path = ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw);
+			auto [match,tx_name] = FileNameTransmissionMatch(std::filesystem::path(path).filename().string());
+			if(match)
+				TxPath(path,tx_name,t->OnlyWhenModified);
+			else if(auto log = spdlog::get("FileTransferPort"))
+				log->warn("{}: OctetString path event '{}' doesn't match filename regex.", Name, path);
 		}
+		else
+			Tx(t->OnlyWhenModified);
+		return (*pStatusCallback)(CommandStatus::SUCCESS);
+	}
 
-		if(index == pConf->FilenameInfo.Event->GetIndex())
+	return (*pStatusCallback)(CommandStatus::UNDEFINED);
+}
+void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	if(event->GetEventType() != EventType::OctetString)
+		return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+
+	auto index = event->GetIndex();
+
+	if(static_cast<int64_t>(index) == pConf->SequenceIndexEOF)
+	{
+		//this is a stand-in for a zero length event reprsenting EOF
+		//the payload is the real sequence number in ascii
+		try
 		{
-			if(rx_in_progress)
-			{
-				//FIXME: the last events of the previous file are still in flight - what to do?
-			}
-			//We need to fill out filename template with event and optionally date
-			std::string templated_name = pConf->FilenameInfo.Template;
-			auto pos = templated_name.find(pConf->FilenameInfo.EventToken);
+			index = std::stoul(ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+		}
+		catch(const std::exception& e)
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: OctetString EOF event with unparsable payload: '{}'.", Name, e.what());
+			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		}
+		//replace the event with the same thing, but new (sequence number) index and zero-length payload
+		EventInfo newevent(event->GetEventType(), index, event->GetSourcePort(), event->GetQuality(), event->GetTimestamp());
+		newevent.SetPayload<EventType::OctetString>(OctetStringBuffer());
+		event = std::make_shared<const EventInfo>(newevent);
+	}
+
+	if(index == pConf->FilenameInfo.Event->GetIndex())
+	{
+		if(rx_in_progress)
+		{
+			//FIXME: the last events of the previous file are still in flight - what to do?
+		}
+		//We need to fill out filename template with event and optionally date
+		std::string templated_name = pConf->FilenameInfo.Template;
+		auto pos = templated_name.find(pConf->FilenameInfo.EventToken);
+		if(pos != templated_name.npos)
+		{
+			templated_name.erase(pos, pConf->FilenameInfo.EventToken.size());
+			templated_name.insert(pos, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+		}
+		if(!pConf->FilenameInfo.DateToken.empty())
+		{
+			pos = templated_name.find(pConf->FilenameInfo.DateToken);
 			if(pos != templated_name.npos)
 			{
-				templated_name.erase(pos, pConf->FilenameInfo.EventToken.size());
-				templated_name.insert(pos, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+				auto date_str = since_epoch_to_datetime(event->GetTimestamp(),pConf->FilenameInfo.DateFormat);
+				templated_name.erase(pos, pConf->FilenameInfo.DateToken.size());
+				templated_name.insert(pos, date_str);
 			}
-			if(!pConf->FilenameInfo.DateToken.empty())
-			{
-				pos = templated_name.find(pConf->FilenameInfo.DateToken);
-				if(pos != templated_name.npos)
-				{
-					auto date_str = since_epoch_to_datetime(event->GetTimestamp(),pConf->FilenameInfo.DateFormat);
-					templated_name.erase(pos, pConf->FilenameInfo.DateToken.size());
-					templated_name.insert(pos, date_str);
-				}
-			}
-			Filename = templated_name;
-			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
-
-		if(index >= pConf->SequenceIndexStart && index <= pConf->SequenceIndexStop)
-		{
-			if(!rx_in_progress)
-			{
-				rx_in_progress = true;
-				seq = pConf->SequenceIndexStart;
-				auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
-				if(auto log = spdlog::get("FileTransferPort"))
-					log->debug("{}: Start RX, writing '{}'.", Name, path.string());
-				if(pConf->Mode == OverwriteMode::FAIL && std::filesystem::exists(path))
-				{
-					if(auto log = spdlog::get("FileTransferPort"))
-						log->error("{}: File '{}' already exists and OverwriteMode::FAIL", Name, path.string());
-					return (*pStatusCallback)(CommandStatus::BLOCKED);
-				}
-				std::ios::openmode open_flags = std::ios::binary;
-				if(pConf->Mode == OverwriteMode::APPEND)
-					open_flags |= std::ios::app;
-				fout.open(path,open_flags);
-				if(fout.fail())
-				{
-					if(auto log = spdlog::get("FileTransferPort"))
-						log->error("{}: Failed to open file '{}' for writing.", Name, path.string());
-					return (*pStatusCallback)(CommandStatus::BLOCKED);
-				}
-			}
-
-			//push and pop everything through the Q for simplicity - optimise if it pops up in a profile as a hot path
-			//TODO: somehow limit the buffer size
-			event_buffer[index].push_back(event);
-			while(!event_buffer[seq].empty())
-			{
-				auto popped = event_buffer[seq].front();
-				event_buffer[seq].pop_front();
-				if(fout)
-				{
-					auto OSBuffer = popped->GetPayload<EventType::OctetString>();
-					if(OSBuffer.size() == 0) //EOF
-					{
-						fout.close();
-						rx_in_progress = false;
-						seq = pConf->SequenceIndexStart;
-						++FilesTransferred;
-						if(auto log = spdlog::get("FileTransferPort"))
-							log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
-
-						//In the case susequent file transfers aren't sync'd by sending the name first, we could already have an event from the next file
-						if(!event_buffer[seq].empty())
-						{
-							auto popped = event_buffer[seq].front();
-							event_buffer[seq].pop_front();
-							Event_(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
-						}
-						return (*pStatusCallback)(CommandStatus::SUCCESS);
-					}
-					if(!fout.write(static_cast<const char*>(OSBuffer.data()),OSBuffer.size()))
-					{
-						if(auto log = spdlog::get("FileTransferPort"))
-							log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
-					}
-					FileBytesTransferred += OSBuffer.size();
-					++seq;
-				}
-				//else - we should have already logged an error when fout went bad.
-			}
-			return (*pStatusCallback)(CommandStatus::SUCCESS);
-		}
-
-		//it's not a filename, or file data at this point
-		return (*pStatusCallback)(CommandStatus::UNDEFINED);
+		Filename = templated_name;
+		return (*pStatusCallback)(CommandStatus::SUCCESS);
 	}
+
+	if(index >= pConf->SequenceIndexStart && index <= pConf->SequenceIndexStop)
+	{
+		if(!rx_in_progress)
+		{
+			rx_in_progress = true;
+			seq = pConf->SequenceIndexStart;
+			auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->debug("{}: Start RX, writing '{}'.", Name, path.string());
+			if(pConf->Mode == OverwriteMode::FAIL && std::filesystem::exists(path))
+			{
+				if(auto log = spdlog::get("FileTransferPort"))
+					log->error("{}: File '{}' already exists and OverwriteMode::FAIL", Name, path.string());
+				return (*pStatusCallback)(CommandStatus::BLOCKED);
+			}
+			std::ios::openmode open_flags = std::ios::binary;
+			if(pConf->Mode == OverwriteMode::APPEND)
+				open_flags |= std::ios::app;
+			fout.open(path,open_flags);
+			if(fout.fail())
+			{
+				if(auto log = spdlog::get("FileTransferPort"))
+					log->error("{}: Failed to open file '{}' for writing.", Name, path.string());
+				return (*pStatusCallback)(CommandStatus::BLOCKED);
+			}
+		}
+
+		//push and pop everything through the Q for simplicity - optimise if it pops up in a profile as a hot path
+		//TODO: somehow limit the buffer size
+		event_buffer[index].push_back(event);
+		while(!event_buffer[seq].empty())
+		{
+			auto popped = event_buffer[seq].front();
+			event_buffer[seq].pop_front();
+			if(fout)
+			{
+				auto OSBuffer = popped->GetPayload<EventType::OctetString>();
+				if(OSBuffer.size() == 0) //EOF
+				{
+					fout.close();
+					rx_in_progress = false;
+					seq = pConf->SequenceIndexStart;
+					++FilesTransferred;
+					if(auto log = spdlog::get("FileTransferPort"))
+						log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
+
+					//In the case susequent file transfers aren't sync'd by sending the name first, we could already have an event from the next file
+					if(!event_buffer[seq].empty())
+					{
+						auto popped = event_buffer[seq].front();
+						event_buffer[seq].pop_front();
+						Event_(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+					}
+					return (*pStatusCallback)(CommandStatus::SUCCESS);
+				}
+				if(!fout.write(static_cast<const char*>(OSBuffer.data()),OSBuffer.size()))
+				{
+					if(auto log = spdlog::get("FileTransferPort"))
+						log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
+				}
+				FileBytesTransferred += OSBuffer.size();
+				++seq;
+			}
+			//else - we should have already logged an error when fout went bad.
+		}
+		return (*pStatusCallback)(CommandStatus::SUCCESS);
+	}
+
+	//it's not a filename, or file data at this point
+	return (*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
 void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_modified)

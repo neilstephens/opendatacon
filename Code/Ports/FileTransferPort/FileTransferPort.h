@@ -74,6 +74,8 @@ private:
 	void Enable_();
 	void Disable_();
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void TxPath(std::string path, std::string tx_name, bool only_modified);
 	void Tx(bool only_modified);
 	std::pair<bool,std::string> FileNameTransmissionMatch(const std::string& filename);
