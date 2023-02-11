@@ -31,7 +31,7 @@
 
 #define SUITE(name) "FileTransferPortTXTestSuite - " name
 
-const unsigned int test_timeout = 30000;
+const unsigned int test_timeout = 10000;
 
 TEST_CASE(SUITE("Triggers"))
 {
@@ -48,7 +48,7 @@ TEST_CASE(SUITE("Triggers"))
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
 		REQUIRE(deletePort);
 
-		auto conf = GetTXConfigJSON();
+		auto conf = GetConfigJSON(true);
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", conf), deletePort);
 
 		NullPort Null("Null","","");
@@ -90,7 +90,7 @@ TEST_CASE(SUITE("Triggers"))
 
 		size_t count = 0;
 		auto stats = PUT->GetStatistics();
-		while(stats["FilesTransferred"].asUInt() < 6 && count < test_timeout)
+		while((stats["TxFileMatchCount"].asUInt() < 6 || stats["FilesTransferred"].asUInt() < 6) && count < test_timeout)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			count += 10;
@@ -101,6 +101,50 @@ TEST_CASE(SUITE("Triggers"))
 		REQUIRE(stats["FilesTransferred"].asUInt() == 6);
 		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200);
 		REQUIRE((stats["TxFileDirCount"].asUInt() - stats["TxFileMatchCount"].asUInt()) >= 6);
+
+		//Test binary control trigger
+		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,0);
+		PUT->Event(event,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+		count = 0;
+		stats = PUT->GetStatistics();
+		while(stats["FilesTransferred"].asUInt() < 6*2 && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+			stats = PUT->GetStatistics();
+		}
+		REQUIRE(stats["FilesTransferred"].asUInt() == 6*2);
+		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200*2);
+
+		//Analog control trigger
+		event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16,0);
+		event->SetPayload<EventType::AnalogOutputInt16>({3,CommandStatus::SUCCESS});
+		PUT->Event(event,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+		count = 0;
+		stats = PUT->GetStatistics();
+		while(stats["FilesTransferred"].asUInt() < 6*3 && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+			stats = PUT->GetStatistics();
+		}
+		REQUIRE(stats["FilesTransferred"].asUInt() == 6*3);
+		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200*3);
+
+		//And request a specific path with OctetString event
+		event = std::make_shared<EventInfo>(EventType::OctetString,0);
+		event->SetPayload<EventType::OctetString>(OctetStringBuffer("sub/FileTxTest3.bin"));
+		PUT->Event(event,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+		count = 0;
+		stats = PUT->GetStatistics();
+		while(stats["FilesTransferred"].asUInt() < 6*3+1 && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+			stats = PUT->GetStatistics();
+		}
+		REQUIRE(stats["FilesTransferred"].asUInt() == 6*3+1);
+		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200*3+1300);
 
 		PUT->Disable();
 

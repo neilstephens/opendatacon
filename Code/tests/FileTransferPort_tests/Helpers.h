@@ -58,9 +58,9 @@ inline void TestTearDown()
 	odc::spdlog_drop_all(); // Close off everything
 }
 
-inline Json::Value GetTXConfigJSON()
+inline Json::Value GetConfigJSON(bool TX)
 {
-	static const char* conf = R"001(
+	static const char* tx_conf = R"001(
 	{
 		"Direction" : "TX",
 		"Directory" : "./",
@@ -74,10 +74,25 @@ inline Json::Value GetTXConfigJSON()
 			{"Type" : "BinaryControl", "Index" : 0, "OnlyWhenModified" : false},
 			{"Type" : "AnalogControl", "Index" : 0, "Value" : 3, "OnlyWhenModified" : false},
 			{"Type" : "OctetStringPath", "Index" : 0, "OnlyWhenModified" : false}
-		]
+		],
+		"ModifiedDwellTimems" : 100
+	})001";
+	static const char* rx_conf = R"001(
+	{
+		"Direction" : "RX",
+		"Directory" : "./RX",
+		"Filename" :
+		{
+			"InitialName" : "StartingOrFixedFilename.txt",
+			"Template" : "<DATE>_<DYNAMIC>",
+			"Date" : {"Format" : "dateformat", "Token" : "<DATE>"},
+			"Event" : {"Index" : 0, "Token" : "<DYNAMIC>"}
+		},
+		"OverwriteMode" : "OVERWRITE", 	//or "FAIL" or "APPEND",
+		"SequenceIndexRange" : {"Start" : 1, "Stop" : 15, "EOF" : 16}
 	})001";
 
-	std::istringstream iss(conf);
+	std::istringstream iss(TX ? tx_conf : rx_conf);
 	Json::CharReaderBuilder JSONReader;
 	std::string err_str;
 	Json::Value json_conf;
