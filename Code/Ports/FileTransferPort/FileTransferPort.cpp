@@ -155,7 +155,7 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 			trig.Type = TriggerType::AnalogControl;
 			trig.Value = event->GetPayload<EventType::AnalogOutputInt32>().first;
 			break;
-		case EventType::BinaryCommandEvent:
+		case EventType::ControlRelayOutputBlock:
 			trig.Type = TriggerType::BinaryControl;
 			break;
 		default:
@@ -309,7 +309,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 						log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 				}
 				FileBytesTransferred += OSBuffer.size();
-				++seq;
+				if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 			}
 			//else - we should have already logged an error when fout went bad.
 		}
