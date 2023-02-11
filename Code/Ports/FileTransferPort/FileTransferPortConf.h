@@ -127,6 +127,7 @@ public:
 	std::unordered_set<TransferTrigger> TransferTriggers;
 	FilenameConf FilenameInfo;
 	OverwriteMode Mode = OverwriteMode::FAIL;
+	std::chrono::milliseconds ModifiedDwellTimems = std::chrono::milliseconds(500);
 };
 
 #endif /* FileTransferPortConf_H_ */

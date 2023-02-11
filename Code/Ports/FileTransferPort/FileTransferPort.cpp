@@ -353,6 +353,10 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 	if(only_modified)
 	{
 		auto updated_time = std::filesystem::last_write_time(path);
+
+		if((std::filesystem::file_time_type::clock::now() - updated_time) < pConf->ModifiedDwellTimems)
+			return;
+
 		auto last_update_it = FileModTimes.find(path);
 		if(last_update_it != FileModTimes.end())
 		{
@@ -628,6 +632,10 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 		else if (log)
 			log->error("{}: TransferTriggers is meant to be a JSON array, got {}", Name, jTXTrigss.toStyledString());
 
+	}
+	if(JSONRoot.isMember("ModifiedDwellTimems"))
+	{
+		pConf->ModifiedDwellTimems = std::chrono::milliseconds(JSONRoot["ModifiedDwellTimems"].asUInt());
 	}
 	if(JSONRoot.isMember("Filename"))
 	{
