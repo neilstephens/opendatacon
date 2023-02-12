@@ -688,9 +688,9 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 const Json::Value FileTransferPort::GetStatistics() const
 {
 	Json::Value ret;
-	ret["FilesTransferred"] = size_t(FilesTransferred);
-	ret["FileBytesTransferred"] = size_t(FileBytesTransferred);
-	ret["TxFileDirCount"] = size_t(TxFileDirCount);
-	ret["TxFileMatchCount"] = size_t(TxFileMatchCount);
+	ret["FilesTransferred"] = Json::UInt(FilesTransferred);
+	ret["FileBytesTransferred"] = Json::UInt(FileBytesTransferred);
+	ret["TxFileDirCount"] = Json::UInt(TxFileDirCount);
+	ret["TxFileMatchCount"] = Json::UInt(TxFileMatchCount);
 	return ret;
 }

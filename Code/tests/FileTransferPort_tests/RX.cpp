@@ -27,6 +27,7 @@
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
+#include <filesystem>
 #include <fstream>
 
 #define SUITE(name) "FileTransferPortRXTestSuite - " name
