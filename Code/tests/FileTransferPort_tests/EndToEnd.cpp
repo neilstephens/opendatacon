@@ -24,12 +24,17 @@
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
+#include <map>
 
 #define SUITE(name) "FileTransferPortEndToEndTestSuite - " name
+
+const unsigned int test_timeout = 10000;
 
 TEST_CASE(SUITE("Integrity"))
 {
 	TestSetup();
+	ClearFiles();
+	MakeFiles();
 
 	auto portlib = LoadModule(GetLibFileName("FileTransferPort"));
 	REQUIRE(portlib);
@@ -38,25 +43,24 @@ TEST_CASE(SUITE("Integrity"))
 		auto work = ios->make_work();
 		std::thread t([ios](){ios->run();});
 
-		//make a TX port
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
 		REQUIRE(deletePort);
 
-		Json::Value conf;
-		conf["Direction"] = "TX";
-		//TODO: put something in the config
-		std::shared_ptr<DataPort> TX(newPort("TX", "", conf), deletePort);
+		//make a TX port
+		auto TXconf = GetConfigJSON(true);
+		std::shared_ptr<DataPort> TX(newPort("TX", "", TXconf), deletePort);
 		REQUIRE(TX);
 
 		//make an RX port
-		conf["Direction"] = "RX";
-		//TODO: put something in the config
-		std::shared_ptr<DataPort> RX(newPort("RX", "", conf), deletePort);
+		auto RXconf = GetConfigJSON(false);
+		std::shared_ptr<DataPort> RX(newPort("RX", "", RXconf), deletePort);
 		REQUIRE(RX);
 
-		//TODO: connect them
+		//connect them directly
+		RX->Subscribe(TX.get(),"TX");
+		TX->Subscribe(RX.get(),"RX");
 
 		//get them to build themselves using their configs
 		RX->Build();
@@ -66,8 +70,35 @@ TEST_CASE(SUITE("Integrity"))
 		RX->Enable();
 		TX->Enable();
 
-		//TODO: make stuff happen
+		size_t count = 0;
+		auto stats = RX->GetStatistics();
+		while(stats["FilesTransferred"].asUInt() < 6 && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+			stats = RX->GetStatistics();
+		}
 
+		REQUIRE(stats["FilesTransferred"].asUInt() == 6);
+		std::map<std::string,std::string> file_pairs;
+		file_pairs["FileTxTest1.bin"] = "RX/dateformat_FileTxTest1.bin";
+		file_pairs["FileTxTest2.bin"] = "RX/dateformat_FileTxTest2.bin";
+		file_pairs["sub/FileTxTest3.bin"] = "RX/dateformat_FileTxTest3.bin";
+		file_pairs["sub/FileTxTest4.bin"] = "RX/dateformat_FileTxTest4.bin";
+		file_pairs["sub/sub/FileTxTest5.bin"] = "RX/dateformat_FileTxTest5.bin";
+		file_pairs["sub/sub/FileTxTest6.bin"] = "RX/dateformat_FileTxTest6.bin";
+		for(auto [tx_filename, rx_filename] : file_pairs)
+		{
+			std::ifstream tx_fin(tx_filename), rx_fin(rx_filename);
+			REQUIRE(!tx_fin.fail());
+			REQUIRE(!rx_fin.fail());
+			char txch,rxch;
+			while(tx_fin.get(txch))
+			{
+				REQUIRE(rx_fin.get(rxch));
+				REQUIRE(rxch == txch);
+			}
+		}
 
 		//turn them off
 		RX->Disable();
@@ -81,6 +112,7 @@ TEST_CASE(SUITE("Integrity"))
 	//Unload the library
 	UnLoadModule(portlib);
 	TestTearDown();
+	ClearFiles();
 }
 
 

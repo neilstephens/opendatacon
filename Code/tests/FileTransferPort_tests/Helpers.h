@@ -119,5 +119,48 @@ inline bool WriteFile(const std::string& name, size_t size)
 	return true;
 }
 
+inline void MakeFiles()
+{
+	//create some files that match our transfer pattern
+	std::filesystem::create_directories(std::filesystem::path("sub/sub"));
+	WriteFile("FileTxTest1.bin",1300); //1300 not a multiple of 255
+	WriteFile("FileTxTest2.bin",5100); //5100 is a multiple of 255
+	WriteFile("sub/FileTxTest3.bin",1300);
+	WriteFile("sub/FileTxTest4.bin",5100);
+	WriteFile("sub/sub/FileTxTest5.bin",1300);
+	WriteFile("sub/sub/FileTxTest6.bin",5100);
+	//and a few that don't match (just in case there aren't any)
+	WriteFile("FileTxTest7.notbin",13);
+	WriteFile("FileTxTest8.notbin",51);
+	WriteFile("sub/FileTxTest9.notbin",13);
+	WriteFile("sub/FileTxTest10.notbin",51);
+	WriteFile("sub/sub/FileTxTest11.notbin",13);
+	WriteFile("sub/sub/FileTxTest12.notbin",51);
+	std::filesystem::create_directories(std::filesystem::path("RX"));
+}
+
+inline void ClearFiles()
+{
+	//clear the slate
+	std::remove("FileTxTest1.bin");
+	std::remove("FileTxTest2.bin");
+	std::remove("sub/FileTxTest3.bin");
+	std::remove("sub/FileTxTest4.bin");
+	std::remove("sub/sub/FileTxTest5.bin");
+	std::remove("sub/sub/FileTxTest6.bin");
+	std::remove("FileTxTest7.notbin");
+	std::remove("FileTxTest8.notbin");
+	std::remove("sub/FileTxTest9.notbin");
+	std::remove("sub/FileTxTest10.notbin");
+	std::remove("sub/sub/FileTxTest11.notbin");
+	std::remove("sub/sub/FileTxTest12.notbin");
+	std::remove("RX/dateformat_FileTxTest1.bin");
+	std::remove("RX/dateformat_FileTxTest2.bin");
+	std::remove("RX/dateformat_FileTxTest3.bin");
+	std::remove("RX/dateformat_FileTxTest4.bin");
+	std::remove("RX/dateformat_FileTxTest5.bin");
+	std::remove("RX/dateformat_FileTxTest6.bin");
+}
+
 #endif // TESTHELPERS_H
 
