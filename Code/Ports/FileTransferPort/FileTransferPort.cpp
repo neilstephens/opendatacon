@@ -58,6 +58,9 @@ void FileTransferPort::Enable_()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	enabled = true;
+	PublishEvent(ConnectState::PORT_UP);
+	PublishEvent(ConnectState::CONNECTED);
+
 	if(pConf->Direction == TransferDirection::TX)
 	{
 		//Setup periodic checks/triggers
@@ -77,6 +80,9 @@ void FileTransferPort::Disable_()
 	for(const auto& t : Timers)
 		t->cancel();
 	Timers.clear();
+
+	PublishEvent(ConnectState::PORT_DOWN);
+	PublishEvent(ConnectState::DISCONNECTED);
 }
 
 void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::steady_timer> pTimer, size_t periodms, bool only_modified)
@@ -84,7 +90,8 @@ void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::stea
 	if(err || !enabled)
 		return;
 
-	Tx(only_modified);
+	if(InDemand())
+		Tx(only_modified);
 
 	pTimer->expires_from_now(std::chrono::milliseconds(periodms));
 	pTimer->async_wait(pSyncStrand->wrap([=,h{handler_tracker}](asio::error_code err)
@@ -124,6 +131,7 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 	{
 		if(auto log = spdlog::get("FileTransferPort"))
 			log->trace("{}: Disabled - ignoring {} event from {}", Name, ToString(event->GetEventType()), SenderName);
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
 
@@ -195,9 +203,12 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	{
 		//this is a stand-in for a zero length event reprsenting EOF
 		//the payload is the real sequence number in ascii
+		auto payload = ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw);
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: OctetString EOF index ({}) event received, payload: '{}'.", Name, index, payload);
 		try
 		{
-			index = std::stoul(ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+			index = std::stoul(payload);
 		}
 		catch(const std::exception& e)
 		{
