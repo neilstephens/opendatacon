@@ -32,6 +32,7 @@
 #include <opendatacon/Platform.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <fstream>
+#include <filesystem>
 
 extern spdlog::level::level_enum log_level;
 
