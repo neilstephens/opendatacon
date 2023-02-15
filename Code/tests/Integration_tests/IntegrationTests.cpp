@@ -31,7 +31,8 @@
 
 #define SUITE(name) "IntegrationTestSuite - " name
 
-void PrepConfFiles(bool init);
+void PrepReloadConfFiles(bool init);
+void PrepFileTransferConf(bool init);
 
 class TestHook
 {
@@ -47,16 +48,17 @@ public:
 	}
 };
 
-TEST_CASE(SUITE("ReloadConfig"))
+using DataconHandles = std::tuple<std::shared_ptr<DataConcentrator>,std::shared_ptr<std::thread>,std::shared_ptr<spdlog::logger>,ConsoleUI*>;
+
+DataconHandles StartupDatacon(std::string config_filename)
 {
-	PrepConfFiles(true);
 	std::cout<<"Constructing TheDataConcentrator"<<std::endl;
-	auto TheDataConcentrator = std::make_shared<DataConcentrator>("opendatacon.conf");
+	auto TheDataConcentrator = std::make_shared<DataConcentrator>(config_filename);
 	REQUIRE(TheDataConcentrator);
 	std::cout<<"Building TheDataConcentrator"<<std::endl;
 	TheDataConcentrator->Build();
 	std::cout<<"Running TheDataConcentrator"<<std::endl;
-	auto run_thread = std::thread([=](){TheDataConcentrator->Run();});
+	auto run_thread = std::make_shared<std::thread>([=](){TheDataConcentrator->Run();});
 
 	std::cout<<"Adding 'TestHarness' logger"<<std::endl;
 	AddLogger("TestHarness",*TestHook::GetLogSinks(TheDataConcentrator));
@@ -70,6 +72,55 @@ TEST_CASE(SUITE("ReloadConfig"))
 	std::string cmd = "set_loglevel console "+level_str+"\n";
 	std::cout<<cmd<<std::flush;
 	pConsole->trigger(cmd);
+
+	return {TheDataConcentrator,run_thread,log,pConsole};
+}
+
+void ShutdownDatacon(DataconHandles handles)
+{
+	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
+	log.reset();
+
+	std::string cmd = "shutdown\n";
+	std::cout<<cmd<<std::flush;
+	pConsole->trigger(cmd);
+
+	//Shutting down - give some time for clean shutdown
+	unsigned int i=0; std::atomic_bool wakeup_called = false;
+	while(!TheDataConcentrator->isShutDown() && i++ < 150)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		if(i == 140)
+			odc::asio_service::Get()->post([&wakeup_called]
+				{
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
+					wakeup_called = true;
+				});
+	}
+
+	REQUIRE(TheDataConcentrator->isShutDown());
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->critical("Shutdown cleanly");
+	//time for async log write
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+	run_thread->join();
+	std::cout<<"Run thread joined"<<std::endl;
+
+	TheDataConcentrator.reset();
+	std::cout<<"TheDataConcentrator has been destroyed"<<std::endl;
+
+	odc::spdlog_drop_all();
+	odc::spdlog_shutdown();
+	std::cout<<"spdlog has been shutdown"<<std::endl;
+}
+
+TEST_CASE(SUITE("ReloadConfig"))
+{
+	PrepReloadConfFiles(true);
+	auto handles = StartupDatacon("opendatacon.conf");
+	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
 
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -157,42 +208,31 @@ TEST_CASE(SUITE("ReloadConfig"))
 	//TODO: check the stream of events coming out of JSON port
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log.reset();
+	ShutdownDatacon(handles);
 
-	cmd = "shutdown\n";
-	std::cout<<cmd<<std::flush;
-	pConsole->trigger(cmd);
+	PrepReloadConfFiles(false);
+	std::cout<<"Temp files deleted"<<std::endl;
+}
 
-	//Shutting down - give some time for clean shutdown
-	unsigned int i=0; std::atomic_bool wakeup_called = false;
-	while(!TheDataConcentrator->isShutDown() && i++ < 150)
+TEST_CASE(SUITE("FileTransferViaDNP3"))
+{
+	PrepFileTransferConf(true);
+	auto handles = StartupDatacon("opendatacon.conf");
+	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	std::ifstream tx_fin("opendatacon.conf"), rx_fin("RX/opendatacon.conf");
+	REQUIRE(!tx_fin.fail());
+	REQUIRE(!rx_fin.fail());
+	char txch,rxch;
+	while(tx_fin.get(txch))
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		if(i == 140)
-			odc::asio_service::Get()->post([&wakeup_called]
-				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
-					wakeup_called = true;
-				});
+		REQUIRE(rx_fin.get(rxch));
+		REQUIRE(rxch == txch);
 	}
 
-	REQUIRE(TheDataConcentrator->isShutDown());
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->critical("Shutdown cleanly");
-	//time for async log write
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-	run_thread.join();
-	std::cout<<"Run thread joined"<<std::endl;
-
-	TheDataConcentrator.reset();
-	std::cout<<"TheDataConcentrator has been destroyed"<<std::endl;
-
-	odc::spdlog_drop_all();
-	odc::spdlog_shutdown();
-	std::cout<<"spdlog has been shutdown"<<std::endl;
-
-	PrepConfFiles(false);
-	std::cout<<"Temp files deleted"<<std::endl;
+	ShutdownDatacon(handles);
+	PrepReloadConfFiles(false);
+	std::remove("RX/opendatacon.conf");
 }

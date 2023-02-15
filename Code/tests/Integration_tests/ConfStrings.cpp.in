@@ -2,8 +2,26 @@
 #include <catch.hpp>
 #include <map>
 #include <fstream>
+#include <filesystem>
 
-void PrepConfFiles(bool init)
+void WriteConfMap(const std::map<const char*,const char*> conf_map, const bool init)
+{
+	if(init)
+	{
+		for(auto conf_pair : conf_map)
+		{
+			std::ofstream fconf(conf_pair.first);
+			REQUIRE_FALSE(fconf.fail());
+			fconf << conf_pair.second;
+			fconf.close();
+		}
+	}
+	else
+		for(auto conf_pair : conf_map)
+			std::remove(conf_pair.first);
+}
+
+void PrepReloadConfFiles(bool init)
 {
 	static std::map<const char*,const char*> conf_map;
 
@@ -21,18 +39,16 @@ void PrepConfFiles(bool init)
 	conf_map["opendatacon_removed_port.conf"] =  R"001(@opendatacon_removed_port_conf@)001";
 	conf_map["points.conf"] =  R"001(@points_conf@)001";
 
-	if(init)
-	{
-		for(auto conf_pair : conf_map)
-		{
-			std::ofstream fconf(conf_pair.first);
-			REQUIRE_FALSE(fconf.fail());
-			fconf << conf_pair.second;
-			fconf.close();
-		}
-	}
-	else
-		for(auto conf_pair : conf_map)
-			std::remove(conf_pair.first);
+	WriteConfMap(conf_map, init);
+}
+
+void PrepFileTransferConf(bool init)
+{
+	static std::map<const char*,const char*> conf_map;
+
+	conf_map["opendatacon.conf"] =  R"001(@filetransfer_conf@)001";
+
+	std::filesystem::create_directories(std::filesystem::path("RX"));
+	WriteConfMap(conf_map, init);
 }
 
