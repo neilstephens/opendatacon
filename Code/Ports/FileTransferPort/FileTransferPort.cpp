@@ -31,6 +31,7 @@
 #include <string>
 #include <unordered_map>
 #include <fstream>
+#include <iomanip>
 
 using namespace odc;
 
@@ -110,9 +111,18 @@ void FileTransferPort::LoadModTimes()
 	auto filenames = JsonModTimes["FileModTimes"].getMemberNames();
 	for(const auto& filename : filenames)
 	{
-		auto date_str = JsonModTimes["FileModTimes"][filename].asString();
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: Loading mod time for '{}'.", Name, filename);
 
-		//extract ".xxx" milliseconds from the end
+		auto date_str = JsonModTimes["FileModTimes"][filename].asString();
+		if(date_str.size() != 23)
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: Error parsing mod time '{}' for '{}'.", Name, date_str, filename);
+			continue;
+		}
+
+		//remove ".xxx" milliseconds from the end
 		auto msec_str = date_str.substr(date_str.size()-3);
 		date_str.resize(date_str.size()-4);
 
@@ -120,12 +130,29 @@ void FileTransferPort::LoadModTimes()
 		std::istringstream date_iss(date_str);
 		std::tm tm;
 		date_iss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+		if(date_iss.fail())
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: Error parsing mod time '{}' for '{}'.", Name, date_str, filename);
+			continue;
+		}
+		std::chrono::milliseconds msec;
+		try
+		{
+			msec = std::chrono::milliseconds(std::stoi(msec_str));
+		}
+		catch(const std::exception& e)
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: Error parsing mod time milliseconds '{}' for '{}'.", Name, msec_str, filename);
+			continue;
+		}
 
 		//get_time leaves isdst undefined. -1 means let mktime decide
 		tm.tm_isdst = -1;
 
 		//TODO: make this neater with C++20 std::chrono::clock_cast
-		auto time_point = std::chrono::system_clock::from_time_t(mktime(&tm))+std::chrono::milliseconds(std::stoi(msec_str));
+		auto time_point = std::chrono::system_clock::from_time_t(mktime(&tm))+msec;
 		FileModTimes[filename] = std::filesystem::file_time_type(time_point.time_since_epoch());
 	}
 }
@@ -459,7 +486,8 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 		{
 			bool has_been_updated = (updated_time > last_update_it->second);
 
-			//update irrespective to correct millisecond rounding from persisting
+			//store the updated time whether it's newer or not,
+			//	to correct any millisecond rounding if parsed from file
 			last_update_it->second = updated_time;
 
 			if(!has_been_updated)
@@ -468,6 +496,9 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 		else //it's new
 			FileModTimes[path] = updated_time;
 	}
+
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: Start TX file '{}'.", Name, path);
 
 	if(!tx_name.empty())
 	{
@@ -523,6 +554,8 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 	}
 	seq = pConf->SequenceIndexStart;
 	++FilesTransferred;
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: Finished TX file '{}'.", Name, path);
 }
 
 void FileTransferPort::Tx(bool only_modified)
