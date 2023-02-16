@@ -46,7 +46,7 @@ jobs:
     env:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: ${{github.workspace}}/build/install
-      LOG_LVL: trace
+      LOG_LVL: error
 
     steps:
 
@@ -154,22 +154,22 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
 
     - name: ODC_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'noneXXX' }}
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'noneXXX' }}
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'noneXXX' }}
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
     - name: MD3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'noneXXX' }}
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
     - name: CBPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'noneXXX' }}
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
     - name: PyPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'noneXXX' }}
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
     - name: FileTransferPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
@@ -204,7 +204,7 @@ jobs:
     env:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: /github/workspace/build/install
-      LOG_LVL: trace
+      LOG_LVL: error
       BINDIR: bin/
 
     steps:
@@ -278,22 +278,22 @@ jobs:
       run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --target install
 
     - name: ODC_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
     - name: MD3Port_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
     - name: CBPort_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
     - name: PyPort_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
     - name: FileTransferPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
