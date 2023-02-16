@@ -46,9 +46,13 @@ void PrepFileTransferConf(bool init)
 {
 	static std::map<const char*,const char*> conf_map;
 
-	conf_map["opendatacon.conf"] =  R"001(@filetransfer_conf@)001";
+	conf_map["transfer.conf"] =  R"001(@transfer_conf@)001";
 
-	std::filesystem::create_directories(std::filesystem::path("RX"));
+	if(init)
+		std::filesystem::create_directories(std::filesystem::path("RX"));
+	else
+		std::remove("RX/opendatacon.conf");
+
 	WriteConfMap(conf_map, init);
 }
 

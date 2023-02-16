@@ -217,12 +217,12 @@ TEST_CASE(SUITE("ReloadConfig"))
 TEST_CASE(SUITE("FileTransferViaDNP3"))
 {
 	PrepFileTransferConf(true);
-	auto handles = StartupDatacon("opendatacon.conf");
+	auto handles = StartupDatacon("transfer.conf");
 	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	std::ifstream tx_fin("opendatacon.conf"), rx_fin("RX/opendatacon.conf");
+	std::ifstream tx_fin("transfer.conf"), rx_fin("RX/transfer.conf");
 	REQUIRE(!tx_fin.fail());
 	REQUIRE(!rx_fin.fail());
 	char txch,rxch;
@@ -233,6 +233,5 @@ TEST_CASE(SUITE("FileTransferViaDNP3"))
 	}
 
 	ShutdownDatacon(handles);
-	PrepReloadConfFiles(false);
-	std::remove("RX/opendatacon.conf");
+	PrepFileTransferConf(false);
 }
