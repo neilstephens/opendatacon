@@ -54,12 +54,91 @@ FileTransferPort::~FileTransferPort()
 		pIOS->poll_one();
 }
 
+void FileTransferPort::SaveModTimes()
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	std::ofstream fout(pConf->PersistenceFile);
+	if(fout.fail())
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->error("{}: Failed to write PersistenceFile '{}'.", Name, pConf->PersistenceFile);
+		return;
+	}
+
+	Json::Value JsonModTimes;
+	for(const auto& [path,time] : FileModTimes)
+	{
+		auto msec_duration = std::chrono::ceil<std::chrono::milliseconds>(time).time_since_epoch();
+		JsonModTimes["FileModTimes"][path] = since_epoch_to_datetime(msec_duration.count());
+	}
+
+	fout<<JsonModTimes.toStyledString();
+	fout.close();
+}
+
+void FileTransferPort::LoadModTimes()
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	std::ifstream fin(pConf->PersistenceFile);
+	if(fin.fail())
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: Failed to read PersistenceFile '{}'.", Name, pConf->PersistenceFile);
+		return;
+	}
+
+	Json::CharReaderBuilder JSONReader;
+	std::string err_str;
+	Json::Value JsonModTimes;
+	bool parse_success = Json::parseFromStream(JSONReader,fin, &JsonModTimes, &err_str);
+	fin.close();
+
+	if(!parse_success)
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->error("{}: Failed to parse PersistenceFile '{}': '{}'", Name, pConf->PersistenceFile, err_str);
+		return;
+	}
+	if(!JsonModTimes.isMember("FileModTimes"))
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->error("{}: Failed to parse PersistenceFile '{}': No member 'FileModTimes'", Name, pConf->PersistenceFile);
+		return;
+	}
+	auto filenames = JsonModTimes["FileModTimes"].getMemberNames();
+	for(const auto& filename : filenames)
+	{
+		auto date_str = JsonModTimes["FileModTimes"][filename].asString();
+
+		//extract ".xxx" milliseconds from the end
+		auto msec_str = date_str.substr(date_str.size()-3);
+		date_str.resize(date_str.size()-4);
+
+		//parse the rest using iomanip
+		std::istringstream date_iss(date_str);
+		std::tm tm;
+		date_iss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+
+		//get_time leaves isdst undefined. -1 means let mktime decide
+		tm.tm_isdst = -1;
+
+		//TODO: make this neater with C++20 std::chrono::clock_cast
+		auto time_point = std::chrono::system_clock::from_time_t(mktime(&tm))+std::chrono::milliseconds(std::stoi(msec_str));
+		FileModTimes[filename] = std::filesystem::file_time_type(time_point.time_since_epoch());
+	}
+}
+
 void FileTransferPort::Enable_()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	enabled = true;
 	PublishEvent(ConnectState::PORT_UP);
 	PublishEvent(ConnectState::CONNECTED);
+
+	if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
+		LoadModTimes();
 
 	if(pConf->Direction == TransferDirection::TX)
 	{
@@ -80,6 +159,13 @@ void FileTransferPort::Disable_()
 	for(const auto& t : Timers)
 		t->cancel();
 	Timers.clear();
+
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	if(pConf->Persistence == ModifiedTimePersistence::PURGEONDISABLE)
+		FileModTimes.clear();
+	else if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
+		SaveModTimes();
+	//else INMEMORY - nothing to do
 
 	PublishEvent(ConnectState::PORT_DOWN);
 	PublishEvent(ConnectState::DISCONNECTED);
@@ -371,9 +457,12 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 		auto last_update_it = FileModTimes.find(path);
 		if(last_update_it != FileModTimes.end())
 		{
-			if(updated_time > last_update_it->second)
-				FileModTimes[path] = updated_time;
-			else //not modified
+			bool has_been_updated = (updated_time > last_update_it->second);
+
+			//update irrespective to correct millisecond rounding from persisting
+			last_update_it->second = updated_time;
+
+			if(!has_been_updated)
 				return;
 		}
 		else //it's new
@@ -647,6 +736,22 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("ModifiedDwellTimems"))
 	{
 		pConf->ModifiedDwellTimems = std::chrono::milliseconds(JSONRoot["ModifiedDwellTimems"].asUInt());
+	}
+	if(JSONRoot.isMember("ModifiedTimePersistence"))
+	{
+		auto persist_str = JSONRoot["ModifiedTimePersistence"].asString();
+		if(persist_str == "ONDISK")
+			pConf->Persistence = ModifiedTimePersistence::ONDISK;
+		else if(persist_str == "INMEMORY")
+			pConf->Persistence = ModifiedTimePersistence::INMEMORY;
+		else if(persist_str == "PURGEONDISABLE")
+			pConf->Persistence = ModifiedTimePersistence::PURGEONDISABLE;
+		else if (log)
+			log->error("{}: Invalid ModifiedTimePersistence '{}'. Choose 'ONDISK', 'INMEMORY' (default) or 'PURGEONDISABLE'", Name, persist_str);
+	}
+	if(JSONRoot.isMember("PersistenceFile"))
+	{
+		pConf->PersistenceFile = JSONRoot["PersistenceFile"].asString();
 	}
 	if(JSONRoot.isMember("Filename"))
 	{

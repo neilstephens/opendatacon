@@ -35,6 +35,7 @@ using namespace odc;
 enum class TransferDirection { TX, RX };
 enum class OverwriteMode { OVERWRITE, FAIL, APPEND };
 enum class TriggerType { Periodic, BinaryControl, AnalogControl, OctetStringPath };
+enum class ModifiedTimePersistence { ONDISK, INMEMORY, PURGEONDISABLE };
 
 struct TransferTrigger
 {
@@ -128,6 +129,8 @@ public:
 	FilenameConf FilenameInfo;
 	OverwriteMode Mode = OverwriteMode::FAIL;
 	std::chrono::milliseconds ModifiedDwellTimems = std::chrono::milliseconds(500);
+	ModifiedTimePersistence Persistence = ModifiedTimePersistence::INMEMORY;
+	std::string PersistenceFile = "ModifiedTimePersistence.json";
 };
 
 #endif /* FileTransferPortConf_H_ */
