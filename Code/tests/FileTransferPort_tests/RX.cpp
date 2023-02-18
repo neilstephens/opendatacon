@@ -87,7 +87,7 @@ TEST_CASE(SUITE("Sequence Reordering"))
 
 		REQUIRE(std::filesystem::exists("RX/dateformat_FileRxTest.txt"));
 		std::ifstream fin("RX/dateformat_FileRxTest.txt");
-		REQUIRE(!fin.fail());
+		REQUIRE_FALSE(fin.fail());
 
 		std::string file_contents;
 		char ch;
@@ -138,7 +138,7 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		}
 
 		fin.open("RX/dateformat_FileRxTest.txt");
-		REQUIRE(!fin.fail());
+		REQUIRE_FALSE(fin.fail());
 		size_t event_num, req_event_num = 0;
 		while(fin>>event_num)
 		{
@@ -185,7 +185,7 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		}
 
 		fin.open("RX/dateformat_FileRxTest.txt");
-		REQUIRE(!fin.fail());
+		REQUIRE_FALSE(fin.fail());
 		req_event_num = 0;
 		while(fin>>event_num)
 		{

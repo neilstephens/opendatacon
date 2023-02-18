@@ -90,8 +90,8 @@ TEST_CASE(SUITE("Integrity"))
 		for(auto [tx_filename, rx_filename] : file_pairs)
 		{
 			std::ifstream tx_fin(tx_filename), rx_fin(rx_filename);
-			REQUIRE(!tx_fin.fail());
-			REQUIRE(!rx_fin.fail());
+			REQUIRE_FALSE(tx_fin.fail());
+			REQUIRE_FALSE(rx_fin.fail());
 			char txch,rxch;
 			while(tx_fin.get(txch))
 			{

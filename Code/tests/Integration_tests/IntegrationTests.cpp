@@ -31,8 +31,7 @@
 
 #define SUITE(name) "IntegrationTestSuite - " name
 
-void PrepReloadConfFiles(bool init);
-void PrepFileTransferConf(bool init);
+void PrepConfFiles(bool init);
 
 class TestHook
 {
@@ -52,20 +51,20 @@ using DataconHandles = std::tuple<std::shared_ptr<DataConcentrator>,std::shared_
 
 DataconHandles StartupDatacon(std::string config_filename)
 {
-	std::cout<<"Constructing TheDataConcentrator"<<std::endl;
+	INFO("Constructing TheDataConcentrator");
 	auto TheDataConcentrator = std::make_shared<DataConcentrator>(config_filename);
 	REQUIRE(TheDataConcentrator);
-	std::cout<<"Building TheDataConcentrator"<<std::endl;
+	INFO("Building TheDataConcentrator");
 	TheDataConcentrator->Build();
-	std::cout<<"Running TheDataConcentrator"<<std::endl;
+	INFO("Running TheDataConcentrator");
 	auto run_thread = std::make_shared<std::thread>([=](){TheDataConcentrator->Run();});
 
-	std::cout<<"Adding 'TestHarness' logger"<<std::endl;
+	INFO("Adding 'TestHarness' logger");
 	AddLogger("TestHarness",*TestHook::GetLogSinks(TheDataConcentrator));
 	auto log = odc::spdlog_get("TestHarness");
 	REQUIRE(log);
 
-	std::cout<<"Hooking into the console"<<std::endl;
+	INFO("Hooking into the console");
 	auto pConsole = TestHook::GetDataconConsole(TheDataConcentrator);
 	REQUIRE(pConsole);
 
@@ -98,140 +97,134 @@ void ShutdownDatacon(DataconHandles handles)
 					wakeup_called = true;
 				});
 	}
-
-	REQUIRE(TheDataConcentrator->isShutDown());
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->critical("Shutdown cleanly");
 	//time for async log write
 	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-	run_thread->join();
-	std::cout<<"Run thread joined"<<std::endl;
+	CHECK(TheDataConcentrator->isShutDown());
+
+	if(TheDataConcentrator->isShutDown())
+	{
+		run_thread->join();
+		UNSCOPED_INFO("Run thread joined");
+	}
+	else
+	{
+		run_thread->detach();
+		UNSCOPED_INFO("Run thread detached");
+	}
 
 	TheDataConcentrator.reset();
-	std::cout<<"TheDataConcentrator has been destroyed"<<std::endl;
+	UNSCOPED_INFO("TheDataConcentrator has been destroyed");
 
 	odc::spdlog_drop_all();
 	odc::spdlog_shutdown();
-	std::cout<<"spdlog has been shutdown"<<std::endl;
+	UNSCOPED_INFO("spdlog has been shutdown");
 }
 
-TEST_CASE(SUITE("ReloadConfig"))
+TEST_CASE(SUITE("ReloadConfig + FileTransfer"))
 {
-	PrepReloadConfFiles(true);
+	PrepConfFiles(true);
 	auto handles = StartupDatacon("opendatacon.conf");
 	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
 
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: no change");
-	REQUIRE(TheDataConcentrator->ReloadConfig());
+	INFO("ReloadConfig: no change");
+	CHECK(TheDataConcentrator->ReloadConfig());
 	//TODO: check the stream of events coming out of JSON port
 
-	log->critical("ReloadConfig: bogus config");
-	REQUIRE_FALSE(TheDataConcentrator->ReloadConfig("bogus"));
+	INFO("ReloadConfig: bogus config");
+	CHECK_FALSE(TheDataConcentrator->ReloadConfig("bogus"));
 	//TODO: check the stream of events coming out of JSON port
 
-	log->critical("ReloadConfig: dangling connector");
-	REQUIRE_FALSE(TheDataConcentrator->ReloadConfig("opendatacon_dangling.conf"));
+	INFO("ReloadConfig: dangling connector");
+	CHECK_FALSE(TheDataConcentrator->ReloadConfig("opendatacon_dangling.conf"));
 	//TODO: check the stream of events coming out of JSON port
 
-	log->critical("ReloadConfig: changed port");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_changed_port.conf",1));
-	//TODO: check the stream of events coming out of JSON port
-	//let some event flow for a while
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	INFO("ReloadConfig: changed port");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon_changed_port.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: changed connector");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_changed_conn.conf",1));
+	INFO("ReloadConfig: reset");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	INFO("ReloadConfig: changed connector");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon_changed_conn.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: removed port");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_removed_port.conf",1));
+	INFO("ReloadConfig: reset");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	INFO("ReloadConfig: removed port");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon_removed_port.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: removed connector");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_removed_conn.conf",1));
+	INFO("ReloadConfig: reset");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	INFO("ReloadConfig: removed connector");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon_removed_conn.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: removed plugin");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_removed_plugin.conf",1));
+	INFO("ReloadConfig: reset");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
+	INFO("ReloadConfig: removed plugin");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon_removed_plugin.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: change everything");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon_change_everything.conf",2));
+	INFO("ReloadConfig: reset");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon.conf",1));
 	//TODO: check the stream of events coming out of JSON port
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	log->critical("ReloadConfig: reset");
-	REQUIRE(TheDataConcentrator->ReloadConfig("opendatacon.conf",2));
+	INFO("ReloadConfig: change everything");
+	CHECK(TheDataConcentrator->ReloadConfig("opendatacon_change_everything.conf",2));
 	//TODO: check the stream of events coming out of JSON port
+	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	ShutdownDatacon(handles);
-
-	PrepReloadConfFiles(false);
-	std::cout<<"Temp files deleted"<<std::endl;
-}
-
-TEST_CASE(SUITE("FileTransferViaDNP3"))
-{
-	PrepFileTransferConf(true);
-	auto handles = StartupDatacon("transfer.conf");
-	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
-
+	INFO("ReloadConfig: file transfer");
+	CHECK(TheDataConcentrator->ReloadConfig("transfer.conf",2));
+	//TODO: check the stream of events coming out of JSON port
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 	std::ifstream tx_fin("transfer.conf"), rx_fin("RX/transfer.conf");
-	REQUIRE(!tx_fin.fail());
-	REQUIRE(!rx_fin.fail());
+	CHECK_FALSE(tx_fin.fail());
+	CHECK_FALSE(rx_fin.fail());
 	char txch,rxch;
 	while(tx_fin.get(txch))
 	{
-		REQUIRE(rx_fin.get(rxch));
-		REQUIRE(rxch == txch);
+		CHECK(rx_fin.get(rxch));
+		CHECK(rxch == txch);
 	}
 
 	ShutdownDatacon(handles);
-	PrepFileTransferConf(false);
+
+	PrepConfFiles(false);
+	UNSCOPED_INFO("Temp files deleted");
 }
