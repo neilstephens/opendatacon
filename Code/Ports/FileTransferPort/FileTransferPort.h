@@ -76,7 +76,8 @@ private:
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
-	void TxPath(std::string path, std::string tx_name, bool only_modified);
+	void TrySend(const std::string& path, std::string tx_name);
+	void TxPath(std::string path, const std::string& tx_name, bool only_modified);
 	void Tx(bool only_modified);
 	void SaveModTimes();
 	void LoadModTimes();
@@ -94,6 +95,7 @@ private:
 	bool rx_in_progress = false;
 	std::ofstream fout;
 	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> event_buffer;
+	std::unordered_map<std::string,std::string> tx_filename_q;
 
 	//statistics
 	std::atomic<size_t> FilesTransferred = 0;

@@ -444,7 +444,94 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	return (*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
-void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_modified)
+void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
+{
+	//if there's something already in the Q just add to the Q, otherwise kick off the send
+	if(!tx_filename_q.empty())
+	{
+		tx_filename_q[path] = tx_name;
+		return;
+	}
+
+	auto send_file = std::make_shared<std::function<void (CommandStatus)>>([this,path](CommandStatus)
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->debug("{}: Start TX file '{}'.", Name, path);
+
+			std::ifstream fin(path, std::ios::binary);
+			if (fin.fail())
+			{
+			      if(auto log = spdlog::get("FileTransferPort"))
+					log->error("{}: Failed to open file path for reading: '{}'",Name,path);
+			      return;
+			}
+
+			auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+			while(fin)
+			{
+			      auto file_data_chunk = std::vector<char>(255);
+			      fin.read(file_data_chunk.data(),255);
+			      auto data_size = fin.gcount();
+			      if(data_size == 0)
+					break;
+			      if(data_size < 255)
+					file_data_chunk.resize(data_size);
+
+			      auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
+			      chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
+			      PublishEvent(chunk_event);
+			      if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+			      FileBytesTransferred += data_size;
+			}
+			fin.close();
+
+			if(pConf->SequenceIndexEOF >= 0)
+			{
+			//Send special OctetString as EOF
+			      auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, pConf->SequenceIndexEOF, Name);
+			      eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq)));
+			      PublishEvent(eof_event);
+			}
+			else
+			{
+			//Send an empty OctetString as EOF
+			      auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
+			      eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
+			      PublishEvent(eof_event);
+			}
+			seq = pConf->SequenceIndexStart;
+			++FilesTransferred;
+
+			//remove this path from the Q, as we've just sent it
+			tx_filename_q.erase(path);
+
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->debug("{}: Finished TX file '{}'.", Name, path);
+
+			if(!tx_filename_q.empty())
+			{
+			      auto [next_path,next_tx_name] = *tx_filename_q.begin();
+			      tx_filename_q.erase(next_path);
+			      TrySend(next_path, next_tx_name);
+			}
+		});
+
+	if(!tx_name.empty())
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: TX filename '{}' for '{}'.", Name, tx_name, path);
+		auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+		auto name_event = std::make_shared<EventInfo>(*pConf->FileNameTransmissionEvent);
+		name_event->SetTimestamp();
+		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(tx_name)));
+		PublishEvent(name_event,send_file);
+		return;
+	}
+	(*send_file)(CommandStatus::SUCCESS);
+}
+
+void FileTransferPort::TxPath(std::string path, const std::string& tx_name, bool only_modified)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
@@ -497,65 +584,8 @@ void FileTransferPort::TxPath(std::string path, std::string tx_name, bool only_m
 			FileModTimes[path] = updated_time;
 	}
 
-	if(auto log = spdlog::get("FileTransferPort"))
-		log->debug("{}: Start TX file '{}'.", Name, path);
-
-	if(!tx_name.empty())
-	{
-		auto name_event = std::make_shared<EventInfo>(*pConf->FileNameTransmissionEvent);
-		name_event->SetTimestamp();
-		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(tx_name)));
-		std::atomic_bool recv(false);
-		PublishEvent(name_event,std::make_shared<std::function<void (CommandStatus)>>([&recv](CommandStatus){recv = true;}));
-		//TODO: make a timeout or an option to not sync
-		while(!recv)
-			pIOS->poll_one();
-	}
-
-	std::ifstream fin(path, std::ios::binary);
-	if (fin.fail())
-	{
-		if(auto log = spdlog::get("FileTransferPort"))
-			log->error("{}: Failed to open file path for reading: '{}'",Name,path);
-		return;
-	}
-
-	while(fin)
-	{
-		auto file_data_chunk = std::vector<char>(255);
-		fin.read(file_data_chunk.data(),255);
-		auto data_size = fin.gcount();
-		if(data_size == 0)
-			break;
-		if(data_size < 255)
-			file_data_chunk.resize(data_size);
-
-		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
-		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
-		PublishEvent(chunk_event);
-		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
-		FileBytesTransferred += data_size;
-	}
-	fin.close();
-
-	if(pConf->SequenceIndexEOF >= 0)
-	{
-		//Send special OctetString as EOF
-		auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, pConf->SequenceIndexEOF, Name);
-		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq)));
-		PublishEvent(eof_event);
-	}
-	else
-	{
-		//Send an empty OctetString as EOF
-		auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
-		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
-		PublishEvent(eof_event);
-	}
-	seq = pConf->SequenceIndexStart;
-	++FilesTransferred;
-	if(auto log = spdlog::get("FileTransferPort"))
-		log->debug("{}: Finished TX file '{}'.", Name, path);
+	//if we get to here, the path needs sending
+	TrySend(path,tx_name);
 }
 
 void FileTransferPort::Tx(bool only_modified)
