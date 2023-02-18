@@ -453,7 +453,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 		return;
 	}
 
-	auto send_file = std::make_shared<std::function<void (CommandStatus)>>([this,path](CommandStatus)
+	auto send_file = std::make_shared<std::function<void (CommandStatus)>>(pSyncStrand->wrap([this,path,h{handler_tracker}](CommandStatus)
 		{
 			if(auto log = spdlog::get("FileTransferPort"))
 				log->debug("{}: Start TX file '{}'.", Name, path);
@@ -515,7 +515,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			      tx_filename_q.erase(next_path);
 			      TrySend(next_path, next_tx_name);
 			}
-		});
+		}));
 
 	if(!tx_name.empty())
 	{

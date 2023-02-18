@@ -102,23 +102,24 @@ void ShutdownDatacon(DataconHandles handles)
 
 	CHECK(TheDataConcentrator->isShutDown());
 
+	std::cout<<"Cleanup time"<<std::endl;
 	if(TheDataConcentrator->isShutDown())
 	{
 		run_thread->join();
-		UNSCOPED_INFO("Run thread joined");
+		std::cout<<"Run thread joined"<<std::endl;
 	}
 	else
 	{
 		run_thread->detach();
-		UNSCOPED_INFO("Run thread detached");
+		std::cout<<"Run thread detached"<<std::endl;
 	}
 
 	TheDataConcentrator.reset();
-	UNSCOPED_INFO("TheDataConcentrator has been destroyed");
+	std::cout<<"TheDataConcentrator has been destroyed"<<std::endl;
 
 	odc::spdlog_drop_all();
 	odc::spdlog_shutdown();
-	UNSCOPED_INFO("spdlog has been shutdown");
+	std::cout<<"spdlog has been shutdown"<<std::endl;
 }
 
 TEST_CASE(SUITE("ReloadConfig + FileTransfer"))
@@ -217,7 +218,7 @@ TEST_CASE(SUITE("ReloadConfig + FileTransfer"))
 	CHECK_FALSE(tx_fin.fail());
 	CHECK_FALSE(rx_fin.fail());
 	char txch,rxch;
-	while(tx_fin.get(txch))
+	while(tx_fin.get(txch) && !rx_fin.fail())
 	{
 		CHECK(rx_fin.get(rxch));
 		CHECK(rxch == txch);
