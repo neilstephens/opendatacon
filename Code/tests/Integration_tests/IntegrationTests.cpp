@@ -227,5 +227,5 @@ TEST_CASE(SUITE("ReloadConfig + FileTransfer"))
 	ShutdownDatacon(handles);
 
 	PrepConfFiles(false);
-	UNSCOPED_INFO("Temp files deleted");
+	std::cout<<"Temp files deleted"<<std::endl;
 }

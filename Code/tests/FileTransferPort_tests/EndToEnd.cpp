@@ -79,6 +79,9 @@ TEST_CASE(SUITE("Integrity"))
 			stats = RX->GetStatistics();
 		}
 
+		//logging time, and files are locked under windows, so make sure writing is finished
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
 		REQUIRE(stats["FilesTransferred"].asUInt() == 6);
 		std::map<std::string,std::string> file_pairs;
 		file_pairs["FileTxTest1.bin"] = "RX/dateformat_FileTxTest1.bin";
