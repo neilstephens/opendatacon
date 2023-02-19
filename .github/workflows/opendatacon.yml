@@ -46,9 +46,13 @@ jobs:
     env:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: ${{github.workspace}}/build/install
-      LOG_LVL: debug
+      LOG_LVL: error
 
     steps:
+    
+    - if: runner.debug == 1
+      name: Set debug level logging
+      run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
 
     - uses: actions/checkout@v2
       with:
@@ -177,6 +181,14 @@ jobs:
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+      
+    - if: runner.debug == 1
+      name: Upload ODC_Log
+      uses: actions/upload-artifact@v2
+      with:
+        name: debug_log
+        retention-days: 7
+        path: ODC_Log*
     
     - if: always()
       name: Upload Installer
@@ -204,10 +216,15 @@ jobs:
     env:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: /github/workspace/build/install
-      LOG_LVL: debug
+      LOG_LVL: error
       BINDIR: bin/
 
     steps:
+    
+    - if: runner.debug == 1
+      name: Set debug level logging
+      run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
+        
     - name: Start run wrapper
       run: echo '#!/bin/bash' >> $HOME/run.sh
 
@@ -313,7 +330,15 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: installers
-        path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}     
+        path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}
+        
+    - if: runner.debug == 1
+      name: Upload ODC_Log
+      uses: actions/upload-artifact@v2
+      with:
+        name: debug_log
+        retention-days: 7
+        path: ODC_Log*     
         
             
   opendatacon-deploy:
