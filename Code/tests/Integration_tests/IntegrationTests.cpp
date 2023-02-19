@@ -75,9 +75,9 @@ DataconHandles StartupDatacon(std::string config_filename)
 	return {TheDataConcentrator,run_thread,log,pConsole};
 }
 
-void ShutdownDatacon(DataconHandles handles)
+void ShutdownDatacon(DataconHandles& handles)
 {
-	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
+	auto& [TheDataConcentrator,run_thread,log,pConsole] = handles;
 	log.reset();
 
 	std::string cmd = "shutdown\n";
@@ -126,7 +126,7 @@ TEST_CASE(SUITE("ReloadConfig + FileTransfer"))
 {
 	PrepConfFiles(true);
 	auto handles = StartupDatacon("opendatacon.conf");
-	auto [TheDataConcentrator,run_thread,log,pConsole] = handles;
+	auto& [TheDataConcentrator,run_thread,log,pConsole] = handles;
 
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));

@@ -38,11 +38,5 @@ int main( int argc, char* argv[] )
 		new_argv = argv + 1;
 	}
 
-	auto ret_val = Catch::Session().run(new_argc, new_argv);
-
-	std::cout<<"Exited Catch::Session().run(new_argc, new_argv) with value: "<<ret_val<<std::endl;
-
-	//if it's not a clean shutdown, can't risk cleaning up.
-	// _Exit() shouldn't call any destructors
-	_Exit(ret_val);
+	return Catch::Session().run(new_argc, new_argv);
 }
