@@ -182,11 +182,11 @@ jobs:
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
       
-    - if: runner.debug == 1
-      name: Upload ODC_Log
+    - if: always()
+      name: Upload ODC_Log ${{github.job}}
       uses: actions/upload-artifact@v2
       with:
-        name: debug_log
+        name: debug_log ${{github.job}}
         retention-days: 7
         path: ODC_Log*
     
@@ -332,13 +332,12 @@ jobs:
         name: installers
         path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}
         
-    - if: runner.debug == 1
-      name: Upload ODC_Log
-      uses: actions/upload-artifact@v2
+    - if: always()
+      name: Upload ODC_Log ${{github.job}}
+      uses: actions/upload-artifact@v1
       with:
-        name: debug_log
-        retention-days: 7
-        path: ODC_Log*     
+        name: debug_log ${{github.job}}
+        path: ODC_Log*
         
             
   opendatacon-deploy:
