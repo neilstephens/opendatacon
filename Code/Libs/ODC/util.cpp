@@ -30,6 +30,8 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <exception>
+#include <filesystem>
 
 const std::size_t bcd_pack_size = 4;
 
@@ -291,6 +293,59 @@ std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string for
 	ss << std::put_time(&tm, format.c_str());
 
 	return ss.str();
+}
+
+msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format)
+{
+	//do milliseconds ourself
+	size_t msec = 0;
+	auto milli_pos = format.find("%e");
+	if(milli_pos != format.npos)
+	{
+		if(milli_pos != format.size()-2)
+			throw std::runtime_error("datetime_to_since_epoch("+format+"): %e (millisecond) format only supported as suffix");
+		format.resize(format.size()-2);
+		//remove "xxx" milliseconds from the end
+		auto msec_str = date_str.substr(date_str.size()-3);
+		date_str.resize(date_str.size()-3);
+		try
+		{
+			msec = std::stoi(msec_str);
+		}
+		catch(const std::exception& e)
+		{
+			throw std::runtime_error("datetime_to_since_epoch(): Error parsing milliseconds '"+msec_str+"'.");
+		}
+	}
+
+	//parse the rest using iomanip
+	std::istringstream date_iss(date_str);
+	std::tm tm;
+	date_iss >> std::get_time(&tm, format.c_str());
+	if(date_iss.fail())
+		throw std::runtime_error("datetime_to_since_epoch("+format+"): Error parsing datetime '"+date_str+"'.");
+
+	//get_time leaves isdst undefined. -1 means let mktime decide
+	tm.tm_isdst = -1;
+
+	auto time_point = std::chrono::system_clock::from_time_t(mktime(&tm));
+	return std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch()).count()+msec;
+}
+
+std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& time)
+{
+	auto fs_now = std::filesystem::file_time_type::clock::now();
+	auto sys_now = std::chrono::system_clock::now();
+
+	auto fs_since_epoch = fs_now.time_since_epoch();
+	auto sys_since_epoch = sys_now.time_since_epoch();
+	auto time_since_fsepoch = time.time_since_epoch();
+
+	//how long fs epoch is since system epoch - assume a round number of seconds
+	auto epoch_diff_sec = std::chrono::round<std::chrono::seconds>(sys_since_epoch - fs_since_epoch);
+	auto converted = std::chrono::duration_cast<std::chrono::system_clock::duration>(time_since_fsepoch + epoch_diff_sec);
+
+	return std::chrono::system_clock::time_point(converted);
 }
 
 //this is faster than using stringstream to format to hex - minimises allocations

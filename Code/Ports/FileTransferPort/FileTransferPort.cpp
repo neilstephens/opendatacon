@@ -31,7 +31,6 @@
 #include <string>
 #include <unordered_map>
 #include <fstream>
-#include <iomanip>
 
 using namespace odc;
 
@@ -70,7 +69,8 @@ void FileTransferPort::SaveModTimes()
 	Json::Value JsonModTimes;
 	for(const auto& [path,time] : FileModTimes)
 	{
-		auto msec_duration = std::chrono::ceil<std::chrono::milliseconds>(time).time_since_epoch();
+		auto sys_time = fs_to_sys_time_point(time);
+		auto msec_duration = std::chrono::ceil<std::chrono::milliseconds>(sys_time.time_since_epoch());
 		JsonModTimes["FileModTimes"][path] = since_epoch_to_datetime(msec_duration.count());
 	}
 
@@ -111,49 +111,21 @@ void FileTransferPort::LoadModTimes()
 	auto filenames = JsonModTimes["FileModTimes"].getMemberNames();
 	for(const auto& filename : filenames)
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
-			log->debug("{}: Loading mod time for '{}'.", Name, filename);
-
 		auto date_str = JsonModTimes["FileModTimes"][filename].asString();
-		if(date_str.size() != 23)
-		{
-			if(auto log = spdlog::get("FileTransferPort"))
-				log->error("{}: Error parsing mod time '{}' for '{}'.", Name, date_str, filename);
-			continue;
-		}
-
-		//remove ".xxx" milliseconds from the end
-		auto msec_str = date_str.substr(date_str.size()-3);
-		date_str.resize(date_str.size()-4);
-
-		//parse the rest using iomanip
-		std::istringstream date_iss(date_str);
-		std::tm tm;
-		date_iss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
-		if(date_iss.fail())
-		{
-			if(auto log = spdlog::get("FileTransferPort"))
-				log->error("{}: Error parsing mod time '{}' for '{}'.", Name, date_str, filename);
-			continue;
-		}
-		std::chrono::milliseconds msec;
+		msSinceEpoch_t ms_since_epoch;
 		try
 		{
-			msec = std::chrono::milliseconds(std::stoi(msec_str));
+			ms_since_epoch = datetime_to_since_epoch(date_str);
 		}
 		catch(const std::exception& e)
 		{
 			if(auto log = spdlog::get("FileTransferPort"))
-				log->error("{}: Error parsing mod time milliseconds '{}' for '{}'.", Name, msec_str, filename);
+				log->error("{}: Error parsing mod time '{}' for '{}': '{}'", Name, date_str, filename, e.what());
 			continue;
 		}
-
-		//get_time leaves isdst undefined. -1 means let mktime decide
-		tm.tm_isdst = -1;
-
-		//TODO: make this neater with C++20 std::chrono::clock_cast
-		auto time_point = std::chrono::system_clock::from_time_t(mktime(&tm))+msec;
-		FileModTimes[filename] = std::filesystem::file_time_type(time_point.time_since_epoch());
+		FileModTimes[filename] = std::filesystem::file_time_type(std::chrono::milliseconds(ms_since_epoch));
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: Raw/Parsed mod time '{}'/'{}' for '{}'.", Name, date_str, since_epoch_to_datetime(ms_since_epoch), filename);
 	}
 }
 
