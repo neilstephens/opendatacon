@@ -390,7 +390,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		if(event_buffer.size() > 1)
 		{
 			if(auto log = spdlog::get("FileTransferPort"))
-				log->trace("{}: Buffered event count: .", Name, event_buffer.size());
+				log->trace("{}: Buffered event count: {}.", Name, event_buffer.size());
 		}
 
 		while(!event_buffer[seq].empty())
