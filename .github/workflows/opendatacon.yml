@@ -187,7 +187,7 @@ jobs:
       name: Upload ODC_Log
       uses: actions/upload-artifact@v2
       with:
-        name: ODC_Log_${{env.LOG_LVL}}
+        name: ODC_Log_${{env.JOB_NAME}}
         retention-days: 7
         path: ODC_Log*
     
@@ -338,7 +338,7 @@ jobs:
       name: Upload ODC_Log
       uses: actions/upload-artifact@v1
       with:
-        name: ODC_Log_${{env.LOG_LVL}}
+        name: ODC_Log_${{env.JOB_NAME}}
         path: ODC_Log*
         
             
