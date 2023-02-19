@@ -50,7 +50,7 @@ jobs:
 
     steps:
     
-    - if: runner.debug == 1
+    - if: always() && runner.debug == 1
       name: Set debug level logging
       run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
 
@@ -221,7 +221,7 @@ jobs:
 
     steps:
     
-    - if: runner.debug == 1
+    - if: always() && runner.debug == 1
       name: Set debug level logging
       run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
         
