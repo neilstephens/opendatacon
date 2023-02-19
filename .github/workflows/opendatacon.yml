@@ -154,7 +154,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
 
     - name: ODC_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
       if: ${{ !always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
@@ -278,7 +278,7 @@ jobs:
       run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --target install
 
     - name: ODC_tests
-      if: ${{ !always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
       if: ${{ !always() && !contains(github.ref, 'tag') }}

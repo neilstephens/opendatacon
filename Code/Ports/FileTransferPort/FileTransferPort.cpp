@@ -131,6 +131,9 @@ void FileTransferPort::LoadModTimes()
 
 void FileTransferPort::Enable_()
 {
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: Enable_().", Name);
+
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	enabled = true;
 	PublishEvent(ConnectState::PORT_UP);
@@ -154,6 +157,9 @@ void FileTransferPort::Enable_()
 }
 void FileTransferPort::Disable_()
 {
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: Disable_().", Name);
+
 	enabled =false;
 	for(const auto& t : Timers)
 		t->cancel();
@@ -173,7 +179,11 @@ void FileTransferPort::Disable_()
 void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::steady_timer> pTimer, size_t periodms, bool only_modified)
 {
 	if(err || !enabled)
+	{
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: Cancelling period trigger: '{}'.", Name, err.message());
 		return;
+	}
 
 	if(InDemand())
 		Tx(only_modified);
@@ -187,6 +197,8 @@ void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::stea
 
 void FileTransferPort::Build()
 {
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: Build().", Name);
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	Filename = pConf->FilenameInfo.InitialName;
 	seq = pConf->SequenceIndexStart;
@@ -219,6 +231,8 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->trace("{}: Event_().", Name);
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
@@ -311,6 +325,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	{
 		if(rx_in_progress)
 		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->debug("{}: Filename buffered: '{}'.", Name, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
 			event_buffer[index].push_back(event);
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
@@ -333,6 +349,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			}
 		}
 		Filename = templated_name;
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: Filename processed: '{}'.", Name, Filename);
 		return (*pStatusCallback)(CommandStatus::SUCCESS);
 	}
 
@@ -368,6 +386,12 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		event_buffer[index].push_back(event);
 		//call the callback now because we've successfully queued the event
 		(*pStatusCallback)(CommandStatus::SUCCESS);
+
+		if(event_buffer.size() > 1)
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->trace("{}: Buffered event count: .", Name, event_buffer.size());
+		}
 
 		while(!event_buffer[seq].empty())
 		{
@@ -418,6 +442,9 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 
 void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 {
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: TrySend(): '{}', buffer size {}.", Name, path, tx_filename_q.size());
+
 	//if there's something already in the Q just add to the Q, otherwise kick off the send
 	if(!tx_filename_q.empty())
 	{
