@@ -57,10 +57,21 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		PUT->Build();
 		PUT->Enable();
 
+		std::atomic_bool cb_exec = false;
+		auto cb = std::make_shared<std::function<void (CommandStatus)>>([&] (CommandStatus){ cb_exec = true; });
+
 		//send the filename event
 		auto filename_event = std::make_shared<EventInfo>(EventType::OctetString,0);
 		filename_event->SetPayload<EventType::OctetString>(OctetStringBuffer("FileRxTest.txt"));
-		PUT->Event(filename_event,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+		PUT->Event(filename_event,"me",cb);
+
+		size_t count = 0;
+		while(!cb_exec && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+		}
+		REQUIRE(cb_exec);
 
 		//start sending data (with the wrong sequence number - pre-increment means we're starting at 2)
 		size_t seq = 1;
@@ -76,7 +87,7 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(1)));
 		PUT->Event(eof_event,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 
-		size_t count = 0;
+		count = 0;
 		auto stats = PUT->GetStatistics();
 		while(stats["FilesTransferred"].asUInt() < 1 && count < test_timeout)
 		{
@@ -96,6 +107,17 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		fin.close();
 
 		REQUIRE(file_contents == "14 0 1 2 3 4 5 6 7 8 9 10 11 12 13 29 15 16 17 18 19 20 21 22 23 24 25 26 27 28 44 30 31 32 33 34 35 36 37 38 39 40 41 42 43 ");
+
+		//send file start event again
+		cb_exec = false;
+		PUT->Event(filename_event,"me",cb);
+		count = 0;
+		while(!cb_exec && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+		}
+		REQUIRE(cb_exec);
 
 		//This time, entirely shuffle each set of sequence numbers
 		std::vector<std::shared_ptr<EventInfo>> events;
@@ -147,6 +169,17 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		}
 		fin.close();
 		REQUIRE(req_event_num == event_count);
+
+		//send file start event again
+		cb_exec = false;
+		PUT->Event(filename_event,"me",cb);
+		count = 0;
+		while(!cb_exec && count < test_timeout)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			count += 10;
+		}
+		REQUIRE(cb_exec);
 
 		//Now shuffle in chunks of 6, so we're shuffling accross the boundary of sequences
 		events.clear();
