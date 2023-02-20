@@ -93,6 +93,7 @@ private:
 	std::vector<std::shared_ptr<asio::steady_timer>> Timers;
 	std::unordered_map<std::string,std::filesystem::file_time_type> FileModTimes;
 	bool rx_in_progress = false;
+	bool tx_in_progress = false;
 	std::ofstream fout;
 	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> event_buffer;
 	std::unordered_map<std::string,std::string> tx_filename_q;

@@ -397,10 +397,10 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		//call the callback now because we've successfully queued the event
 		(*pStatusCallback)(CommandStatus::SUCCESS);
 
-		if(event_buffer.size() > 1)
+		if(index != seq)
 		{
 			if(auto log = spdlog::get("FileTransferPort"))
-				log->trace("{}: Buffered event count: {}.", Name, event_buffer.size());
+				log->trace("{}: Out-of-order sequence number {} buffered {} sequences deep.", Name, index, event_buffer[index].size());
 		}
 
 		while(!event_buffer[seq].empty())
@@ -450,18 +450,18 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	return (*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
-//called on strand by TxPath(), or called pseudo-recursively on strand-wrapped handler
+//called on strand by TxPath(), or posted on strand by callback
 void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 {
 	if(auto log = spdlog::get("FileTransferPort"))
 		log->debug("{}: TrySend(): '{}', buffer size {}.", Name, path, tx_filename_q.size());
 
-	//if there's something already in the Q just add to the Q, otherwise kick off the send
-	if(!tx_filename_q.empty())
-	{
-		tx_filename_q[path] = tx_name;
+	tx_filename_q[path] = tx_name;
+
+	if(tx_in_progress)
 		return;
-	}
+
+	tx_in_progress = true;
 
 	auto send_file = std::make_shared<std::function<void (CommandStatus)>>(pSyncStrand->wrap([this,path,h{handler_tracker}](CommandStatus)
 		{
@@ -519,11 +519,17 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			if(auto log = spdlog::get("FileTransferPort"))
 				log->debug("{}: Finished TX file '{}'.", Name, path);
 
+			tx_in_progress = false;
+
 			if(!tx_filename_q.empty())
 			{
-			      auto [next_path,next_tx_name] = *tx_filename_q.begin();
-			      tx_filename_q.erase(next_path);
-			      TrySend(next_path, next_tx_name);
+			//we could just call TrySend since we're on the strand
+			//, but that would be 'cutting in line' ahead of other posted handlers
+			      pSyncStrand->post([this,next{*tx_filename_q.begin()}]
+					{
+						auto& [next_path,next_tx_name] = next;
+						TrySend(next_path, next_tx_name);
+					});
 			}
 		}));
 

@@ -92,14 +92,15 @@ TEST_CASE(SUITE("Integrity"))
 		file_pairs["sub/sub/FileTxTest6.bin"] = "RX/dateformat_FileTxTest6.bin";
 		for(auto [tx_filename, rx_filename] : file_pairs)
 		{
+			CAPTURE(tx_filename,rx_filename);
 			std::ifstream tx_fin(tx_filename), rx_fin(rx_filename);
-			REQUIRE_FALSE(tx_fin.fail());
-			REQUIRE_FALSE(rx_fin.fail());
+			CHECK_FALSE(tx_fin.fail());
+			CHECK_FALSE(rx_fin.fail());
 			char txch,rxch;
-			while(tx_fin.get(txch))
+			while(tx_fin.get(txch) && !rx_fin.fail())
 			{
-				REQUIRE(rx_fin.get(rxch));
-				REQUIRE(rxch == txch);
+				CHECK(rx_fin.get(rxch));
+				CHECK(rxch == txch);
 			}
 		}
 
