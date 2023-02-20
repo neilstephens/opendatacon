@@ -326,12 +326,6 @@ jobs:
       run: |
         echo "INSTALLER_NAME=$(find /github/workspace/build -name "opendatacon-*.*.*-*-*-*-*-*.sh" -printf "%f" -quit)" >> $GITHUB_ENV
         cp /github/workspace/build/opendatacon-*.*.*-*-*-*-*-*.sh /github/home/
-    
-    - if: always()
-      name: Copy Logs
-      run: |
-        echo "LOG_NAMES=$(find ./ -name "ODC_Log*")" >> $GITHUB_ENV
-        cp ./$LOG_NAMES /github/home/
         
     - if: always()
       name: Upload Installer
@@ -339,13 +333,6 @@ jobs:
       with:
         name: installers
         path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}
-        
-    - if: always() && env.LOG_NAMES
-      name: Upload ODC_Log
-      uses: actions/upload-artifact@v1
-      with:
-        name: ODC_Log_${{env.JOB_NAME}}
-        path: /home/runner/work/_temp/_github_home/ODC_Log*
         
             
   opendatacon-deploy:
