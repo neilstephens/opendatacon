@@ -47,8 +47,13 @@ jobs:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: ${{github.workspace}}/build/install
       LOG_LVL: error
+      JOB_NAME: ${{matrix.os}}_${{matrix.build-type}}_${{matrix.cross}}_${{matrix.bits}}
 
     steps:
+    
+    - if: always() && runner.debug == 1
+      name: Set debug level logging
+      run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
 
     - uses: actions/checkout@v2
       with:
@@ -171,9 +176,20 @@ jobs:
     - name: PyPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
+    - name: FileTransferPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+      
+    - if: always()
+      name: Upload ODC_Log
+      uses: actions/upload-artifact@v2
+      with:
+        name: ODC_Log_${{env.JOB_NAME}}
+        retention-days: 7
+        path: ODC_Log*
     
     - if: always()
       name: Upload Installer
@@ -193,7 +209,7 @@ jobs:
       fail-fast: false
       matrix:
         build-type: [Release,Debug]
-        docker: ['library/oraclelinux:7.6','i386/ubuntu:bionic']
+        docker: ['library/oraclelinux:7.6','i386/debian:bookworm-slim']
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.docker }}
@@ -203,8 +219,14 @@ jobs:
       INSTALL_PREFIX: /github/workspace/build/install
       LOG_LVL: error
       BINDIR: bin/
+      JOB_NAME: ${{matrix.os}}_${{matrix.build-type}}_${{matrix.cross}}_${{matrix.bits}}
 
     steps:
+    
+    - if: always() && runner.debug == 1
+      name: Set debug level logging
+      run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
+        
     - name: Start run wrapper
       run: echo '#!/bin/bash' >> $HOME/run.sh
 
@@ -240,12 +262,7 @@ jobs:
       name: Setup i386 Environment
       run: |
         apt-get update
-        apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
-        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-        apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
-        apt-get update
-        apt-get install -y libmodbus-dev socat psmisc libc6-dev openssl libssl-dev
-        apt-get install -y python3.6 python3.6-dev g++ git cmake make binutils
+        apt-get install -y libmodbus-dev socat psmisc openssl libssl-dev g++ git cmake file make binutils python3 python3-dev
         echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic -DARCH_DESC=x86' >> $GITHUB_ENV
 
     - name: Finish run wrapper
@@ -297,6 +314,9 @@ jobs:
     - name: PyPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
+    - name: FileTransferPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: /github/workspace/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
@@ -312,7 +332,7 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: installers
-        path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}     
+        path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}
         
             
   opendatacon-deploy:

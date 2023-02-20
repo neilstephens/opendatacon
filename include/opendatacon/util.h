@@ -21,6 +21,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -61,7 +62,9 @@ inline msSinceEpoch_t msSinceEpoch()
 		       (std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds);
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string format = "%Y-%m-%d %H:%M:%S.%e");
+msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format = "%Y-%m-%d %H:%M:%S.%e");
+std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& time);
 
 std::string buf2hex(const uint8_t *data, size_t size);
 std::vector<uint8_t> hex2buf(const std::string& hexStr);

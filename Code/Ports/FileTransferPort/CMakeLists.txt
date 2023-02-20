@@ -16,33 +16,20 @@
  #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
- #
-add_subdirectory(ODC_tests)
+ # 
+project(FileTransferPort)
 
-if(DNP3PORT)
-add_subdirectory(DNP3Port_tests)
-endif()
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-if(MD3PORT)
-add_subdirectory(MD3Port_tests)
-endif()
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC)
 
-if(CBPORT)
-add_subdirectory(CBPort_tests)
-endif()
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
-if(PYPORT)
-add_subdirectory(PyPort_tests)
-endif()
-
-if(SIMPORT)
-add_subdirectory(SimPort_tests)
-endif()
-
-if(FILETRANSFERPORT)
-add_subdirectory(FileTransferPort_tests)
-endif()
-
-if(FULL)
-add_subdirectory(Integration_tests)
-endif()
+install(CODE
+"
+	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+	)
+")

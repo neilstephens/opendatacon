@@ -77,6 +77,7 @@ set(MODBUSPORT OFF CACHE BOOL "Build Modbus Port")
 set(SIMPORT OFF CACHE BOOL "Build Simulation Port")
 set(MD3PORT OFF CACHE BOOL "Build MD3 Port")
 set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port")
+set(FILETRANSFERPORT OFF CACHE BOOL "Build File Transfer Port")
 set(CONSOLEUI OFF CACHE BOOL "Build the console user interface")
 
 # other options off-by-default that you can enable
@@ -93,6 +94,7 @@ if(FULL)
 	set(SIMPORT ON CACHE BOOL "Build Simulation Port" FORCE)
 	set(MD3PORT ON CACHE BOOL "Build MD3 Port" FORCE)
 	set(CBPORT ON CACHE BOOL "Build Conitel-Baker Port" FORCE)
+	set(FILETRANSFERPORT ON CACHE BOOL "Build File Transfer Port" FORCE)
 	set(CONSOLEUI ON CACHE BOOL "Build the console user interface" FORCE)
 endif()
 
@@ -188,6 +190,7 @@ else()
 		message("using special options for GNU compiler")
 		#--no-gnu-unique is required for true dynamic loading and unloading of shared libs
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --no-gnu-unique")
+		set(FS "stdc++fs")
 		#now some trickery to see which glibc
 		execute_process(
 			COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libc.so.6
@@ -372,6 +375,10 @@ endif()
 if(CBPORT)
 	message("add subdir CBPort")
 	add_subdirectory(Code/Ports/CBPort)
+endif()
+if(FILETRANSFERPORT)
+	message("add subdir FileTransferPort")
+	add_subdirectory(Code/Ports/FileTransferPort)
 endif()
 if(TESTS)
 	message("add subdir tests")

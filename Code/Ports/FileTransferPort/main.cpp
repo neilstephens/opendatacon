@@ -17,26 +17,22 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/**
+/*
+ * main.cpp
+ *
+ *  Created on: 19/01/2023
+ *      Author: Neil Stephens
  */
 
-#define CATCH_CONFIG_RUNNER
+#include "FileTransferPort.h"
 
-#include <catch.hpp>
-#include <iostream>
-
-std::string level_str = "info";
-
-int main( int argc, char* argv[] )
+extern "C" FileTransferPort* new_FileTransferPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
 {
-	int new_argc = argc;
-	char** new_argv = argv;
-	if (argc > 1)
-	{
-		level_str = argv[1];
-		new_argc = argc - 1;
-		new_argv = argv + 1;
-	}
+	return new FileTransferPort(Name,File,Overrides);
+}
 
-	return Catch::Session().run(new_argc, new_argv);
+extern "C" void delete_FileTransferPort(FileTransferPort* aFileTransferPort_ptr)
+{
+	delete aFileTransferPort_ptr;
+	return;
 }
