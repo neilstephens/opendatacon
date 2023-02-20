@@ -275,7 +275,7 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 	{
 		if(auto log = spdlog::get("FileTransferPort"))
 			log->trace("{}: Disabled - ignoring {} event from {}", Name, ToString(event->GetEventType()), SenderName);
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 		return;
 	}
 	if(auto log = spdlog::get("FileTransferPort"))
@@ -314,7 +314,8 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 			trig.Type = TriggerType::BinaryControl;
 			break;
 		default:
-			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			pIOS->post([=] { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); });
+			return;
 	}
 
 	auto t = pConf->TransferTriggers.find(trig);
@@ -331,10 +332,11 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 		}
 		else
 			Tx(t->OnlyWhenModified);
-		return (*pStatusCallback)(CommandStatus::SUCCESS);
+		pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
+		return;
 	}
-
-	return (*pStatusCallback)(CommandStatus::UNDEFINED);
+	pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
+	return;
 }
 
 //called on strand by Event_()
@@ -343,7 +345,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
 	if(event->GetEventType() != EventType::OctetString)
-		return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		return pIOS->post([=] { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); });
 
 	auto index = event->GetIndex();
 
@@ -362,7 +364,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		{
 			if(auto log = spdlog::get("FileTransferPort"))
 				log->error("{}: OctetString EOF event with unparsable payload: '{}'.", Name, e.what());
-			return (*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+			pIOS->post([=] { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); });
+			return;
 		}
 		//replace the event with the same thing, but new (sequence number) index and zero-length payload
 		EventInfo newevent(event->GetEventType(), index, event->GetSourcePort(), event->GetQuality(), event->GetTimestamp());
@@ -377,7 +380,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			if(auto log = spdlog::get("FileTransferPort"))
 				log->debug("{}: Filename buffered: '{}'.", Name, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
 			event_buffer[index].push_back(event);
-			return (*pStatusCallback)(CommandStatus::SUCCESS);
+			pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
+			return;
 		}
 
 		//We need to fill out filename template with event and optionally date
@@ -414,7 +418,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		{
 			if(auto log = spdlog::get("FileTransferPort"))
 				log->error("{}: File '{}' already exists and OverwriteMode::FAIL", Name, path.string());
-			return (*pStatusCallback)(CommandStatus::BLOCKED);
+			pIOS->post([=] { (*pStatusCallback)(CommandStatus::BLOCKED); });
+			return;
 		}
 		std::ios::openmode open_flags = std::ios::binary;
 		if(pConf->Mode == OverwriteMode::APPEND)
@@ -424,9 +429,10 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		{
 			if(auto log = spdlog::get("FileTransferPort"))
 				log->error("{}: Failed to open file '{}' for writing.", Name, path.string());
-			return (*pStatusCallback)(CommandStatus::BLOCKED);
+			pIOS->post([=] { (*pStatusCallback)(CommandStatus::BLOCKED); });
+			return;
 		}
-		(*pStatusCallback)(CommandStatus::SUCCESS);
+		pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
 
 		//there could already be out-of-order file data
 		ProcessRxBuffer(SenderName);
@@ -439,7 +445,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		//TODO: somehow limit the buffer size
 		event_buffer[index].push_back(event);
 		//call the callback now because we've successfully queued the event
-		(*pStatusCallback)(CommandStatus::SUCCESS);
+		pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
 
 		if(index != seq)
 		{
@@ -459,7 +465,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	}
 
 	//it's not a filename, or file data at this point
-	return (*pStatusCallback)(CommandStatus::UNDEFINED);
+	pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
+	return;
 }
 
 //called on strand from RxEvent()
@@ -590,10 +597,6 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			}
 		}));
 
-
-	if(auto log = spdlog::get("FileTransferPort"))
-		log->debug("{}: TX filename/start event '{}' for '{}'.", Name, tx_name, path);
-
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	auto name_event = std::make_shared<EventInfo>(*pConf->FileNameTransmissionEvent);
 	name_event->SetTimestamp();
@@ -601,6 +604,8 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("StartFileTransmission")));
 	else
 		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(tx_name)));
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: TX filename/start event '{}' for '{}'.", Name, ToString(name_event->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw), path);
 	PublishEvent(name_event,send_file);
 }
 
