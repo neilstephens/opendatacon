@@ -50,19 +50,19 @@ public:
 
 	void Enable() override
 	{
-		pSyncStrand->dispatch([this,h{handler_tracker}](){Enable_();});
+		pSyncStrand->post([this,h{handler_tracker}](){Enable_();});
 	}
 
 	void Disable() override
 	{
-		pSyncStrand->dispatch([this,h{handler_tracker}](){Disable_();});
+		pSyncStrand->post([this,h{handler_tracker}](){Disable_();});
 	}
 
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
 	{
-		pSyncStrand->dispatch([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
+		pSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
 	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;

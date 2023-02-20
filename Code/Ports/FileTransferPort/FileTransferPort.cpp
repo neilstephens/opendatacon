@@ -54,6 +54,7 @@ FileTransferPort::~FileTransferPort()
 		pIOS->poll_one();
 }
 
+//called on strand by Disable_()
 void FileTransferPort::SaveModTimes()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -78,6 +79,7 @@ void FileTransferPort::SaveModTimes()
 	fout.close();
 }
 
+//called on strand by Enable_()
 void FileTransferPort::LoadModTimes()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -129,6 +131,7 @@ void FileTransferPort::LoadModTimes()
 	}
 }
 
+//posted on strand by Enable()
 void FileTransferPort::Enable_()
 {
 	if(auto log = spdlog::get("FileTransferPort"))
@@ -150,11 +153,13 @@ void FileTransferPort::Enable_()
 			if(t.Type == TriggerType::Periodic)
 			{
 				Timers.push_back(asio_service::Get()->make_steady_timer());
-				pSyncStrand->dispatch([=,h{handler_tracker}] {Periodic(asio::error_code(),Timers.back(),t.Periodms,t.OnlyWhenModified);});
+				Periodic(asio::error_code(),Timers.back(),t.Periodms,t.OnlyWhenModified);
 			}
 		}
 	}
 }
+
+//posted on strand by Disable()
 void FileTransferPort::Disable_()
 {
 	if(auto log = spdlog::get("FileTransferPort"))
@@ -176,12 +181,13 @@ void FileTransferPort::Disable_()
 	PublishEvent(ConnectState::DISCONNECTED);
 }
 
+//called on strand by Enable_(), then wrapped on strand as timer callback
 void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::steady_timer> pTimer, size_t periodms, bool only_modified)
 {
 	if(err || !enabled)
 	{
 		if(auto log = spdlog::get("FileTransferPort"))
-			log->debug("{}: Cancelling period trigger: '{}'.", Name, err.message());
+			log->debug("{}: Cancelling periodic trigger: '{}'.", Name, err.message());
 		return;
 	}
 
@@ -195,6 +201,7 @@ void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::stea
 		}));
 }
 
+//called off strand by DataConcentrator while ASIO blocked
 void FileTransferPort::Build()
 {
 	if(auto log = spdlog::get("FileTransferPort"))
@@ -222,6 +229,7 @@ void FileTransferPort::Build()
 	}
 }
 
+//posted on strand by Event(), or called recursively from RxEvent()
 void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
@@ -243,6 +251,7 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 		return RxEvent(event, SenderName, pStatusCallback);
 }
 
+//called on strand by Event_()
 void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -289,6 +298,7 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 	return (*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
+//called on strand by Event_()
 void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -440,6 +450,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	return (*pStatusCallback)(CommandStatus::UNDEFINED);
 }
 
+//called on strand by TxPath(), or called pseudo-recursively on strand-wrapped handler
 void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 {
 	if(auto log = spdlog::get("FileTransferPort"))
@@ -530,6 +541,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 	(*send_file)(CommandStatus::SUCCESS);
 }
 
+//called on strand direct from Event_() trigger, or indirectly through Tx()
 void FileTransferPort::TxPath(std::string path, const std::string& tx_name, bool only_modified)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -587,6 +599,7 @@ void FileTransferPort::TxPath(std::string path, const std::string& tx_name, bool
 	TrySend(path,tx_name);
 }
 
+//called on strand from Event_() trigger or Periodic()
 void FileTransferPort::Tx(bool only_modified)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -616,6 +629,7 @@ void FileTransferPort::Tx(bool only_modified)
 	TxFileMatchCount = match_count;
 }
 
+//called on strand direct from Event_() trigger, or indirectly through Tx()
 std::pair<bool,std::string> FileTransferPort::FileNameTransmissionMatch(const std::string& filename)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -635,6 +649,7 @@ std::pair<bool,std::string> FileTransferPort::FileNameTransmissionMatch(const st
 	return {false,""};
 }
 
+//called from c'tor
 void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
@@ -863,6 +878,7 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 }
 
+//called async from anywhere
 const Json::Value FileTransferPort::GetStatistics() const
 {
 	Json::Value ret;
