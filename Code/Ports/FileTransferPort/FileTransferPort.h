@@ -76,6 +76,7 @@ private:
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void ProcessRxBuffer(const std::string& SenderName);
 	void TrySend(const std::string& path, std::string tx_name);
 	void TxPath(std::string path, const std::string& tx_name, bool only_modified);
 	void Tx(bool only_modified);

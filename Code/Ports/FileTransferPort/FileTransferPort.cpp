@@ -31,6 +31,7 @@
 #include <string>
 #include <unordered_map>
 #include <fstream>
+#include <exception>
 
 using namespace odc;
 
@@ -227,6 +228,44 @@ void FileTransferPort::Build()
 			}
 		}
 	}
+	else //TX
+	{
+		if(!pConf->FileNameTransmissionEvent)
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: 'FileNameTransmission' config not set. Defaulting to index 0.", Name);
+			pConf->FileNameTransmissionEvent = std::make_shared<EventInfo>(EventType::OctetString, 0, Name);
+		}
+		auto& fn_idx = pConf->FileNameTransmissionEvent->GetIndex();
+
+		std::string msg = "";
+		if(pConf->SequenceIndexStart > pConf->SequenceIndexStop)
+		{
+			msg += "SequenceIndexRange, Start > Stop. ";
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: {}", Name, msg);
+		}
+		if(fn_idx >= pConf->SequenceIndexStart && fn_idx <= pConf->SequenceIndexStop)
+		{
+			msg += "FileNameTransmission Index clashes with SequenceIndexRange. ";
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: {}", Name, msg);
+		}
+		if(pConf->SequenceIndexEOF >= (int64_t)pConf->SequenceIndexStart && pConf->SequenceIndexEOF <= (int64_t)pConf->SequenceIndexStop)
+		{
+			msg += "SequenceIndexRange EOF clashes with SequenceIndexRange Start/Stop. ";
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: {}", Name, msg);
+		}
+		if(fn_idx >= pConf->SequenceIndexStart && fn_idx <= pConf->SequenceIndexStop)
+		{
+			msg += "FileNameTransmission Index clashes with SequenceIndexRange.";
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: {}", Name, msg);
+		}
+		if(msg != "")
+			throw std::invalid_argument(msg);
+	}
 }
 
 //posted on strand by Event(), or called recursively from RxEvent()
@@ -340,6 +379,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			event_buffer[index].push_back(event);
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
 		}
+
 		//We need to fill out filename template with event and optionally date
 		std::string templated_name = pConf->FilenameInfo.Template;
 		auto pos = templated_name.find(pConf->FilenameInfo.EventToken);
@@ -361,36 +401,40 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		Filename = templated_name;
 		if(auto log = spdlog::get("FileTransferPort"))
 			log->debug("{}: Filename processed: '{}'.", Name, Filename);
-		return (*pStatusCallback)(CommandStatus::SUCCESS);
+
+		rx_in_progress = true;
+
+		//TODO: consider if it's best to reset the sequence on each file or not
+		seq = pConf->SequenceIndexStart;
+
+		auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
+		if(auto log = spdlog::get("FileTransferPort"))
+			log->debug("{}: Start RX, writing '{}'.", Name, path.string());
+		if(pConf->Mode == OverwriteMode::FAIL && std::filesystem::exists(path))
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: File '{}' already exists and OverwriteMode::FAIL", Name, path.string());
+			return (*pStatusCallback)(CommandStatus::BLOCKED);
+		}
+		std::ios::openmode open_flags = std::ios::binary;
+		if(pConf->Mode == OverwriteMode::APPEND)
+			open_flags |= std::ios::app;
+		fout.open(path,open_flags);
+		if(fout.fail())
+		{
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->error("{}: Failed to open file '{}' for writing.", Name, path.string());
+			return (*pStatusCallback)(CommandStatus::BLOCKED);
+		}
+		(*pStatusCallback)(CommandStatus::SUCCESS);
+
+		//there could already be out-of-order file data
+		ProcessRxBuffer(SenderName);
+		return;
 	}
 
 	if(index >= pConf->SequenceIndexStart && index <= pConf->SequenceIndexStop)
 	{
-		if(!rx_in_progress)
-		{
-			rx_in_progress = true;
-			seq = pConf->SequenceIndexStart;
-			auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
-			if(auto log = spdlog::get("FileTransferPort"))
-				log->debug("{}: Start RX, writing '{}'.", Name, path.string());
-			if(pConf->Mode == OverwriteMode::FAIL && std::filesystem::exists(path))
-			{
-				if(auto log = spdlog::get("FileTransferPort"))
-					log->error("{}: File '{}' already exists and OverwriteMode::FAIL", Name, path.string());
-				return (*pStatusCallback)(CommandStatus::BLOCKED);
-			}
-			std::ios::openmode open_flags = std::ios::binary;
-			if(pConf->Mode == OverwriteMode::APPEND)
-				open_flags |= std::ios::app;
-			fout.open(path,open_flags);
-			if(fout.fail())
-			{
-				if(auto log = spdlog::get("FileTransferPort"))
-					log->error("{}: Failed to open file '{}' for writing.", Name, path.string());
-				return (*pStatusCallback)(CommandStatus::BLOCKED);
-			}
-		}
-
 		//push and pop everything through the Q for simplicity - optimise if it pops up in a profile as a hot path
 		//TODO: somehow limit the buffer size
 		event_buffer[index].push_back(event);
@@ -403,51 +447,64 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 				log->trace("{}: Out-of-order sequence number {} buffered {} sequences deep.", Name, index, event_buffer[index].size());
 		}
 
-		while(!event_buffer[seq].empty())
+		if(!rx_in_progress)
 		{
-			auto popped = event_buffer[seq].front();
-			event_buffer[seq].pop_front();
-			if(fout)
-			{
-				auto OSBuffer = popped->GetPayload<EventType::OctetString>();
-				if(OSBuffer.size() == 0) //EOF
-				{
-					fout.close();
-					rx_in_progress = false;
-					seq = pConf->SequenceIndexStart;
-					++FilesTransferred;
-					if(auto log = spdlog::get("FileTransferPort"))
-						log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
-
-					//we could already have events from the next file
-					auto process_event =
-						[&](size_t idx)
-						{
-							auto popped = event_buffer[idx].front();
-							event_buffer[idx].pop_front();
-							Event_(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
-						};
-					if(!event_buffer[pConf->FilenameInfo.Event->GetIndex()].empty())
-						process_event(pConf->FilenameInfo.Event->GetIndex());
-					if(!event_buffer[seq].empty())
-						process_event(seq);
-					return;
-				}
-				if(!fout.write(static_cast<const char*>(OSBuffer.data()),OSBuffer.size()))
-				{
-					if(auto log = spdlog::get("FileTransferPort"))
-						log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
-				}
-				FileBytesTransferred += OSBuffer.size();
-				if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
-			}
-			//else - we should have already logged an error when fout went bad.
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->trace("{}: File data (seq={}) before file name/start buffered {} sequences deep.", Name, index, event_buffer[index].size());
+			return;
 		}
+
+		ProcessRxBuffer(SenderName);
 		return;
 	}
 
 	//it's not a filename, or file data at this point
 	return (*pStatusCallback)(CommandStatus::UNDEFINED);
+}
+
+//called on strand from RxEvent()
+void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	while(!event_buffer[seq].empty())
+	{
+		auto popped = event_buffer[seq].front();
+		event_buffer[seq].pop_front();
+		auto OSBuffer = popped->GetPayload<EventType::OctetString>();
+
+		if(OSBuffer.size() == 0) //EOF
+		{
+			fout.close();
+			rx_in_progress = false;
+			seq = pConf->SequenceIndexStart;
+			++FilesTransferred;
+			if(auto log = spdlog::get("FileTransferPort"))
+				log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
+
+			//we could already have events from the next file
+			auto& idx = pConf->FilenameInfo.Event->GetIndex();
+			if(!event_buffer[idx].empty())
+			{
+				auto popped = event_buffer[idx].front();
+				event_buffer[idx].pop_front();
+				RxEvent(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+			}
+			return;
+		}
+
+		if(fout)
+		{
+			if(!fout.write(static_cast<const char*>(OSBuffer.data()),OSBuffer.size()))
+			{
+				if(auto log = spdlog::get("FileTransferPort"))
+					log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
+			}
+		}
+		//else - we should have already logged an error when fout went bad.
+
+		FileBytesTransferred += OSBuffer.size();
+		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+	}
 }
 
 //called on strand by TxPath(), or posted on strand by callback
@@ -533,18 +590,18 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			}
 		}));
 
-	if(!tx_name.empty())
-	{
-		if(auto log = spdlog::get("FileTransferPort"))
-			log->debug("{}: TX filename '{}' for '{}'.", Name, tx_name, path);
-		auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-		auto name_event = std::make_shared<EventInfo>(*pConf->FileNameTransmissionEvent);
-		name_event->SetTimestamp();
+
+	if(auto log = spdlog::get("FileTransferPort"))
+		log->debug("{}: TX filename/start event '{}' for '{}'.", Name, tx_name, path);
+
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	auto name_event = std::make_shared<EventInfo>(*pConf->FileNameTransmissionEvent);
+	name_event->SetTimestamp();
+	if(tx_name == "")
+		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("StartFileTransmission")));
+	else
 		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(tx_name)));
-		PublishEvent(name_event,send_file);
-		return;
-	}
-	(*send_file)(CommandStatus::SUCCESS);
+	PublishEvent(name_event,send_file);
 }
 
 //called on strand direct from Event_() trigger, or indirectly through Tx()
@@ -642,15 +699,9 @@ std::pair<bool,std::string> FileTransferPort::FileNameTransmissionMatch(const st
 	std::smatch match_results;
 	if(std::regex_match(filename, match_results, *pConf->pFilenameRegex))
 	{
-		std::string tx_name = "";
-		if(pConf->FileNameTransmissionEvent)
-		{
-			if(pConf->FileNameTransmissionMatchGroup > match_results.size())
-				tx_name = match_results.position(pConf->FileNameTransmissionMatchGroup);
-			else
-				tx_name = filename;
-		}
-		return {true,tx_name};
+		if(match_results.size() > pConf->FileNameTransmissionMatchGroup)
+			return {true,match_results.str(pConf->FileNameTransmissionMatchGroup)};
+		return {true,filename};
 	}
 	return {false,""};
 }
