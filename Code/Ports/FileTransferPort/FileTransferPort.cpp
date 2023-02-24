@@ -408,9 +408,6 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 
 		rx_in_progress = true;
 
-		//TODO: consider if it's best to reset the sequence on each file or not
-		seq = pConf->SequenceIndexStart;
-
 		auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Start RX, writing '{}'.", Name, path.string());
@@ -574,7 +571,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			      eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
 			      PublishEvent(eof_event);
 			}
-			seq = pConf->SequenceIndexStart;
+			if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 			++FilesTransferred;
 
 			//remove this path from the Q, as we've just sent it
