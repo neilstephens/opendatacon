@@ -31,7 +31,8 @@
 
 #define SUITE(name) "IntegrationTestSuite - " name
 
-void PrepConfFiles(bool init);
+void PrepReloadConfFiles(bool init);
+void PrepTransferFiles(bool init);
 
 class TestHook
 {
@@ -39,6 +40,11 @@ public:
 	static ConsoleUI* GetDataconConsole(std::shared_ptr<DataConcentrator> DC)
 	{
 		auto smart = std::static_pointer_cast<ConsoleUI>(DC->Interfaces.at("ConsoleUI-1"));
+		return smart.get();
+	}
+	static DataPort* GetDataconPort(std::shared_ptr<DataConcentrator> DC, const std::string& Name)
+	{
+		auto smart = std::static_pointer_cast<DataPort>(DC->DataPorts.at(Name));
 		return smart.get();
 	}
 	static std::unordered_map<std::string, spdlog::sink_ptr>* GetLogSinks(std::shared_ptr<DataConcentrator> DC)
@@ -122,9 +128,55 @@ void ShutdownDatacon(DataconHandles& handles)
 	std::cout<<"spdlog has been shutdown"<<std::endl;
 }
 
-TEST_CASE(SUITE("ReloadConfig + FileTransfer"))
+TEST_CASE(SUITE("FileTransfer"))
 {
-	PrepConfFiles(true);
+	PrepTransferFiles(true);
+	auto handles = StartupDatacon("transfer.conf");
+	auto& [TheDataConcentrator,run_thread,log,pConsole] = handles;
+	auto RxPort = TestHook::GetDataconPort(TheDataConcentrator,"FileTransferRX");
+
+	size_t count = 0;
+	auto stats = RxPort->GetStatistics();
+	while(stats["FilesTransferred"].asUInt() < 4 && count < 20000)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		count += 10;
+		stats = RxPort->GetStatistics();
+	}
+
+	const std::array<std::string,4> transfer_files =
+	{
+		"transfer.conf",
+		"transfer1.dat",
+		"transfer2.dat",
+		"transfer3.dat"
+	};
+	for(auto& fn : transfer_files)
+	{
+		CAPTURE(fn);
+		std::ifstream tx_fin(fn), rx_fin("RX/"+fn);
+		CHECK_FALSE(tx_fin.fail());
+		CHECK_FALSE(rx_fin.fail());
+		char txch = 0, rxch = 0;
+		size_t byte_count = 0;
+		while(tx_fin.get(txch) && !rx_fin.fail() && rxch == txch)
+		{
+			CAPTURE(byte_count);
+			CHECK(rx_fin.get(rxch));
+			CHECK(rxch == txch);
+			byte_count++;
+		}
+	}
+
+	ShutdownDatacon(handles);
+
+	PrepTransferFiles(false);
+	std::cout<<"Temp files deleted"<<std::endl;
+}
+
+TEST_CASE(SUITE("ReloadConfig"))
+{
+	PrepReloadConfFiles(true);
 	auto handles = StartupDatacon("opendatacon.conf");
 	auto& [TheDataConcentrator,run_thread,log,pConsole] = handles;
 
@@ -209,23 +261,8 @@ TEST_CASE(SUITE("ReloadConfig + FileTransfer"))
 	//let some event flow for a while
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-	INFO("ReloadConfig: file transfer");
-	CHECK(TheDataConcentrator->ReloadConfig("transfer.conf",2));
-	//TODO: check the stream of events coming out of JSON port
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-	std::ifstream tx_fin("transfer.conf"), rx_fin("RX/transfer.conf");
-	CHECK_FALSE(tx_fin.fail());
-	CHECK_FALSE(rx_fin.fail());
-	char txch,rxch;
-	while(tx_fin.get(txch) && !rx_fin.fail())
-	{
-		CHECK(rx_fin.get(rxch));
-		CHECK(rxch == txch);
-	}
-
 	ShutdownDatacon(handles);
 
-	PrepConfFiles(false);
+	PrepReloadConfFiles(false);
 	std::cout<<"Temp files deleted"<<std::endl;
 }
