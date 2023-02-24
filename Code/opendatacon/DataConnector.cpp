@@ -156,7 +156,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				}
 				auto libfilename = GetLibFileName(libname);
 
-				if (auto log = spdlog::get("Connectors"))
+				if (auto log = odc::spdlog_get("Connectors"))
 					log->debug("Attempting to load library: {}, {}", libname, libfilename);
 
 				//try to load the lib

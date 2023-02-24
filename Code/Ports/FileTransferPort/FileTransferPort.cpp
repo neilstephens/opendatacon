@@ -63,7 +63,7 @@ void FileTransferPort::SaveModTimes()
 	std::ofstream fout(pConf->PersistenceFile);
 	if(fout.fail())
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->error("{}: Failed to write PersistenceFile '{}'.", Name, pConf->PersistenceFile);
 		return;
 	}
@@ -88,7 +88,7 @@ void FileTransferPort::LoadModTimes()
 	std::ifstream fin(pConf->PersistenceFile);
 	if(fin.fail())
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Failed to read PersistenceFile '{}'.", Name, pConf->PersistenceFile);
 		return;
 	}
@@ -101,13 +101,13 @@ void FileTransferPort::LoadModTimes()
 
 	if(!parse_success)
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->error("{}: Failed to parse PersistenceFile '{}': '{}'", Name, pConf->PersistenceFile, err_str);
 		return;
 	}
 	if(!JsonModTimes.isMember("FileModTimes"))
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->error("{}: Failed to parse PersistenceFile '{}': No member 'FileModTimes'", Name, pConf->PersistenceFile);
 		return;
 	}
@@ -122,12 +122,12 @@ void FileTransferPort::LoadModTimes()
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Error parsing mod time '{}' for '{}': '{}'", Name, date_str, filename, e.what());
 			continue;
 		}
 		FileModTimes[filename] = std::filesystem::file_time_type(std::chrono::milliseconds(ms_since_epoch));
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Raw/Parsed mod time '{}'/'{}' for '{}'.", Name, date_str, since_epoch_to_datetime(ms_since_epoch), filename);
 	}
 }
@@ -135,7 +135,7 @@ void FileTransferPort::LoadModTimes()
 //posted on strand by Enable()
 void FileTransferPort::Enable_()
 {
-	if(auto log = spdlog::get("FileTransferPort"))
+	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Enable_().", Name);
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -163,7 +163,7 @@ void FileTransferPort::Enable_()
 //posted on strand by Disable()
 void FileTransferPort::Disable_()
 {
-	if(auto log = spdlog::get("FileTransferPort"))
+	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Disable_().", Name);
 
 	enabled =false;
@@ -187,7 +187,7 @@ void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::stea
 {
 	if(err || !enabled)
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Cancelling periodic trigger: '{}'.", Name, err.message());
 		return;
 	}
@@ -205,7 +205,7 @@ void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::stea
 //called off strand by DataConcentrator while ASIO blocked
 void FileTransferPort::Build()
 {
-	if(auto log = spdlog::get("FileTransferPort"))
+	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Build().", Name);
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	Filename = pConf->FilenameInfo.InitialName;
@@ -215,7 +215,7 @@ void FileTransferPort::Build()
 		auto pos = pConf->FilenameInfo.Template.find(pConf->FilenameInfo.EventToken);
 		if(pos == pConf->FilenameInfo.Template.npos)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Filename event token '{}' not found in template '{}'.", Name, pConf->FilenameInfo.EventToken, pConf->FilenameInfo.Template);
 		}
 		if(!pConf->FilenameInfo.DateToken.empty())
@@ -223,7 +223,7 @@ void FileTransferPort::Build()
 			pos = pConf->FilenameInfo.Template.find(pConf->FilenameInfo.DateToken);
 			if(pos == pConf->FilenameInfo.Template.npos)
 			{
-				if(auto log = spdlog::get("FileTransferPort"))
+				if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Filename date token '{}' not found in template '{}'.", Name, pConf->FilenameInfo.DateToken, pConf->FilenameInfo.Template);
 			}
 		}
@@ -232,7 +232,7 @@ void FileTransferPort::Build()
 	{
 		if(!pConf->FileNameTransmissionEvent)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: 'FileNameTransmission' config not set. Defaulting to index 0.", Name);
 			pConf->FileNameTransmissionEvent = std::make_shared<EventInfo>(EventType::OctetString, 0, Name);
 		}
@@ -242,25 +242,25 @@ void FileTransferPort::Build()
 		if(pConf->SequenceIndexStart > pConf->SequenceIndexStop)
 		{
 			msg += "SequenceIndexRange, Start > Stop. ";
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: {}", Name, msg);
 		}
 		if(fn_idx >= pConf->SequenceIndexStart && fn_idx <= pConf->SequenceIndexStop)
 		{
 			msg += "FileNameTransmission Index clashes with SequenceIndexRange. ";
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: {}", Name, msg);
 		}
 		if(pConf->SequenceIndexEOF >= (int64_t)pConf->SequenceIndexStart && pConf->SequenceIndexEOF <= (int64_t)pConf->SequenceIndexStop)
 		{
 			msg += "SequenceIndexRange EOF clashes with SequenceIndexRange Start/Stop. ";
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: {}", Name, msg);
 		}
 		if(fn_idx >= pConf->SequenceIndexStart && fn_idx <= pConf->SequenceIndexStop)
 		{
 			msg += "FileNameTransmission Index clashes with SequenceIndexRange.";
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: {}", Name, msg);
 		}
 		if(msg != "")
@@ -273,12 +273,12 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 {
 	if(!enabled)
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->trace("{}: Disabled - ignoring {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 		pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 		return;
 	}
-	if(auto log = spdlog::get("FileTransferPort"))
+	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->trace("{}: Event_().", Name);
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -327,7 +327,7 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 			auto [match,tx_name] = FileNameTransmissionMatch(std::filesystem::path(path).filename().string());
 			if(match)
 				TxPath(path,tx_name,t->OnlyWhenModified);
-			else if(auto log = spdlog::get("FileTransferPort"))
+			else if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->warn("{}: OctetString path event '{}' doesn't match filename regex.", Name, path);
 		}
 		else
@@ -354,7 +354,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		//this is a stand-in for a zero length event reprsenting EOF
 		//the payload is the real sequence number in ascii
 		auto payload = ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw);
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: OctetString EOF index ({}) event received, payload: '{}'.", Name, index, payload);
 		try
 		{
@@ -362,7 +362,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: OctetString EOF event with unparsable payload: '{}'.", Name, e.what());
 			pIOS->post([=] { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); });
 			return;
@@ -377,7 +377,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	{
 		if(rx_in_progress)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Filename buffered: '{}'.", Name, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
 			event_buffer[index].push_back(event);
 			pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
@@ -403,7 +403,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			}
 		}
 		Filename = templated_name;
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Filename processed: '{}'.", Name, Filename);
 
 		rx_in_progress = true;
@@ -412,11 +412,11 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		seq = pConf->SequenceIndexStart;
 
 		auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Start RX, writing '{}'.", Name, path.string());
 		if(pConf->Mode == OverwriteMode::FAIL && std::filesystem::exists(path))
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: File '{}' already exists and OverwriteMode::FAIL", Name, path.string());
 			pIOS->post([=] { (*pStatusCallback)(CommandStatus::BLOCKED); });
 			return;
@@ -427,7 +427,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		fout.open(path,open_flags);
 		if(fout.fail())
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Failed to open file '{}' for writing.", Name, path.string());
 			pIOS->post([=] { (*pStatusCallback)(CommandStatus::BLOCKED); });
 			return;
@@ -449,13 +449,13 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 
 		if(index != seq)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->trace("{}: Out-of-order sequence number {} buffered {} sequences deep.", Name, index, event_buffer[index].size());
 		}
 
 		if(!rx_in_progress)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->trace("{}: File data (seq={}) before file name/start buffered {} sequences deep.", Name, index, event_buffer[index].size());
 			return;
 		}
@@ -485,7 +485,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 			rx_in_progress = false;
 			seq = pConf->SequenceIndexStart;
 			++FilesTransferred;
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 
 			//we could already have events from the next file
@@ -503,7 +503,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 		{
 			if(!fout.write(static_cast<const char*>(OSBuffer.data()),OSBuffer.size()))
 			{
-				if(auto log = spdlog::get("FileTransferPort"))
+				if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 			}
 		}
@@ -517,7 +517,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 //called on strand by TxPath(), or posted on strand by callback
 void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 {
-	if(auto log = spdlog::get("FileTransferPort"))
+	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: TrySend(): '{}', buffer size {}.", Name, path, tx_filename_q.size());
 
 	tx_filename_q[path] = tx_name;
@@ -529,13 +529,13 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 
 	auto send_file = std::make_shared<std::function<void (CommandStatus)>>(pSyncStrand->wrap([this,path,h{handler_tracker}](CommandStatus)
 		{
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Start TX file '{}'.", Name, path);
 
 			std::ifstream fin(path, std::ios::binary);
 			if (fin.fail())
 			{
-			      if(auto log = spdlog::get("FileTransferPort"))
+			      if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Failed to open file path for reading: '{}'",Name,path);
 			      return;
 			}
@@ -580,7 +580,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			//remove this path from the Q, as we've just sent it
 			tx_filename_q.erase(path);
 
-			if(auto log = spdlog::get("FileTransferPort"))
+			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Finished TX file '{}'.", Name, path);
 
 			tx_in_progress = false;
@@ -604,7 +604,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("StartFileTransmission")));
 	else
 		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(tx_name)));
-	if(auto log = spdlog::get("FileTransferPort"))
+	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: TX filename/start event '{}' for '{}'.", Name, ToString(name_event->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw), path);
 	PublishEvent(name_event,send_file);
 }
@@ -625,7 +625,7 @@ void FileTransferPort::TxPath(std::string path, const std::string& tx_name, bool
 	auto rel_path = std::filesystem::relative(std_path,base_path);
 	if(rel_path.string() == "" || rel_path.string().substr(0,2) == "..")
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->warn("{}: Requested path not in transfer directory: '{}'", Name, std_path.string());
 		return;
 	}
@@ -634,7 +634,7 @@ void FileTransferPort::TxPath(std::string path, const std::string& tx_name, bool
 
 	if(!std::filesystem::exists(path))
 	{
-		if(auto log = spdlog::get("FileTransferPort"))
+		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->warn("{}: File not found: '{}'", Name, path);
 		FileModTimes.erase(path);
 		return;
@@ -716,7 +716,7 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
-	auto log = spdlog::get("FileTransferPort");
+	auto log = odc::spdlog_get("FileTransferPort");
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
 	if(JSONRoot.isMember("Direction"))
