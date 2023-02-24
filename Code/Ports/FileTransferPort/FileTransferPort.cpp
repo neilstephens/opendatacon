@@ -480,7 +480,6 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 		{
 			fout.close();
 			rx_in_progress = false;
-			seq = pConf->SequenceIndexStart;
 			++FilesTransferred;
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
