@@ -541,6 +541,9 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 
 			while(fin)
 			{
+			//FIXME: BAD experiment to see if throttling will help windows build keep up
+			      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
 			      auto file_data_chunk = std::vector<char>(255);
 			      fin.read(file_data_chunk.data(),255);
 			      auto data_size = fin.gcount();
