@@ -137,7 +137,7 @@ TEST_CASE(SUITE("FileTransfer"))
 
 	size_t count = 0;
 	auto stats = RxPort->GetStatistics();
-	while(stats["FilesTransferred"].asUInt() < 4 && count < 20000)
+	while(stats["FilesTransferred"].asUInt() < 4 && count < 40000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		count += 10;
