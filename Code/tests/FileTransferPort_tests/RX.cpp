@@ -71,11 +71,11 @@ TEST_CASE(SUITE("Sequence Reordering"))
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			count += 10;
 		}
-		REQUIRE(cb_exec);
+		CHECK(cb_exec);
 
-		//start sending data (with the wrong sequence number - pre-increment means we're starting at 2)
+		//start sending data (skip 1 (see pre-increment), start at 2 to simulate out of order)
 		size_t seq = 1;
-		for(size_t i = 0; i < 45; i++)
+		for(size_t i = 0; i < 45; i++) //1-15 three times
 		{
 			auto event = std::make_shared<EventInfo>(EventType::OctetString,(seq = ++seq > 15 ? 1 : seq));
 			event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(i)+" "));
@@ -83,8 +83,9 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		}
 
 		//send EOF event
+		seq = 1;
 		auto eof_event = std::make_shared<EventInfo>(EventType::OctetString,16);
-		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(1)));
+		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq)));
 		PUT->Event(eof_event,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 
 		count = 0;
@@ -95,18 +96,21 @@ TEST_CASE(SUITE("Sequence Reordering"))
 			count += 10;
 			stats = PUT->GetStatistics();
 		}
+		auto stat_string = stats.toStyledString();
 
-		REQUIRE(std::filesystem::exists("RX/dateformat_FileRxTest.txt"));
 		std::ifstream fin("RX/dateformat_FileRxTest.txt");
-		REQUIRE_FALSE(fin.fail());
+		{
+			CAPTURE(stat_string);
+			CHECK_FALSE(fin.fail());
 
-		std::string file_contents;
-		char ch;
-		while(fin.get(ch))
-			file_contents.push_back(ch);
-		fin.close();
+			std::string file_contents;
+			char ch;
+			while(fin.get(ch))
+				file_contents.push_back(ch);
+			fin.close();
 
-		REQUIRE(file_contents == "14 0 1 2 3 4 5 6 7 8 9 10 11 12 13 29 15 16 17 18 19 20 21 22 23 24 25 26 27 28 44 30 31 32 33 34 35 36 37 38 39 40 41 42 43 ");
+			CHECK(file_contents == "14 0 1 2 3 4 5 6 7 8 9 10 11 12 13 29 15 16 17 18 19 20 21 22 23 24 25 26 27 28 44 30 31 32 33 34 35 36 37 38 39 40 41 42 43 ");
+		}
 
 		//send file start event again
 		cb_exec = false;
@@ -117,19 +121,18 @@ TEST_CASE(SUITE("Sequence Reordering"))
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			count += 10;
 		}
-		REQUIRE(cb_exec);
+		CHECK(cb_exec);
 
 		//This time, entirely shuffle each set of sequence numbers
 		std::vector<std::shared_ptr<EventInfo>> events;
-		const size_t event_count = 15*20-1; //20 sets of sequence number 1-15, save room for eof
-		size_t i = 0;
-		for(; i < event_count; i++)
+		const size_t event_count = 15*20-1; //20 sets of sequence numbers, save room for eof
+		for(size_t i = 0; i < event_count; i++)
 		{
-			auto event = std::make_shared<EventInfo>(EventType::OctetString,(i%15)+1);
+			auto event = std::make_shared<EventInfo>(EventType::OctetString,(seq = ++seq > 15 ? 1 : seq));
 			event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(i)+" "));
 			events.push_back(event);
 		}
-		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string((i%15)+1)));
+		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq = ++seq > 15 ? 1 : seq)));
 		events.push_back(eof_event);
 
 		std::random_device rd;
@@ -158,17 +161,23 @@ TEST_CASE(SUITE("Sequence Reordering"))
 			count += 10;
 			stats = PUT->GetStatistics();
 		}
+		stat_string = stats.toStyledString();
 
 		fin.open("RX/dateformat_FileRxTest.txt");
-		REQUIRE_FALSE(fin.fail());
-		size_t event_num, req_event_num = 0;
-		while(fin>>event_num)
 		{
-			REQUIRE(event_num == req_event_num);
-			req_event_num++;
+			CAPTURE(stat_string);
+			CHECK_FALSE(fin.fail());
+			size_t event_num, req_event_num = 0;
+			while(fin>>event_num)
+			{
+				CHECK(event_num == req_event_num);
+				if(event_num != req_event_num)
+					break;
+				req_event_num++;
+			}
+			fin.close();
+			CHECK(req_event_num == event_count);
 		}
-		fin.close();
-		REQUIRE(req_event_num == event_count);
 
 		//send file start event again
 		cb_exec = false;
@@ -179,18 +188,17 @@ TEST_CASE(SUITE("Sequence Reordering"))
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			count += 10;
 		}
-		REQUIRE(cb_exec);
+		CHECK(cb_exec);
 
 		//Now shuffle in chunks of 6, so we're shuffling accross the boundary of sequences
 		events.clear();
-		i = 0;
-		for(; i < event_count; i++)
+		for(size_t i = 0; i < event_count; i++)
 		{
-			auto event = std::make_shared<EventInfo>(EventType::OctetString,(i%15)+1);
+			auto event = std::make_shared<EventInfo>(EventType::OctetString,(seq = ++seq > 15 ? 1 : seq));
 			event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(i)+" "));
 			events.push_back(event);
 		}
-		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string((i%15)+1)));
+		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq = ++seq > 15 ? 1 : seq)));
 		events.push_back(eof_event);
 
 		first = events.begin();
@@ -216,17 +224,23 @@ TEST_CASE(SUITE("Sequence Reordering"))
 			count += 10;
 			stats = PUT->GetStatistics();
 		}
+		stat_string = stats.toStyledString();
 
 		fin.open("RX/dateformat_FileRxTest.txt");
-		REQUIRE_FALSE(fin.fail());
-		req_event_num = 0;
-		while(fin>>event_num)
 		{
-			REQUIRE(event_num == req_event_num);
-			req_event_num++;
+			CAPTURE(stat_string);
+			CHECK_FALSE(fin.fail());
+			size_t event_num, req_event_num = 0;
+			while(fin>>event_num)
+			{
+				CHECK(event_num == req_event_num);
+				if(event_num != req_event_num)
+					break;
+				req_event_num++;
+			}
+			fin.close();
+			CHECK(req_event_num == event_count);
 		}
-		fin.close();
-		REQUIRE(req_event_num == event_count);
 
 		PUT->Disable();
 

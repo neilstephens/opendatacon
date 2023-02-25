@@ -71,10 +71,13 @@ TEST_CASE(SUITE("Triggers"))
 			stats = PUT->GetStatistics();
 		}
 
-		REQUIRE(stats["TxFileMatchCount"].asUInt() == 6);
-		REQUIRE(stats["FilesTransferred"].asUInt() == 6);
-		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200);
-		REQUIRE((stats["TxFileDirCount"].asUInt() - stats["TxFileMatchCount"].asUInt()) >= 6);
+		auto stat_string = stats.toStyledString();
+		CAPTURE(stat_string);
+
+		CHECK(stats["TxFileMatchCount"].asUInt() == 6);
+		CHECK(stats["FilesTransferred"].asUInt() == 6);
+		CHECK(stats["FileBytesTransferred"].asUInt() == 19200);
+		CHECK((stats["TxFileDirCount"].asUInt() - stats["TxFileMatchCount"].asUInt()) >= 6);
 
 		//Test binary control trigger
 		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,0);
@@ -87,8 +90,10 @@ TEST_CASE(SUITE("Triggers"))
 			count += 10;
 			stats = PUT->GetStatistics();
 		}
-		REQUIRE(stats["FilesTransferred"].asUInt() == 6*2);
-		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200*2);
+		stat_string = stats.toStyledString();
+		CAPTURE(stat_string);
+		CHECK(stats["FilesTransferred"].asUInt() == 6*2);
+		CHECK(stats["FileBytesTransferred"].asUInt() == 19200*2);
 
 		//Analog control trigger
 		event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16,0);
@@ -102,8 +107,10 @@ TEST_CASE(SUITE("Triggers"))
 			count += 10;
 			stats = PUT->GetStatistics();
 		}
-		REQUIRE(stats["FilesTransferred"].asUInt() == 6*3);
-		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200*3);
+		stat_string = stats.toStyledString();
+		CAPTURE(stat_string);
+		CHECK(stats["FilesTransferred"].asUInt() == 6*3);
+		CHECK(stats["FileBytesTransferred"].asUInt() == 19200*3);
 
 		//And request a specific path with OctetString event
 		event = std::make_shared<EventInfo>(EventType::OctetString,0);
@@ -117,8 +124,10 @@ TEST_CASE(SUITE("Triggers"))
 			count += 10;
 			stats = PUT->GetStatistics();
 		}
-		REQUIRE(stats["FilesTransferred"].asUInt() == 6*3+1);
-		REQUIRE(stats["FileBytesTransferred"].asUInt() == 19200*3+1300);
+		stat_string = stats.toStyledString();
+		CAPTURE(stat_string);
+		CHECK(stats["FilesTransferred"].asUInt() == 6*3+1);
+		CHECK(stats["FileBytesTransferred"].asUInt() == 19200*3+1300);
 
 		PUT->Disable();
 		Null.Disable();

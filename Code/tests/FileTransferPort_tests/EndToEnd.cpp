@@ -78,11 +78,13 @@ TEST_CASE(SUITE("Integrity"))
 			count += 10;
 			stats = RX->GetStatistics();
 		}
+		auto stat_string = stats.toStyledString();
+		CAPTURE(stat_string);
 
 		//logging time, and files are locked under windows, so make sure writing is finished
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-		REQUIRE(stats["FilesTransferred"].asUInt() == 6);
+		CHECK(stats["FilesTransferred"].asUInt() == 6);
 		std::map<std::string,std::string> file_pairs;
 		file_pairs["FileTxTest1.bin"] = "RX/dateformat_FileTxTest1.bin";
 		file_pairs["FileTxTest2.bin"] = "RX/dateformat_FileTxTest2.bin";
