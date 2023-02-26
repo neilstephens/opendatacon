@@ -381,4 +381,15 @@ std::vector<uint8_t> hex2buf(const std::string& hexStr)
 	return buf;
 }
 
+uint16_t crc_ccitt(const uint8_t* const data, const size_t length, uint16_t crc, const uint16_t poly)
+{
+	for(size_t i = 0; i < length; i++)
+	{
+		crc ^= static_cast<uint16_t>(data[i]) << 8;
+		for(auto j = 0; j < 8; j++)
+			crc = (crc & 0x8000) ? (crc << 1) ^ poly : crc << 1;
+	}
+	return crc;
+}
+
 } // namespace odc

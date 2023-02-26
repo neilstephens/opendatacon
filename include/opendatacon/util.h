@@ -69,6 +69,8 @@ std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem
 std::string buf2hex(const uint8_t *data, size_t size);
 std::vector<uint8_t> hex2buf(const std::string& hexStr);
 
+uint16_t crc_ccitt(const uint8_t* const data, const size_t length, uint16_t crc = 0xFFFF, const uint16_t poly = 0x1021);
+
 } //namspace odc
 
 #endif //UTIL_H
