@@ -167,6 +167,8 @@ void FileTransferPort::Disable_()
 		log->debug("{}: Disable_().", Name);
 
 	enabled =false;
+	pThrottleTimer->cancel();
+	pThrottleTimer.reset();
 	for(const auto& t : Timers)
 		t->cancel();
 	Timers.clear();
@@ -534,15 +536,15 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 			bytes_sent += data_size;
 
 			//FIXME: move to configuration
-			size_t throttle_baudrate = 100000;
+			size_t throttle_baudrate = 300000;
 
 			std::chrono::microseconds throttled_time((bytes_sent*8000000)/throttle_baudrate);
 			auto elapsed = std::chrono::high_resolution_clock::now() - start_time;
 			auto time_to_wait = elapsed < throttled_time ? throttled_time - elapsed : std::chrono::microseconds::zero();
 			pThrottleTimer->expires_from_now(time_to_wait);
-			pThrottleTimer->async_wait(pSyncStrand->wrap([this,p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
+			pThrottleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
 				{
-					if(!err) SendChunk(std::move(p),std::move(st),std::move(bs));
+					if(!err && enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
 				}));
 			return;
 		}
@@ -578,7 +580,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 	{
 		//we could just call TrySend since we're on the strand
 		//, but that would be 'cutting in line' ahead of other posted handlers
-		pSyncStrand->post([this,next{*tx_filename_q.begin()}]
+		pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
 			{
 				auto& [next_path,next_tx_name] = next;
 				TrySend(next_path, next_tx_name);
