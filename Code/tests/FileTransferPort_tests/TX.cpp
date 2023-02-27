@@ -114,7 +114,7 @@ TEST_CASE(SUITE("Triggers"))
 
 		//And request a specific path with OctetString event
 		event = std::make_shared<EventInfo>(EventType::OctetString,0);
-		event->SetPayload<EventType::OctetString>(OctetStringBuffer("sub/FileTxTest3.bin"));
+		event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("sub/FileTxTest3.bin")));
 		PUT->Event(event,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 		count = 0;
 		stats = PUT->GetStatistics();

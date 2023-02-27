@@ -62,7 +62,7 @@ TEST_CASE(SUITE("Sequence Reordering"))
 
 		//send the filename event
 		auto filename_event = std::make_shared<EventInfo>(EventType::OctetString,0);
-		filename_event->SetPayload<EventType::OctetString>(OctetStringBuffer("FileRxTest.txt"));
+		filename_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("FileRxTest.txt")));
 		PUT->Event(filename_event,"me",cb);
 
 		size_t count = 0;

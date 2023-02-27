@@ -464,29 +464,37 @@ typedef std::pair<double,CommandStatus> AOD;
 //	so it can be written directly to a socket, or added to a collection to be written to socket etc.
 struct OctetStringBuffer: public shared_const_buffer
 {
-	OctetStringBuffer(): //by default, make a 'null string'
-		shared_const_buffer(std::make_shared<std::string>(""))
+	//by default, has_appropriate_members is a false type
+	template<typename T, typename = void>
+	struct has_appropriate_members: std::false_type {};
+
+	//these will all resolve for types with the needed members
+	template<typename T>
+	using data_member_t = decltype(std::declval<T>().data());
+	template<typename T>
+	using size_member_t = decltype(std::declval<T>().size());
+	template<typename T>
+	using get_allocator_member_t = decltype(std::declval<T>().get_allocator());
+
+	//if T has data(), size() and get_allocator() members
+	//then has_appropriate_members is a true type
+	template<typename T>
+	struct has_appropriate_members<T, std::void_t<data_member_t<T>, size_member_t<T>, get_allocator_member_t<T>>>
+		: std::true_type {};
+
+	template<typename T, typename = std::enable_if_t<has_appropriate_members<T>::value>>
+	OctetStringBuffer(T&& aContainer):
+		//shared_const_buffer is a ref counted wraper that will delete the data in good time
+		shared_const_buffer(std::make_shared<T>(std::move(aContainer)))
 	{}
 
-//FIXME: using a template makes the calls to ToString for other types that use implicit conversion ambiguous
-//	template <typename T> //T must be a container with a data(), size() and get_allocator() members
-//	OctetStringBuffer(T&& aContainer):
-//		//shared_const_buffer is a ref counted wraper that will delete the data in good time
-//		shared_const_buffer(std::make_shared<T>(std::move(aContainer)))
-//	{}
-
-	//allow string and vector until the above issue is fixed to allow any containers with data(), size() and get_allocator() members
-	OctetStringBuffer(std::string&& aContainer):
-		shared_const_buffer(std::make_shared<std::string>(std::move(aContainer)))
-	{}
-	template <typename T>
-	OctetStringBuffer(std::vector<T>&& aContainer):
-		shared_const_buffer(std::make_shared<std::vector<T>>(std::move(aContainer)))
-	{}
-
-	template <typename T>
+	template<typename T, typename = std::enable_if_t<has_appropriate_members<T>::value>>
 	OctetStringBuffer(std::shared_ptr<T> aPtr):
 		shared_const_buffer(aPtr)
+	{}
+
+	OctetStringBuffer(): //by default, make a 'null string'
+		shared_const_buffer(std::make_shared<std::string>(""))
 	{}
 };
 
