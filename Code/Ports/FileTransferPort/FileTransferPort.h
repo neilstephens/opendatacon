@@ -77,6 +77,7 @@ private:
 	void TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void ProcessRxBuffer(const std::string& SenderName);
+	void SendChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent = 0);
 	void TrySend(const std::string& path, std::string tx_name);
 	void TxPath(std::string path, const std::string& tx_name, bool only_modified);
 	void Tx(bool only_modified);
@@ -96,6 +97,8 @@ private:
 	bool rx_in_progress = false;
 	bool tx_in_progress = false;
 	std::ofstream fout;
+	std::ifstream fin;
+	std::shared_ptr<asio::steady_timer> pThrottleTimer = asio_service::Get()->make_steady_timer();
 	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> event_buffer;
 	std::unordered_map<std::string,std::string> tx_filename_q;
 

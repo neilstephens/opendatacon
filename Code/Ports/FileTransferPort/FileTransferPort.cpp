@@ -511,6 +511,81 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 	}
 }
 
+//called as strand wrapped callback after TrySend(), or posted on strand 'recursively'
+void FileTransferPort::SendChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	auto file_data_chunk = std::vector<char>(255);
+	fin.read(file_data_chunk.data(),255);
+	auto data_size = fin.gcount();
+	if(data_size > 0)
+	{
+		if(data_size < 255)
+			file_data_chunk.resize(data_size);
+
+		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
+		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
+		PublishEvent(chunk_event);
+		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+		FileBytesTransferred += data_size;
+		if(fin)
+		{
+			bytes_sent += data_size;
+
+			//FIXME: move to configuration
+			size_t throttle_baudrate = 100000;
+
+			std::chrono::microseconds throttled_time((bytes_sent*8000000)/throttle_baudrate);
+			auto elapsed = std::chrono::high_resolution_clock::now() - start_time;
+			auto time_to_wait = elapsed < throttled_time ? throttled_time - elapsed : std::chrono::microseconds::zero();
+			pThrottleTimer->expires_from_now(time_to_wait);
+			pThrottleTimer->async_wait(pSyncStrand->wrap([this,p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
+				{
+					if(!err) SendChunk(std::move(p),std::move(st),std::move(bs));
+				}));
+			return;
+		}
+	}
+	fin.close();
+
+	if(pConf->SequenceIndexEOF >= 0)
+	{
+		//Send special OctetString as EOF
+		auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, pConf->SequenceIndexEOF, Name);
+		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq)));
+		PublishEvent(eof_event);
+	}
+	else
+	{
+		//Send an empty OctetString as EOF
+		auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
+		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
+		PublishEvent(eof_event);
+	}
+	if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+	++FilesTransferred;
+
+	//remove this path from the Q, as we've just sent it
+	tx_filename_q.erase(path);
+
+	if(auto log = odc::spdlog_get("FileTransferPort"))
+		log->debug("{}: Finished TX file '{}'.", Name, path);
+
+	tx_in_progress = false;
+
+	if(!tx_filename_q.empty())
+	{
+		//we could just call TrySend since we're on the strand
+		//, but that would be 'cutting in line' ahead of other posted handlers
+		pSyncStrand->post([this,next{*tx_filename_q.begin()}]
+			{
+				auto& [next_path,next_tx_name] = next;
+				TrySend(next_path, next_tx_name);
+			});
+	}
+}
+
 //called on strand by TxPath(), or posted on strand by callback
 void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 {
@@ -529,72 +604,14 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Start TX file '{}'.", Name, path);
 
-			std::ifstream fin(path, std::ios::binary);
+			fin.open(path, std::ios::binary);
 			if (fin.fail())
 			{
 			      if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Failed to open file path for reading: '{}'",Name,path);
 			      return;
 			}
-
-			auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-
-			while(fin)
-			{
-			//FIXME: BAD experiment to see if throttling will help windows build keep up
-			      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-			      auto file_data_chunk = std::vector<char>(255);
-			      fin.read(file_data_chunk.data(),255);
-			      auto data_size = fin.gcount();
-			      if(data_size == 0)
-					break;
-			      if(data_size < 255)
-					file_data_chunk.resize(data_size);
-
-			      auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
-			      chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
-			      PublishEvent(chunk_event);
-			      if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
-			      FileBytesTransferred += data_size;
-			}
-			fin.close();
-
-			if(pConf->SequenceIndexEOF >= 0)
-			{
-			//Send special OctetString as EOF
-			      auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, pConf->SequenceIndexEOF, Name);
-			      eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq)));
-			      PublishEvent(eof_event);
-			}
-			else
-			{
-			//Send an empty OctetString as EOF
-			      auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
-			      eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
-			      PublishEvent(eof_event);
-			}
-			if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
-			++FilesTransferred;
-
-			//remove this path from the Q, as we've just sent it
-			tx_filename_q.erase(path);
-
-			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->debug("{}: Finished TX file '{}'.", Name, path);
-
-			tx_in_progress = false;
-
-			if(!tx_filename_q.empty())
-			{
-			//we could just call TrySend since we're on the strand
-			//, but that would be 'cutting in line' ahead of other posted handlers
-			      pSyncStrand->post([this,next{*tx_filename_q.begin()}]
-					{
-						auto& [next_path,next_tx_name] = next;
-						TrySend(next_path, next_tx_name);
-					});
-			}
+			SendChunk(path,std::chrono::high_resolution_clock::now());
 		}));
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
