@@ -143,6 +143,7 @@ TEST_CASE(SUITE("FileTransfer"))
 		count += 10;
 		stats = RxPort->GetStatistics();
 	}
+	CHECK(count > 10000); //should be approx 16000 due to throttle
 
 	const std::array<std::string,4> transfer_files =
 	{
