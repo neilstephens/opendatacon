@@ -131,6 +131,7 @@ public:
 	std::chrono::milliseconds ModifiedDwellTimems = std::chrono::milliseconds(500);
 	ModifiedTimePersistence Persistence = ModifiedTimePersistence::INMEMORY;
 	std::string PersistenceFile = "ModifiedTimePersistence.json";
+	size_t ThrottleBaudrate = 0;
 };
 
 #endif /* FileTransferPortConf_H_ */

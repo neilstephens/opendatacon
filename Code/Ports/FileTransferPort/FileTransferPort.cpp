@@ -531,21 +531,27 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 		PublishEvent(chunk_event);
 		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 		FileBytesTransferred += data_size;
+		bytes_sent += data_size;
 		if(fin)
 		{
-			bytes_sent += data_size;
-
-			//FIXME: move to configuration
-			size_t throttle_baudrate = 300000;
-
-			std::chrono::microseconds throttled_time((bytes_sent*8000000)/throttle_baudrate);
-			auto elapsed = std::chrono::high_resolution_clock::now() - start_time;
-			auto time_to_wait = elapsed < throttled_time ? throttled_time - elapsed : std::chrono::microseconds::zero();
-			pThrottleTimer->expires_from_now(time_to_wait);
-			pThrottleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
-				{
-					if(!err && enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
-				}));
+			if(pConf->ThrottleBaudrate > 0)
+			{
+				std::chrono::microseconds throttled_time((bytes_sent*8000000)/pConf->ThrottleBaudrate);
+				auto elapsed = std::chrono::high_resolution_clock::now() - start_time;
+				auto time_to_wait = elapsed < throttled_time ? throttled_time - elapsed : std::chrono::microseconds::zero();
+				pThrottleTimer->expires_from_now(time_to_wait);
+				pThrottleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
+					{
+						if(!err && enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
+					}));
+			}
+			else
+			{
+				pSyncStrand->post([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
+					{
+						if(enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
+					});
+			}
 			return;
 		}
 	}
@@ -956,6 +962,10 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->Mode = OverwriteMode::FAIL;
 		else if (log)
 			log->error("{}: Invalid OverwriteMode '{}'", Name, modestr);
+	}
+	if(JSONRoot.isMember("ThrottleBaudrate"))
+	{
+		pConf->ThrottleBaudrate = JSONRoot["ThrottleBaudrate"].asUInt();
 	}
 }
 
