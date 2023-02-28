@@ -132,6 +132,7 @@ public:
 	ModifiedTimePersistence Persistence = ModifiedTimePersistence::INMEMORY;
 	std::string PersistenceFile = "ModifiedTimePersistence.json";
 	size_t ThrottleBaudrate = 0;
+	bool UseCRCs = true;
 };
 
 #endif /* FileTransferPortConf_H_ */

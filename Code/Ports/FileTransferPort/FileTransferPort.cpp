@@ -210,6 +210,7 @@ void FileTransferPort::Build()
 	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Build().", Name);
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	crc_size = pConf->UseCRCs ? sizeof(crc) : 0;
 	Filename = pConf->FilenameInfo.InitialName;
 	seq = pConf->SequenceIndexStart;
 	if(pConf->Direction == TransferDirection::RX)
@@ -239,6 +240,13 @@ void FileTransferPort::Build()
 			pConf->FileNameTransmissionEvent = std::make_shared<EventInfo>(EventType::OctetString, 0, Name);
 		}
 		auto& fn_idx = pConf->FileNameTransmissionEvent->GetIndex();
+
+		if(pConf->UseCRCs && pConf->SequenceIndexEOF >= 0)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->warn("{}: SequenceIndexRange EOF not used becauee UseCRCs == true.", Name);
+			pConf->SequenceIndexEOF = -1;
+		}
 
 		std::string msg = "";
 		if(pConf->SequenceIndexStart > pConf->SequenceIndexStop)
@@ -386,13 +394,30 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			return;
 		}
 
+		if(pConf->UseCRCs)
+		{
+			auto rx_crc = pConf->UseCRCs ? *(uint16_t*)event->GetPayload<EventType::OctetString>().data() : crc;
+			if(1) //FIXME (!previous_file_aborted)
+			{
+				if(rx_crc != crc)
+				{
+					if(auto log = odc::spdlog_get("FileTransferPort"))
+						log->error("{}: Filename CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data", Name, rx_crc, crc);
+					//start abort timer running?
+					return;
+				}
+			}
+			crc = crc_ccitt((uint8_t*)(event->GetPayload<EventType::OctetString>().data())+crc_size,event->GetPayload<EventType::OctetString>().size()-crc_size,rx_crc);
+		}
+
+
 		//We need to fill out filename template with event and optionally date
 		std::string templated_name = pConf->FilenameInfo.Template;
 		auto pos = templated_name.find(pConf->FilenameInfo.EventToken);
 		if(pos != templated_name.npos)
 		{
 			templated_name.erase(pos, pConf->FilenameInfo.EventToken.size());
-			templated_name.insert(pos, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+			templated_name.insert(pos, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw).c_str()+crc_size);
 		}
 		if(!pConf->FilenameInfo.DateToken.empty())
 		{
@@ -472,13 +497,32 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
 	while(!event_buffer[seq].empty())
 	{
 		auto popped = event_buffer[seq].front();
 		event_buffer[seq].pop_front();
 		auto OSBuffer = popped->GetPayload<EventType::OctetString>();
 
-		if(OSBuffer.size() == 0) //EOF
+		if(OSBuffer.size() < crc_size)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->error("{}: OctetString without CRC recieved when UseCRCs == true.", Name);
+			continue;
+		}
+		if(pConf->UseCRCs)
+		{
+			auto rx_crc = *(uint16_t*)OSBuffer.data();
+			if(rx_crc != crc)
+			{
+				if(auto log = odc::spdlog_get("FileTransferPort"))
+					log->error("{}: CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data", Name, rx_crc, crc);
+				continue;
+			}
+			crc = crc_ccitt((uint8_t*)(OSBuffer.data())+crc_size,OSBuffer.size()-crc_size,rx_crc);
+		}
+
+		if(OSBuffer.size() == (pConf->UseCRCs ? 2 : 0)) //EOF
 		{
 			fout.close();
 			rx_in_progress = false;
@@ -500,7 +544,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 
 		if(fout)
 		{
-			if(!fout.write(static_cast<const char*>(OSBuffer.data()),OSBuffer.size()))
+			if(!fout.write(static_cast<const char*>(OSBuffer.data())+crc_size,OSBuffer.size()-crc_size))
 			{
 				if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
@@ -508,7 +552,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 		}
 		//else - we should have already logged an error when fout went bad.
 
-		FileBytesTransferred += OSBuffer.size();
+		FileBytesTransferred += OSBuffer.size()-crc_size;
 		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 	}
 }
@@ -519,12 +563,17 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
 	auto file_data_chunk = std::vector<char>(255);
-	fin.read(file_data_chunk.data(),255);
+	if(pConf->UseCRCs)
+		memcpy(file_data_chunk.data(),&crc,crc_size);
+
+	fin.read(file_data_chunk.data()+crc_size,255-crc_size);
 	auto data_size = fin.gcount();
 	if(data_size > 0)
 	{
-		if(data_size < 255)
-			file_data_chunk.resize(data_size);
+		if(data_size+crc_size < 255)
+			file_data_chunk.resize(data_size+crc_size);
+		if(pConf->UseCRCs)
+			crc = crc_ccitt((uint8_t*)(file_data_chunk.data())+crc_size,file_data_chunk.size()-crc_size,crc);
 
 		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
 		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
@@ -568,7 +617,13 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 	{
 		//Send an empty OctetString as EOF
 		auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
-		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
+		if(pConf->UseCRCs)
+		{
+			std::string crc_data((char*)&crc,crc_size);
+			eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(crc_data)));
+		}
+		else
+			eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
 		PublishEvent(eof_event);
 	}
 	if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
@@ -625,12 +680,21 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	auto name_event = std::make_shared<EventInfo>(*pConf->FileNameTransmissionEvent);
 	name_event->SetTimestamp();
+
 	if(tx_name == "")
-		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("StartFileTransmission")));
-	else
-		name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(tx_name)));
+		tx_name = "StartFileTransmission";
+
+	std::vector<char> filename_data(tx_name.size()+crc_size);
+	if(pConf->UseCRCs)
+		memcpy(filename_data.data(),&crc,crc_size);
+	memcpy(filename_data.data()+crc_size,tx_name.data(),tx_name.size());
+	name_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(filename_data)));
+
+	if(pConf->UseCRCs)
+		crc = crc_ccitt((uint8_t*)(tx_name.data()),tx_name.size(),crc);
+
 	if(auto log = odc::spdlog_get("FileTransferPort"))
-		log->debug("{}: TX filename/start event '{}' for '{}'.", Name, ToString(name_event->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw), path);
+		log->debug("{}: TX filename/start event '{}' for '{}'.", Name, tx_name, path);
 	PublishEvent(name_event,send_file);
 }
 
@@ -966,6 +1030,10 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("ThrottleBaudrate"))
 	{
 		pConf->ThrottleBaudrate = JSONRoot["ThrottleBaudrate"].asUInt();
+	}
+	if(JSONRoot.isMember("UseCRCs"))
+	{
+		pConf->UseCRCs = JSONRoot["UseCRCs"].asBool();
 	}
 }
 

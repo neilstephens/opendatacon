@@ -145,6 +145,11 @@ TEST_CASE(SUITE("FileTransfer"))
 	}
 	CHECK(count > 10000); //should be approx 16000 due to throttle
 
+	auto stat_string = stats.toStyledString();
+	CAPTURE(stat_string);
+	CHECK(stats["FilesTransferred"].asUInt() == 4);
+	CHECK(stats["FileBytesTransferred"].asUInt() == 603090); //600006 + 3084 for transfer.conf
+
 	const std::array<std::string,4> transfer_files =
 	{
 		"transfer.conf",

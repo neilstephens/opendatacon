@@ -76,7 +76,8 @@ inline Json::Value GetConfigJSON(bool TX)
 			{"Type" : "AnalogControl", "Index" : 0, "Value" : 3, "OnlyWhenModified" : false},
 			{"Type" : "OctetStringPath", "Index" : 0, "OnlyWhenModified" : false}
 		],
-		"ModifiedDwellTimems" : 100
+		"ModifiedDwellTimems" : 100,
+		"UseCRCs" : false
 	})001";
 	static const char* rx_conf = R"001(
 	{
@@ -90,7 +91,8 @@ inline Json::Value GetConfigJSON(bool TX)
 			"Event" : {"Index" : 0, "Token" : "<DYNAMIC>"}
 		},
 		"OverwriteMode" : "OVERWRITE", 	//or "FAIL" or "APPEND",
-		"SequenceIndexRange" : {"Start" : 1, "Stop" : 15, "EOF" : 16}
+		"SequenceIndexRange" : {"Start" : 1, "Stop" : 15, "EOF" : 16},
+		"UseCRCs" : false
 	})001";
 
 	std::istringstream iss(TX ? tx_conf : rx_conf);

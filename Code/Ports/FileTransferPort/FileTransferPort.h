@@ -91,6 +91,8 @@ private:
 
 	bool enabled = false;
 	size_t seq = 0;
+	uint16_t crc = crc_ccitt(nullptr,0);
+	uint8_t crc_size = 2;
 	std::string Filename = "";
 	std::vector<std::shared_ptr<asio::steady_timer>> Timers;
 	std::unordered_map<std::string,std::filesystem::file_time_type> FileModTimes;
