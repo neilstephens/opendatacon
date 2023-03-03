@@ -294,7 +294,7 @@ TEST_CASE(SUITE("ManyStrings"))
 				if((count+recv_offset)%256 != ch)
 				{
 					recv_offset = ch - count%256;
-					odc::spdlog_get("opendatacon")->critical("{}: Possible out of order or lost data. Recieved {}, count {} ({}), offset {}",sock1 ? "Sock1" : "Sock2",(uint8_t)ch,count,count%256,recv_offset);
+					odc::spdlog_get("opendatacon")->critical("{}: Possible out of order or lost data. Received {}, count {} ({}), offset {}",sock1 ? "Sock1" : "Sock2",(uint8_t)ch,count,count%256,recv_offset);
 				}
 				buf.consume(1);
 			}

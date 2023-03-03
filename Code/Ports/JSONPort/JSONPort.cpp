@@ -171,7 +171,7 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
 				if(auto log = odc::spdlog_get("JSONPort"))
-					log->warn("Malformed JSON recieved: unmatched closing brace.");
+					log->warn("Malformed JSON received: unmatched closing brace.");
 			}
 		}
 		braced.push_back(ch);
@@ -472,7 +472,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					else if(cm != "PULSE")
 					{
 						if(auto log = odc::spdlog_get("JSONPort"))
-							log->error("Unrecongnised ControlMode '{}', recieved for index {}",cm,point_pair.first);
+							log->error("Unrecongnised ControlMode '{}', received for index {}",cm,point_pair.first);
 						continue;
 					}
 				}

@@ -507,7 +507,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 		if(OSBuffer.size() < crc_size)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->error("{}: OctetString without CRC recieved when UseCRCs == true.", Name);
+				log->error("{}: OctetString without CRC received when UseCRCs == true.", Name);
 			continue;
 		}
 		if(pConf->UseCRCs)

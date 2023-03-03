@@ -422,7 +422,7 @@ void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::I
 {
 	values.ForeachItem([](const opendnp3::DNPTime time)
 		{
-			//TODO: master recieved time...
+			//TODO: master received time...
 		});
 }
 
