@@ -435,7 +435,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Filename buffered: '{}'.", Name, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
-			event_buffer[index].push_back(event);
+			rx_event_buffer[index].push_back(event);
 			pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
 			return;
 		}
@@ -515,20 +515,20 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		pTransferTimeoutTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ TransferTimeoutHandler(err); }));
 
 		//push and pop everything through the Q for simplicity - optimise if it pops up in a profile as a hot path
-		event_buffer[index].push_back(event);
+		rx_event_buffer[index].push_back(event);
 		//call the callback now because we've successfully queued the event
 		pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
 
 		if(index != seq)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->trace("{}: Out-of-order sequence number {} buffered {} sequences deep.", Name, index, event_buffer[index].size());
+				log->trace("{}: Out-of-order sequence number {} buffered {} sequences deep.", Name, index, rx_event_buffer[index].size());
 		}
 
 		if(!rx_in_progress)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->trace("{}: File data (seq={}) before file name/start buffered {} sequences deep.", Name, index, event_buffer[index].size());
+				log->trace("{}: File data (seq={}) before file name/start buffered {} sequences deep.", Name, index, rx_event_buffer[index].size());
 			return;
 		}
 
@@ -567,7 +567,7 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 			fout.close();
 		}
 	}
-	event_buffer.clear();
+	rx_event_buffer.clear();
 }
 
 //called on strand from RxEvent()
@@ -575,10 +575,10 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
-	while(!event_buffer[seq].empty())
+	while(!rx_event_buffer[seq].empty())
 	{
-		auto popped = event_buffer[seq].front();
-		event_buffer[seq].pop_front();
+		auto popped = rx_event_buffer[seq].front();
+		rx_event_buffer[seq].pop_front();
 		auto OSBuffer = popped->GetPayload<EventType::OctetString>();
 
 		if(OSBuffer.size() < crc_size)
@@ -610,10 +610,10 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 
 			//we could already have events from the next file
 			auto& idx = pConf->FilenameInfo.Event->GetIndex();
-			if(!event_buffer[idx].empty())
+			if(!rx_event_buffer[idx].empty())
 			{
-				auto popped = event_buffer[idx].front();
-				event_buffer[idx].pop_front();
+				auto popped = rx_event_buffer[idx].front();
+				rx_event_buffer[idx].pop_front();
 				RxEvent(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 			}
 			return;

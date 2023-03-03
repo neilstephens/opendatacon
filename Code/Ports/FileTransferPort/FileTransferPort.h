@@ -108,7 +108,7 @@ private:
 	std::ifstream fin;
 	std::shared_ptr<asio::steady_timer> pThrottleTimer = asio_service::Get()->make_steady_timer();
 	std::shared_ptr<asio::steady_timer> pTransferTimeoutTimer = asio_service::Get()->make_steady_timer();
-	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> event_buffer;
+	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> rx_event_buffer;
 	std::unordered_map<std::string,std::string> tx_filename_q;
 
 	//statistics
