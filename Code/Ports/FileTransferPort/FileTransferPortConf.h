@@ -133,6 +133,7 @@ public:
 	std::string PersistenceFile = "ModifiedTimePersistence.json";
 	size_t ThrottleBaudrate = 0;
 	bool UseCRCs = true;
+	size_t TransferTimeoutms = 3000;
 };
 
 #endif /* FileTransferPortConf_H_ */

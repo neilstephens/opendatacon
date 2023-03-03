@@ -385,6 +385,9 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 
 	if(index == pConf->FilenameInfo.Event->GetIndex())
 	{
+		pTransferTimeoutTimer->expires_from_now(std::chrono::milliseconds(pConf->TransferTimeoutms));
+		pTransferTimeoutTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ TransferTimeoutHandler(err); }));
+
 		if(rx_in_progress)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
@@ -397,13 +400,12 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		if(pConf->UseCRCs)
 		{
 			auto rx_crc = pConf->UseCRCs ? *(uint16_t*)event->GetPayload<EventType::OctetString>().data() : crc;
-			if(1) //FIXME (!previous_file_aborted)
+			if(!transfer_aborted)
 			{
 				if(rx_crc != crc)
 				{
 					if(auto log = odc::spdlog_get("FileTransferPort"))
 						log->error("{}: Filename CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data", Name, rx_crc, crc);
-					//start abort timer running?
 					return;
 				}
 			}
@@ -434,6 +436,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			log->debug("{}: Filename processed: '{}'.", Name, Filename);
 
 		rx_in_progress = true;
+		transfer_aborted = false;
 
 		auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
 		if(auto log = odc::spdlog_get("FileTransferPort"))
@@ -465,8 +468,10 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 
 	if(index >= pConf->SequenceIndexStart && index <= pConf->SequenceIndexStop)
 	{
+		pTransferTimeoutTimer->expires_from_now(std::chrono::milliseconds(pConf->TransferTimeoutms));
+		pTransferTimeoutTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ TransferTimeoutHandler(err); }));
+
 		//push and pop everything through the Q for simplicity - optimise if it pops up in a profile as a hot path
-		//TODO: somehow limit the buffer size
 		event_buffer[index].push_back(event);
 		//call the callback now because we've successfully queued the event
 		pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
@@ -491,6 +496,35 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	//it's not a filename, or file data at this point
 	pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 	return;
+}
+
+//called strand wrapped from timer
+void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
+{
+	if(err)
+		return;
+	if(rx_in_progress)
+	{
+		auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+		if(pConf->UseConfirms)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->error("{}: Transfer timeout. Sending negative confirmation", Name);
+			auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
+			ControlRelayOutputBlock CROB; CROB.status = CommandStatus::TIMEOUT;
+			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
+			PublishEvent(confirm_event);
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->error("{}: Transfer timeout. Aborting RX. Closing file.", Name);
+			rx_in_progress = false;
+			transfer_aborted = true;
+			fout.close();
+		}
+	}
+	event_buffer.clear();
 }
 
 //called on strand from RxEvent()
@@ -522,7 +556,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 			crc = crc_ccitt((uint8_t*)(OSBuffer.data())+crc_size,OSBuffer.size()-crc_size,rx_crc);
 		}
 
-		if(OSBuffer.size() == (pConf->UseCRCs ? 2 : 0)) //EOF
+		if(OSBuffer.size() == (pConf->UseCRCs ? crc_size : 0)) //EOF
 		{
 			fout.close();
 			rx_in_progress = false;
@@ -1034,6 +1068,10 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("UseCRCs"))
 	{
 		pConf->UseCRCs = JSONRoot["UseCRCs"].asBool();
+	}
+	if(JSONRoot.isMember("TransferTimeoutms"))
+	{
+		pConf->TransferTimeoutms = JSONRoot["TransferTimeoutms"].asUInt();
 	}
 }
 
