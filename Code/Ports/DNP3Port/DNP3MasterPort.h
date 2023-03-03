@@ -92,7 +92,7 @@ protected:
 	bool AssignClassDuringStartup() final
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: AssignClassDuringStartup() called.", Name);
+			log->trace("{}: AssignClassDuringStartup() called.", Name);
 		return false;
 	}
 	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final
