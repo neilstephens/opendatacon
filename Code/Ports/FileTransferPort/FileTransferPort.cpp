@@ -278,6 +278,13 @@ void FileTransferPort::Build()
 		if(msg != "")
 			throw std::invalid_argument(msg);
 	}
+
+	if(pConf->UseConfirms && pConf->ConfirmControlIndex < 0)
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->error("{}: UseConfirms == true, but no ConfirmControlIndex set. Defaulting to index 0.", Name);
+		pConf->ConfirmControlIndex = 0;
+	}
 }
 
 //posted on strand by Event(), or called recursively from RxEvent()
@@ -347,6 +354,40 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 		pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
 		return;
 	}
+	else if(event->GetEventType() == EventType::ControlRelayOutputBlock && (int64_t)event->GetIndex() == pConf->ConfirmControlIndex)
+	{
+		return ConfirmEvent(event, SenderName, pStatusCallback);
+	}
+
+	pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
+	return;
+}
+
+void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	auto CROB = event->GetPayload<EventType::ControlRelayOutputBlock>();
+	if(CROB.status == CommandStatus::SUCCESS)
+	{
+		ConfirmHandler();
+		ConfirmHandler = [] {};
+		//FIXME: empty the tx_buffer
+	}
+	else if(CROB.status == CommandStatus::TIMEOUT)
+	{
+		const auto& expected_sequence = CROB.onTimeMS;
+		const auto& expected_crc = CROB.offTimeMS;
+
+		auto crc_str = pConf->UseCRCs ? fmt::format("0x{:04x}", expected_crc) : "NOT_USED";
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->debug("{}: Received negative confirmation: Send again from sequence {}, CRC {}", Name, expected_sequence, expected_crc);
+
+		//FIXME: empty up to the expected event, send the rest again
+		//do something drastic if expecting something that doesn't exist
+	}
+	else if(auto log = odc::spdlog_get("FileTransferPort"))
+		log->error("{}: Ignoring confirm event with unexpected status: '{}'", Name, ToString(CROB.status));
+
 	pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 	return;
 }
@@ -589,59 +630,24 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 		//else - we should have already logged an error when fout went bad.
 
 		FileBytesTransferred += OSBuffer.size()-crc_size;
+
+		if(pConf->UseConfirms && seq == pConf->SequenceIndexStop)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->trace("{}: Sending confirmation full sequence received.", Name);
+			auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
+			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
+			PublishEvent(confirm_event);
+		}
+
 		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 	}
 }
 
-//called as strand wrapped callback after TrySend(), or posted on strand 'recursively'
-void FileTransferPort::SendChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent)
+//called on-strand by SendChunk()
+void FileTransferPort::SendEOF(const std::string path)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-
-	auto file_data_chunk = std::vector<char>(255);
-	if(pConf->UseCRCs)
-		memcpy(file_data_chunk.data(),&crc,crc_size);
-
-	fin.read(file_data_chunk.data()+crc_size,255-crc_size);
-	auto data_size = fin.gcount();
-	if(data_size > 0)
-	{
-		if(data_size+crc_size < 255)
-			file_data_chunk.resize(data_size+crc_size);
-		if(pConf->UseCRCs)
-			crc = crc_ccitt((uint8_t*)(file_data_chunk.data())+crc_size,file_data_chunk.size()-crc_size,crc);
-
-		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
-		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
-		PublishEvent(chunk_event);
-		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
-		FileBytesTransferred += data_size;
-		bytes_sent += data_size;
-		if(fin)
-		{
-			if(pConf->ThrottleBaudrate > 0)
-			{
-				std::chrono::microseconds throttled_time((bytes_sent*8000000)/pConf->ThrottleBaudrate);
-				auto elapsed = std::chrono::high_resolution_clock::now() - start_time;
-				auto time_to_wait = elapsed < throttled_time ? throttled_time - elapsed : std::chrono::microseconds::zero();
-				pThrottleTimer->expires_from_now(time_to_wait);
-				pThrottleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
-					{
-						if(!err && enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
-					}));
-			}
-			else
-			{
-				pSyncStrand->post([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
-					{
-						if(enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
-					});
-			}
-			return;
-		}
-	}
-	fin.close();
-
 	if(pConf->SequenceIndexEOF >= 0)
 	{
 		//Send special OctetString as EOF
@@ -673,16 +679,98 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 
 	tx_in_progress = false;
 
-	if(!tx_filename_q.empty())
+	std::function<void()> next_action = [this]
+							{
+								if(!tx_filename_q.empty())
+								{
+									//we could just call TrySend since we're on the strand
+									//, but that would be 'cutting in line' ahead of other posted handlers
+									pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+										{
+											auto& [next_path,next_tx_name] = next;
+											TrySend(next_path, next_tx_name);
+										});
+								}
+							};
+
+	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
+		ConfirmHandler = next_action; //let the expected confirm kick off the next action
+	else
+		next_action();
+}
+
+//called on-strand by SendChunk() or ConfirmHandler()
+void FileTransferPort::ScheduleNextChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	if(pConf->ThrottleBaudrate > 0)
 	{
-		//we could just call TrySend since we're on the strand
-		//, but that would be 'cutting in line' ahead of other posted handlers
-		pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+		std::chrono::microseconds throttled_time((bytes_sent*8000000)/pConf->ThrottleBaudrate);
+		auto elapsed = std::chrono::high_resolution_clock::now() - start_time;
+		auto time_to_wait = elapsed < throttled_time ? throttled_time - elapsed : std::chrono::microseconds::zero();
+		pThrottleTimer->expires_from_now(time_to_wait);
+		pThrottleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
 			{
-				auto& [next_path,next_tx_name] = next;
-				TrySend(next_path, next_tx_name);
+				if(!err && enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
+			}));
+	}
+	else
+	{
+		pSyncStrand->post([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
+			{
+				if(enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
 			});
 	}
+}
+
+//called as strand wrapped callback after TrySend(), or posted on strand 'recursively'
+void FileTransferPort::SendChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent)
+{
+	std::function<void()> next_action = [] {};
+
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	auto file_data_chunk = std::vector<char>(255);
+	if(pConf->UseCRCs)
+		memcpy(file_data_chunk.data(),&crc,crc_size);
+
+	fin.read(file_data_chunk.data()+crc_size,255-crc_size);
+	auto data_size = fin.gcount();
+	if(data_size > 0)
+	{
+		if(data_size+crc_size < 255)
+			file_data_chunk.resize(data_size+crc_size);
+		if(pConf->UseCRCs)
+			crc = crc_ccitt((uint8_t*)(file_data_chunk.data())+crc_size,file_data_chunk.size()-crc_size,crc);
+
+		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
+		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
+		PublishEvent(chunk_event);
+		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+		FileBytesTransferred += data_size;
+		bytes_sent += data_size;
+		if(fin)
+		{
+			next_action = [this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
+					  {
+						  ScheduleNextChunk(std::move(p),std::move(st),std::move(bs));
+					  };
+		}
+	}
+
+	if(!fin || data_size == 0)
+	{
+		fin.close();
+		next_action = [this,h{handler_tracker},p{std::move(path)}]
+				  {
+					  SendEOF(std::move(p));
+				  };
+	}
+
+	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
+		ConfirmHandler = next_action; //let the expected confirm kick off the next action
+	else
+		next_action();
 }
 
 //called on strand by TxPath(), or posted on strand by callback
@@ -1074,6 +1162,14 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("TransferTimeoutms"))
 	{
 		pConf->TransferTimeoutms = JSONRoot["TransferTimeoutms"].asUInt();
+	}
+	if(JSONRoot.isMember("UseConfirms"))
+	{
+		pConf->UseConfirms = JSONRoot["UseConfirms"].asBool();
+	}
+	if(JSONRoot.isMember("ConfirmControlIndex"))
+	{
+		pConf->ConfirmControlIndex = JSONRoot["ConfirmControlIndex"].asUInt();
 	}
 }
 

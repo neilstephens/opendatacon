@@ -77,7 +77,8 @@ inline Json::Value GetConfigJSON(bool TX)
 			{"Type" : "OctetStringPath", "Index" : 0, "OnlyWhenModified" : false}
 		],
 		"ModifiedDwellTimems" : 100,
-		"UseCRCs" : false
+		"UseCRCs" : false,
+		"UseConfirms" : false
 	})001";
 	static const char* rx_conf = R"001(
 	{
@@ -92,7 +93,8 @@ inline Json::Value GetConfigJSON(bool TX)
 		},
 		"OverwriteMode" : "OVERWRITE", 	//or "FAIL" or "APPEND",
 		"SequenceIndexRange" : {"Start" : 1, "Stop" : 15, "EOF" : 16},
-		"UseCRCs" : false
+		"UseCRCs" : false,
+		"UseConfirms" : false
 	})001";
 
 	std::istringstream iss(TX ? tx_conf : rx_conf);

@@ -75,9 +75,12 @@ private:
 	void Disable_();
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void TxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+	void ConfirmEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void ProcessRxBuffer(const std::string& SenderName);
 	void TransferTimeoutHandler(const asio::error_code err);
+	void SendEOF(const std::string path);
+	void ScheduleNextChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent);
 	void SendChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent = 0);
 	void TrySend(const std::string& path, std::string tx_name);
 	void TxPath(std::string path, const std::string& tx_name, bool only_modified);
@@ -89,6 +92,7 @@ private:
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	std::function<void()> ConfirmHandler = [] {};
 
 	bool enabled = false;
 	size_t seq = 0;

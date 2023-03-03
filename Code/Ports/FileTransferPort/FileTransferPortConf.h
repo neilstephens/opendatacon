@@ -134,6 +134,8 @@ public:
 	size_t ThrottleBaudrate = 0;
 	bool UseCRCs = true;
 	size_t TransferTimeoutms = 3000;
+	bool UseConfirms = true;
+	int64_t ConfirmControlIndex = -1;
 };
 
 #endif /* FileTransferPortConf_H_ */
