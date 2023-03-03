@@ -169,6 +169,8 @@ void FileTransferPort::Disable_()
 	enabled =false;
 	pThrottleTimer->cancel();
 	pThrottleTimer.reset();
+	pTransferTimeoutTimer->cancel();
+	pTransferTimeoutTimer.reset();
 	for(const auto& t : Timers)
 		t->cancel();
 	Timers.clear();
