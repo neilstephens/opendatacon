@@ -137,7 +137,7 @@ TEST_CASE(SUITE("FileTransfer"))
 
 	size_t count = 0;
 	auto stats = RxPort->GetStatistics();
-	while(stats["FilesTransferred"].asUInt() < 4 && count < 20000)
+	while(stats["FilesTransferred"].asUInt() < 4 && count < 40000)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		count += 10;
@@ -147,6 +147,9 @@ TEST_CASE(SUITE("FileTransfer"))
 	auto stat_string = stats.toStyledString();
 	CAPTURE(stat_string);
 	CHECK(stats["FilesTransferred"].asUInt() == 4);
+
+	//give windows platforms time to close files before we try to read
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 	const std::array<std::string,4> transfer_files =
 	{
@@ -163,13 +166,16 @@ TEST_CASE(SUITE("FileTransfer"))
 		CHECK_FALSE(rx_fin.fail());
 		char txch = 0, rxch = 0;
 		size_t byte_count = 0;
-		while(tx_fin.get(txch) && !rx_fin.fail() && rxch == txch)
+		while(tx_fin.get(txch) && !rx_fin.fail())
 		{
 			CAPTURE(byte_count);
 			CHECK(rx_fin.get(rxch));
 			CHECK(rxch == txch);
 			byte_count++;
+			if(rxch != txch)
+				break;
 		}
+		std::cout<<"Num bytes compared: "<<byte_count<<std::endl;
 	}
 
 	ShutdownDatacon(handles);
