@@ -363,6 +363,7 @@ void FileTransferPort::TxEvent(std::shared_ptr<const EventInfo> event, const std
 	return;
 }
 
+//called on-strand by Event_()
 void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -371,7 +372,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	{
 		ConfirmHandler();
 		ConfirmHandler = [] {};
-		//FIXME: empty the tx_buffer
+		tx_event_buffer.clear();
 	}
 	else if(CROB.status == CommandStatus::TIMEOUT)
 	{
@@ -382,8 +383,11 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Received negative confirmation: Send again from sequence {}, CRC {}", Name, expected_sequence, expected_crc);
 
-		//FIXME: empty up to the expected event, send the rest again
-		//do something drastic if expecting something that doesn't exist
+		if(pConf->UseCRCs)
+			ResendFrom(expected_sequence, expected_crc);
+		else
+			ResendFrom(expected_sequence);
+
 	}
 	else if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->error("{}: Ignoring confirm event with unexpected status: '{}'", Name, ToString(CROB.status));
@@ -644,6 +648,43 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 	}
 }
 
+//called on-strand by TrySend(),SendChunk(), and SendEOF()
+void FileTransferPort::TXBufferPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	PublishEvent(event,pStatusCallback);
+	if(pConf->UseConfirms)
+		tx_event_buffer.push_back(event);
+}
+
+//called on-strand by ConfirmEvent()
+void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expected_crc)
+{
+	// go through and try to find the event with the expected seq and crc
+	const auto b = tx_event_buffer.begin();
+	bool found = false;
+	for(auto ev_it = b; ev_it != tx_event_buffer.end(); ev_it++)
+	{
+		const auto& bufSeq = (*ev_it)->GetIndex();
+		const auto& OSBuf = (*ev_it)->GetPayload<EventType::OctetString>();
+		if(bufSeq == expected_seq)
+		{
+			if(expected_crc && expected_crc != *(uint16_t*)OSBuf.data())
+				continue;
+			tx_event_buffer.erase(b, ev_it==b ? b : --ev_it);
+			found = true;
+			break;
+		}
+	}
+	if(!found)
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->error("{}: Negative confirmation expected seq/crc ({}/{}) that doesn't exist in buffer", Name, expected_seq, expected_crc);
+	}
+	for(const auto& e : tx_event_buffer)
+		PublishEvent(e);
+}
+
 //called on-strand by SendChunk()
 void FileTransferPort::SendEOF(const std::string path)
 {
@@ -653,7 +694,7 @@ void FileTransferPort::SendEOF(const std::string path)
 		//Send special OctetString as EOF
 		auto eof_event = std::make_shared<EventInfo>(EventType::OctetString, pConf->SequenceIndexEOF, Name);
 		eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::to_string(seq)));
-		PublishEvent(eof_event);
+		TXBufferPublishEvent(eof_event);
 	}
 	else
 	{
@@ -666,7 +707,7 @@ void FileTransferPort::SendEOF(const std::string path)
 		}
 		else
 			eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
-		PublishEvent(eof_event);
+		TXBufferPublishEvent(eof_event);
 	}
 	if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 	++FilesTransferred;
@@ -745,7 +786,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 
 		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
 		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
-		PublishEvent(chunk_event);
+		TXBufferPublishEvent(chunk_event);
 		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 		FileBytesTransferred += data_size;
 		bytes_sent += data_size;
@@ -819,7 +860,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 
 	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: TX filename/start event '{}' for '{}'.", Name, tx_name, path);
-	PublishEvent(name_event,send_file);
+	TXBufferPublishEvent(name_event,send_file);
 }
 
 //called on strand direct from Event_() trigger, or indirectly through Tx()

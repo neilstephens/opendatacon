@@ -79,6 +79,8 @@ private:
 	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void ProcessRxBuffer(const std::string& SenderName);
 	void TransferTimeoutHandler(const asio::error_code err);
+	void TXBufferPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+	void ResendFrom(const size_t expected_seq, const uint16_t expected_crc = 0);
 	void SendEOF(const std::string path);
 	void ScheduleNextChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent);
 	void SendChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent = 0);
@@ -109,6 +111,7 @@ private:
 	std::shared_ptr<asio::steady_timer> pThrottleTimer = asio_service::Get()->make_steady_timer();
 	std::shared_ptr<asio::steady_timer> pTransferTimeoutTimer = asio_service::Get()->make_steady_timer();
 	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> rx_event_buffer;
+	std::deque<std::shared_ptr<EventInfo>> tx_event_buffer;
 	std::unordered_map<std::string,std::string> tx_filename_q;
 
 	//statistics
