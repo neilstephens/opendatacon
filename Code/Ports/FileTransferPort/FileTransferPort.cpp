@@ -47,6 +47,9 @@ FileTransferPort::~FileTransferPort()
 	for(const auto& t : Timers)
 		t->cancel();
 
+	//ConfirmHandler might be holding a copy of handler_tracker
+	ConfirmHandler = [] {};
+
 	//There may be some outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
