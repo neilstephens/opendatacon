@@ -14,6 +14,7 @@ inline bool WriteFile(const std::string& name, size_t size)
 		fout<<uint8_t(rand()%255);
 	if(fout.fail())
 		return false;
+	fout.flush();
 	fout.close();
 	return true;
 }

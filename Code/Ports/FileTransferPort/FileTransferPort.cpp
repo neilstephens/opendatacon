@@ -80,6 +80,7 @@ void FileTransferPort::SaveModTimes()
 	}
 
 	fout<<JsonModTimes.toStyledString();
+	fout.flush();
 	fout.close();
 }
 
@@ -571,7 +572,9 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 				log->error("{}: Transfer timeout. Aborting RX. Closing file.", Name);
 			rx_in_progress = false;
 			transfer_aborted = true;
+			fout.flush();
 			fout.close();
+			//FIXME: maybe we should delete the aborted file too?
 		}
 	}
 	rx_event_buffer.clear();
@@ -608,6 +611,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 
 		if(OSBuffer.size() == (pConf->UseCRCs ? crc_size : 0)) //EOF
 		{
+			fout.flush();
 			fout.close();
 			rx_in_progress = false;
 			++FilesTransferred;
