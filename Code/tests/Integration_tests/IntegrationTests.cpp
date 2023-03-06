@@ -160,7 +160,7 @@ TEST_CASE(SUITE("FileTransfer"))
 	};
 	for(auto& fn : transfer_files)
 	{
-		std::ifstream tx_fin(fn), rx_fin("RX/"+fn);
+		std::ifstream tx_fin(fn,std::ios::binary), rx_fin("RX/"+fn,std::ios::binary);
 		{
 			CAPTURE(fn);
 			CHECK_FALSE(tx_fin.fail());

@@ -95,7 +95,7 @@ TEST_CASE(SUITE("DirectBack2Back"))
 		for(auto [tx_filename, rx_filename] : file_pairs)
 		{
 			CAPTURE(tx_filename,rx_filename);
-			std::ifstream tx_fin(tx_filename), rx_fin(rx_filename);
+			std::ifstream tx_fin(tx_filename,std::ios::binary), rx_fin(rx_filename,std::ios::binary);
 			CHECK_FALSE(tx_fin.fail());
 			CHECK_FALSE(rx_fin.fail());
 			char txch,rxch;
@@ -197,7 +197,7 @@ TEST_CASE(SUITE("CorruptConnector"))
 		for(auto [tx_filename, rx_filename] : file_pairs)
 		{
 			CAPTURE(tx_filename,rx_filename);
-			std::ifstream tx_fin(tx_filename), rx_fin(rx_filename);
+			std::ifstream tx_fin(tx_filename,std::ios::binary), rx_fin(rx_filename,std::ios::binary);
 			CHECK_FALSE(tx_fin.fail());
 			CHECK_FALSE(rx_fin.fail());
 			char txch,rxch;
