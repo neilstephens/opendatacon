@@ -449,19 +449,20 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 
 		if(pConf->UseCRCs)
 		{
-			auto rx_crc = pConf->UseCRCs ? *(uint16_t*)event->GetPayload<EventType::OctetString>().data() : crc;
+			auto rx_crc = *(uint16_t*)event->GetPayload<EventType::OctetString>().data();
 			if(!transfer_aborted)
 			{
 				if(rx_crc != crc)
 				{
 					if(auto log = odc::spdlog_get("FileTransferPort"))
 						log->error("{}: Filename CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data '{}'", Name, rx_crc, crc, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw).c_str()+crc_size);
+					pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
+					ProcessQdFilenames(SenderName);
 					return;
 				}
 			}
 			crc = crc_ccitt((uint8_t*)(event->GetPayload<EventType::OctetString>().data())+crc_size,event->GetPayload<EventType::OctetString>().size()-crc_size,rx_crc);
 		}
-
 
 		//We need to fill out filename template with event and optionally date
 		std::string templated_name = pConf->FilenameInfo.Template;
@@ -596,7 +597,20 @@ inline void FileTransferPort::ConfirmCheck()
 	}
 }
 
-//called on strand from RxEvent()
+//called on-strand from RxEvent()
+void FileTransferPort::ProcessQdFilenames(const std::string& SenderName)
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	auto& idx = pConf->FilenameInfo.Event->GetIndex();
+	if(!rx_event_buffer[idx].empty())
+	{
+		auto popped = rx_event_buffer[idx].front();
+		rx_event_buffer[idx].pop_front();
+		RxEvent(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+	}
+}
+
+//called on-strand from RxEvent()
 void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -637,13 +651,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 				log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 
 			//we could already have events from the next file
-			auto& idx = pConf->FilenameInfo.Event->GetIndex();
-			if(!rx_event_buffer[idx].empty())
-			{
-				auto popped = rx_event_buffer[idx].front();
-				rx_event_buffer[idx].pop_front();
-				RxEvent(popped,SenderName,std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
-			}
+			ProcessQdFilenames(SenderName);
 			return;
 		}
 

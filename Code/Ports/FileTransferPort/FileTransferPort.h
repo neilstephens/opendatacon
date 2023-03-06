@@ -78,6 +78,7 @@ private:
 	void ConfirmEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void ConfirmCheck();
+	void ProcessQdFilenames(const std::string& SenderName);
 	void ProcessRxBuffer(const std::string& SenderName);
 	void TransferTimeoutHandler(const asio::error_code err);
 	void TXBufferPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
