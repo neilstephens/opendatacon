@@ -1,6 +1,6 @@
-# opendatacon version 1.8.0-RC3
+# opendatacon version 1.8.0-RC4
 
-## 1.8.0-RC3
+## 1.8.0-RC4
   * New Port type added: FileTransferPort - for transferring files via OctetString data type
   * TODO: add other release notes
 
