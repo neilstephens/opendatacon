@@ -372,7 +372,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	if(CROB.status == CommandStatus::SUCCESS)
 	{
 		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->trace("{}: Received positive confirmation sequence received OK.", Name);
+			log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
 		ConfirmHandler();
 		ConfirmHandler = [] {};
 		tx_event_buffer.clear();
@@ -384,7 +384,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 
 		auto crc_str = pConf->UseCRCs ? fmt::format("0x{:04x}", expected_crc) : "NOT_USED";
 		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->debug("{}: Received negative confirmation: Send again from sequence {}, CRC {}", Name, expected_sequence, expected_crc);
+			log->debug("{}: Received negative confirmation: Send again from sequence {}, CRC {}", Name, expected_sequence, crc_str);
 
 		if(pConf->UseCRCs)
 			ResendFrom(expected_sequence, expected_crc);
@@ -441,7 +441,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		if(rx_in_progress)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->debug("{}: Filename buffered: '{}'.", Name, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+				log->debug("{}: Filename buffered: '{}'.", Name, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw).c_str()+crc_size);
 			rx_event_buffer[index].push_back(event);
 			pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
 			return;
@@ -455,7 +455,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 				if(rx_crc != crc)
 				{
 					if(auto log = odc::spdlog_get("FileTransferPort"))
-						log->error("{}: Filename CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data", Name, rx_crc, crc);
+						log->error("{}: Filename CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data '{}'", Name, rx_crc, crc, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw).c_str()+crc_size);
 					return;
 				}
 			}
