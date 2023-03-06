@@ -552,7 +552,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 //called strand wrapped from timer
 void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 {
-	if(err)
+	if(err || !enabled)
 		return;
 	if(rx_in_progress)
 	{
@@ -581,6 +581,20 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 		}
 	}
 	rx_event_buffer.clear();
+}
+
+//called on-strand from ProcessRxBuffer()
+inline void FileTransferPort::ConfirmCheck()
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	if(pConf->UseConfirms && seq == pConf->SequenceIndexStop)
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->trace("{}: Sending confirmation full sequence received.", Name);
+		auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
+		confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
+		PublishEvent(confirm_event);
+	}
 }
 
 //called on strand from RxEvent()
@@ -618,6 +632,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 			fout.close();
 			rx_in_progress = false;
 			++FilesTransferred;
+			ConfirmCheck();
 			if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
@@ -649,15 +664,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 		//else - we should have already logged an error when fout went bad.
 
 		FileBytesTransferred += OSBuffer.size()-crc_size;
-
-		if(pConf->UseConfirms && seq == pConf->SequenceIndexStop)
-		{
-			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->trace("{}: Sending confirmation full sequence received.", Name);
-			auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
-			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
-			PublishEvent(confirm_event);
-		}
+		ConfirmCheck();
 
 		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
 	}
@@ -737,6 +744,8 @@ void FileTransferPort::SendEOF(const std::string path)
 
 	std::function<void()> next_action = [this]
 							{
+								if(!enabled)
+									return;
 								if(!tx_filename_q.empty())
 								{
 									//we could just call TrySend since we're on the strand
@@ -815,7 +824,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 			anotherChunkAvailable = true;
 			next_action = [this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
 					  {
-						  ScheduleNextChunk(std::move(p),std::move(st),std::move(bs));
+						  if(enabled) ScheduleNextChunk(std::move(p),std::move(st),std::move(bs));
 					  };
 		}
 	}
@@ -831,7 +840,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 		fin.close();
 		next_action = [this,h{handler_tracker},p{std::move(path)}]
 				  {
-					  SendEOF(std::move(p));
+					  if(enabled) SendEOF(std::move(p));
 				  };
 	}
 
@@ -848,6 +857,8 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 //called on strand by TxPath(), or posted on strand by callback
 void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 {
+	if(!enabled)
+		return;
 	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: TrySend(): '{}', buffer size {}.", Name, path, tx_filename_q.size());
 
@@ -860,6 +871,8 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 
 	auto send_file = std::make_shared<std::function<void (CommandStatus)>>(pSyncStrand->wrap([this,path,h{handler_tracker}](CommandStatus)
 		{
+			if(!enabled)
+				return;
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Start TX file '{}'.", Name, path);
 
