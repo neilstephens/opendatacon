@@ -796,6 +796,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 
 	fin.read(file_data_chunk.data()+crc_size,255-crc_size);
 	auto data_size = fin.gcount();
+	bool anotherChunkAvailable = false;
 	if(data_size > 0)
 	{
 		if(data_size+crc_size < 255)
@@ -811,14 +812,21 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 		bytes_sent += data_size;
 		if(fin)
 		{
+			anotherChunkAvailable = true;
 			next_action = [this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
 					  {
 						  ScheduleNextChunk(std::move(p),std::move(st),std::move(bs));
 					  };
 		}
 	}
+	else
+	{
+		fin.close();
+		SendEOF(std::move(path));
+		return;
+	}
 
-	if(!fin || data_size == 0)
+	if(!anotherChunkAvailable)
 	{
 		fin.close();
 		next_action = [this,h{handler_tracker},p{std::move(path)}]
