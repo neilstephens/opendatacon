@@ -562,7 +562,10 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Transfer timeout. Sending negative confirmation", Name);
 			auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
-			ControlRelayOutputBlock CROB; CROB.status = CommandStatus::TIMEOUT;
+			ControlRelayOutputBlock CROB;
+			CROB.status = CommandStatus::TIMEOUT;
+			CROB.onTimeMS = seq;
+			CROB.offTimeMS = pConf->UseCRCs ? crc : 0;
 			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
 			PublishEvent(confirm_event);
 		}
