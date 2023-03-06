@@ -160,22 +160,24 @@ TEST_CASE(SUITE("FileTransfer"))
 	};
 	for(auto& fn : transfer_files)
 	{
-		CAPTURE(fn);
 		std::ifstream tx_fin(fn), rx_fin("RX/"+fn);
-		CHECK_FALSE(tx_fin.fail());
-		CHECK_FALSE(rx_fin.fail());
+		{
+			CAPTURE(fn);
+			CHECK_FALSE(tx_fin.fail());
+			CHECK_FALSE(rx_fin.fail());
+		}
 		char txch = 0, rxch = 0;
 		size_t byte_count = 0;
-		while(tx_fin.get(txch) && !rx_fin.fail())
+		while(tx_fin.get(txch))
 		{
-			CAPTURE(byte_count);
 			CHECK(rx_fin.get(rxch));
-			CHECK(rxch == txch);
 			byte_count++;
 			if(rxch != txch)
 				break;
 		}
 		std::cout<<"Num bytes compared: "<<byte_count<<std::endl;
+		CAPTURE(byte_count);
+		CHECK(rxch == txch);
 	}
 
 	ShutdownDatacon(handles);

@@ -301,8 +301,6 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 		pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 		return;
 	}
-	if(auto log = odc::spdlog_get("FileTransferPort"))
-		log->trace("{}: Event_().", Name);
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 
@@ -374,6 +372,8 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	auto CROB = event->GetPayload<EventType::ControlRelayOutputBlock>();
 	if(CROB.status == CommandStatus::SUCCESS)
 	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->trace("{}: Received positive confirmation sequence received OK.", Name);
 		ConfirmHandler();
 		ConfirmHandler = [] {};
 		tx_event_buffer.clear();
@@ -637,6 +637,11 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 				if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Mid-RX writing failed on '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 			}
+			else
+			{
+				if(auto log = odc::spdlog_get("FileTransferPort"))
+					log->trace("{}: Wrote '{}' to {}.", Name, popped->GetPayloadString(), (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
+			}
 		}
 		//else - we should have already logged an error when fout went bad.
 
@@ -742,7 +747,11 @@ void FileTransferPort::SendEOF(const std::string path)
 							};
 
 	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
-		ConfirmHandler = next_action; //let the expected confirm kick off the next action
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->trace("{}: Set post-confirmation action: Check TX filename queue.", Name);
+		ConfirmHandler = next_action;
+	}
 	else
 		next_action();
 }
@@ -816,7 +825,11 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 	}
 
 	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
-		ConfirmHandler = next_action; //let the expected confirm kick off the next action
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->trace("{}: Set post-confirmation action: {}.", Name, anotherChunkAvailable ? "ScheduleNextChunk()" : "SendEOF()");
+		ConfirmHandler = next_action;
+	}
 	else
 		next_action();
 }
