@@ -700,7 +700,7 @@ void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expe
 		{
 			if(expected_crc && expected_crc != *(uint16_t*)OSBuf.data())
 				continue;
-			tx_event_buffer.erase(b, ev_it==b ? b : --ev_it);
+			tx_event_buffer.erase(b, ev_it==b ? b : ev_it);
 			found = true;
 			break;
 		}
