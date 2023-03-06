@@ -373,6 +373,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	{
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
+		pConfirmTimer->cancel();
 		ConfirmHandler();
 		ConfirmHandler = [] {};
 		tx_event_buffer.clear();
@@ -391,6 +392,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 		else
 			ResendFrom(expected_sequence);
 
+			StartConfirmTimer();
 	}
 	else if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->error("{}: Ignoring confirm event with unexpected status: '{}'", Name, ToString(CROB.status));
@@ -714,6 +716,22 @@ void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expe
 		PublishEvent(e);
 }
 
+void FileTransferPort::StartConfirmTimer()
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	pConfirmTimer->expires_from_now(std::chrono::milliseconds(pConf->TransferTimeoutms));
+	pConfirmTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err)
+	{
+		if(err || !enabled)
+			return;
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->error("{}: Confirm timeout.", Name);
+		for(const auto& e : tx_event_buffer)
+			PublishEvent(e);
+		StartConfirmTimer();
+	}));
+}
+
 //called on-strand by SendChunk()
 void FileTransferPort::SendEOF(const std::string path)
 {
@@ -770,6 +788,7 @@ void FileTransferPort::SendEOF(const std::string path)
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->trace("{}: Set post-confirmation action: Check TX filename queue.", Name);
 		ConfirmHandler = next_action;
+		StartConfirmTimer();
 	}
 	else
 		next_action();
@@ -856,6 +875,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->trace("{}: Set post-confirmation action: {}.", Name, anotherChunkAvailable ? "ScheduleNextChunk()" : "SendEOF()");
 		ConfirmHandler = next_action;
+		StartConfirmTimer();
 	}
 	else
 		next_action();
