@@ -382,6 +382,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	{
 		const auto& expected_sequence = CROB.onTimeMS;
 		const auto& expected_crc = CROB.offTimeMS;
+		const bool UnsolConfirm = (CROB.count == 2);
 
 		auto crc_str = pConf->UseCRCs ? fmt::format("0x{:04x}", expected_crc) : "NOT_USED";
 		if(auto log = odc::spdlog_get("FileTransferPort"))
@@ -392,6 +393,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 		else
 			ResendFrom(expected_sequence);
 
+		if(!UnsolConfirm)
 			StartConfirmTimer();
 	}
 	else if(auto log = odc::spdlog_get("FileTransferPort"))
@@ -556,7 +558,12 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 {
 	if(err || !enabled)
 		return;
-	if(rx_in_progress)
+
+	size_t Qsize = 0;
+	for(auto& [idx,q] : rx_event_buffer)
+		Qsize += q.size();
+
+	if(rx_in_progress || Qsize > 0)
 	{
 		auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 		if(pConf->UseConfirms)
@@ -568,6 +575,8 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 			CROB.status = CommandStatus::TIMEOUT;
 			CROB.onTimeMS = seq;
 			CROB.offTimeMS = pConf->UseCRCs ? crc : 0;
+			if(!rx_in_progress)
+				CROB.count = 2; //Unsol
 			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
 			PublishEvent(confirm_event);
 		}
@@ -721,15 +730,15 @@ void FileTransferPort::StartConfirmTimer()
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	pConfirmTimer->expires_from_now(std::chrono::milliseconds(pConf->TransferTimeoutms));
 	pConfirmTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err)
-	{
-		if(err || !enabled)
-			return;
-		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->error("{}: Confirm timeout.", Name);
-		for(const auto& e : tx_event_buffer)
-			PublishEvent(e);
-		StartConfirmTimer();
-	}));
+		{
+			if(err || !enabled)
+				return;
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->error("{}: Confirm timeout.", Name);
+			for(const auto& e : tx_event_buffer)
+				PublishEvent(e);
+			StartConfirmTimer();
+		}));
 }
 
 //called on-strand by SendChunk()
