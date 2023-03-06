@@ -28,11 +28,14 @@
 #define TESTHELPERS_H
 
 #include <json/json.h>
+#include <opendatacon/IOHandler.h>
+#include <opendatacon/DataPort.h>
 #include <opendatacon/util.h>
 #include <opendatacon/Platform.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <fstream>
 #include <filesystem>
+#include <random>
 
 extern spdlog::level::level_enum log_level;
 
@@ -76,7 +79,7 @@ inline Json::Value GetConfigJSON(bool TX)
 			{"Type" : "AnalogControl", "Index" : 0, "Value" : 3, "OnlyWhenModified" : false},
 			{"Type" : "OctetStringPath", "Index" : 0, "OnlyWhenModified" : false}
 		],
-		"ModifiedDwellTimems" : 100,
+		"ModifiedDwellTimems" : 500,
 		"UseCRCs" : false,
 		"UseConfirms" : false
 	})001";
@@ -167,6 +170,75 @@ inline void ClearFiles()
 	std::remove("RX/dateformat_FileTxTest5.bin");
 	std::remove("RX/dateformat_FileTxTest6.bin");
 }
+
+class CorruptConnector: public odc::IOHandler
+{
+public:
+	void Enable() override {}
+	void Disable() override {}
+
+	CorruptConnector(std::shared_ptr<odc::DataPort> P1, std::shared_ptr<odc::DataPort> P2):
+		IOHandler("Nasty"),
+		Port1(P1),
+		Port2(P2)
+	{
+		Port1->Subscribe(this,Name);
+		Port2->Subscribe(this,Name);
+	}
+
+	void Event(std::shared_ptr<const odc::EventInfo> event, const std::string& SenderName, odc::SharedStatusCallback_t pStatusCallback) override
+	{
+		auto Sendee = Port1;
+		if(SenderName == Port1->GetName())
+			Sendee = Port2;
+
+		if(event->GetEventType() == odc::EventType::OctetString)
+		{
+			std::random_device rd;
+			std::mt19937 rand_num_gen(rd());
+			std::uniform_int_distribution<> even_chances(1,10);
+			switch(even_chances(rand_num_gen))
+			{
+				//drop data
+				case 1:
+					if(auto log = odc::spdlog_get("opendatacon"))
+						log->trace("DROPPED: {} {} Payload {} Event {} => DROP", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
+					return;
+
+				//duplicate data
+				case 2: case 3: case 4: case 5: case 6:
+					PublishEvent(event,Sendee,pStatusCallback);
+					PublishEvent(event,Sendee,std::make_shared<std::function<void (odc::CommandStatus)>>([] (odc::CommandStatus){}));
+					return;
+
+				//be nice
+				default:
+					PublishEvent(event,Sendee,pStatusCallback);
+					return;
+			}
+		}
+		else
+			PublishEvent(event,Sendee,pStatusCallback);
+	}
+	void Event(odc::ConnectState state, const std::string& SenderName) override
+	{
+		auto Sendee = Port1;
+		if(SenderName == Port1->GetName())
+			Sendee = Port2;
+		Sendee->Event(state,Name);
+	}
+
+private:
+	inline void PublishEvent(const std::shared_ptr<const odc::EventInfo> event, const std::shared_ptr<odc::DataPort> Sendee, const odc::SharedStatusCallback_t pStatusCallback)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->trace("{} {} Payload {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, Sendee->GetName());
+		Sendee->Event(event,Name,pStatusCallback);
+	}
+	std::shared_ptr<odc::DataPort> Port1;
+	std::shared_ptr<odc::DataPort> Port2;
+};
 
 #endif // TESTHELPERS_H
 
