@@ -170,11 +170,10 @@ void FileTransferPort::Disable_()
 	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Disable_().", Name);
 
-	enabled =false;
+	enabled = false;
 	pThrottleTimer->cancel();
-	pThrottleTimer.reset();
 	pTransferTimeoutTimer->cancel();
-	pTransferTimeoutTimer.reset();
+	pConfirmTimer->cancel();
 	for(const auto& t : Timers)
 		t->cancel();
 	Timers.clear();
