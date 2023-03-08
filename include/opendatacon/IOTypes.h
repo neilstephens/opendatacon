@@ -485,16 +485,12 @@ struct OctetStringBuffer: public shared_const_buffer
 	template<typename T, typename = std::enable_if_t<has_appropriate_members<T>::value>>
 	OctetStringBuffer(T&& aContainer):
 		//shared_const_buffer is a ref counted wraper that will delete the data in good time
-		shared_const_buffer(std::make_shared<T>(std::move(aContainer)))
-	{}
-
-	template<typename T, typename = std::enable_if_t<has_appropriate_members<T>::value>>
-	OctetStringBuffer(std::shared_ptr<T> aPtr):
-		shared_const_buffer(aPtr)
+		//odc::make_shared ensures construct/destroy both done in libODC
+		shared_const_buffer(odc::make_shared(std::move(aContainer)))
 	{}
 
 	OctetStringBuffer(): //by default, make a 'null string'
-		shared_const_buffer(std::make_shared<std::string>(""))
+		shared_const_buffer(odc::make_shared(std::string("")))
 	{}
 };
 

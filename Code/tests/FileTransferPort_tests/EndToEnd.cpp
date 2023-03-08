@@ -162,7 +162,7 @@ TEST_CASE(SUITE("CorruptConnector"))
 		REQUIRE(RX);
 
 		//connect them using our nasty connector replacement
-		auto nasty = CorruptConnector(TX,RX);
+		CorruptConnector nasty(TX,RX);
 
 		//get them to build themselves using their configs
 		RX->Build();

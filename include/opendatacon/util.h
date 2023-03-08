@@ -71,6 +71,9 @@ std::vector<uint8_t> hex2buf(const std::string& hexStr);
 
 uint16_t crc_ccitt(const uint8_t* const data, const size_t length, uint16_t crc = 0xFFFF, const uint16_t poly = 0x1021);
 
+template<typename T>
+std::shared_ptr<T> make_shared(T&& X);
+
 } //namspace odc
 
 #endif //UTIL_H

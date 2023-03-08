@@ -392,4 +392,19 @@ uint16_t crc_ccitt(const uint8_t* const data, const size_t length, uint16_t crc,
 	return crc;
 }
 
+//Define a little shared pointer factory
+//this is used make shared pointers that will both construct and destroy from in libODC
+//useful for EventInfo payloads that need shared pointers - because they will be passed accross shared lib / DLL boundaries
+template<typename T>
+std::shared_ptr<T> make_shared(T&& X)
+{
+	static auto del = [](T* ptr){delete ptr;};
+	return std::shared_ptr<T>(new T{std::move(X)}, del);
+}
+#define MAKE_SHARED(T) template std::shared_ptr<T> make_shared(T&&);
+//only clunky bit is that we have to instantiate for all the required underlying types
+MAKE_SHARED(std::string);
+MAKE_SHARED(std::vector<char>);
+MAKE_SHARED(std::vector<uint8_t>);
+
 } // namespace odc
