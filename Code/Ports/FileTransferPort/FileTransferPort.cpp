@@ -181,9 +181,9 @@ void FileTransferPort::Disable_()
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	if(pConf->Persistence == ModifiedTimePersistence::PURGEONDISABLE)
 		FileModTimes.clear();
-	else if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
+	//only persist to disk if the filename Q is empty, otherwise half-finished or Q'd transfers won't happen on re-start
+	else if(pConf->Persistence == ModifiedTimePersistence::ONDISK && tx_filename_q.empty())
 		SaveModTimes();
-	//else INMEMORY - nothing to do
 
 	PublishEvent(ConnectState::PORT_DOWN);
 	PublishEvent(ConnectState::DISCONNECTED);
@@ -789,7 +789,11 @@ void FileTransferPort::SendEOF(const std::string path)
 											auto& [next_path,next_tx_name] = next;
 											TrySend(next_path, next_tx_name);
 										});
+									return;
 								}
+								auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+								if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
+									SaveModTimes();
 							};
 
 	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
