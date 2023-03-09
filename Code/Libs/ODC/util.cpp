@@ -401,8 +401,9 @@ std::shared_ptr<T> make_shared(T&& X)
 	static auto del = [](T* ptr){delete ptr;};
 	return std::shared_ptr<T>(new T{std::move(X)}, del);
 }
-#define MAKE_SHARED(T) template std::shared_ptr<T> make_shared(T&&);
+#define MAKE_SHARED(T) template std::shared_ptr<T> make_shared(T&&)
 //only clunky bit is that we have to instantiate for all the required underlying types
+//add more here if you get linker errors
 MAKE_SHARED(std::string);
 MAKE_SHARED(std::vector<char>);
 MAKE_SHARED(std::vector<uint8_t>);
