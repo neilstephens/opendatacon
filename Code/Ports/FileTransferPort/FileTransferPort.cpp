@@ -465,6 +465,10 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 					return;
 				}
 			}
+			else if(rx_crc == 0xFFFF) //transfer aborted and the other end reset CRC, means other end restarted
+			{
+				seq = pConf->SequenceIndexStart;
+			}
 			crc = crc_ccitt((uint8_t*)(event->GetPayload<EventType::OctetString>().data())+crc_size,event->GetPayload<EventType::OctetString>().size()-crc_size,rx_crc);
 		}
 
@@ -583,15 +587,34 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 		else
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->error("{}: Transfer timeout. Aborting RX. Closing file.", Name);
-			rx_in_progress = false;
-			transfer_aborted = true;
-			fout.flush();
-			fout.close();
-			//FIXME: maybe we should delete the aborted file too?
+				log->error("{}: Transfer timeout.", Name);
+			AbortTransfer();
 		}
 	}
 	rx_event_buffer.clear();
+}
+
+//called on-strand
+inline void FileTransferPort::AbortTransfer()
+{
+	transfer_aborted = true;
+
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	if(pConf->Direction == TransferDirection::RX)
+	{
+		if(rx_in_progress)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->error("{}: Aborting RX. Deleting file.", Name);
+			rx_in_progress = false;
+			fout.close();
+			std::filesystem::remove(std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename));
+		}
+	}
+	else
+	{
+		tx_in_progress = false;
+	}
 }
 
 //called on-strand from ProcessRxBuffer()

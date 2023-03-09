@@ -81,6 +81,7 @@ private:
 	void ProcessQdFilenames(const std::string& SenderName);
 	void ProcessRxBuffer(const std::string& SenderName);
 	void TransferTimeoutHandler(const asio::error_code err);
+	void AbortTransfer();
 	void TXBufferPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 	void ResendFrom(const size_t expected_seq, const uint16_t expected_crc = 0);
 	void StartConfirmTimer();
