@@ -465,7 +465,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 					return;
 				}
 			}
-			else if(rx_crc == 0xFFFF) //transfer aborted and the other end reset CRC, means other end restarted
+			else if(rx_crc == crc_ccitt(nullptr,0)) //transfer aborted and the other end reset CRC, means other end restarted
 			{
 				seq = pConf->SequenceIndexStart;
 			}
@@ -613,7 +613,11 @@ inline void FileTransferPort::AbortTransfer()
 	}
 	else
 	{
-		tx_in_progress = false;
+		crc = crc_ccitt(nullptr,0);
+		seq = pConf->SequenceIndexStart;
+		tx_event_buffer.clear();
+		if(tx_in_progress)
+			fin.close(); //this will cause the send chain to bail out
 	}
 }
 
@@ -767,6 +771,33 @@ void FileTransferPort::StartConfirmTimer()
 //called on-strand by SendChunk()
 void FileTransferPort::SendEOF(const std::string path)
 {
+	std::function<void()> next_action = [this]
+							{
+								if(!enabled)
+									return;
+								if(!tx_filename_q.empty())
+								{
+									//we could just call TrySend since we're on the strand
+									//, but that would be 'cutting in line' ahead of other posted handlers
+									pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+										{
+											auto& [next_path,next_tx_name] = next;
+											TrySend(next_path, next_tx_name);
+										});
+									return;
+								}
+								auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+								if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
+									SaveModTimes();
+							};
+	if(transfer_aborted)
+	{
+		tx_in_progress = false;
+		transfer_aborted = false;
+		next_action();
+		return;
+	}
+
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	if(pConf->SequenceIndexEOF >= 0)
 	{
@@ -798,26 +829,6 @@ void FileTransferPort::SendEOF(const std::string path)
 		log->debug("{}: Finished TX file '{}'.", Name, path);
 
 	tx_in_progress = false;
-
-	std::function<void()> next_action = [this]
-							{
-								if(!enabled)
-									return;
-								if(!tx_filename_q.empty())
-								{
-									//we could just call TrySend since we're on the strand
-									//, but that would be 'cutting in line' ahead of other posted handlers
-									pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
-										{
-											auto& [next_path,next_tx_name] = next;
-											TrySend(next_path, next_tx_name);
-										});
-									return;
-								}
-								auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-								if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
-									SaveModTimes();
-							};
 
 	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
 	{
