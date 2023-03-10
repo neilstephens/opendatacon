@@ -102,8 +102,10 @@ TEST_CASE(SUITE("DirectBack2Back"))
 			while(tx_fin.get(txch) && !rx_fin.fail())
 			{
 				CHECK(rx_fin.get(rxch));
-				CHECK(rxch == txch);
+				if(rxch != txch)
+					break;
 			}
+			CHECK(rxch == txch);
 		}
 
 		//turn them off
@@ -204,8 +206,10 @@ TEST_CASE(SUITE("CorruptConnector"))
 			while(tx_fin.get(txch) && !rx_fin.fail())
 			{
 				CHECK(rx_fin.get(rxch));
-				CHECK(rxch == txch);
+				if(rxch != txch)
+					break;
 			}
+			CHECK(rxch == txch);
 		}
 
 		//turn them off
@@ -286,6 +290,7 @@ TEST_CASE(SUITE("SequenceReset"))
 		TX->Disable();
 		auto files_done_on_restart = RX->GetStatistics()["FilesTransferred"].asUInt();
 		CHECK(files_done_on_restart >= 1);
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		TX->Enable();
 
 		//wait for another file
@@ -298,6 +303,7 @@ TEST_CASE(SUITE("SequenceReset"))
 		auto files_done_on_second_restart = RX->GetStatistics()["FilesTransferred"].asUInt();
 		CHECK(files_done_on_second_restart > files_done_on_restart);
 		CHECK(files_done_on_second_restart < 6);
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		RX->Enable();
 
 		count = 0;
@@ -340,8 +346,10 @@ TEST_CASE(SUITE("SequenceReset"))
 			while(tx_fin.get(txch) && !rx_fin.fail())
 			{
 				CHECK(rx_fin.get(rxch));
-				CHECK(rxch == txch);
+				if(rxch != txch)
+					break;
 			}
+			CHECK(rxch == txch);
 		}
 
 		//turn them off
