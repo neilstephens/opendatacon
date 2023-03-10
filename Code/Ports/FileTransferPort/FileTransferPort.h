@@ -119,6 +119,7 @@ private:
 	std::shared_ptr<asio::steady_timer> pConfirmTimer = asio_service::Get()->make_steady_timer();
 	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> rx_event_buffer;
 	std::deque<std::shared_ptr<EventInfo>> tx_event_buffer;
+	std::unordered_map<std::string,std::string> tx_uncofirmed_transfers;
 	std::unordered_map<std::string,std::string> tx_filename_q;
 
 	//statistics

@@ -144,6 +144,8 @@ void FileTransferPort::Enable_()
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	enabled = true;
+	tx_in_progress = false;
+	transfer_reset = false;
 	PublishEvent(ConnectState::PORT_UP);
 	PublishEvent(ConnectState::CONNECTED);
 
@@ -169,6 +171,8 @@ void FileTransferPort::Disable_()
 {
 	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Disable_().", Name);
+
+	ResetTransfer();
 
 	enabled = false;
 	pThrottleTimer->cancel();
@@ -370,10 +374,18 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	auto CROB = event->GetPayload<EventType::ControlRelayOutputBlock>();
-	if(CROB.status == CommandStatus::SUCCESS)
+	if(CROB.status == CommandStatus::SUCCESS || transfer_reset)
 	{
-		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
+		if(!transfer_reset)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->debug("{}: Received confirmation after reset.", Name);
+		}
 		pConfirmTimer->cancel();
 		ConfirmHandler();
 		ConfirmHandler = [] {};
@@ -631,6 +643,9 @@ inline void FileTransferPort::ResetTransfer()
 	{
 		crc = crc_ccitt(nullptr,0);
 		seq = pConf->SequenceIndexStart;
+		//re-Q files that haven't been confirmed
+		tx_filename_q.insert(tx_uncofirmed_transfers.begin(),tx_uncofirmed_transfers.end());
+		tx_uncofirmed_transfers.clear();
 		tx_event_buffer.clear();
 		if(tx_in_progress)
 		{
@@ -774,7 +789,7 @@ void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expe
 	if(!found)
 	{
 		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->error("{}: Negative confirmation expected seq/crc ({}/{}) that doesn't exist in buffer", Name, expected_seq, expected_crc);
+			log->error("{}: Negative confirmation expected seq/crc ({}/0x{:04x}) that doesn't exist in buffer", Name, expected_seq, expected_crc);
 	}
 	for(const auto& e : tx_event_buffer)
 		PublishEvent(e);
@@ -856,7 +871,10 @@ void FileTransferPort::SendEOF(const std::string path)
 	++FilesTransferred;
 
 	//remove this path from the Q, as we've just sent it
-	tx_filename_q.erase(path);
+	if(pConf->UseConfirms)
+		tx_uncofirmed_transfers.insert(tx_filename_q.extract(path));
+	else
+		tx_filename_q.erase(path);
 
 	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Finished TX file '{}'.", Name, path);
