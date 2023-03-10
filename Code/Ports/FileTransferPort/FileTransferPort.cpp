@@ -164,6 +164,8 @@ void FileTransferPort::Enable_()
 			}
 		}
 	}
+	pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
+	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ if(!err) ResetTransfer();}));
 }
 
 //posted on strand by Disable()
