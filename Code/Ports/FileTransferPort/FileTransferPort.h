@@ -81,7 +81,7 @@ private:
 	void ProcessQdFilenames(const std::string& SenderName);
 	void ProcessRxBuffer(const std::string& SenderName);
 	void TransferTimeoutHandler(const asio::error_code err);
-	void AbortTransfer();
+	void ResetTransfer();
 	void TXBufferPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 	void ResendFrom(const size_t expected_seq, const uint16_t expected_crc = 0);
 	void StartConfirmTimer();
@@ -109,7 +109,7 @@ private:
 	std::unordered_map<std::string,std::filesystem::file_time_type> FileModTimes;
 	bool rx_in_progress = false;
 	bool tx_in_progress = false;
-	bool transfer_aborted = false;
+	std::atomic_bool transfer_reset = false;
 	std::ofstream fout;
 	std::ifstream fin;
 	std::shared_ptr<asio::steady_timer> pThrottleTimer = asio_service::Get()->make_steady_timer();

@@ -454,7 +454,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		if(pConf->UseCRCs)
 		{
 			auto rx_crc = *(uint16_t*)event->GetPayload<EventType::OctetString>().data();
-			if(!transfer_aborted)
+			if(!transfer_reset || pConf->UseConfirms)
 			{
 				if(rx_crc != crc)
 				{
@@ -467,6 +467,8 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			}
 			else if(rx_crc == crc_ccitt(nullptr,0)) //transfer aborted and the other end reset CRC, means other end restarted
 			{
+				if(auto log = odc::spdlog_get("FileTransferPort"))
+					log->debug("{}: Detected reset seq/CRC.", Name);
 				seq = pConf->SequenceIndexStart;
 			}
 			crc = crc_ccitt((uint8_t*)(event->GetPayload<EventType::OctetString>().data())+crc_size,event->GetPayload<EventType::OctetString>().size()-crc_size,rx_crc);
@@ -495,7 +497,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			log->debug("{}: Filename processed: '{}'.", Name, Filename);
 
 		rx_in_progress = true;
-		transfer_aborted = false;
+		transfer_reset = false;
 
 		auto path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
 		if(auto log = odc::spdlog_get("FileTransferPort"))
@@ -557,7 +559,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	return;
 }
 
-//called strand wrapped from timer
+//called strand-wrapped from timer
 void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 {
 	if(err || !enabled)
@@ -588,27 +590,40 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Transfer timeout.", Name);
-			AbortTransfer();
+			ResetTransfer();
 		}
 	}
 	rx_event_buffer.clear();
 }
 
-//called on-strand
-inline void FileTransferPort::AbortTransfer()
+//called strand-wrapped from timer, or on-strand from TransferTimeoutHandler()
+inline void FileTransferPort::ResetTransfer()
 {
-	transfer_aborted = true;
+	transfer_reset = true;
+	if(auto log = odc::spdlog_get("FileTransferPort"))
+		log->debug("{}: Resetting seq/CRC.", Name);
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	if(pConf->Direction == TransferDirection::RX)
 	{
+		if(pConf->UseConfirms)
+		{
+			crc = crc_ccitt(nullptr,0);
+			seq = pConf->SequenceIndexStart;
+		}
+		else
+		{
+			// seq/CRC will sync with next next filename becaue transfer_reset is true
+			// just need to abort any partial transfer
+		}
 		if(rx_in_progress)
 		{
+			auto abrt_path = std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename);
 			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->error("{}: Aborting RX. Deleting file.", Name);
+				log->error("{}: Aborting RX. Deleting partial file '{}'.", Name, abrt_path.string());
 			rx_in_progress = false;
 			fout.close();
-			std::filesystem::remove(std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename));
+			std::filesystem::remove(abrt_path);
 		}
 	}
 	else
@@ -617,7 +632,11 @@ inline void FileTransferPort::AbortTransfer()
 		seq = pConf->SequenceIndexStart;
 		tx_event_buffer.clear();
 		if(tx_in_progress)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->error("{}: Aborting TX. Closing file.", Name);
 			fin.close(); //this will cause the send chain to bail out
+		}
 	}
 }
 
@@ -775,6 +794,11 @@ void FileTransferPort::SendEOF(const std::string path)
 							{
 								if(!enabled)
 									return;
+								if(transfer_reset)
+								{
+									tx_in_progress = false;
+									transfer_reset = false;
+								}
 								if(!tx_filename_q.empty())
 								{
 									//we could just call TrySend since we're on the strand
@@ -790,10 +814,10 @@ void FileTransferPort::SendEOF(const std::string path)
 								if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
 									SaveModTimes();
 							};
-	if(transfer_aborted)
+	if(transfer_reset)
 	{
-		tx_in_progress = false;
-		transfer_aborted = false;
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->debug("{}: TX stream terminated.", Name);
 		next_action();
 		return;
 	}
@@ -833,7 +857,7 @@ void FileTransferPort::SendEOF(const std::string path)
 	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
 	{
 		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->trace("{}: Set post-confirmation action: Check TX filename queue.", Name);
+			log->debug("{}: Set post-confirmation action: Check TX filename queue.", Name);
 		ConfirmHandler = next_action;
 		StartConfirmTimer();
 	}
@@ -868,6 +892,14 @@ void FileTransferPort::ScheduleNextChunk(const std::string path, const std::chro
 //called as strand wrapped callback after TrySend(), or posted on strand 'recursively'
 void FileTransferPort::SendChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent)
 {
+	if(transfer_reset)
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->debug("{}: Reset short circuit to EOF.", Name);
+		SendEOF(std::move(path));
+		return;
+	}
+
 	std::function<void()> next_action = [] {};
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -920,7 +952,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 	if(pConf->UseConfirms && seq == pConf->SequenceIndexStart)
 	{
 		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->trace("{}: Set post-confirmation action: {}.", Name, anotherChunkAvailable ? "ScheduleNextChunk()" : "SendEOF()");
+			log->debug("{}: Set post-confirmation action: {}.", Name, anotherChunkAvailable ? "ScheduleNextChunk()" : "SendEOF()");
 		ConfirmHandler = next_action;
 		StartConfirmTimer();
 	}
@@ -942,6 +974,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 		return;
 
 	tx_in_progress = true;
+	transfer_reset = false;
 
 	auto send_file = std::make_shared<std::function<void (CommandStatus)>>(pSyncStrand->wrap([this,path,h{handler_tracker}](CommandStatus)
 		{
@@ -1340,5 +1373,6 @@ const Json::Value FileTransferPort::GetStatistics() const
 	ret["FileBytesTransferred"] = Json::UInt(FileBytesTransferred);
 	ret["TxFileDirCount"] = Json::UInt(TxFileDirCount);
 	ret["TxFileMatchCount"] = Json::UInt(TxFileMatchCount);
+	ret["IsReset"] = bool(transfer_reset);
 	return ret;
 }
