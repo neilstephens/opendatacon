@@ -747,7 +747,6 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 			BumpSequence();
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
-
 			//we could already have events from the next file
 			ProcessQdFilenames(SenderName);
 			return;
@@ -786,6 +785,8 @@ void FileTransferPort::TXBufferPublishEvent(std::shared_ptr<EventInfo> event, Sh
 //called on-strand by ConfirmEvent()
 void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expected_crc)
 {
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	const auto& FNidx = pConf->FileNameTransmissionEvent->GetIndex();
 	// go through and try to find the event with the expected seq and crc
 	const auto b = tx_event_buffer.begin();
 	bool found = false;
@@ -793,11 +794,20 @@ void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expe
 	{
 		const auto& bufSeq = (*ev_it)->GetIndex();
 		const auto& OSBuf = (*ev_it)->GetPayload<EventType::OctetString>();
-		if(bufSeq == expected_seq)
+		const auto& next_ev_it = ev_it+1;
+		if(bufSeq == expected_seq || bufSeq == FNidx)
 		{
-			if(expected_crc && expected_crc != *(uint16_t*)OSBuf.data())
-				continue;
-			tx_event_buffer.erase(b, ev_it==b ? b : ev_it);
+			if(expected_crc != 0)
+			{
+				if(expected_crc != *(uint16_t*)OSBuf.data())
+					continue;
+			}
+			else if(bufSeq == FNidx)
+			{
+				if(next_ev_it == tx_event_buffer.end() || (*next_ev_it)->GetIndex() != expected_seq)
+					continue;
+			}
+			tx_event_buffer.erase(b, ev_it);
 			found = true;
 			break;
 		}
