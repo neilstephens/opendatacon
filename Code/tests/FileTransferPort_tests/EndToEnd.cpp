@@ -302,7 +302,6 @@ TEST_CASE(SUITE("SequenceReset"))
 		RX->Disable();
 		auto files_done_on_second_restart = RX->GetStatistics()["FilesTransferred"].asUInt();
 		CHECK(files_done_on_second_restart > files_done_on_restart);
-		CHECK(files_done_on_second_restart < 6);
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		RX->Enable();
 

@@ -382,18 +382,10 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	auto CROB = event->GetPayload<EventType::ControlRelayOutputBlock>();
-	if(CROB.status == CommandStatus::SUCCESS || transfer_reset)
+	if(CROB.status == CommandStatus::SUCCESS)
 	{
-		if(!transfer_reset)
-		{
-			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
-		}
-		else
-		{
-			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->debug("{}: Received confirmation after reset.", Name);
-		}
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
 		pConfirmTimer->cancel();
 		ConfirmHandler();
 		ConfirmHandler = [] {};
@@ -415,7 +407,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 		else
 			ResendFrom(expected_sequence);
 
-		if(!UnsolConfirm)
+		if(!UnsolConfirm && !transfer_reset)
 			StartConfirmTimer();
 	}
 	else if(auto log = odc::spdlog_get("FileTransferPort"))
@@ -673,6 +665,9 @@ inline void FileTransferPort::ResetTransfer()
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Aborting TX. Closing file.", Name);
 			fin.close(); //this will cause the send chain to bail out
+			pConfirmTimer->cancel();
+			ConfirmHandler();
+			ConfirmHandler = [] {};
 		}
 	}
 }
@@ -811,6 +806,8 @@ void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expe
 	{
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->error("{}: Negative confirmation expected seq/crc ({}/0x{:04x}) that doesn't exist in buffer", Name, expected_seq, expected_crc);
+		ResetTransfer();
+		return;
 	}
 	for(const auto& e : tx_event_buffer)
 		PublishEvent(e);
@@ -828,12 +825,6 @@ void FileTransferPort::StartConfirmTimer()
 				log->error("{}: Confirm timeout.", Name);
 			for(const auto& e : tx_event_buffer)
 				PublishEvent(e);
-			if(!tx_in_progress && !tx_filename_q.empty())
-				pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
-					{
-						auto& [next_path,next_tx_name] = next;
-						TrySend(next_path, next_tx_name);
-					});
 			StartConfirmTimer();
 		}));
 }
@@ -950,6 +941,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 	{
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Reset short circuit to EOF.", Name);
+		fin.close();
 		SendEOF(std::move(path));
 		return;
 	}
@@ -1037,11 +1029,22 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Start TX file '{}'.", Name, path);
 
+			fin.clear();
 			fin.open(path, std::ios::binary);
 			if (fin.fail())
 			{
 			      if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Failed to open file path for reading: '{}'",Name,path);
+			      tx_in_progress = false;
+			      tx_filename_q.erase(path);
+			      if(!tx_filename_q.empty())
+			      {
+			            pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+						{
+							auto& [next_path,next_tx_name] = next;
+							TrySend(next_path, next_tx_name);
+						});
+				}
 			      return;
 			}
 			SendChunk(path,std::chrono::high_resolution_clock::now());
