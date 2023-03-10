@@ -252,8 +252,9 @@ TEST_CASE(SUITE("SequenceReset"))
 		TXconf["UseConfirms"] = true;
 		TXconf["ConfirmControlIndex"] = 10;
 		TXconf["UseCRCs"]= true;
-		TXconf["TransferTimeoutms"] = 250;
-		TXconf["SequenceResetIdleTimems"] = 600;
+		TXconf["TransferTimeoutms"] = 500;
+		TXconf["SequenceResetIdleTimems"] = 1200;
+		TXconf["ThrottleBaudrate"] = 64000; //8kB per s
 		std::shared_ptr<DataPort> TX(newPort("TX", "", TXconf), deletePort);
 		REQUIRE(TX);
 
@@ -264,8 +265,8 @@ TEST_CASE(SUITE("SequenceReset"))
 		RXconf["UseConfirms"] = true;
 		RXconf["ConfirmControlIndex"] = 10;
 		RXconf["UseCRCs"]= true;
-		RXconf["TransferTimeoutms"] = 200;
-		RXconf["SequenceResetIdleTimems"] = 700;
+		RXconf["TransferTimeoutms"] = 400;
+		RXconf["SequenceResetIdleTimems"] = 1400;
 		std::shared_ptr<DataPort> RX(newPort("RX", "", RXconf), deletePort);
 		REQUIRE(RX);
 
