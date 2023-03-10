@@ -390,6 +390,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 		ConfirmHandler();
 		ConfirmHandler = [] {};
 		tx_event_buffer.clear();
+		tx_uncofirmed_transfers.clear();
 	}
 	else if(CROB.status == CommandStatus::TIMEOUT)
 	{
@@ -612,11 +613,16 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 //called strand-wrapped from timer, or on-strand from TransferTimeoutHandler()
 inline void FileTransferPort::ResetTransfer()
 {
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
+	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ if(!err) ResetTransfer();}));
+	if(transfer_reset)
+		return;
+
 	transfer_reset = true;
 	if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->debug("{}: Resetting seq/CRC.", Name);
 
-	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	if(pConf->Direction == TransferDirection::RX)
 	{
 		if(pConf->UseConfirms)
