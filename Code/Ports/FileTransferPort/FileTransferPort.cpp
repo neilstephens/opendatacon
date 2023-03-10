@@ -605,7 +605,7 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 			if(!rx_in_progress)
 				CROB.count = 2; //Unsol
 			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
-			PublishEvent(confirm_event);
+			pIOS->post([=] { PublishEvent(confirm_event); });
 		}
 		else
 		{
@@ -682,7 +682,7 @@ inline void FileTransferPort::ConfirmCheck()
 			log->trace("{}: Sending confirmation full sequence received.", Name);
 		auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
 		confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
-		PublishEvent(confirm_event);
+		pIOS->post([=] { PublishEvent(confirm_event); });
 	}
 }
 
@@ -778,9 +778,9 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 void FileTransferPort::TXBufferPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-	PublishEvent(event,pStatusCallback);
 	if(pConf->UseConfirms)
 		tx_event_buffer.push_back(event);
+	pIOS->post([=] { PublishEvent(event,pStatusCallback); });
 }
 
 //called on-strand by ConfirmEvent()
@@ -810,7 +810,7 @@ void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expe
 		return;
 	}
 	for(const auto& e : tx_event_buffer)
-		PublishEvent(e);
+		pIOS->post([=] { PublishEvent(e); });
 }
 
 void FileTransferPort::StartConfirmTimer()
@@ -824,7 +824,7 @@ void FileTransferPort::StartConfirmTimer()
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Confirm timeout.", Name);
 			for(const auto& e : tx_event_buffer)
-				PublishEvent(e);
+				pIOS->post([=] { PublishEvent(e); });
 			StartConfirmTimer();
 		}));
 }
