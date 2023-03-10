@@ -173,6 +173,7 @@ void FileTransferPort::Disable_()
 	enabled = false;
 	pThrottleTimer->cancel();
 	pTransferTimeoutTimer->cancel();
+	pIdleTimer->cancel();
 	pConfirmTimer->cancel();
 	for(const auto& t : Timers)
 		t->cancel();
@@ -654,6 +655,15 @@ inline void FileTransferPort::ConfirmCheck()
 	}
 }
 
+//called on-strand
+inline void FileTransferPort::BumpSequence()
+{
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+	if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+	pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
+	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ if(!err) ResetTransfer();}));
+}
+
 //called on-strand from RxEvent()
 void FileTransferPort::ProcessQdFilenames(const std::string& SenderName)
 {
@@ -703,7 +713,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 			rx_in_progress = false;
 			++FilesTransferred;
 			ConfirmCheck();
-			if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+			BumpSequence();
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->debug("{}: Finished writing '{}'.", Name, (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 
@@ -729,8 +739,7 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 
 		FileBytesTransferred += OSBuffer.size()-crc_size;
 		ConfirmCheck();
-
-		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+		BumpSequence();
 	}
 }
 
@@ -843,7 +852,7 @@ void FileTransferPort::SendEOF(const std::string path)
 			eof_event->SetPayload<EventType::OctetString>(OctetStringBuffer());
 		TXBufferPublishEvent(eof_event);
 	}
-	if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+	BumpSequence();
 	++FilesTransferred;
 
 	//remove this path from the Q, as we've just sent it
@@ -921,7 +930,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 		auto chunk_event = std::make_shared<EventInfo>(EventType::OctetString, seq, Name);
 		chunk_event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::move(file_data_chunk)));
 		TXBufferPublishEvent(chunk_event);
-		if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+		BumpSequence();
 		FileBytesTransferred += data_size;
 		bytes_sent += data_size;
 		if(fin)
@@ -1354,6 +1363,10 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("TransferTimeoutms"))
 	{
 		pConf->TransferTimeoutms = JSONRoot["TransferTimeoutms"].asUInt();
+	}
+	if(JSONRoot.isMember("SequenceResetIdleTimems"))
+	{
+		pConf->SequenceResetIdleTimems = JSONRoot["SequenceResetIdleTimems"].asUInt();
 	}
 	if(JSONRoot.isMember("UseConfirms"))
 	{

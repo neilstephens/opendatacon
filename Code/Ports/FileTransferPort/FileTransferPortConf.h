@@ -134,6 +134,7 @@ public:
 	size_t ThrottleBaudrate = 0;
 	bool UseCRCs = true;
 	size_t TransferTimeoutms = 3000;
+	size_t SequenceResetIdleTimems = 20000;
 	bool UseConfirms = true;
 	int64_t ConfirmControlIndex = -1;
 };

@@ -78,6 +78,7 @@ private:
 	void ConfirmEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void RxEvent(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void ConfirmCheck();
+	void BumpSequence();
 	void ProcessQdFilenames(const std::string& SenderName);
 	void ProcessRxBuffer(const std::string& SenderName);
 	void TransferTimeoutHandler(const asio::error_code err);
@@ -114,6 +115,7 @@ private:
 	std::ifstream fin;
 	std::shared_ptr<asio::steady_timer> pThrottleTimer = asio_service::Get()->make_steady_timer();
 	std::shared_ptr<asio::steady_timer> pTransferTimeoutTimer = asio_service::Get()->make_steady_timer();
+	std::shared_ptr<asio::steady_timer> pIdleTimer = asio_service::Get()->make_steady_timer();
 	std::shared_ptr<asio::steady_timer> pConfirmTimer = asio_service::Get()->make_steady_timer();
 	std::unordered_map<size_t,std::deque<std::shared_ptr<const EventInfo>>> rx_event_buffer;
 	std::deque<std::shared_ptr<EventInfo>> tx_event_buffer;
