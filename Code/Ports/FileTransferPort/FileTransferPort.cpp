@@ -147,7 +147,7 @@ void FileTransferPort::Enable_()
 	PublishEvent(ConnectState::PORT_UP);
 	PublishEvent(ConnectState::CONNECTED);
 
-	if(pConf->Persistence == ModifiedTimePersistence::ONDISK)
+	if(pConf->Persistence == ModifiedTimePersistence::ONDISK && tx_filename_q.empty())
 		LoadModTimes();
 
 	if(pConf->Direction == TransferDirection::TX)
