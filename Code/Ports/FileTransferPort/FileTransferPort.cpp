@@ -166,6 +166,12 @@ void FileTransferPort::Enable_()
 	}
 	pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
 	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ if(!err) ResetTransfer();}));
+	if(!tx_filename_q.empty())
+		pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+			{
+				auto& [next_path,next_tx_name] = next;
+				TrySend(next_path, next_tx_name);
+			});
 }
 
 //posted on strand by Disable()
@@ -414,6 +420,13 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	}
 	else if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->error("{}: Ignoring confirm event with unexpected status: '{}'", Name, ToString(CROB.status));
+
+	if(!tx_in_progress && !tx_filename_q.empty())
+		pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+			{
+				auto& [next_path,next_tx_name] = next;
+				TrySend(next_path, next_tx_name);
+			});
 
 	pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 	return;
@@ -815,6 +828,12 @@ void FileTransferPort::StartConfirmTimer()
 				log->error("{}: Confirm timeout.", Name);
 			for(const auto& e : tx_event_buffer)
 				PublishEvent(e);
+			if(!tx_in_progress && !tx_filename_q.empty())
+				pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+					{
+						auto& [next_path,next_tx_name] = next;
+						TrySend(next_path, next_tx_name);
+					});
 			StartConfirmTimer();
 		}));
 }
