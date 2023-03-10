@@ -28,7 +28,7 @@
 
 #define SUITE(name) "FileTransferPortEndToEndTestSuite - " name
 
-const unsigned int test_timeout = 60000;
+const unsigned int test_timeout = 20000;
 
 TEST_CASE(SUITE("DirectBack2Back"))
 {
