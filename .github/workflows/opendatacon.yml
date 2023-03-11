@@ -52,7 +52,8 @@ jobs:
     
     - if: always()
       name: Set log level
-      run: [ ${{ runner.debug }} = 1 ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
+      run: |
+        [ ${{ runner.debug }} = 1 ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
 
     - uses: actions/checkout@v2
       with:
@@ -223,7 +224,8 @@ jobs:
     
     - if: always()
       name: Set log level
-      run: [ ${{ runner.debug }} = 1 ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
+      run: |
+        [ ${{ runner.debug }} = 1 ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
         
     - name: Start run wrapper
       run: echo '#!/bin/bash' >> $HOME/run.sh
