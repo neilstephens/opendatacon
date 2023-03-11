@@ -1,6 +1,6 @@
-# opendatacon version 1.8.0-RC5
+# opendatacon version 1.8.0-RC6
 
-## 1.8.0-RC5
+## 1.8.0-RC6
   * New Port type added: FileTransferPort - for transferring files via OctetString data type
   * DNP3 Ports and JSON Port support for OctetString
   * Bugfixes for PythonPort, and more examples
