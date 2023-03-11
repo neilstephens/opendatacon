@@ -46,14 +46,13 @@ jobs:
     env:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: ${{github.workspace}}/build/install
-      LOG_LVL: error
       JOB_NAME: ${{matrix.os}}_${{matrix.build-type}}_${{matrix.cross}}_${{matrix.bits}}
 
     steps:
     
-    - if: always() && runner.debug == 1
-      name: Set debug level logging
-      run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
+    - if: always()
+      name: Set log level
+      run: [ ${{ runner.debug }} = 1 ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
 
     - uses: actions/checkout@v2
       with:
@@ -217,15 +216,14 @@ jobs:
     env:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: /github/workspace/build/install
-      LOG_LVL: error
       BINDIR: bin/
       JOB_NAME: ${{matrix.os}}_${{matrix.build-type}}_${{matrix.cross}}_${{matrix.bits}}
 
     steps:
     
-    - if: always() && runner.debug == 1
-      name: Set debug level logging
-      run: echo 'LOG_LVL=debug' >> $GITHUB_ENV
+    - if: always()
+      name: Set log level
+      run: [ ${{ runner.debug }} = 1 ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
         
     - name: Start run wrapper
       run: echo '#!/bin/bash' >> $HOME/run.sh

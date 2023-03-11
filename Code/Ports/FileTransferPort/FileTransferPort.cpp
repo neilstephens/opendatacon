@@ -1091,7 +1091,15 @@ void FileTransferPort::TxPath(std::string path, const std::string& tx_name, bool
 	auto std_path = std::filesystem::path(path);
 	if(std_path.is_relative())
 		std_path = base_path/std_path;
-	std_path = std::filesystem::weakly_canonical(std_path);
+	try
+	{
+		std_path = std::filesystem::weakly_canonical(std_path);
+	}
+	catch(const std::exception& ex)
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->error("{}: exception calling std::filesystem::weakly_canonical(\"{}\"): '{}'", Name, std_path.string(), ex.what());
+	}
 
 	//now make sure it's a subdirectory of our configered dir
 	auto rel_path = std::filesystem::relative(std_path,base_path);
