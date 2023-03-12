@@ -63,6 +63,7 @@ std::string GetCurrentWorkingDir(void)
 	return current_working_dir;
 }
 
+//FIXME: This is bad. Any uses of this should use std::filesystem.
 bool fileexists(const std::string& filename)
 {
 	std::ifstream ifile(filename.c_str());
@@ -86,6 +87,7 @@ std::vector<std::string> split(const std::string& s, char delim)
 	return result;
 }
 
+//FIMXE: std lib should be used for this kind of thing
 // Get the number contained in this string.
 std::string GetNumber(const std::string& input)
 {
@@ -150,6 +152,8 @@ void PyPort::Build()
 			return;
 		}
 	}
+
+	//see FIXME in header
 	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
 	std::call_once(PyPort::python_strand_flag,[this]()
 		{
@@ -159,6 +163,7 @@ void PyPort::Build()
 
 	// Build is single threaded, no ASIO tasks fire up until all the builds are finished
 
+	//FIXME: use lambdas instead of std::bind
 	// If first time constructor is called, will instansiate the interpreter.
 	// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
 	// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
@@ -168,7 +173,7 @@ void PyPort::Build()
 	try
 	{
 		// Python code is loaded and class created, __init__ called.
-		pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
+		pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython, MyConf->pyOctetStringFormat);
 
 		pWrapper->Config(JSONMain, JSONOverride);
 		LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
@@ -489,8 +494,11 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 			}
 			break;
 		case EventType::OctetString:
-			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
-			break;
+		{
+			pubevent = std::make_shared<EventInfo>(EventType::OctetString, ODCIndex, Name, QualityResult);
+			pubevent->SetPayload<EventType::OctetString>(std::string(PayloadStr));
+		}
+		break;
 		case EventType::BinaryQuality:
 			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
@@ -620,7 +628,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				event->GetIndex(),                                         // 1
 				isotimestamp,                                              // 2
 				ToString(event->GetQuality()),                             // 3
-				event->GetPayloadString(),                                 // 4
+				event->GetPayloadString(MyConf->pyOctetStringFormat),      // 4
 				SenderName,                                                // 5
 				TagValue,                                                  // 6
 				MyConf->pyTagPrefixString,                                 // 7
@@ -735,7 +743,8 @@ void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallba
 // This should be called twice, once for the config file setion, and the second for config overrides.
 void PyPort::ProcessElements(const Json::Value& JSONRoot)
 {
-// We need to strip comments from the JSON here, as Python JSON handling libraries throw on finding comments.
+	//see FIXME in header - just store the json, don't need separate main and override strings
+	// We need to strip comments from the JSON here, as Python JSON handling libraries throw on finding comments.
 	if (JSONMain.length() == 0)
 	{
 		Json::StreamWriterBuilder wbuilder;
@@ -766,6 +775,16 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
 	if (JSONRoot.isMember("OnlyQueueEventsWithTags"))
 		MyConf->pyOnlyQueueEventsWithTags = JSONRoot["OnlyQueueEventsWithTags"].asBool();
+	if (JSONRoot.isMember("OctetStringFormat"))
+	{
+		auto fmt = JSONRoot["OctetStringFormat"].asString();
+		if(fmt == "Hex")
+			MyConf->pyOctetStringFormat = DataToStringMethod::Hex;
+		else if(fmt == "Raw")
+			MyConf->pyOctetStringFormat = DataToStringMethod::Raw;
+		else
+			throw std::invalid_argument("OctetStringFormat should be Raw or Hex, not " + fmt);
+	}
 
 	//TODO: The following parameter should always be set to the same value. If different throw an exception as the conf file is wrong!
 	if (JSONRoot.isMember("GlobalUseSystemPython"))

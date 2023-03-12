@@ -544,8 +544,9 @@ PythonWrapper::~PythonWrapper()
 }
 
 void PythonWrapper::Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
-	const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython)
+	const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython, DataToStringMethod OctetStringFormat)
 {
+	this->OctetStringFormat = OctetStringFormat;
 	// First we make sure there is a gobal instance of PythonInitWrapper
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<PythonInitWrapper> weak_mgr;
@@ -785,7 +786,7 @@ CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcev
 		auto pyIndex = PyLong_FromSize_t(odcevent->GetIndex());
 		auto pyTime = PyLong_FromUnsignedLongLong(odcevent->GetTimestamp());             // msSinceEpoch
 		auto pyQuality = PyUnicode_FromString(ToString(odcevent->GetQuality()).c_str()); // String quality flags
-		auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString().c_str());
+		auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString(OctetStringFormat).c_str());
 		auto pySender = PyUnicode_FromString(SenderName.c_str());
 
 		// The py values above are stolen into the pyArgs structure - so only need to release pyArgs

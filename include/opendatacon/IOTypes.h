@@ -726,7 +726,7 @@ public:
 		return *static_cast<typename EventTypePayload<t>::type*>(pPayload);
 	}
 
-	std::string GetPayloadString() const
+	std::string GetPayloadString(DataToStringMethod D2S = DataToStringMethod::Hex) const
 	{
 		switch(Type)
 		{
@@ -755,7 +755,7 @@ public:
 			case EventType::AnalogOutputDouble64:
 				return std::to_string(GetPayload<EventType::AnalogOutputDouble64>().first);
 			case EventType::OctetString:
-				return ToString(GetPayload<EventType::OctetString>());
+				return ToString(GetPayload<EventType::OctetString>(),D2S);
 			case EventType::BinaryQuality:
 				return ToString(GetPayload<EventType::BinaryQuality>());
 			case EventType::DoubleBitBinaryQuality:

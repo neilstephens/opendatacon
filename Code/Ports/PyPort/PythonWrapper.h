@@ -91,7 +91,7 @@ class PythonWrapper
 public:
 	PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
-	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName, const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython);
+	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName, const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython, DataToStringMethod OctetStringFormat);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void PortOperational(); // Called when Build is complete.
 	void Enable();
@@ -156,6 +156,8 @@ private:
 
 	// We need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
 	const size_t MaximumQueueSize = 1000000; // 1 million
+
+	DataToStringMethod OctetStringFormat;
 
 	std::shared_ptr<SpecialEventQueue<std::string>> EventQueue;
 

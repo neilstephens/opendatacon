@@ -91,15 +91,20 @@ protected:
 
 private:
 	std::unique_ptr<PythonWrapper> pWrapper;
+
+	//FIXME: just store the json value, and let the overrides override
 	std::string JSONMain;
 	std::string JSONOverride;
+
 	std::unordered_map<std::string, std::shared_ptr<PortMapClass>> PortTagMap;
 
 	ServerTokenType pServer;
 
+	// FIXME: python_strand should be on the PythonInitWrapper and exposed by PythonWrapper. static is nasty and probably causes shutdown crashes
 	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
 	static std::shared_ptr<asio::io_context::strand> python_strand;
 	static std::once_flag python_strand_flag;
+
 	std::shared_timed_mutex timer_mutex;
 	std::unordered_map<uint32_t, pTimer_t> timers;
 
