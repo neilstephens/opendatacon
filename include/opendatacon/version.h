@@ -18,18 +18,22 @@
  *	limitations under the License.
  */
 /*
- * version.cpp
- *
- *  Created on: 25/07/2019
- *      Author: Neil Stephens <dearknarl@gmail.com>
- */
-#include "../Code/Libs/VersionStrings/version.h"
-#include <iostream>
+* version.h
+*
+*  Created on: 12/3/2023
+*      Author: Neil Stephens
+*/
 
-int main(int argc, char* argv[])
+#ifndef ODC_PUB_VERSION_H_
+#define ODC_PUB_VERSION_H_
+
+#include <string>
+
+namespace odc
 {
-	std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
-	         <<"Submodules:"<<std::endl
-	         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl;
-	return 0;
+
+std::string version_string();
+std::string submodules_version_string();
+
 }
+#endif //ODC_PUB_VERSION_H_

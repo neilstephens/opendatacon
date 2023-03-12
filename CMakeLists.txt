@@ -56,12 +56,12 @@ add_custom_command(OUTPUT always_rebuild COMMAND ${CMAKE_COMMAND} -E echo)
 include(Code/cmake/version.cmake)
 add_custom_command(
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	OUTPUT "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
+	OUTPUT "${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h"
 	COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -DCURRENT_CONFIG=$<CONFIG> -P "Code/cmake/version.cmake"
 	DEPENDS always_rebuild
 )
-#version info target that our other targets can have a dependance on
-add_custom_target(version DEPENDS "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h")
+#version strings object file that can be linked into targets needing that
+add_library(VersionStrings OBJECT ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.cpp ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h)
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, PyPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI)" OFF)

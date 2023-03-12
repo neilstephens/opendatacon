@@ -30,7 +30,7 @@
 #include "sqlite3/sqlite3.h"
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
-#include <opendatacon/Version.h>
+#include <opendatacon/version.h>
 #include <chrono>
 #include <limits>
 #include <memory>
@@ -589,7 +589,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(httpServerToken, "GET /", roothandler);
 
-		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
+		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", odc::version_string(), odc::GetConfigVersion());
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;

@@ -21,7 +21,7 @@ project(SimPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def sqlite3/sqlite3.c sqlite3/sqlite3.h)
 
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
 target_link_libraries(${PROJECT_NAME} ODC HTTP ${DL})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})

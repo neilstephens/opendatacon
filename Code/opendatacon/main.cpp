@@ -41,9 +41,10 @@
 #include "DataConcentrator.h"
 #include "DaemonInterface.h"
 #include "ODCArgs.h"
+#include <opendatacon/Platform.h>
+#include <opendatacon/version.h>
 #include <csignal>
 #include <cstdio>
-#include <opendatacon/Platform.h>
 
 int main(int argc, char* argv[])
 {
@@ -177,7 +178,7 @@ int main(int argc, char* argv[])
 					});
 		}
 
-		std::string msg("opendatacon version '" ODC_VERSION_STRING);
+		std::string msg("opendatacon version '"+odc::version_string());
 		if(TheDataConcentrator->isShutDown())
 		{
 			run_thread.join();

@@ -77,7 +77,7 @@ set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/MacOS/AplicationIcon.icns)
 #set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
 
-add_executable(version_stub version.cpp ../include/opendatacon/Version.h)
+add_executable(version_stub version.cpp ../Code/Libs/VersionStrings/version.h)
 target_link_libraries(version_stub ${LIBCXX})
 install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 

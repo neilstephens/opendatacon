@@ -62,12 +62,12 @@ if(GIT_FOUND)
 	endif()
 
 	configure_file (
-		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h.in"
-		"${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h"
+		"${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h.in"
+		"${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h"
 	)
-	#hack to trigger cmake reconfigure if Version.h changed
+	#hack to trigger cmake reconfigure if version.h changed
 	#reconfigure needed because we use version info to generate cpack info etc.
-	configure_file ("${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h" "${CMAKE_SOURCE_DIR}/include/opendatacon/Version.h" COPYONLY)
+	configure_file ("${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h" "${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h" COPYONLY)
 	#ditto for build type
 	if(EXISTS ${build_config_file})
 		configure_file (${build_config_file} ${build_config_file} COPYONLY)

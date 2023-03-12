@@ -26,11 +26,11 @@
 
 #include "DataConcentrator.h"
 #include "NullPort.h"
-#include <opendatacon/Version.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/asio_syslog_spdlog_sink.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
+#include <opendatacon/version.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/sinks/rotating_file_sink.h>
@@ -94,7 +94,7 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 	this->AddCommand("version", [](const ParamCollection &params) //"Print version information"
 		{
 			Json::Value result;
-			result["version"] = ODC_VERSION_STRING;
+			result["version"] = odc::version_string();
 			result["config version"] = odc::GetConfigVersion();
 			return result;
 		},"Return the version information of opendatacon.");
@@ -155,9 +155,9 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 		,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename> <optional_delay_override>]");
 	interface->AddCommand("version",[] (std::stringstream& ss)
 		{
-			std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
+			std::cout<<"Release " << odc::version_string() <<std::endl
 			         <<"Submodules:"<<std::endl
-			         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl
+			         <<"\t"<<odc::submodules_version_string()<<std::endl
 			         <<"Running config: "<<odc::GetConfigVersion()<<std::endl;
 
 		},"Print version information");
@@ -541,7 +541,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 	if(!log)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
-	log->critical("This is opendatacon version '{}'", ODC_VERSION_STRING);
+	log->critical("This is opendatacon version '{}'", odc::version_string());
 	log->critical("Log level set to {}", spdlog::level::level_string_views[levels.first]);
 	log->critical("Console level set to {}", spdlog::level::level_string_views[levels.second]);
 	log->info("Loading configuration... ");

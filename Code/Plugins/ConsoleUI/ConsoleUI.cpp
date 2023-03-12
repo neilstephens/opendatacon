@@ -19,7 +19,6 @@
  */
 
 #include "ConsoleUI.h"
-#include <opendatacon/Version.h>
 #include <opendatacon/util.h>
 #include <fstream>
 #include <iomanip>
