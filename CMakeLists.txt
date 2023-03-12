@@ -62,6 +62,7 @@ add_custom_command(
 )
 #version strings object file that can be linked into targets needing that
 add_library(VersionStrings OBJECT ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.cpp ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h)
+set_property(TARGET VersionStrings PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # various optional libraries and projects
 option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, PyPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI)" OFF)
