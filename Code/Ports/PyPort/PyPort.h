@@ -76,10 +76,6 @@ public:
 
 	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
 
-	//FIXME: should use std::weak_ptr
-	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
-	static std::unordered_map<PyObject*, PyPort*> PyPorts;
-
 	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
 	std::string GetTagValue(const std::string& SenderName, EventType Eventt, size_t Index);
 	void ProcessPoints(EventType ptype, const Json::Value& JSONNode);
