@@ -43,14 +43,13 @@ using namespace odc;
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
-enum PointType { Binary = 0, Analog = 1, BinaryControl = 2, AnalogControl = 3};
-
 // We have a map of these structures, for each sender to this port. This way we only need one port to handle all inbound data on the event bus.
 class PortMapClass
 {
 public:
 	std::unordered_map<size_t, std::string> AnalogMap;
 	std::unordered_map<size_t, std::string> BinaryMap;
+	std::unordered_map<size_t, std::string> OctetStringMap;
 	std::unordered_map<size_t, std::string> BinaryControlMap;
 	std::unordered_map<size_t, std::string> AnalogControlMap;
 };
@@ -82,7 +81,7 @@ public:
 
 	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
 	std::string GetTagValue(const std::string& SenderName, EventType Eventt, size_t Index);
-	void ProcessPoints(PointType ptype, const Json::Value& JSONNode);
+	void ProcessPoints(EventType ptype, const Json::Value& JSONNode);
 	void SetTimer(uint32_t id, uint32_t delayms);
 
 protected:

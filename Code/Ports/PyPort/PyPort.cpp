@@ -565,25 +565,49 @@ std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt
 	if (searchport != PortTagMap.end())
 	{
 		auto foundport = searchport->second;
-		if (Eventt == EventType::Analog)
+		switch(Eventt)
 		{
-			auto search = foundport->AnalogMap.find(Index);
-			if (search != foundport->AnalogMap.end())
-				Tag = search->second;
+			case EventType::Analog:
+			{
+				auto search = foundport->AnalogMap.find(Index);
+				if (search != foundport->AnalogMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::Binary:
+			{
+				auto search = foundport->BinaryMap.find(Index);
+				if (search != foundport->BinaryMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::OctetString:
+			{
+				auto search = foundport->OctetStringMap.find(Index);
+				if (search != foundport->OctetStringMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::ControlRelayOutputBlock:
+			{
+				auto search = foundport->BinaryControlMap.find(Index);
+				if (search != foundport->BinaryControlMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::AnalogOutputDouble64:
+			case EventType::AnalogOutputFloat32:
+			case EventType::AnalogOutputInt16:
+			case EventType::AnalogOutputInt32:
+			{
+				auto search = foundport->AnalogControlMap.find(Index);
+				if (search != foundport->AnalogControlMap.end())
+					Tag = search->second;
+			}
+			break;
+			default:
+				break;
 		}
-		if (Eventt == EventType::Binary)
-		{
-			auto search = foundport->BinaryMap.find(Index);
-			if (search != foundport->BinaryMap.end())
-				Tag = search->second;
-		}
-		if (Eventt == EventType::ControlRelayOutputBlock)
-		{
-			auto search = foundport->BinaryControlMap.find(Index);
-			if (search != foundport->BinaryControlMap.end())
-				Tag = search->second;
-		}
-		// TODO: AnalogControlMap
 	}
 	LOGTRACE("PyPort {} GetTagValue {} {} {} {}", Name, SenderName, Index, ToString(Eventt), Tag);
 	return Tag;
@@ -794,36 +818,62 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		const auto Analogs = JSONRoot["Analogs"];
 		LOGDEBUG("Conf processed - Analog Points");
-		ProcessPoints(Analog, Analogs);
+		ProcessPoints(EventType::Analog, Analogs);
 	}
 	if (JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
 		LOGDEBUG("Conf processed - Binary Points");
-		ProcessPoints(Binary, Binaries);
+		ProcessPoints(EventType::Binary, Binaries);
 	}
-
+	if (JSONRoot.isMember("OctetStrings"))
+	{
+		const auto OctetStrings = JSONRoot["OctetStrings"];
+		LOGDEBUG("Conf processed - OctetString Points");
+		ProcessPoints(EventType::OctetString, OctetStrings);
+	}
 	if (JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls = JSONRoot["BinaryControls"];
 		LOGDEBUG("Conf processed - Binary Controls");
-		ProcessPoints(BinaryControl, BinaryControls);
+		ProcessPoints(EventType::ControlRelayOutputBlock, BinaryControls);
+	}
+	if (JSONRoot.isMember("AnalogControls"))
+	{
+		const auto AnalogControls = JSONRoot["AnalogControls"];
+		LOGDEBUG("Conf processed - Analog Controls");
+		ProcessPoints(EventType::AnalogOutputDouble64, AnalogControls);
 	}
 }
 
 // This method loads both Analog and Counter/Timers. They look functionally similar in CB
-void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
+void PyPort::ProcessPoints(EventType ptype, const Json::Value& JSONNode)
 {
 	std::string Name("None");
 
-	if (ptype == Analog)
-		Name = "Analog";
-	if (ptype == Binary)
-		Name = "Binary";
-	if (ptype == BinaryControl)
-		Name = "Control";
-	if (ptype == AnalogControl)
-		Name = "AnalogControl";
+	switch(ptype)
+	{
+		case EventType::Analog:
+			Name = "Analog";
+			break;
+		case EventType::Binary:
+			Name = "Binary";
+			break;
+		case EventType::OctetString:
+			Name = "OctetString";
+			break;
+		case EventType::ControlRelayOutputBlock:
+			Name = "Control";
+			break;
+		case EventType::AnalogOutputDouble64:
+		case EventType::AnalogOutputFloat32:
+		case EventType::AnalogOutputInt16:
+		case EventType::AnalogOutputInt32:
+			Name = "AnalogControl";
+			break;
+		default:
+			break;
+	}
 
 	LOGDEBUG("Conf processing - {}", Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
@@ -862,18 +912,29 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			}
 
 			auto foundport = searchport->second;
-
-			if (ptype == Analog)
-				foundport->AnalogMap.emplace(std::make_pair(index, Tag));
-			else if (ptype == Binary)
-				foundport->BinaryMap.emplace(std::make_pair(index, Tag));
-			else if (ptype == BinaryControl)
-				foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
-			else if (ptype == AnalogControl)
-				foundport->AnalogControlMap.emplace(std::make_pair(index, Tag));
-			else
+			switch(ptype)
 			{
-				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
+				case EventType::Analog:
+					foundport->AnalogMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::Binary:
+					foundport->BinaryMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::OctetString:
+					foundport->OctetStringMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::ControlRelayOutputBlock:
+					foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::AnalogOutputDouble64:
+				case EventType::AnalogOutputFloat32:
+				case EventType::AnalogOutputInt16:
+				case EventType::AnalogOutputInt32:
+					foundport->AnalogControlMap.emplace(std::make_pair(index, Tag));
+					break;
+				default:
+					LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
+					break;
 			}
 			LOGTRACE("Sender - {}, Type - {}, Tag - {}, Index - {}", sender, Name, Tag, index);
 		}
