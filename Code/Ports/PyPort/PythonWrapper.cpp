@@ -375,6 +375,7 @@ void ImportODCModule()
 
 // Startup the interpreter - need to have matching tear down in destructor.
 PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
+	python_strand(odc::asio_service::Get()->make_strand()),
 	running(false),
 	keep_running(true),
 	PythonMainThread([=](){Run(GlobalUseSystemPython);})

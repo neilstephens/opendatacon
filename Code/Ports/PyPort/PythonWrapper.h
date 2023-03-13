@@ -75,6 +75,7 @@ class PythonInitWrapper
 public:
 	PythonInitWrapper(bool GlobalUseSystemPython);
 	~PythonInitWrapper();
+	std::unique_ptr<asio::io_context::strand> python_strand;
 private:
 	void Run(bool GlobalUseSystemPython);
 	bool running;
@@ -125,6 +126,10 @@ public:
 			return (PythonWrapper*)guid;
 		}
 		return nullptr;
+	}
+	std::unique_ptr<asio::io_context::strand>& GlobalPythonStrand()
+	{
+		return PyMgr->python_strand;
 	}
 
 private:

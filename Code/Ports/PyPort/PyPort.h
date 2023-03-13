@@ -76,6 +76,7 @@ public:
 
 	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
 
+	//FIXME: should use std::weak_ptr
 	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
 	static std::unordered_map<PyObject*, PyPort*> PyPorts;
 
@@ -98,11 +99,6 @@ private:
 	std::unordered_map<std::string, std::shared_ptr<PortMapClass>> PortTagMap;
 
 	ServerTokenType pServer;
-
-	// FIXME: python_strand should be on the PythonInitWrapper and exposed by PythonWrapper. static is nasty and probably causes shutdown crashes
-	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
-	static std::shared_ptr<asio::io_context::strand> python_strand;
-	static std::once_flag python_strand_flag;
 
 	std::shared_timed_mutex timer_mutex;
 	std::unordered_map<uint32_t, pTimer_t> timers;

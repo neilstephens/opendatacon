@@ -71,9 +71,6 @@ bool fileexists(const std::string& filename)
 }
 using namespace odc;
 
-std::shared_ptr<asio::io_context::strand> PyPort::python_strand = nullptr;
-std::once_flag PyPort::python_strand_flag;
-
 std::vector<std::string> split(const std::string& s, char delim)
 {
 	std::vector<std::string> result;
@@ -153,14 +150,6 @@ void PyPort::Build()
 		}
 	}
 
-	//see FIXME in header
-	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
-	std::call_once(PyPort::python_strand_flag,[this]()
-		{
-			LOGDEBUG("Create python_strand");
-			PyPort::python_strand = pIOS->make_strand();
-		});
-
 	// Build is single threaded, no ASIO tasks fire up until all the builds are finished
 
 	//FIXME: use lambdas instead of std::bind
@@ -209,7 +198,7 @@ void PyPort::Enable()
 	auto promise = std::make_shared<std::promise<bool>>();
 	auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-	python_strand->dispatch([this,promise]()
+	pWrapper->GlobalPythonStrand()->dispatch([this,promise]()
 		{
 			LOGSTRAND("Entered Strand on Enable");
 			pWrapper->Enable();
@@ -244,7 +233,7 @@ void PyPort::Disable()
 	// Leaves the connection running, someone else might be using it? If another joins will work fine.
 	// Used to be: HttpServerManager::StopConnection(pServer);
 
-	python_strand->dispatch([this]()
+	pWrapper->GlobalPythonStrand()->dispatch([this]()
 		{
 			LOGSTRAND("Entered Strand on Disable");
 			pWrapper->Disable();
@@ -668,7 +657,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	}
 	else
 	{
-		python_strand->dispatch([this, event, SenderName, pStatusCallback]()
+		pWrapper->GlobalPythonStrand()->dispatch([this, event, SenderName, pStatusCallback]()
 			{
 				LOGSTRAND("Entered Strand on Event");
 				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
@@ -690,7 +679,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 	pTimer_t timer = pIOS->make_steady_timer();
 	StoreTimer(id, timer);
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
-	timer->async_wait(python_strand->wrap(
+	timer->async_wait(pWrapper->GlobalPythonStrand()->wrap(
 		[this, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
 		{
 			if (!err_code)
@@ -732,7 +721,7 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, con
 		return;
 	}
 
-	python_strand->dispatch([this, url, content, pResponseCallback]()
+	pWrapper->GlobalPythonStrand()->dispatch([this, url, content, pResponseCallback]()
 		{
 			LOGSTRAND("Entered Strand on RestHandler");
 			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
