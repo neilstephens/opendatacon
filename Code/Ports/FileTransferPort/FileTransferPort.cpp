@@ -382,30 +382,55 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	auto CROB = event->GetPayload<EventType::ControlRelayOutputBlock>();
+	const auto& expected_sequence = CROB.onTimeMS;
+	const auto& expected_crc = CROB.offTimeMS;
+	const bool UnsolConfirm = (CROB.count == 2);
+	auto crc_str = pConf->UseCRCs ? fmt::format("0x{:04x}", expected_crc) : "NOT_USED";
+
 	if(CROB.status == CommandStatus::SUCCESS)
 	{
-		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
-		pConfirmTimer->cancel();
-		ConfirmHandler();
-		ConfirmHandler = [] {};
-		tx_event_buffer.clear();
-		tx_uncofirmed_transfers.clear();
+		if(UnsolConfirm)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->trace("{}: Received unsolicited positive confirmation: Clear queues up to sequence {}, CRC {}", Name, expected_sequence, crc_str);
+			if(pConf->UseCRCs ? (expected_sequence == seq && expected_crc == crc) : (expected_sequence == seq))
+			{
+				tx_event_buffer.clear();
+				tx_uncofirmed_transfers.clear();
+			}
+			else
+			{
+				if(!(pConf->UseCRCs ? ClearUpTo(expected_sequence, expected_crc) : ClearUpTo(expected_sequence)))
+				{
+					if(auto log = odc::spdlog_get("FileTransferPort"))
+						log->warn("{}: Event not in buffer: unsol positive confirmation for sequence {}, CRC {}", Name, expected_sequence, crc_str);
+				}
+			}
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->trace("{}: Received positive confirmation: Entire sequence OK.", Name);
+			pConfirmTimer->cancel();
+			tx_event_buffer.clear();
+			tx_uncofirmed_transfers.clear();
+			ConfirmHandler();
+			ConfirmHandler = [] {};
+		}
 	}
 	else if(CROB.status == CommandStatus::TIMEOUT)
 	{
-		const auto& expected_sequence = CROB.onTimeMS;
-		const auto& expected_crc = CROB.offTimeMS;
-		const bool UnsolConfirm = (CROB.count == 2);
-
-		auto crc_str = pConf->UseCRCs ? fmt::format("0x{:04x}", expected_crc) : "NOT_USED";
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Received negative confirmation: Send again from sequence {}, CRC {}", Name, expected_sequence, crc_str);
 
-		if(pConf->UseCRCs)
-			ResendFrom(expected_sequence, expected_crc);
-		else
-			ResendFrom(expected_sequence);
+		if(!(pConf->UseCRCs ? ClearUpTo(expected_sequence, expected_crc) : ClearUpTo(expected_sequence)))
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->error("{}: Negative confirmation expected seq/crc ({}/{}) that doesn't exist in buffer", Name, expected_sequence, crc_str);
+			ResetTransfer();
+		}
+		for(const auto& e : tx_event_buffer)
+			pIOS->post([=] { PublishEvent(e); });
 
 		if(!UnsolConfirm && !transfer_reset)
 			StartConfirmTimer();
@@ -413,6 +438,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	else if(auto log = odc::spdlog_get("FileTransferPort"))
 		log->error("{}: Ignoring confirm event with unexpected status: '{}'", Name, ToString(CROB.status));
 
+	//FIXME: do I really have to do this?
 	if(!tx_in_progress && !tx_filename_q.empty())
 		pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
 			{
@@ -585,6 +611,14 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 {
 	if(err || !enabled)
 		return;
+	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
+	auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
+	ControlRelayOutputBlock CROB;
+	CROB.onTimeMS = seq;
+	CROB.offTimeMS = pConf->UseCRCs ? crc : 0;
+	if(!rx_in_progress)
+		CROB.count = 2; //Unsol
 
 	size_t Qsize = 0;
 	for(auto& [idx,q] : rx_event_buffer)
@@ -592,18 +626,12 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 
 	if(rx_in_progress || Qsize > 0)
 	{
-		auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
+
 		if(pConf->UseConfirms)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: Transfer timeout. Sending negative confirmation", Name);
-			auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
-			ControlRelayOutputBlock CROB;
 			CROB.status = CommandStatus::TIMEOUT;
-			CROB.onTimeMS = seq;
-			CROB.offTimeMS = pConf->UseCRCs ? crc : 0;
-			if(!rx_in_progress)
-				CROB.count = 2; //Unsol
 			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
 			pIOS->post([=] { PublishEvent(confirm_event); });
 		}
@@ -614,6 +642,15 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 			ResetTransfer();
 		}
 	}
+	else if(pConf->UseConfirms)
+	{
+		if(auto log = odc::spdlog_get("FileTransferPort"))
+			log->debug("{}: Transfer timeout between files, send unsol positive confirmation", Name);
+		CROB.status = CommandStatus::SUCCESS;
+		confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
+		pIOS->post([=] { PublishEvent(confirm_event); });
+	}
+
 	rx_event_buffer.clear();
 }
 
@@ -783,7 +820,7 @@ void FileTransferPort::TXBufferPublishEvent(std::shared_ptr<EventInfo> event, Sh
 }
 
 //called on-strand by ConfirmEvent()
-void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expected_crc)
+bool FileTransferPort::ClearUpTo(const size_t expected_seq, const uint16_t expected_crc)
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	const auto& FNidx = pConf->FileNameTransmissionEvent->GetIndex();
@@ -812,15 +849,7 @@ void FileTransferPort::ResendFrom(const size_t expected_seq, const uint16_t expe
 			break;
 		}
 	}
-	if(!found)
-	{
-		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->error("{}: Negative confirmation expected seq/crc ({}/0x{:04x}) that doesn't exist in buffer", Name, expected_seq, expected_crc);
-		ResetTransfer();
-		return;
-	}
-	for(const auto& e : tx_event_buffer)
-		pIOS->post([=] { PublishEvent(e); });
+	return found;
 }
 
 void FileTransferPort::StartConfirmTimer()

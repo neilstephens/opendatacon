@@ -84,7 +84,7 @@ private:
 	void TransferTimeoutHandler(const asio::error_code err);
 	void ResetTransfer();
 	void TXBufferPublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
-	void ResendFrom(const size_t expected_seq, const uint16_t expected_crc = 0);
+	bool ClearUpTo(const size_t expected_seq, const uint16_t expected_crc = 0);
 	void StartConfirmTimer();
 	void SendEOF(const std::string path);
 	void ScheduleNextChunk(const std::string path, const std::chrono::time_point<std::chrono::high_resolution_clock> start_time, uint64_t bytes_sent);
