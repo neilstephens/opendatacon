@@ -1,12 +1,24 @@
-# opendatacon version 1.8.0-RC6
+# opendatacon version 1.8.0-RC7
 
-## 1.8.0-RC6
+## 1.8.0-RC7
   * New Port type added: FileTransferPort - for transferring files via OctetString data type
-  * DNP3 Ports and JSON Port support for OctetString
+  * DNP3 Ports, JSON Port, and Python Port support for OctetString
   * Bugfixes for PythonPort, and more examples
   * SimPort UI features - std dev scaling, abs analog toggle, reset start vals
   * DNP3 Analog control bugfixes
   * i386 packages now built on Debian Bookworm
+
+### PyPort API change
+There's a minor change to the PyPort Config API that won't break anything if your Python code was based on the examples.
+  * The json config for a PyPort is now passed as a single string in the first argument of the 'Config' routine.
+  * The json is the merged config from all config files and 'ConfOverrides'
+    * This includes config from "Inherits" usage that wasn't previously supported by PyPort
+  * The routine signature remains the same (two string args), but the second argument will always be ""
+
+The example Python code in the repo has always immediately merged the previously separate configs,
+so this shouldn't break any legacy code that's based on the examples.
+It would be unlikely to break any code that uses the config as intended in any case.
+And now config file "Inherits" are supported.
 
 ## 1.7.13
   * Bugfix for DNP3MasterPort comms point getting stuck in failed state
