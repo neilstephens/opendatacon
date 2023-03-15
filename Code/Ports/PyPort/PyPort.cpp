@@ -99,9 +99,7 @@ std::string GetNumber(const std::string& input)
 
 // Constructor for PyPort --------------------------------------
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides),
-	JSONMain(""),
-	JSONOverride("")
+	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//the creation of a new PyPortConf will get the point details
 	pConf = std::make_unique<PyPortConf>(ConfFilename, ConfOverrides);
@@ -164,7 +162,10 @@ void PyPort::Build()
 		// Python code is loaded and class created, __init__ called.
 		pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython, MyConf->pyOctetStringFormat);
 
-		pWrapper->Config(JSONMain, JSONOverride);
+		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None"; // No comments - python doesn't like them
+		pWrapper->Config(Json::writeString(wbuilder, JSONConf), "");
+
 		LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
 	}
 	catch (std::exception& e)
@@ -756,20 +757,9 @@ void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallba
 // This should be called twice, once for the config file setion, and the second for config overrides.
 void PyPort::ProcessElements(const Json::Value& JSONRoot)
 {
-	//see FIXME in header - just store the json, don't need separate main and override strings
-	// We need to strip comments from the JSON here, as Python JSON handling libraries throw on finding comments.
-	if (JSONMain.length() == 0)
-	{
-		Json::StreamWriterBuilder wbuilder;
-		wbuilder["commentStyle"] = "None";                // No comments
-		JSONMain = Json::writeString(wbuilder, JSONRoot); // Spit the root out as string, so we can pass to Python in build.
-	}
-	else if (JSONOverride.length() == 0)
-	{
-		Json::StreamWriterBuilder wbuilder;
-		wbuilder["commentStyle"] = "None";                    // No comments
-		JSONOverride = Json::writeString(wbuilder, JSONRoot); // Spit the root out as string, so we can pass to Python in build.
-	}
+	auto MemberNames = JSONRoot.getMemberNames();
+	for(auto mn : MemberNames)
+		JSONConf[mn] = JSONRoot[mn];
 
 	if (JSONRoot.isMember("ModuleName"))
 		MyConf->pyModuleName = JSONRoot["ModuleName"].asString();

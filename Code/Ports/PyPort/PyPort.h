@@ -88,9 +88,7 @@ protected:
 private:
 	std::unique_ptr<PythonWrapper> pWrapper;
 
-	//FIXME: just store the json value, and let the overrides override
-	std::string JSONMain;
-	std::string JSONOverride;
+	Json::Value JSONConf;
 
 	std::unordered_map<std::string, std::shared_ptr<PortMapClass>> PortTagMap;
 
