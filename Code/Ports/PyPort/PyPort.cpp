@@ -199,7 +199,7 @@ void PyPort::Enable()
 	auto promise = std::make_shared<std::promise<bool>>();
 	auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-	pWrapper->GlobalPythonStrand()->dispatch([this,promise]()
+	pWrapper->GlobalPythonStrand()->post([this,promise]()
 		{
 			LOGSTRAND("Entered Strand on Enable");
 			pWrapper->Enable();
@@ -234,7 +234,7 @@ void PyPort::Disable()
 	// Leaves the connection running, someone else might be using it? If another joins will work fine.
 	// Used to be: HttpServerManager::StopConnection(pServer);
 
-	pWrapper->GlobalPythonStrand()->dispatch([this]()
+	pWrapper->GlobalPythonStrand()->post([this]()
 		{
 			LOGSTRAND("Entered Strand on Disable");
 			pWrapper->Disable();
@@ -658,7 +658,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	}
 	else
 	{
-		pWrapper->GlobalPythonStrand()->dispatch([this, event, SenderName, pStatusCallback]()
+		pWrapper->GlobalPythonStrand()->post([this, event, SenderName, pStatusCallback]()
 			{
 				LOGSTRAND("Entered Strand on Event");
 				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
@@ -722,7 +722,7 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, con
 		return;
 	}
 
-	pWrapper->GlobalPythonStrand()->dispatch([this, url, content, pResponseCallback]()
+	pWrapper->GlobalPythonStrand()->post([this, url, content, pResponseCallback]()
 		{
 			LOGSTRAND("Entered Strand on RestHandler");
 			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
