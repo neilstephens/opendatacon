@@ -533,6 +533,7 @@ PythonWrapper::~PythonWrapper()
 		Py_XDECREF(pyFuncDisable);
 		Py_XDECREF(pyTimerHandler);
 		Py_XDECREF(pyRestHandler);
+		Py_XDECREF(pyPublishCallbackHandler);
 
 		RemoveWrapperMapping();
 		Py_XDECREF(pyInstance);
@@ -653,6 +654,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
 	pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
 	pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
+	pyPublishCallbackHandler = GetFunction(pyInstance, "PublishCallbackHandler");
 }
 
 void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONOverride)
@@ -892,6 +894,47 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 		LOGERROR("Exception Caught calling pyRestHandler() - {}", e.what());
 	}
 	return "Did not get a response from Python RestHandler";
+}
+
+void PythonWrapper::CallPublishCallback(const std::string& evt_type, const size_t index, const std::string& quality, const std::string& payload, const msSinceEpoch_t time, const std::string& status)
+{
+	if(!pyPublishCallbackHandler)
+	{
+		LOGERROR("{}: EnablePublishCallbackHandler == true, but failed to find Python handler", Name);
+		return;
+	}
+	try
+	{
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in SetTimer");
+			return;
+		}
+		auto pyArgs = PyTuple_New(6);
+		auto pyEventType = PyUnicode_FromString(evt_type.c_str());
+		auto pyIndex = PyLong_FromSize_t(index);
+		auto pyQuality = PyUnicode_FromString(quality.c_str());
+		auto pyPayload = PyUnicode_FromString(payload.c_str());
+		auto pyTime = PyLong_FromUnsignedLongLong(time);
+		auto pyStatus = PyUnicode_FromString(status.c_str());
+
+		// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
+		PyTuple_SetItem(pyArgs, 0, pyEventType);
+		PyTuple_SetItem(pyArgs, 1, pyIndex);
+		PyTuple_SetItem(pyArgs, 2, pyQuality);
+		PyTuple_SetItem(pyArgs, 3, pyPayload);
+		PyTuple_SetItem(pyArgs, 4, pyTime);
+		PyTuple_SetItem(pyArgs, 5, pyStatus);
+
+		PyObject* pyResult = PyCall(pyPublishCallbackHandler, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyPublishCallbackHandler() - {}", e.what());
+	}
 }
 
 #ifdef _MSC_VER

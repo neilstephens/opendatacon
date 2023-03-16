@@ -45,6 +45,7 @@ public:
 		pyTagPrefixString(""),
 		pyEventsAreQueued(false),
 		pyOnlyQueueEventsWithTags(false),
+		pyEnablePublishCallbackHandler(false),
 		pyOctetStringFormat(odc::DataToStringMethod::Raw),
 		GlobalUseSystemPython(false)
 	{}
@@ -57,6 +58,7 @@ public:
 	std::string pyTagPrefixString;
 	bool pyEventsAreQueued;
 	bool pyOnlyQueueEventsWithTags;
+	bool pyEnablePublishCallbackHandler;
 	odc::DataToStringMethod pyOctetStringFormat;
 	bool GlobalUseSystemPython;
 

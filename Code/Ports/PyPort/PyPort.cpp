@@ -526,9 +526,20 @@ void PyPort::PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, 
 
 	// Separate call to allow testing
 	std::shared_ptr<EventInfo> pubevent = CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, Name);
-
 	if (pubevent)
-		PublishEvent(pubevent);
+	{
+		if(MyConf->pyEnablePublishCallbackHandler)
+		{
+			auto callback = std::make_shared<std::function<void (CommandStatus)>>(pWrapper->GlobalPythonStrand()->wrap(
+				[this, EventTypeStr, ODCIndex, QualityStr, PayloadStr, Time{pubevent->GetTimestamp()}](CommandStatus result)
+				{
+					pWrapper->CallPublishCallback(EventTypeStr, ODCIndex, QualityStr, PayloadStr, Time, ToString(result));
+				}));
+			PublishEvent(pubevent,callback);
+		}
+		else
+			PublishEvent(pubevent);
+	}
 }
 std::string getISOCurrentTimestampUTC_from_msSinceEpoch_t(const odc::msSinceEpoch_t& ts)
 {
@@ -778,6 +789,8 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
 	if (JSONRoot.isMember("OnlyQueueEventsWithTags"))
 		MyConf->pyOnlyQueueEventsWithTags = JSONRoot["OnlyQueueEventsWithTags"].asBool();
+	if (JSONRoot.isMember("EnablePublishCallbackHandler"))
+		MyConf->pyEnablePublishCallbackHandler = JSONRoot["EnablePublishCallbackHandler"].asBool();
 	if (JSONRoot.isMember("OctetStringFormat"))
 	{
 		auto fmt = JSONRoot["OctetStringFormat"].asString();

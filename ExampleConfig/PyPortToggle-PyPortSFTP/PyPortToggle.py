@@ -148,6 +148,13 @@ class SimPortClass:
             self.LogDebug("Binary {} will go high at {}".format(self.binary, next.isoformat(" ")))
 
         return
+    
+    #Optional handler to receive callbacks with the resultant status after publishing an event
+    #An event id would be ideal, but to avoid changing the PublishEvent API, you get an echo of the full event params plus the event timestamp and status
+    #Rember to enable this by setting '"EnablePublishCallbackHandler": true' in the port config
+    def PublishCallbackHandler(self,EventType, Index, Quality, Payload, Time, Status):
+        self.LogDebug("PublishStatusCallback: {}, {}, {}, {}, {}, {}".format(EventType,Index,Quality,Payload,Time,Status))
+        return True
 
     # The Rest response interface - the following method will be called whenever the restful interface (a single interface for all PythonPorts) gets
     # called. It will be decoded sufficiently so that it is passed to the correct PythonPort (us)

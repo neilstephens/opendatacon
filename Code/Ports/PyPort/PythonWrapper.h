@@ -109,6 +109,7 @@ public:
 
 	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url, const std::string& content);
+	void CallPublishCallback(const std::string& evt_type, const size_t index, const std::string& quality, const std::string& payload, const msSinceEpoch_t time, const std::string& status);
 
 	SetTimerFnType GetPythonPortSetTimerFn() { return PythonPortSetTimerFn; };                         // Protect set access, only allow get.
 	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.
@@ -176,6 +177,7 @@ private:
 	PyObject* pyFuncEvent = nullptr;
 	PyObject* pyTimerHandler = nullptr;
 	PyObject* pyRestHandler = nullptr;
+	PyObject* pyPublishCallbackHandler = nullptr;
 
 	SetTimerFnType PythonPortSetTimerFn;
 	PublishEventCallFnType PythonPortPublishEventCallFn;
