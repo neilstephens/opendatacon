@@ -259,6 +259,13 @@ void FileTransferPort::Build()
 		}
 		auto& fn_idx = pConf->FileNameTransmissionEvent->GetIndex();
 
+		if(!pConf->pFilenameRegex)
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->warn("{}: FilenameRegex defaulting to '.*'", Name);
+			pConf->pFilenameRegex = std::make_unique<std::regex>(".*",std::regex::extended);
+		}
+
 		if(pConf->UseCRCs && pConf->SequenceIndexEOF >= 0)
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
