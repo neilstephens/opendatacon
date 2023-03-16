@@ -1,9 +1,10 @@
-# opendatacon version 1.8.0-RC7
+# opendatacon version 1.8.0-RC8
 
-## 1.8.0-RC7
+## 1.8.0-RC8
   * New Port type added: FileTransferPort - for transferring files via OctetString data type
   * DNP3 Ports, JSON Port, and Python Port support for OctetString
-  * Bugfixes for PythonPort, and more examples
+  * Bugfixes for Python Port, and more examples
+  * Option to get status callback for events published from PyPort
   * SimPort UI features - std dev scaling, abs analog toggle, reset start vals
   * DNP3 Analog control bugfixes
   * i386 packages now built on Debian Bookworm
