@@ -788,6 +788,14 @@ CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcev
 		auto pyTime = PyLong_FromUnsignedLongLong(odcevent->GetTimestamp());             // msSinceEpoch
 		auto pyQuality = PyUnicode_FromString(ToString(odcevent->GetQuality()).c_str()); // String quality flags
 		auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString(OctetStringFormat).c_str());
+		if(!pyPayload)
+		{
+			std::string msg = "";
+			if(odcevent->GetEventType() == EventType::OctetString)
+				msg = "Consider using \"OctetStringFormat\":\"Hex\" to receive non-printable characters.";
+			LOGERROR("{}: Event(): PyUnicode_FromString(payload) failed.{}",Name,msg);
+			return CommandStatus::UNDEFINED;
+		}
 		auto pySender = PyUnicode_FromString(SenderName.c_str());
 
 		// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
