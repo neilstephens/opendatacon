@@ -545,10 +545,8 @@ PythonWrapper::~PythonWrapper()
 	}
 }
 
-void PythonWrapper::Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
-	const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython, DataToStringMethod OctetStringFormat)
+void PythonWrapper::Build(const std::string& pyPathName, const std::string& PortName, const PyPortConf* const pPortConf)
 {
-	this->OctetStringFormat = OctetStringFormat;
 	// First we make sure there is a gobal instance of PythonInitWrapper
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<PythonInitWrapper> weak_mgr;
@@ -560,7 +558,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 		auto deinit_del = [](PythonInitWrapper* mgr_ptr)
 					{init_flag.clear(std::memory_order_release); delete mgr_ptr; };
 		this->PyMgr = std::shared_ptr<PythonInitWrapper>(
-			new PythonInitWrapper(GlobalUseSystemPython),
+			new PythonInitWrapper(pPortConf->GlobalUseSystemPython),
 			deinit_del);
 		weak_mgr = this->PyMgr;
 	}
@@ -587,12 +585,12 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	PyList_Append(sysPath, programName);
 	Py_DECREF(programName);
 
-	const auto pyUniCodeModuleName = PyUnicode_FromString(pyLoadModuleName.c_str());
+	const auto pyUniCodeModuleName = PyUnicode_FromString(pPortConf->pyModuleName.c_str());
 
 	pyModule = PyImport_Import(pyUniCodeModuleName);
 	if (pyModule == nullptr)
 	{
-		LOGERROR("Could not load Python Module - {} from {}", pyLoadModuleName, pyPathName);
+		LOGERROR("Could not load Python Module - {} from {}", pPortConf->pyModuleName, pyPathName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Module");
 	}
@@ -607,13 +605,13 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	}
 
 	// Build the name of a callable class
-	PyObject* pyClass = PyDict_GetItemString(pyDict, pyClassName.c_str());
+	PyObject* pyClass = PyDict_GetItemString(pyDict, pPortConf->pyClassName.c_str());
 
 	// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
 
 	if (pyClass == nullptr)
 	{
-		LOGERROR("Could not load Python Class Reference - {}", pyClassName);
+		LOGERROR("Could not load Python Class Reference - {}", pPortConf->pyClassName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Class");
 	}
@@ -654,7 +652,8 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
 	pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
 	pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
-	pyPublishCallbackHandler = GetFunction(pyInstance, "PublishCallbackHandler");
+	if(pPortConf->pyEnablePublishCallbackHandler)
+		pyPublishCallbackHandler = GetFunction(pyInstance, "PublishCallbackHandler");
 }
 
 void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONOverride)

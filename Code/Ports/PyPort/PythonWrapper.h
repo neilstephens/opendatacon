@@ -86,13 +86,14 @@ private:
 	PyThreadState* threadState;
 };
 
+class PyPortConf;
 class PythonWrapper
 {
 
 public:
 	PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
-	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName, const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython, DataToStringMethod OctetStringFormat);
+	void Build(const std::string& pyPathName, const std::string& PortName, const PyPortConf* const);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void PortOperational(); // Called when Build is complete.
 	void Enable();

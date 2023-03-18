@@ -160,7 +160,7 @@ void PyPort::Build()
 	try
 	{
 		// Python code is loaded and class created, __init__ called.
-		pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython, MyConf->pyOctetStringFormat);
+		pWrapper->Build(PyModPath, this->Name, MyConf);
 
 		Json::StreamWriterBuilder wbuilder;
 		wbuilder["commentStyle"] = "None"; // No comments - python doesn't like them
