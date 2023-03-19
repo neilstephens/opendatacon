@@ -130,7 +130,7 @@ void FileTransferPort::LoadModTimes()
 				log->error("{}: Error parsing mod time '{}' for '{}': '{}'", Name, date_str, filename, e.what());
 			continue;
 		}
-		FileModTimes[filename] = std::filesystem::file_time_type(std::chrono::milliseconds(ms_since_epoch));
+		FileModTimes[filename] = sys_to_fs_time_point(std::chrono::system_clock::time_point(std::chrono::milliseconds(ms_since_epoch)));
 		if(auto log = odc::spdlog_get("FileTransferPort"))
 			log->debug("{}: Raw/Parsed mod time '{}'/'{}' for '{}'.", Name, date_str, since_epoch_to_datetime(ms_since_epoch), filename);
 	}
@@ -1172,11 +1172,20 @@ void FileTransferPort::TxPath(std::string path, const std::string& tx_name, bool
 			//	to correct any millisecond rounding if parsed from file
 			last_update_it->second = updated_time;
 
-			if(!has_been_updated)
+			if(has_been_updated)
+			{
+				if(auto log = odc::spdlog_get("FileTransferPort"))
+					log->debug("{}: File updated: '{}'", Name, path);
+			}
+			else
 				return;
 		}
-		else //it's new
+		else
+		{
+			if(auto log = odc::spdlog_get("FileTransferPort"))
+				log->debug("{}: New file: '{}'", Name, path);
 			FileModTimes[path] = updated_time;
+		}
 	}
 
 	//if we get to here, the path needs sending

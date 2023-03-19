@@ -64,7 +64,8 @@ inline msSinceEpoch_t msSinceEpoch()
 
 std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string format = "%Y-%m-%d %H:%M:%S.%e");
 msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format = "%Y-%m-%d %H:%M:%S.%e");
-std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& time);
+std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& fstime);
+std::filesystem::file_time_type sys_to_fs_time_point(const std::chrono::system_clock::time_point& systime);
 
 std::string buf2hex(const uint8_t *data, size_t size);
 std::vector<uint8_t> hex2buf(const std::string& hexStr);

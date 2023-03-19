@@ -52,14 +52,21 @@ TEST_CASE(SUITE("FileSystemTime"))
 
 	auto sys_now = std::chrono::system_clock::now();
 	auto fs_now = std::filesystem::last_write_time(std::filesystem::path(fname));
-	auto fs_to_sys = fs_to_sys_time_point(fs_now);
+	{
+		auto fs_to_sys = fs_to_sys_time_point(fs_now);
+		auto diff = std::chrono::round<std::chrono::milliseconds>(sys_now - fs_to_sys).count();
 
-	auto diff = std::chrono::round<std::chrono::milliseconds>(sys_now - fs_to_sys).count();
+		INFO("System time: " << since_epoch_to_datetime(std::chrono::round<std::chrono::milliseconds>(sys_now).time_since_epoch().count()));
+		INFO("Converted Filesystem time: " << since_epoch_to_datetime(std::chrono::round<std::chrono::milliseconds>(fs_to_sys).time_since_epoch().count()));
 
-	INFO("System time: " << since_epoch_to_datetime(std::chrono::round<std::chrono::milliseconds>(sys_now).time_since_epoch().count()));
-	INFO("Filesystem time: " << since_epoch_to_datetime(std::chrono::round<std::chrono::milliseconds>(fs_to_sys).time_since_epoch().count()));
+		CHECK(diff < 200);
+	}
+	{
+		auto sys_to_fs = sys_to_fs_time_point(sys_now);
+		auto diff = std::chrono::round<std::chrono::milliseconds>(fs_now - sys_to_fs).count();
 
-	CHECK(diff < 200);
+		CHECK(diff < 200);
+	}
 }
 
 TEST_CASE(SUITE("CRC16"))

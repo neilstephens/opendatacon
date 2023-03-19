@@ -332,20 +332,32 @@ msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format)
 	return std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch()).count()+msec;
 }
 
-std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& time)
+static const auto sec_from_fsepoch_to_sysepoch = []()
+								 {
+									 auto fs_now = std::filesystem::file_time_type::clock::now();
+									 auto sys_now = std::chrono::system_clock::now();
+
+									 auto fs_since_epoch = fs_now.time_since_epoch();
+									 auto sys_since_epoch = sys_now.time_since_epoch();
+
+									 //how long fs epoch is since system epoch - assume a round number of seconds
+									 return std::chrono::round<std::chrono::seconds>(sys_since_epoch - fs_since_epoch);
+								 } ();
+
+std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& fstime)
 {
-	auto fs_now = std::filesystem::file_time_type::clock::now();
-	auto sys_now = std::chrono::system_clock::now();
-
-	auto fs_since_epoch = fs_now.time_since_epoch();
-	auto sys_since_epoch = sys_now.time_since_epoch();
-	auto time_since_fsepoch = time.time_since_epoch();
-
-	//how long fs epoch is since system epoch - assume a round number of seconds
-	auto epoch_diff_sec = std::chrono::round<std::chrono::seconds>(sys_since_epoch - fs_since_epoch);
-	auto converted = std::chrono::duration_cast<std::chrono::system_clock::duration>(time_since_fsepoch + epoch_diff_sec);
+	auto time_since_fsepoch = fstime.time_since_epoch();
+	auto converted = std::chrono::duration_cast<std::chrono::system_clock::duration>(time_since_fsepoch + sec_from_fsepoch_to_sysepoch);
 
 	return std::chrono::system_clock::time_point(converted);
+}
+
+std::filesystem::file_time_type sys_to_fs_time_point(const std::chrono::system_clock::time_point& systime)
+{
+	auto time_since_sysepoch = systime.time_since_epoch();
+	auto converted = std::chrono::duration_cast<std::filesystem::file_time_type::clock::duration>(time_since_sysepoch - sec_from_fsepoch_to_sysepoch);
+
+	return std::filesystem::file_time_type(converted);
 }
 
 //this is faster than using stringstream to format to hex - minimises allocations
