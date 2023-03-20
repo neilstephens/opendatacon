@@ -343,14 +343,26 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Event buffer limits
+	auto cap_evenbuffer_size = [&](const std::string& eb_key) -> uint16_t
+					   {
+						   const auto EBsize = JSONRoot[eb_key].asUInt();
+						   if(EBsize > std::numeric_limits<uint16_t>::max())
+						   {
+							   if(auto log = odc::spdlog_get("DNP3Port"))
+								   log->error("Max size for DNP3 event buffer capped. Reduced {} from {} to {}. Set in config to avoid this error.", eb_key, EBsize, std::numeric_limits<uint16_t>::max());
+							   return std::numeric_limits<uint16_t>::max();
+						   }
+						   return EBsize;
+					   };
+
 	if (JSONRoot.isMember("MaxBinaryEvents"))
-		MaxBinaryEvents = JSONRoot["MaxBinaryEvents"].asUInt();
+		MaxBinaryEvents = cap_evenbuffer_size("MaxBinaryEvents");
 	if (JSONRoot.isMember("MaxAnalogEvents"))
-		MaxAnalogEvents = JSONRoot["MaxAnalogEvents"].asUInt();
+		MaxAnalogEvents = cap_evenbuffer_size("MaxAnalogEvents");
 	if (JSONRoot.isMember("MaxCounterEvents"))
-		MaxCounterEvents = JSONRoot["MaxCounterEvents"].asUInt();
+		MaxCounterEvents = cap_evenbuffer_size("MaxCounterEvents");
 	if (JSONRoot.isMember("MaxOctetStringEvents"))
-		MaxOctetStringEvents = JSONRoot["MaxOctetStringEvents"].asUInt();
+		MaxOctetStringEvents = cap_evenbuffer_size("MaxOctetStringEvents");
 
 	auto GetIndexRange = [](const auto& PointArrayElement) -> std::tuple<bool,size_t,size_t>
 				   {
