@@ -317,10 +317,14 @@ void DNP3OutstationPort::Build()
 	// Outstation parameters
 	StackConfig.outstation.params.allowUnsolicited = pConf->pPointConf->EnableUnsol;
 	StackConfig.outstation.params.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
-	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();                                      /// TODO: Create parameter
-	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest;                                     /// The maximum number of controls the outstation will attempt to process from a single APDU
-	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
-	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;                                                     /// The maximum fragment size the outstation will use for fragments it sends
+	StackConfig.outstation.params.typesAllowedInClass0 = opendnp3::StaticTypeBitField::AllTypes();  /// TODO: Create parameter
+	StackConfig.outstation.params.maxControlsPerRequest = pConf->pPointConf->MaxControlsPerRequest; /// The maximum number of controls the outstation will attempt to process from a single APDU
+
+	//set the internal sizes of the ADPU buffers - we make it symetric by using MaxTxFragSize for both
+	//	but maybe we should have separate setting???
+	StackConfig.outstation.params.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;
+	StackConfig.outstation.params.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;
+
 	StackConfig.outstation.params.selectTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SelectTimeoutms);             /// How long the outstation will allow an operate to proceed after a prior select
 	StackConfig.outstation.params.solConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->SolConfirmTimeoutms);     /// Timeout for solicited confirms
 	StackConfig.outstation.params.unsolConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms

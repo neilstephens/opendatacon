@@ -338,6 +338,11 @@ void DNP3MasterPort::Build()
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 
+	//set the internal sizes of the ADPU buffers - we make it symetric by using MaxTxFragSize for both
+	//	but maybe we should have separate setting???
+	StackConfig.master.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;
+	StackConfig.master.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;
+
 	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
 	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
 
