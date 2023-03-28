@@ -363,6 +363,22 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 				log->warn("Invalid DNP3 Port server type: '{}'.", JSONRoot["ServerType"].asString());
 		}
 	}
-
+	if(JSONRoot.isMember("ChannelLinksWatchdogBark"))
+	{
+		const auto bark = JSONRoot["ChannelLinksWatchdogBark"].asString();
+		if(bark == "ONFIRST")
+			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ChannelLinksWatchdogBark = WatchdogBark::ONFIRST;
+		else if(bark == "ONFINAL")
+			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ChannelLinksWatchdogBark = WatchdogBark::ONFINAL;
+		else if(bark == "NEVER")
+			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ChannelLinksWatchdogBark = WatchdogBark::NEVER;
+		else if(bark == "DEFAULT")
+			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ChannelLinksWatchdogBark = WatchdogBark::DEFAULT;
+		else
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("Invalid DNP3 Port ChannelLinksWatchdogBark: '{}'.", bark);
+		}
+	}
 }
 

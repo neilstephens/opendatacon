@@ -66,6 +66,7 @@ struct TLSFilesConf
 	std::string PrivateKeyFile;
 };
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
+enum class WatchdogBark {ONFIRST,ONFINAL,NEVER,DEFAULT};
 struct DNP3AddrConf
 {
 	//Serial
@@ -85,6 +86,7 @@ struct DNP3AddrConf
 	uint16_t OutstationAddr;
 	uint16_t MasterAddr;
 	server_type_t ServerType;
+	WatchdogBark ChannelLinksWatchdogBark;
 
 	DNP3AddrConf():
 		SerialSettings(),
@@ -95,7 +97,8 @@ struct DNP3AddrConf
 		Transport(IPTransport::TCP),
 		OutstationAddr(1),
 		MasterAddr(0),
-		ServerType(server_type_t::ONDEMAND)
+		ServerType(server_type_t::ONDEMAND),
+		ChannelLinksWatchdogBark(WatchdogBark::DEFAULT)
 	{}
 };
 

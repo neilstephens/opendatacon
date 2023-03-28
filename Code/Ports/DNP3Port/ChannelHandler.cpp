@@ -134,6 +134,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	}
 
 	//create a new channel and watchdog if we get to here
+	auto watchdog_mode = pConf->mAddrConf.ChannelLinksWatchdogBark;
 	if(isSerial)
 	{
 		pChannel = pPort->IOMgr->AddSerial(ChannelID, pConf->LOG_LEVEL,
@@ -141,6 +142,8 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 				opendnp3::TimeDuration::Milliseconds(500),
 				opendnp3::TimeDuration::Milliseconds(5000)),
 			pConf->mAddrConf.SerialSettings,listener);
+		if(watchdog_mode == WatchdogBark::DEFAULT)
+			watchdog_mode = WatchdogBark::NEVER;
 	}
 	else
 	{
@@ -153,6 +156,8 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 				opendnp3::IPEndpoint("0.0.0.0",udp_listen_port),
 				opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
 				listener);
+			if(watchdog_mode == WatchdogBark::DEFAULT)
+				watchdog_mode = WatchdogBark::NEVER;
 		}
 		else //TCP or TLS
 		{
@@ -210,9 +215,11 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 					throw std::runtime_error(msg);
 				}
 			}
-		}
+			if(watchdog_mode == WatchdogBark::DEFAULT)
+				watchdog_mode = WatchdogBark::ONFINAL;
+		} //TCP or TLS
 	}
-	pWatchdog = std::make_shared<ChannelLinksWatchdog>();
+	pWatchdog = std::make_shared<ChannelLinksWatchdog>(watchdog_mode);
 	Channels[ChannelID] = {pChannel,pWatchdog};
 	return pChannel;
 }
