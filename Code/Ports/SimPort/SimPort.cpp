@@ -409,8 +409,8 @@ void SimPort::PortDown()
 bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, const msSinceEpoch_t now, const ptimer_t ptimer)
 {
 	//Check if we're configured to load this point from DB
-	auto db_stats = pSimConf->GetDBStats();
-	if(db_stats.find(ToString(type)+std::to_string(index)) != db_stats.end())
+	auto db_stat = pSimConf->GetDBStat(type,index);
+	if(db_stat)
 	{
 		auto event = std::make_shared<EventInfo>(type,index,Name);
 		NextEventFromDB(event);
@@ -436,23 +436,22 @@ bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, con
 
 void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
-	const auto type_str = ToString(event->GetEventType());
-	auto db_stats = pSimConf->GetDBStats();
-	auto rv = sqlite3_step(db_stats[type_str+std::to_string(event->GetIndex())].get());
+	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
+	auto rv = sqlite3_step(db_stat.get());
 	if(rv == SQLITE_ROW)
 	{
-		auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stats[type_str+std::to_string(event->GetIndex())].get(),0));
+		auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stat.get(),0));
 		event->SetTimestamp(t);
 		switch(event->GetEventType())
 		{
 			case EventType::Analog:
 			{
-				event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stats[type_str+std::to_string(event->GetIndex())].get(),1));
+				event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stat.get(),1));
 				break;
 			}
 			case EventType::Binary:
 			{
-				auto val = sqlite3_column_int(db_stats[type_str+std::to_string(event->GetIndex())].get(),1);
+				auto val = sqlite3_column_int(db_stat.get(),1);
 				event->SetPayload<EventType::Binary>(val != 0);
 				break;
 			}
@@ -473,7 +472,7 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event, const msSinceEpoch_t now)
 {
 	int64_t time_offset = 0;
-	const auto timestamp_handling = pSimConf->TimestampHandling();
+	const auto timestamp_handling = pSimConf->TimestampHandling(event->GetEventType(),event->GetIndex());
 	if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
 	{
 		if(!!(timestamp_handling & TimestampMode::FIRST))
@@ -503,11 +502,9 @@ int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event
 
 void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
-	const auto type_str = ToString(event->GetEventType());
 	//Check if we're configured to load this point from DB
-	auto db_stats = pSimConf->GetDBStats();
-	if(db_stats.find(type_str+std::to_string(event->GetIndex())) !=
-	   db_stats.end())
+	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
+	if(db_stat)
 	{
 		NextEventFromDB(event);
 		event->SetTimestamp(event->GetTimestamp()+time_offset);

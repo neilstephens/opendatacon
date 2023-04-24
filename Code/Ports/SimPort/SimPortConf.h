@@ -51,6 +51,13 @@ namespace odc
 ENABLE_BITWISE(TimestampMode)
 }
 
+struct SQLite3Defaults
+{
+	TimestampMode timestamp_handling = TimestampMode::FIRST;
+	std::string db_filename = "SimPort.db3";
+	std::string db_query = "select timestamp,value from events where [index] = :INDEX and type = :TYPE";
+};
+
 // Hide some of the code to make Logging cleaner
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
@@ -74,8 +81,8 @@ public:
 	SimPortConf();
 
 	void ProcessElements(const Json::Value& json_root);
-	const std::unordered_map<std::string, DB_STATEMENT>& GetDBStats() const;
-	TimestampMode TimestampHandling() const;
+	DB_STATEMENT GetDBStat(const EventType ev_type, const size_t index) const;
+	TimestampMode TimestampHandling(const EventType ev_type, const size_t index) const;
 	void Name(const std::string& name);
 	double DefaultStdDev() const;
 
@@ -112,10 +119,12 @@ public:
 
 private:
 	std::string m_name;
-	TimestampMode m_timestamp_handling;
+	SQLite3Defaults m_db_defaults;
 	std::unordered_map<std::string, DB_STATEMENT> m_db_stats;
+	std::unordered_map<std::string, TimestampMode> m_db_ts_handling;
 	std::shared_ptr<SimPortData> m_pport_data;
 
+	TimestampMode m_ParseTimestampHandling(const std::string& ts_mode) const;
 	bool m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const;
 
 	void m_ProcessAnalogs(const Json::Value& analogs);
