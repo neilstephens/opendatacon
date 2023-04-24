@@ -574,6 +574,8 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTime
 */
 void SimPort::Build()
 {
+	pSimConf->ProcessElements(JSONConf);
+
 	pEnableDisableSync = pIOS->make_strand();
 	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
 	this->SimCollection->insert_or_assign(this->Name,shared_this);
@@ -779,7 +781,11 @@ void SimPort::Build()
 */
 void SimPort::ProcessElements(const Json::Value& json_root)
 {
-	pSimConf->ProcessElements(json_root);
+	//This function is called multiple times (includes, overrides etc)
+	//Store and override the config, so we can pass it to SimPortConf to process it one hit in Build()
+	auto MemberNames = json_root.getMemberNames();
+	for(auto mn : MemberNames)
+		JSONConf[mn] = json_root[mn];
 }
 
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)

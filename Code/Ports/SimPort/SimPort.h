@@ -141,6 +141,7 @@ private:
 	static thread_local std::mt19937 RandNumGenerator;
 	ServerTokenType httpServerToken;
 	SimPortConf* pSimConf = nullptr; // Set in constructor
+	Json::Value JSONConf;
 };
 
     #endif // SIMPORT_H
