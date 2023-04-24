@@ -74,7 +74,7 @@ public:
 	SimPortConf();
 
 	void ProcessElements(const Json::Value& json_root);
-	std::unordered_map<std::string, DB_STATEMENT> GetDBStats() const;
+	const std::unordered_map<std::string, DB_STATEMENT>& GetDBStats() const;
 	TimestampMode TimestampHandling() const;
 	void Name(const std::string& name);
 	double DefaultStdDev() const;
@@ -121,7 +121,7 @@ private:
 	void m_ProcessAnalogs(const Json::Value& analogs);
 	void m_ProcessBinaries(const Json::Value& binaires);
 	void m_ProcessBinaryControls(const Json::Value& binary_controls);
-	void m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index);
+	void m_ProcessSQLite3(const Json::Value& sqlite, const std::string& type, const std::size_t index);
 	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, std::size_t index,
 		std::size_t update_interval);
 	void m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index);

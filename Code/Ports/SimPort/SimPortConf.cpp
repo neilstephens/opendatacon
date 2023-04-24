@@ -58,7 +58,7 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		m_ProcessBinaryControls(json_root["BinaryControls"]);
 }
 
-std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
+const std::unordered_map<std::string, DB_STATEMENT>& SimPortConf::GetDBStats() const
 {
 	return m_db_stats;
 }
@@ -234,7 +234,7 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 			std::size_t update_interval = 0;
 			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
 			if (analogs[i].isMember("SQLite3"))
-				m_ProcessSQLite3(analogs[i]["SQLite3"], index);
+				m_ProcessSQLite3(analogs[i]["SQLite3"], "Analog", index);
 			if (analogs[i].isMember("StdDev"))
 				std_dev = analogs[i]["StdDev"].asDouble();
 			if (analogs[i].isMember("UpdateIntervalms"))
@@ -285,6 +285,8 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 			double std_dev = 0.0f;
 			std::size_t update_interval = 0;
 			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
+			if (binaries[n].isMember("SQLite3"))
+				m_ProcessSQLite3(binaries[n]["SQLite3"], "Binary", index);
 			if (binaries[n].isMember("UpdateIntervalms"))
 				update_interval = binaries[n]["UpdateIntervalms"].asUInt();
 			if (binaries[n].isMember("StartVal"))
@@ -334,7 +336,7 @@ void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)
 	}
 }
 
-void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index)
+void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string& type, const std::size_t index)
 {
 	if(sqlite.isMember("File") && sqlite.isMember("Query"))
 	{
@@ -348,13 +350,15 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index)
 		}
 		else
 		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->debug("Opened sqlite3 DB '{}' for {} {}.", filename, type, index);
 			sqlite3_stmt* stmt;
 			auto query = sqlite["Query"].asString();
 			auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
 			if(rv != SQLITE_OK)
 			{
 				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
+					log->error("Failed to prepare SQLite3 query '{}' for {} {} : '{}'", query, type, index, sqlite3_errstr(rv));
 			}
 			else if (sqlite3_column_count(stmt) != 2)
 			{
@@ -363,8 +367,10 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index)
 			}
 			else
 			{
+				if(auto log = odc::spdlog_get("SimPort"))
+					log->debug("Prepared SQLite3 query '{}' for {} {}", query, type, index);
 				auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
-				m_db_stats["Analog"+std::to_string(index)] = DB_STATEMENT(stmt,deleter);
+				m_db_stats[type+std::to_string(index)] = DB_STATEMENT(stmt,deleter);
 				auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
 				if(index_bind_index)
 				{
@@ -372,8 +378,13 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index)
 					if(rv != SQLITE_OK)
 					{
 						if(auto log = odc::spdlog_get("SimPort"))
-							log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-						m_db_stats.erase("Analog"+std::to_string(index));
+							log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", index, query, sqlite3_errstr(rv));
+						m_db_stats.erase(type+std::to_string(index));
+					}
+					else
+					{
+						if(auto log = odc::spdlog_get("SimPort"))
+							log->debug("Bound index ({}) to prepared SQLite3 query '{}'", index, query, sqlite3_errstr(rv));
 					}
 				}
 			}

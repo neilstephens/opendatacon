@@ -92,8 +92,8 @@ void SimPort::Enable()
 		{
 			if(!enabled)
 			{
-			      PortUp();
 			      enabled = true;
+			      PortUp();
 			      if(!httpServerToken.ServerID.empty())
 					HttpServerManager::StartConnection(httpServerToken);
 			}
@@ -106,10 +106,10 @@ void SimPort::Disable()
 		{
 			if(enabled)
 			{
-			      enabled = false;
 			      PortDown();
 			      if(!httpServerToken.ServerID.empty())
 					HttpServerManager::StopConnection(httpServerToken);
+			      enabled = false;
 			}
 		});
 }
@@ -364,100 +364,39 @@ void SimPort::ResetPoints()
 void SimPort::PortUp()
 {
 	auto now = msSinceEpoch();
-	std::vector<std::size_t> indexes = pSimConf->Indexes(odc::EventType::Analog);
 
-	for(auto index : indexes)
+	for(const auto& type : {odc::EventType::Analog,odc::EventType::Binary})
 	{
-		ptimer_t ptimer = pIOS->make_steady_timer();
-		pSimConf->Timer("Analog"+std::to_string(index), ptimer);
-
-		//Check if we're configured to load this point from DB
-		const auto db_stats = pSimConf->GetDBStats();
-		if(db_stats.find("Analog"+std::to_string(index)) != db_stats.end())
+		std::vector<std::size_t> indexes = pSimConf->Indexes(type);
+		for(auto index : indexes)
 		{
-			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
-			NextEventFromDB(event);
-			int64_t time_offset = 0;
-			const auto timestamp_handling = pSimConf->TimestampHandling();
-			if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
+			ptimer_t ptimer = pIOS->make_steady_timer();
+			pSimConf->Timer(ToString(type)+std::to_string(index), ptimer);
+
+			if(TryStartEventsFromDB(type,index,now,ptimer))
+				continue;
+			//else do random events
+
+			auto event = pSimConf->Event(type, index);
+			event->SetTimestamp(msSinceEpoch());
+			PostPublishEvent(event);
+
+			auto interval = pSimConf->UpdateInterval(type, index);
+			if (interval)
 			{
-				if(!!(timestamp_handling & TimestampMode::FIRST))
-				{
-					time_offset = now - event->GetTimestamp();
-				}
-				else if(!!(timestamp_handling & TimestampMode::TOD))
-				{
-					auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
-					auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
-					time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now).count()
-					              - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_ts).count();
-				}
-				else
-				{
-					throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
-				}
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
+				ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
+				ptimer->async_wait([=](asio::error_code err_code)
+					{
+						if (enabled && !err_code)
+						{
+						      if(type == odc::EventType::Analog)
+								StartAnalogEvents(index);
+						      else if(type == odc::EventType::Binary)
+								StartBinaryEvents(index, !event->GetPayload<odc::EventType::Binary>());
+						}
+					});
 			}
-			if(!(timestamp_handling & TimestampMode::FASTFORWARD))
-			{
-				//Find the first event that's not in the past
-				while(now > (event->GetTimestamp()+time_offset))
-					NextEventFromDB(event);
-			}
-
-			msSinceEpoch_t delta;
-			if(now > event->GetTimestamp())
-				delta = 0;
-			else
-				delta = event->GetTimestamp() - now;
-			ptimer->expires_from_now(std::chrono::milliseconds(delta));
-			ptimer->async_wait([=](asio::error_code err_code)
-				{
-					if(enabled && !err_code)
-						SpawnEvent(event, ptimer, time_offset);
-					//else - break timer cycle
-				});
-
-			continue;
-		}
-
-		auto event = pSimConf->Event(odc::EventType::Analog, index);
-		event->SetTimestamp(msSinceEpoch());
-		PostPublishEvent(event);
-
-		auto interval = pSimConf->UpdateInterval(odc::EventType::Analog, index);
-		if (interval)
-		{
-			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-			ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			ptimer->async_wait([=](asio::error_code err_code)
-				{
-					if (enabled && !err_code)
-						StartAnalogEvents(index);
-				});
-		}
-	}
-
-	indexes = pSimConf->Indexes(odc::EventType::Binary);
-	for(auto index : indexes)
-	{
-		auto event = pSimConf->Event(odc::EventType::Binary, index);
-		bool val = event->GetPayload<odc::EventType::Binary>();
-		event->SetTimestamp(msSinceEpoch());
-		PostPublishEvent(event);
-
-		ptimer_t ptimer = pIOS->make_steady_timer();
-		pSimConf->Timer("Binary"+std::to_string(index), ptimer);
-
-		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
-		if (interval)
-		{
-			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-			ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			ptimer->async_wait([=](asio::error_code err_code)
-				{
-					if (enabled && !err_code)
-						StartBinaryEvents(index, !val);
-				});
 		}
 	}
 }
@@ -467,38 +406,107 @@ void SimPort::PortDown()
 	pSimConf->CancelTimers();
 }
 
+bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, const msSinceEpoch_t now, const ptimer_t ptimer)
+{
+	//Check if we're configured to load this point from DB
+	auto db_stats = pSimConf->GetDBStats();
+	if(db_stats.find(ToString(type)+std::to_string(index)) != db_stats.end())
+	{
+		auto event = std::make_shared<EventInfo>(type,index,Name);
+		NextEventFromDB(event);
+		auto time_offset = InitDBTimestampHandling(event, now);
+
+		msSinceEpoch_t delta;
+		if(now > event->GetTimestamp())
+			delta = 0;
+		else
+			delta = event->GetTimestamp() - now;
+		ptimer->expires_from_now(std::chrono::milliseconds(delta));
+		ptimer->async_wait([=](asio::error_code err_code)
+			{
+				if(enabled && !err_code)
+					SpawnEvent(event, ptimer, time_offset);
+				//else - break timer cycle
+			});
+
+		return true;
+	}
+	return false;
+}
+
 void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
-	if(event->GetEventType() == EventType::Analog)
+	const auto type_str = ToString(event->GetEventType());
+	auto db_stats = pSimConf->GetDBStats();
+	auto rv = sqlite3_step(db_stats[type_str+std::to_string(event->GetIndex())].get());
+	if(rv == SQLITE_ROW)
 	{
-		auto db_stats = pSimConf->GetDBStats();
-		auto rv = sqlite3_step(db_stats["Analog"+std::to_string(event->GetIndex())].get());
-		if(rv == SQLITE_ROW)
+		auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stats[type_str+std::to_string(event->GetIndex())].get(),0));
+		event->SetTimestamp(t);
+		switch(event->GetEventType())
 		{
-			auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stats["Analog"+std::to_string(event->GetIndex())].get(),0));
-			//TODO: apply some relative offset to time
-			event->SetTimestamp(t);
-			event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stats["Analog"+std::to_string(event->GetIndex())].get(),1));
+			case EventType::Analog:
+			{
+				event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stats[type_str+std::to_string(event->GetIndex())].get(),1));
+				break;
+			}
+			case EventType::Binary:
+			{
+				auto val = sqlite3_column_int(db_stats[type_str+std::to_string(event->GetIndex())].get(),1);
+				event->SetPayload<EventType::Binary>(val != 0);
+				break;
+			}
+			default:
+				break;
+		}
+	}
+	else
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->debug("{} : No next record. : {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
+		//wait forever
+		auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
+		event->SetTimestamp(forever);
+	}
+}
+
+int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event, const msSinceEpoch_t now)
+{
+	int64_t time_offset = 0;
+	const auto timestamp_handling = pSimConf->TimestampHandling();
+	if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
+	{
+		if(!!(timestamp_handling & TimestampMode::FIRST))
+		{
+			time_offset = now - event->GetTimestamp();
+		}
+		else if(!!(timestamp_handling & TimestampMode::TOD))
+		{
+			auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
+			auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
+			time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now).count()
+			              - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_ts).count();
 		}
 		else
 		{
-			//wait forever
-			auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
-			event->SetTimestamp(forever);
+			throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
 		}
 	}
-	else if(auto log = odc::spdlog_get("SimPort"))
+	if(!(timestamp_handling & TimestampMode::FASTFORWARD))
 	{
-		log->error("{} : Unsupported EventType : '{}'", ToString(event->GetEventType()));
-		return;
+		//Find the first event that's not in the past
+		while(now > (event->GetTimestamp()+time_offset))
+			NextEventFromDB(event);
 	}
+	return time_offset;
 }
 
 void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
+	const auto type_str = ToString(event->GetEventType());
 	//Check if we're configured to load this point from DB
-	const auto db_stats = pSimConf->GetDBStats();
-	if(db_stats.find("Analog"+std::to_string(event->GetIndex())) !=
+	auto db_stats = pSimConf->GetDBStats();
+	if(db_stats.find(type_str+std::to_string(event->GetIndex())) !=
 	   db_stats.end())
 	{
 		NextEventFromDB(event);
@@ -521,7 +529,7 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	}
 	else if(auto log = odc::spdlog_get("SimPort"))
 	{
-		log->error("{} : Unsupported EventType : '{}'", ToString(event->GetEventType()));
+		log->error("{} : Unsupported EventType : '{}'", Name, ToString(event->GetEventType()));
 		return;
 	}
 	else
