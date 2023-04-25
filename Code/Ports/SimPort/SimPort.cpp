@@ -458,15 +458,21 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 			default:
 				break;
 		}
+		return;
+	}
+	else if(rv == SQLITE_DONE)
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
 	}
 	else
 	{
 		if(auto log = odc::spdlog_get("SimPort"))
-			log->debug("{} : No next record. : {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
-		//wait forever
-		auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
-		event->SetTimestamp(forever);
+			log->error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
 	}
+	//no more records or error - wait forever
+	auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
+	event->SetTimestamp(forever);
 }
 
 int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event, const msSinceEpoch_t now)

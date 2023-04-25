@@ -381,7 +381,7 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string&
 		query = sqlite["Query"].asString();
 
 	sqlite3* db;
-	auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
+	auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_EXRESCODE,nullptr);
 	if(rv != SQLITE_OK)
 	{
 		if(auto log = odc::spdlog_get("SimPort"))

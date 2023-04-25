@@ -126,6 +126,12 @@ public:
 				else
 					return IUIResponder::GenerateResult("Bad parameter");
 			},"Removes override from point(s) and returns if the operation was succesful. Syntax: 'ReleasePoint <SimPort|Regex> <PointType> <Index|Regex|CommaList>");
+
+		this->AddCommand("SQLite3Version", [](const ParamCollection &params) -> const Json::Value
+			{
+				return IUIResponder::GenerateResult(SQLITE_VERSION " " SQLITE_SOURCE_ID);
+
+			},"Returns the version of embedded SQLite3 code.");
 	}
 	const Json::Value PointCommand (const ParamCollection &params, const bool force)
 	{
