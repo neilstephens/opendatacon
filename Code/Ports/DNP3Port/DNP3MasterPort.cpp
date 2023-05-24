@@ -463,7 +463,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: upstream port connected, performing on-demand connection.", Name);
+				log->info("{}: Upstream port connected, performing on-demand connection.", Name);
 
 			pIOS->post([this]()
 				{
@@ -474,6 +474,9 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 		if (stack_enabled && !InDemand() && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->info("{}: No upstream connections left, performing on-demand disconnection.", Name);
+
 			pIOS->post([this]()
 				{
 					DisableStack();

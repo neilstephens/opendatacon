@@ -170,6 +170,7 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link up.", Name);
+		pLinkUpCheckTimer->cancel();
 		PublishEvent(ConnectState::CONNECTED);
 	}
 
@@ -178,12 +179,11 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link down.", Name);
 		PublishEvent(ConnectState::DISCONNECTED);
-
-		if(to == LinkDeadness::LinkDownChannelUp) //means keepalive failed
-			LinkUpCheck();                      //kick off checking for coming back up
 	}
 
-	//if we get here, it's not link up or down, it's a channel up or down
+	if(to == LinkDeadness::LinkDownChannelUp) //means keepalive failed, or channel just came up
+		LinkUpCheck();                      //kick off checking for link coming up
+
 	if(to == LinkDeadness::LinkDownChannelDown)
 		pLinkUpCheckTimer->cancel();
 }
@@ -212,6 +212,7 @@ void DNP3OutstationPort::OnKeepAliveSuccess()
 // Called by OpenDNP3 Thread Pool
 bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp)
 {
+	pChanH->LinkUp();
 	auto now = msSinceEpoch();
 	const auto& master_time = timestamp.msSinceEpoch;
 

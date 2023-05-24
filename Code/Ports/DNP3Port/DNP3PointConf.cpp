@@ -242,7 +242,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		else
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->error("CommsPoint an 'Index' and a 'FailValue'.");
+				log->error("CommsPoint needs an 'Index' and a 'FailValue'.");
 		}
 		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
 			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
