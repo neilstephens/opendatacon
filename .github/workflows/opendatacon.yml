@@ -143,6 +143,7 @@ jobs:
     - if: matrix.cross == 'rpi'
       name: Setup cross compilation for Rpi
       run: |
+        sudo apt-get update
         sudo apt-get install -y g++-arm-linux-gnueabihf
         echo 'SYSROOT=${{github.workspace}}/build/sysroot/' >> $GITHUB_ENV
         echo 'TOOLCHAIN_OPT=-DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/Code/cmake/rpi-toolchain.cmake -DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF' >> $GITHUB_ENV
