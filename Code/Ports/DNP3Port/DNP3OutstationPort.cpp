@@ -118,6 +118,8 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
 	pChanH->SetLinkStatus(status);
+	if(status == opendnp3::LinkStatus::RESET)
+		pChanH->LinkUp();
 	//TODO: track a new statistic - reset count
 }
 // Called by OpenDNP3 Thread Pool
@@ -129,8 +131,8 @@ void DNP3OutstationPort::OnKeepAliveFailure()
 		log->debug("{}: KeepAliveFailure() called.", Name);
 	pChanH->LinkDown();
 }
-//There's no callback if a link recovers after it goes down,
-//	we keep track of the last time a keepalive failed
+//There's no callback from opendnp3 when the link comes up (only when the channel does)
+//	we keep track of how long the channel has been up without a KA fail
 //	if there hasn't been a fail in longer than the configured keepalive period, we're back up.
 void DNP3OutstationPort::LinkUpCheck()
 {
@@ -182,7 +184,11 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 	}
 
 	if(to == LinkDeadness::LinkDownChannelUp) //means keepalive failed, or channel just came up
-		LinkUpCheck();                      //kick off checking for link coming up
+	{
+		//kick off checking for link coming up
+		last_link_down_time = msSinceEpoch();
+		LinkUpCheck();
+	}
 
 	if(to == LinkDeadness::LinkDownChannelDown)
 		pLinkUpCheckTimer->cancel();

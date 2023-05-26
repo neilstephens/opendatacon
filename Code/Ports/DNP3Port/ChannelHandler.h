@@ -57,10 +57,22 @@ public:
 	~ChannelHandler();
 
 	//Synchronised versions of their private couterparts
-	std::function<void(opendnp3::LinkStatus status)> SetLinkStatus;
-	std::function<void()> LinkUp;
-	std::function<void()> LinkDown;
-	std::function<void(opendnp3::ChannelState state)> StateListener;
+	inline void SetLinkStatus(opendnp3::LinkStatus status)
+	{
+		pSyncStrand->post([this,status,h{handler_tracker}](){SetLinkStatus_(status);});
+	}
+	inline void LinkUp()
+	{
+		pSyncStrand->post([this,h{handler_tracker}](){LinkUp_();});
+	}
+	inline void LinkDown()
+	{
+		pSyncStrand->post([this,h{handler_tracker}](){LinkDown_();});
+	}
+	inline void StateListener(opendnp3::ChannelState state)
+	{
+		pSyncStrand->post([this,state,h{handler_tracker}](){StateListener_(state);});
+	}
 
 	//Factory function for the Channel
 	std::shared_ptr<opendnp3::IChannel> SetChannel();

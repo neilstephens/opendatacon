@@ -7,10 +7,6 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 	pIOS(odc::asio_service::Get()),
 	pSyncStrand(pIOS->make_strand()),
 	handler_tracker(std::make_shared<char>()),
-	SetLinkStatus(pSyncStrand->wrap([this,h {handler_tracker}](opendnp3::LinkStatus status){SetLinkStatus_(status);})),
-	LinkUp(pSyncStrand->wrap([this,h{handler_tracker}](){LinkUp_();})),
-	LinkDown(pSyncStrand->wrap([this,h{handler_tracker}](){LinkDown_();})),
-	StateListener(pSyncStrand->wrap([this,h{handler_tracker}](opendnp3::ChannelState state){StateListener_(state);})),
 	pPort(p),
 	pChannel(nullptr),
 	pWatchdog(nullptr),
@@ -20,12 +16,6 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 
 ChannelHandler::~ChannelHandler()
 {
-	//re-assign these because they hold shared pointers to the handler tracker
-	StateListener = [](opendnp3::ChannelState){};
-	LinkDown = [](){};
-	LinkUp = [](){};
-	SetLinkStatus = [](opendnp3::LinkStatus){};
-
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
 	//now the only tracker shared pointers will be in actual outstanding handlers

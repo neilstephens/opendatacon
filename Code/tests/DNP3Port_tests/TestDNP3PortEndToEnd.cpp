@@ -45,6 +45,8 @@ TEST_CASE(SUITE("TCP link"))
 		REQUIRE(delOutstation);
 
 		Json::Value conf;
+		conf["LinkKeepAlivems"] = 200;
+		conf["LinkTimeoutms"] = 100;
 		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", conf), delOutstation);
 		REQUIRE(OPUT);
 
@@ -145,6 +147,8 @@ TEST_CASE(SUITE("Serial link"))
 			Json::Value Oconf;
 			Oconf["SerialDevice"] = "SerialEndpoint1";
 			Oconf["LOG_LEVEL"] = "ALL";
+			Oconf["LinkKeepAlivems"] = 200;
+			Oconf["LinkTimeoutms"] = 100;
 			auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", Oconf), delOutstation);
 			REQUIRE(OPUT);
 
@@ -159,6 +163,7 @@ TEST_CASE(SUITE("Serial link"))
 			Mconf["SerialDevice"] = "SerialEndpoint2";
 			Mconf["LOG_LEVEL"] = "ALL";
 			Mconf["LinkKeepAlivems"] = 200;
+			Mconf["LinkTimeoutms"] = 100;
 			Mconf["LinkTimeoutms"] = 100;
 			auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", Mconf), delMaster);
 			REQUIRE(MPUT);
