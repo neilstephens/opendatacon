@@ -21,11 +21,11 @@
 #define ODCARGS_H
 
 #include <tclap/CmdLine.h>
-#include <opendatacon/Version.h>
+#include <opendatacon/version.h>
 struct ODCArgs
 {
 	ODCArgs(int argc, char* argv[]):
-		cmd("High performance asynchronous data concentrator", ' ', ODC_VERSION_STRING),
+		cmd("High performance asynchronous data concentrator", ' ', odc::version_string()),
 		ConfigFileArg("c", "config", "Configuration file, specified as an absolute path or relative to the working directory.", false, "opendatacon.conf", "string"),
 		PathArg("p", "path", "Working directory path, all configuration files and log files are relative to this path.", false, "", "string"),
 		DaemonInstallArg("i", "daemon_install", "Switch to install opendatacon as a background service (not required / ignored for POSIX platforms)"),

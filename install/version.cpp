@@ -23,7 +23,7 @@
  *  Created on: 25/07/2019
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
-#include "../include/opendatacon/Version.h"
+#include "../Code/Libs/VersionStrings/version.h"
 #include <iostream>
 
 int main(int argc, char* argv[])

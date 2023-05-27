@@ -89,7 +89,7 @@ opendnp3::EventAnalogOutputStatusVariation StringToEventAnalogControlResponse(co
 	if (str == "Group42Var6") return opendnp3::EventAnalogOutputStatusVariation::Group42Var6; // double without time
 	if (str == "Group42Var7") return opendnp3::EventAnalogOutputStatusVariation::Group42Var7; // float with time
 	// if (str == "Group42Var8") return opendnp3::EventAnalogOutputStatusVariation::Group42Var8;	// double with time
-	throw std::runtime_error("Unknown event counter response type");
+	throw std::runtime_error("Unknown event analog control response type");
 }
 
 odc::EventType EventAnalogControlResponseToODCEvent(const opendnp3::EventAnalogOutputStatusVariation var)

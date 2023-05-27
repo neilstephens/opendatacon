@@ -2,8 +2,41 @@
 #include <catch.hpp>
 #include <map>
 #include <fstream>
+#include <filesystem>
 
-void PrepConfFiles(bool init)
+inline bool WriteFile(const std::string& name, size_t size)
+{
+	std::ofstream fout(name, std::ios::binary);
+	if(fout.fail())
+		return false;
+	size_t i = 0;
+	while(i++ < size && fout)
+		fout<<uint8_t(rand()%255);
+	if(fout.fail())
+		return false;
+	fout.flush();
+	fout.close();
+	return true;
+}
+
+void WriteConfMap(const std::map<const char*,const char*> conf_map, const bool init)
+{
+	if(init)
+	{
+		for(auto conf_pair : conf_map)
+		{
+			std::ofstream fconf(conf_pair.first);
+			REQUIRE_FALSE(fconf.fail());
+			fconf << conf_pair.second;
+			fconf.close();
+		}
+	}
+	else
+		for(auto conf_pair : conf_map)
+			std::remove(conf_pair.first);
+}
+
+void PrepReloadConfFiles(bool init)
 {
 	static std::map<const char*,const char*> conf_map;
 
@@ -21,18 +54,31 @@ void PrepConfFiles(bool init)
 	conf_map["opendatacon_removed_port.conf"] =  R"001(@opendatacon_removed_port_conf@)001";
 	conf_map["points.conf"] =  R"001(@points_conf@)001";
 
+	WriteConfMap(conf_map, init);
+}
+
+void PrepTransferFiles(bool init)
+{
+	static std::map<const char*,const char*> conf_map;
+
+	conf_map["transfer.conf"] =  R"001(@transfer_conf@)001";
+
 	if(init)
 	{
-		for(auto conf_pair : conf_map)
-		{
-			std::ofstream fconf(conf_pair.first);
-			REQUIRE_FALSE(fconf.fail());
-			fconf << conf_pair.second;
-			fconf.close();
-		}
+		WriteFile("transfer1.dat",100001);
+		WriteFile("transfer2.dat",200002);
+		WriteFile("transfer3.dat",300003);
+		std::filesystem::create_directories(std::filesystem::path("RX"));
 	}
 	else
-		for(auto conf_pair : conf_map)
-			std::remove(conf_pair.first);
+	{
+		std::remove("RX/transfer1.dat");
+		std::remove("RX/transfer2.dat");
+		std::remove("RX/transfer3.dat");
+		std::remove("RX/transfer.conf");
+	}
+
+	WriteConfMap(conf_map, init);
 }
+
 

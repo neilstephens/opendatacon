@@ -27,6 +27,7 @@
 #ifndef CHANNELLINKSWATCHDOG_H
 #define CHANNELLINKSWATCHDOG_H
 
+#include "DNP3PortConf.h"
 #include <opendatacon/asio.h>
 #include <set>
 
@@ -42,7 +43,7 @@ private:
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
 public:
-	ChannelLinksWatchdog();
+	ChannelLinksWatchdog(const WatchdogBark& mode);
 	//Synchronised versions of their private couterparts
 	std::function<void(std::weak_ptr<odc::DataPort> pPort)> LinkUp = pSyncStrand->wrap([this](std::weak_ptr<odc::DataPort> pPort){LinkUp_(pPort);});
 	std::function<void(std::weak_ptr<odc::DataPort> pPort)> LinkDown = pSyncStrand->wrap([this](std::weak_ptr<odc::DataPort> pPort){LinkDown_(pPort);});
@@ -52,6 +53,9 @@ private:
 	void LinkUp_(std::weak_ptr<odc::DataPort> pPort);
 	void LinkDown_(std::weak_ptr<odc::DataPort> pPort);
 
+	void Bark();
+
+	const WatchdogBark mode;
 	std::set<std::weak_ptr<odc::DataPort>,std::owner_less<std::weak_ptr<odc::DataPort>>> UpSet;
 	std::set<std::weak_ptr<odc::DataPort>,std::owner_less<std::weak_ptr<odc::DataPort>>> DownSet;
 };

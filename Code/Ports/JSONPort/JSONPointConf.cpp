@@ -98,6 +98,15 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 				this->Binaries[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
+		else if(PointType == "OctetString")
+		{
+			for(Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
+			{
+				if(!check_index(PointConfs[n]["Points"][k]))
+					continue;
+				this->OctetStrings[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
+			}
+		}
 		else if(PointType == "Control")
 		{
 			for(Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)

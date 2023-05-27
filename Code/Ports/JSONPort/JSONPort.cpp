@@ -129,6 +129,7 @@ void JSONPort::Build()
 	std::vector<std::shared_ptr<const EventInfo>> init_events;
 	init_events.reserve(pConf->pPointConf->Analogs.size()+
 		pConf->pPointConf->Binaries.size()+
+		pConf->pPointConf->OctetStrings.size()+
 		pConf->pPointConf->Controls.size()+
 		pConf->pPointConf->AnalogControls.size());
 
@@ -136,6 +137,8 @@ void JSONPort::Build()
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,point.first,"",QualityFlags::RESTART,0));
 	for(const auto& point : pConf->pPointConf->Binaries)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,point.first,"",QualityFlags::RESTART,0));
+	for(const auto& point : pConf->pPointConf->OctetStrings)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::OctetString,point.first,"",QualityFlags::RESTART,0));
 	for(const auto& point : pConf->pPointConf->Controls)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,point.first,"",QualityFlags::RESTART,0));
 	for(const auto& point : pConf->pPointConf->AnalogControls)
@@ -168,7 +171,7 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
 				if(auto log = odc::spdlog_get("JSONPort"))
-					log->warn("Malformed JSON recieved: unmatched closing brace.");
+					log->warn("Malformed JSON received: unmatched closing brace.");
 			}
 		}
 		braced.push_back(ch);
@@ -183,6 +186,22 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 	//put back the leftovers
 	for(auto ch : braced)
 		readbuf.sputc(ch);
+}
+
+DataToStringMethod GetOctetStringFormat(const Json::Value& point_json)
+{
+	auto format = DataToStringMethod::Raw;
+	if(point_json.isMember("Format"))
+	{
+		if(point_json["Format"].asString() == "Hex")
+			format = DataToStringMethod::Hex;
+		else if(point_json["Format"].asString() != "Raw")
+		{
+			if(auto log = odc::spdlog_get("JSONPort"))
+				log->warn("Unknown format for OctetString specified '{}'. Using raw text", point_json["Format"].asString());
+		}
+	}
+	return format;
 }
 
 //At this point we have a whole (hopefully JSON) object - ie. {.*}
@@ -309,7 +328,47 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			}
 		}
 
-		//Publish any analog and binary events from above
+		for(auto& point_pair : pConf->pPointConf->OctetStrings)
+		{
+			if(!point_pair.second.isMember("JSONPath"))
+				continue;
+			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
+			//if the path existed, load up the point
+			if(!val.isNull())
+			{
+				auto event = std::make_shared<EventInfo>(EventType::OctetString,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
+				auto format = GetOctetStringFormat(point_pair.second);
+
+				std::string unmodified_string = val.asString();
+				switch(format)
+				{
+					case DataToStringMethod::Raw:
+						event->SetPayload<EventType::OctetString>(std::move(unmodified_string));
+						break;
+					case DataToStringMethod::Hex:
+						try
+						{
+							event->SetPayload<EventType::OctetString>(hex2buf(unmodified_string));
+						}
+						catch(const std::exception& e)
+						{
+							auto msg = fmt::format("Invalid hex string '{}': {}", unmodified_string, e.what());
+							if(auto log = odc::spdlog_get("JSONPort"))
+								log->warn(msg);
+							event->SetPayload<EventType::OctetString>(std::move(msg));
+						}
+						break;
+					default:
+						if(auto log = odc::spdlog_get("JSONPort"))
+							log->warn("Unsupported string to data method {}",format);
+						event->SetPayload<EventType::OctetString>(std::move(unmodified_string));
+						break;
+				}
+				events.push_back(event);
+			}
+		}
+
+		//Publish any events from above
 		for(auto& event : events)
 		{
 			pDB->Set(event);
@@ -413,7 +472,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					else if(cm != "PULSE")
 					{
 						if(auto log = odc::spdlog_get("JSONPort"))
-							log->error("Unrecongnised ControlMode '{}', recieved for index {}",cm,point_pair.first);
+							log->error("Unrecongnised ControlMode '{}', received for index {}",cm,point_pair.first);
 						continue;
 					}
 				}
@@ -558,6 +617,22 @@ inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, cons
 			catch(std::runtime_error&)
 			{}
 			auto& m = pConf->pPointConf->Binaries;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		case EventType::OctetString:
+		{
+			auto& m = pConf->pPointConf->OctetStrings;
+			auto format = m.count(i) ? GetOctetStringFormat(m[i]) : DataToStringMethod::Hex;
+			std::string v;
+			try
+			{
+				v = ToString(event->GetPayload<EventType::OctetString>(),format);
+			}
+			catch(std::runtime_error&)
+			{}
 			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
 			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
 			          : Json::Value::nullSingleton());

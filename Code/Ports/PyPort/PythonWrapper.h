@@ -75,6 +75,7 @@ class PythonInitWrapper
 public:
 	PythonInitWrapper(bool GlobalUseSystemPython);
 	~PythonInitWrapper();
+	std::unique_ptr<asio::io_context::strand> python_strand;
 private:
 	void Run(bool GlobalUseSystemPython);
 	bool running;
@@ -85,13 +86,14 @@ private:
 	PyThreadState* threadState;
 };
 
+class PyPortConf;
 class PythonWrapper
 {
 
 public:
 	PythonWrapper(const std::string& aName, std::shared_ptr<odc::asio_service> _pIOS, SetTimerFnType SetTimerFn, PublishEventCallFnType PublishEventCallFn);
 	~PythonWrapper();
-	void Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName, const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython);
+	void Build(const std::string& pyPathName, const std::string& PortName, const PyPortConf* const);
 	void Config(const std::string& JSONMain, const std::string& JSONOverride);
 	void PortOperational(); // Called when Build is complete.
 	void Enable();
@@ -108,12 +110,12 @@ public:
 
 	void CallTimerHandler(uint32_t id);
 	std::string RestHandler(const std::string& url, const std::string& content);
+	void CallPublishCallback(const std::string& evt_type, const size_t index, const std::string& quality, const std::string& payload, const msSinceEpoch_t time, const std::string& status);
 
 	SetTimerFnType GetPythonPortSetTimerFn() { return PythonPortSetTimerFn; };                         // Protect set access, only allow get.
 	PublishEventCallFnType GetPythonPortPublishEventCallFn() { return PythonPortPublishEventCallFn; }; // Protect set access, only allow get.
 
 	static void PyErrOutput();
-	static void DumpStackTrace();
 
 	std::string Name;
 
@@ -126,6 +128,10 @@ public:
 			return (PythonWrapper*)guid;
 		}
 		return nullptr;
+	}
+	std::unique_ptr<asio::io_context::strand>& GlobalPythonStrand()
+	{
+		return PyMgr->python_strand;
 	}
 
 private:
@@ -158,6 +164,8 @@ private:
 	// We need a hard limit for the number of queued events, after which we start dumping elements. Better than running out of memory?
 	const size_t MaximumQueueSize = 1000000; // 1 million
 
+	DataToStringMethod OctetStringFormat;
+
 	std::shared_ptr<SpecialEventQueue<std::string>> EventQueue;
 
 	// Keep pointers to the methods in out Python code that we want to be able to call.
@@ -170,6 +178,7 @@ private:
 	PyObject* pyFuncEvent = nullptr;
 	PyObject* pyTimerHandler = nullptr;
 	PyObject* pyRestHandler = nullptr;
+	PyObject* pyPublishCallbackHandler = nullptr;
 
 	SetTimerFnType PythonPortSetTimerFn;
 	PublishEventCallFnType PythonPortPublishEventCallFn;

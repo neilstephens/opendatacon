@@ -63,15 +63,13 @@ std::string GetCurrentWorkingDir(void)
 	return current_working_dir;
 }
 
+//FIXME: This is bad. Any uses of this should use std::filesystem.
 bool fileexists(const std::string& filename)
 {
 	std::ifstream ifile(filename.c_str());
 	return (bool)ifile;
 }
 using namespace odc;
-
-std::shared_ptr<asio::io_context::strand> PyPort::python_strand = nullptr;
-std::once_flag PyPort::python_strand_flag;
 
 std::vector<std::string> split(const std::string& s, char delim)
 {
@@ -86,6 +84,7 @@ std::vector<std::string> split(const std::string& s, char delim)
 	return result;
 }
 
+//FIMXE: std lib should be used for this kind of thing
 // Get the number contained in this string.
 std::string GetNumber(const std::string& input)
 {
@@ -100,9 +99,7 @@ std::string GetNumber(const std::string& input)
 
 // Constructor for PyPort --------------------------------------
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-	DataPort(aName, aConfFilename, aConfOverrides),
-	JSONMain(""),
-	JSONOverride("")
+	DataPort(aName, aConfFilename, aConfOverrides)
 {
 	//the creation of a new PyPortConf will get the point details
 	pConf = std::make_unique<PyPortConf>(ConfFilename, ConfOverrides);
@@ -150,15 +147,10 @@ void PyPort::Build()
 			return;
 		}
 	}
-	// Only 1 strand per ODC system. Must wait until build as pIOS is not available in the constructor
-	std::call_once(PyPort::python_strand_flag,[this]()
-		{
-			LOGDEBUG("Create python_strand");
-			PyPort::python_strand = pIOS->make_strand();
-		});
 
 	// Build is single threaded, no ASIO tasks fire up until all the builds are finished
 
+	//FIXME: use lambdas instead of std::bind
 	// If first time constructor is called, will instansiate the interpreter.
 	// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
 	// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
@@ -168,9 +160,12 @@ void PyPort::Build()
 	try
 	{
 		// Python code is loaded and class created, __init__ called.
-		pWrapper->Build("PyPort", PyModPath, MyConf->pyModuleName, MyConf->pyClassName, this->Name, MyConf->GlobalUseSystemPython);
+		pWrapper->Build(PyModPath, this->Name, MyConf);
 
-		pWrapper->Config(JSONMain, JSONOverride);
+		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None"; // No comments - python doesn't like them
+		pWrapper->Config(Json::writeString(wbuilder, JSONConf), "");
+
 		LOGDEBUG("Loaded Python Module \"{}\" ", MyConf->pyModuleName);
 	}
 	catch (std::exception& e)
@@ -204,7 +199,7 @@ void PyPort::Enable()
 	auto promise = std::make_shared<std::promise<bool>>();
 	auto future = promise->get_future(); // You can only call get_future ONCE!!!! Otherwise throws an assert exception!
 
-	python_strand->dispatch([this,promise]()
+	pWrapper->GlobalPythonStrand()->post([this,promise]()
 		{
 			LOGSTRAND("Entered Strand on Enable");
 			pWrapper->Enable();
@@ -239,7 +234,7 @@ void PyPort::Disable()
 	// Leaves the connection running, someone else might be using it? If another joins will work fine.
 	// Used to be: HttpServerManager::StopConnection(pServer);
 
-	python_strand->dispatch([this]()
+	pWrapper->GlobalPythonStrand()->post([this]()
 		{
 			LOGSTRAND("Entered Strand on Disable");
 			pWrapper->Disable();
@@ -489,8 +484,11 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 			}
 			break;
 		case EventType::OctetString:
-			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
-			break;
+		{
+			pubevent = std::make_shared<EventInfo>(EventType::OctetString, ODCIndex, Name, QualityResult);
+			pubevent->SetPayload<EventType::OctetString>(std::string(PayloadStr));
+		}
+		break;
 		case EventType::BinaryQuality:
 			LOGERROR("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
@@ -528,9 +526,20 @@ void PyPort::PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, 
 
 	// Separate call to allow testing
 	std::shared_ptr<EventInfo> pubevent = CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, Name);
-
 	if (pubevent)
-		PublishEvent(pubevent);
+	{
+		if(MyConf->pyEnablePublishCallbackHandler)
+		{
+			auto callback = std::make_shared<std::function<void (CommandStatus)>>(pWrapper->GlobalPythonStrand()->wrap(
+				[this, EventTypeStr, ODCIndex, QualityStr, PayloadStr, Time{pubevent->GetTimestamp()}](CommandStatus result)
+				{
+					pWrapper->CallPublishCallback(EventTypeStr, ODCIndex, QualityStr, PayloadStr, Time, ToString(result));
+				}));
+			PublishEvent(pubevent,callback);
+		}
+		else
+			PublishEvent(pubevent);
+	}
 }
 std::string getISOCurrentTimestampUTC_from_msSinceEpoch_t(const odc::msSinceEpoch_t& ts)
 {
@@ -557,25 +566,49 @@ std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt
 	if (searchport != PortTagMap.end())
 	{
 		auto foundport = searchport->second;
-		if (Eventt == EventType::Analog)
+		switch(Eventt)
 		{
-			auto search = foundport->AnalogMap.find(Index);
-			if (search != foundport->AnalogMap.end())
-				Tag = search->second;
+			case EventType::Analog:
+			{
+				auto search = foundport->AnalogMap.find(Index);
+				if (search != foundport->AnalogMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::Binary:
+			{
+				auto search = foundport->BinaryMap.find(Index);
+				if (search != foundport->BinaryMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::OctetString:
+			{
+				auto search = foundport->OctetStringMap.find(Index);
+				if (search != foundport->OctetStringMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::ControlRelayOutputBlock:
+			{
+				auto search = foundport->BinaryControlMap.find(Index);
+				if (search != foundport->BinaryControlMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::AnalogOutputDouble64:
+			case EventType::AnalogOutputFloat32:
+			case EventType::AnalogOutputInt16:
+			case EventType::AnalogOutputInt32:
+			{
+				auto search = foundport->AnalogControlMap.find(Index);
+				if (search != foundport->AnalogControlMap.end())
+					Tag = search->second;
+			}
+			break;
+			default:
+				break;
 		}
-		if (Eventt == EventType::Binary)
-		{
-			auto search = foundport->BinaryMap.find(Index);
-			if (search != foundport->BinaryMap.end())
-				Tag = search->second;
-		}
-		if (Eventt == EventType::ControlRelayOutputBlock)
-		{
-			auto search = foundport->BinaryControlMap.find(Index);
-			if (search != foundport->BinaryControlMap.end())
-				Tag = search->second;
-		}
-		// TODO: AnalogControlMap
 	}
 	LOGTRACE("PyPort {} GetTagValue {} {} {} {}", Name, SenderName, Index, ToString(Eventt), Tag);
 	return Tag;
@@ -620,7 +653,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 				event->GetIndex(),                                         // 1
 				isotimestamp,                                              // 2
 				ToString(event->GetQuality()),                             // 3
-				event->GetPayloadString(),                                 // 4
+				event->GetPayloadString(MyConf->pyOctetStringFormat),      // 4
 				SenderName,                                                // 5
 				TagValue,                                                  // 6
 				MyConf->pyTagPrefixString,                                 // 7
@@ -636,7 +669,7 @@ void PyPort::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	}
 	else
 	{
-		python_strand->dispatch([this, event, SenderName, pStatusCallback]()
+		pWrapper->GlobalPythonStrand()->post([this, event, SenderName, pStatusCallback]()
 			{
 				LOGSTRAND("Entered Strand on Event");
 				CommandStatus result = pWrapper->Event(event, SenderName); // Expect no long processing or waits in the python code to handle this.
@@ -658,7 +691,7 @@ void PyPort::SetTimer(uint32_t id, uint32_t delayms)
 	pTimer_t timer = pIOS->make_steady_timer();
 	StoreTimer(id, timer);
 	timer->expires_from_now(std::chrono::milliseconds(delayms));
-	timer->async_wait(python_strand->wrap(
+	timer->async_wait(pWrapper->GlobalPythonStrand()->wrap(
 		[this, id, timer](asio::error_code err_code) // Pass in shared ptr to keep it alive until we are done - time out or aborted
 		{
 			if (!err_code)
@@ -700,7 +733,7 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, con
 		return;
 	}
 
-	python_strand->dispatch([this, url, content, pResponseCallback]()
+	pWrapper->GlobalPythonStrand()->post([this, url, content, pResponseCallback]()
 		{
 			LOGSTRAND("Entered Strand on RestHandler");
 			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
@@ -735,19 +768,9 @@ void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallba
 // This should be called twice, once for the config file setion, and the second for config overrides.
 void PyPort::ProcessElements(const Json::Value& JSONRoot)
 {
-// We need to strip comments from the JSON here, as Python JSON handling libraries throw on finding comments.
-	if (JSONMain.length() == 0)
-	{
-		Json::StreamWriterBuilder wbuilder;
-		wbuilder["commentStyle"] = "None";                // No comments
-		JSONMain = Json::writeString(wbuilder, JSONRoot); // Spit the root out as string, so we can pass to Python in build.
-	}
-	else if (JSONOverride.length() == 0)
-	{
-		Json::StreamWriterBuilder wbuilder;
-		wbuilder["commentStyle"] = "None";                    // No comments
-		JSONOverride = Json::writeString(wbuilder, JSONRoot); // Spit the root out as string, so we can pass to Python in build.
-	}
+	auto MemberNames = JSONRoot.getMemberNames();
+	for(auto mn : MemberNames)
+		JSONConf[mn] = JSONRoot[mn];
 
 	if (JSONRoot.isMember("ModuleName"))
 		MyConf->pyModuleName = JSONRoot["ModuleName"].asString();
@@ -766,6 +789,18 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		MyConf->pyEventsAreQueued = JSONRoot["EventsAreQueued"].asBool();
 	if (JSONRoot.isMember("OnlyQueueEventsWithTags"))
 		MyConf->pyOnlyQueueEventsWithTags = JSONRoot["OnlyQueueEventsWithTags"].asBool();
+	if (JSONRoot.isMember("EnablePublishCallbackHandler"))
+		MyConf->pyEnablePublishCallbackHandler = JSONRoot["EnablePublishCallbackHandler"].asBool();
+	if (JSONRoot.isMember("OctetStringFormat"))
+	{
+		auto fmt = JSONRoot["OctetStringFormat"].asString();
+		if(fmt == "Hex")
+			MyConf->pyOctetStringFormat = DataToStringMethod::Hex;
+		else if(fmt == "Raw")
+			MyConf->pyOctetStringFormat = DataToStringMethod::Raw;
+		else
+			throw std::invalid_argument("OctetStringFormat should be Raw or Hex, not " + fmt);
+	}
 
 	//TODO: The following parameter should always be set to the same value. If different throw an exception as the conf file is wrong!
 	if (JSONRoot.isMember("GlobalUseSystemPython"))
@@ -775,36 +810,62 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		const auto Analogs = JSONRoot["Analogs"];
 		LOGDEBUG("Conf processed - Analog Points");
-		ProcessPoints(Analog, Analogs);
+		ProcessPoints(EventType::Analog, Analogs);
 	}
 	if (JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
 		LOGDEBUG("Conf processed - Binary Points");
-		ProcessPoints(Binary, Binaries);
+		ProcessPoints(EventType::Binary, Binaries);
 	}
-
+	if (JSONRoot.isMember("OctetStrings"))
+	{
+		const auto OctetStrings = JSONRoot["OctetStrings"];
+		LOGDEBUG("Conf processed - OctetString Points");
+		ProcessPoints(EventType::OctetString, OctetStrings);
+	}
 	if (JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls = JSONRoot["BinaryControls"];
 		LOGDEBUG("Conf processed - Binary Controls");
-		ProcessPoints(BinaryControl, BinaryControls);
+		ProcessPoints(EventType::ControlRelayOutputBlock, BinaryControls);
+	}
+	if (JSONRoot.isMember("AnalogControls"))
+	{
+		const auto AnalogControls = JSONRoot["AnalogControls"];
+		LOGDEBUG("Conf processed - Analog Controls");
+		ProcessPoints(EventType::AnalogOutputDouble64, AnalogControls);
 	}
 }
 
 // This method loads both Analog and Counter/Timers. They look functionally similar in CB
-void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
+void PyPort::ProcessPoints(EventType ptype, const Json::Value& JSONNode)
 {
 	std::string Name("None");
 
-	if (ptype == Analog)
-		Name = "Analog";
-	if (ptype == Binary)
-		Name = "Binary";
-	if (ptype == BinaryControl)
-		Name = "Control";
-	if (ptype == AnalogControl)
-		Name = "AnalogControl";
+	switch(ptype)
+	{
+		case EventType::Analog:
+			Name = "Analog";
+			break;
+		case EventType::Binary:
+			Name = "Binary";
+			break;
+		case EventType::OctetString:
+			Name = "OctetString";
+			break;
+		case EventType::ControlRelayOutputBlock:
+			Name = "Control";
+			break;
+		case EventType::AnalogOutputDouble64:
+		case EventType::AnalogOutputFloat32:
+		case EventType::AnalogOutputInt16:
+		case EventType::AnalogOutputInt32:
+			Name = "AnalogControl";
+			break;
+		default:
+			break;
+	}
 
 	LOGDEBUG("Conf processing - {}", Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
@@ -843,18 +904,29 @@ void PyPort::ProcessPoints(PointType ptype, const Json::Value& JSONNode)
 			}
 
 			auto foundport = searchport->second;
-
-			if (ptype == Analog)
-				foundport->AnalogMap.emplace(std::make_pair(index, Tag));
-			else if (ptype == Binary)
-				foundport->BinaryMap.emplace(std::make_pair(index, Tag));
-			else if (ptype == BinaryControl)
-				foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
-			else if (ptype == AnalogControl)
-				foundport->AnalogControlMap.emplace(std::make_pair(index, Tag));
-			else
+			switch(ptype)
 			{
-				LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
+				case EventType::Analog:
+					foundport->AnalogMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::Binary:
+					foundport->BinaryMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::OctetString:
+					foundport->OctetStringMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::ControlRelayOutputBlock:
+					foundport->BinaryControlMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::AnalogOutputDouble64:
+				case EventType::AnalogOutputFloat32:
+				case EventType::AnalogOutputInt16:
+				case EventType::AnalogOutputInt32:
+					foundport->AnalogControlMap.emplace(std::make_pair(index, Tag));
+					break;
+				default:
+					LOGDEBUG("Conf Processing {} - found a Tag for a Type that does not support Tag - {}", Name, JSONNode[n].toStyledString());
+					break;
 			}
 			LOGTRACE("Sender - {}, Type - {}, Tag - {}, Index - {}", sender, Name, Tag, index);
 		}

@@ -1,6 +1,6 @@
 ExampleConfig/*
 Code/tests/Integration_tests/ConfStrings.cpp
-include/opendatacon/Version.h
+Code/Libs/VersionStrings/version.h
 _site/*
 .directory
 CMakeLists.txt.user

@@ -22,7 +22,6 @@ project(ODC)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def ${CMAKE_SOURCE_DIR}/include/opendatacon/*.h)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
-add_dependencies(${PROJECT_NAME} version) #make sure version info is up-to-date first
 target_include_directories(${PROJECT_NAME} PUBLIC
 	"../JSON"
 	"${CMAKE_SOURCE_DIR}/include"
@@ -47,7 +46,7 @@ if(ODC_ASIO_SSL)
 	endif()
 endif()
 
-target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> ${ADD_LIBS} ${LIBCXX} ${RT})
+target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> ${ADD_LIBS} ${RT} ${FS})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

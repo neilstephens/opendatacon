@@ -28,8 +28,9 @@
 #include "SimPortConf.h"
 
 SimPortConf::SimPortConf():
-	m_name(""),
-	m_timestamp_handling(TimestampMode::FIRST)
+	abs_analogs(false),
+	std_dev_scaling(1),
+	m_name("")
 {
 	m_pport_data = std::make_shared<SimPortData>();
 }
@@ -43,6 +44,22 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 	if (json_root.isMember("Version"))
 		m_pport_data->Version(json_root["Version"].asString());
 
+	if (json_root.isMember("AbsAnalogs"))
+		abs_analogs = json_root["AbsAnalogs"].asBool();
+	if (json_root.isMember("StdDevScaling"))
+		std_dev_scaling = json_root["StdDevScaling"].asDouble();
+
+	if (json_root.isMember("SQLite3Defaults"))
+	{
+		auto sqlite = json_root["SQLite3Defaults"];
+		if(sqlite.isMember("TimestampHandling"))
+			m_db_defaults.timestamp_handling = m_ParseTimestampHandling(sqlite["TimestampHandling"].asString());
+		if(sqlite.isMember("File"))
+			m_db_defaults.db_filename = sqlite["File"].asString();
+		if(sqlite.isMember("Query"))
+			m_db_defaults.db_query = sqlite["Query"].asString();
+	}
+
 	if(json_root.isMember("Analogs"))
 		m_ProcessAnalogs(json_root["Analogs"]);
 	if(json_root.isMember("Binaries"))
@@ -51,14 +68,20 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		m_ProcessBinaryControls(json_root["BinaryControls"]);
 }
 
-std::unordered_map<std::string, DB_STATEMENT> SimPortConf::GetDBStats() const
+DB_STATEMENT SimPortConf::GetDBStat(const EventType ev_type, const size_t index) const
 {
-	return m_db_stats;
+	auto db_stat_it = m_db_stats.find(ToString(ev_type)+std::to_string(index));
+	if(db_stat_it != m_db_stats.end())
+		return db_stat_it->second;
+	return nullptr;
 }
 
-TimestampMode SimPortConf::TimestampHandling() const
+TimestampMode SimPortConf::TimestampHandling(const EventType ev_type, const size_t index) const
 {
-	return m_timestamp_handling;
+	auto tsh_it = m_db_ts_handling.find(ToString(ev_type)+std::to_string(index));
+	if(tsh_it != m_db_ts_handling.end())
+		return tsh_it->second;
+	return m_db_defaults.timestamp_handling;
 }
 
 void SimPortConf::Name(const std::string& name)
@@ -119,6 +142,11 @@ double SimPortConf::Payload(odc::EventType type, std::size_t index) const
 double SimPortConf::StartValue(odc::EventType type, std::size_t index) const
 {
 	return m_pport_data->StartValue(type, index);
+}
+
+odc::QualityFlags SimPortConf::StartQuality(odc::EventType type, std::size_t index) const
+{
+	return m_pport_data->StartQuality(type, index);
 }
 
 void SimPortConf::ForcedState(odc::EventType type, std::size_t index, bool value)
@@ -186,6 +214,24 @@ std::shared_ptr<PositionFeedback> SimPortConf::GetPositionFeedback(std::size_t i
 	return m_pport_data->GetPositionFeedback(index);
 }
 
+TimestampMode SimPortConf::m_ParseTimestampHandling(const std::string& ts_mode) const
+{
+	TimestampMode tsm = m_db_defaults.timestamp_handling;
+	if(ts_mode == "ABSOLUTE")
+		tsm = TimestampMode::ABSOLUTE_T;
+	else if(ts_mode == "ABSOLUTE_FASTFORWARD")
+		tsm = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
+	else if(ts_mode == "RELATIVE_TOD")
+		tsm = TimestampMode::TOD;
+	else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")
+		tsm = TimestampMode::TOD | TimestampMode::FASTFORWARD;
+	else if(ts_mode == "RELATIVE_FIRST")
+		tsm = TimestampMode::FIRST;
+	else if(auto log = odc::spdlog_get("SimPort"))
+		log->error("Defaulting invalid SQLite3 'TimeStampHandling' mode '{}'.", ts_mode);
+	return tsm;
+}
+
 bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const
 {
 	bool result = true;
@@ -220,8 +266,9 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 			double start_val = 0.0f;
 			double std_dev = 0.0f;
 			std::size_t update_interval = 0;
+			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
 			if (analogs[i].isMember("SQLite3"))
-				m_ProcessSQLite3(analogs[i]["SQLite3"], index);
+				m_ProcessSQLite3(analogs[i]["SQLite3"], "Analog", index);
 			if (analogs[i].isMember("StdDev"))
 				std_dev = analogs[i]["StdDev"].asDouble();
 			if (analogs[i].isMember("UpdateIntervalms"))
@@ -229,7 +276,6 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 			if (analogs[i].isMember("StartVal"))
 			{
 				std::string str_start_val = to_lower(analogs[i]["StartVal"].asString());
-				odc::QualityFlags flag = odc::QualityFlags::ONLINE;
 				if (str_start_val == "nan")
 					start_val = std::numeric_limits<double>::quiet_NaN();
 				else if (str_start_val == "inf")
@@ -240,8 +286,11 @@ void SimPortConf::m_ProcessAnalogs(const Json::Value& analogs)
 					flag = odc::QualityFlags::COMM_LOST;
 				else
 					start_val = std::stod(str_start_val);
-				m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, flag, std_dev, update_interval, start_val);
 			}
+			else
+				flag = (odc::QualityFlags::COMM_LOST | odc::QualityFlags::RESTART);
+
+			m_pport_data->CreateEvent(odc::EventType::Analog, index, m_name, flag, std_dev, update_interval, start_val);
 		}
 	}
 }
@@ -270,8 +319,8 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 			double std_dev = 0.0f;
 			std::size_t update_interval = 0;
 			odc::QualityFlags flag = odc::QualityFlags::ONLINE;
-			if (binaries[n].isMember("StdDev"))
-				std_dev = binaries[n]["StdDev"].asDouble();
+			if (binaries[n].isMember("SQLite3"))
+				m_ProcessSQLite3(binaries[n]["SQLite3"], "Binary", index);
 			if (binaries[n].isMember("UpdateIntervalms"))
 				update_interval = binaries[n]["UpdateIntervalms"].asUInt();
 			if (binaries[n].isMember("StartVal"))
@@ -281,6 +330,8 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 				else
 					val = binaries[n]["StartVal"].asBool();
 			}
+			else
+				flag = (odc::QualityFlags::COMM_LOST | odc::QualityFlags::RESTART);
 			m_pport_data->CreateEvent(odc::EventType::Binary, index, m_name, flag, std_dev, update_interval, val);
 		}
 	}
@@ -319,74 +370,83 @@ void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)
 	}
 }
 
-void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index)
+void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string& type, const std::size_t index)
 {
-	if(sqlite.isMember("File") && sqlite.isMember("Query"))
+	auto filename = m_db_defaults.db_filename;
+	auto query = m_db_defaults.db_query;
+
+	if(sqlite.isMember("File"))
+		filename = sqlite["File"].asString();
+	if(sqlite.isMember("Query"))
+		query = sqlite["Query"].asString();
+
+	sqlite3* db;
+	auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_EXRESCODE,nullptr);
+	if(rv != SQLITE_OK)
 	{
-		sqlite3* db;
-		auto filename = sqlite["File"].asString();
-		auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_SHAREDCACHE,nullptr);
-		if(rv != SQLITE_OK)
-		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->error("Failed to open sqlite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
-		}
-		else
-		{
-			sqlite3_stmt* stmt;
-			auto query = sqlite["Query"].asString();
-			auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
-			if(rv != SQLITE_OK)
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("Failed to prepare SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-			}
-			else if (sqlite3_column_count(stmt) != 2)
-			{
-				if(auto log = odc::spdlog_get("SimPort"))
-					log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
-			}
-			else
-			{
-				auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
-				m_db_stats["Analog"+std::to_string(index)] = DB_STATEMENT(stmt,deleter);
-				auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
-				if(index_bind_index)
-				{
-					auto rv = sqlite3_bind_int(stmt, index_bind_index, index);
-					if(rv != SQLITE_OK)
-					{
-						if(auto log = odc::spdlog_get("SimPort"))
-							log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", query, sqlite3_errstr(rv));
-						m_db_stats.erase("Analog"+std::to_string(index));
-					}
-				}
-			}
-			m_timestamp_handling = TimestampMode::FIRST;
-			if(sqlite.isMember("TimestampHandling"))
-			{
-				auto ts_mode =sqlite["TimestampHandling"].asString();
-				if(ts_mode == "ABSOLUTE")
-					m_timestamp_handling = TimestampMode::ABSOLUTE_T;
-				else if(ts_mode == "ABSOLUTE_FASTFORWARD")
-					m_timestamp_handling = TimestampMode::ABSOLUTE_T | TimestampMode::FASTFORWARD;
-				else if(ts_mode == "RELATIVE_TOD")
-					m_timestamp_handling = TimestampMode::TOD;
-				else if(ts_mode == "RELATIVE_TOD_FASTFORWARD")
-					m_timestamp_handling = TimestampMode::TOD | TimestampMode::FASTFORWARD;
-				else if(ts_mode == "RELATIVE_FIRST")
-					m_timestamp_handling = TimestampMode::FIRST;
-				else if(auto log = odc::spdlog_get("SimPort"))
-					log->error("Invalid SQLite3 'TimeStampHandling' mode '{}'. Defaulting to RELATIVE_FIRST", ts_mode);
-			}
-			else if(auto log = odc::spdlog_get("SimPort"))
-				log->info("SQLite3 'TimeStampHandling' mode defaulting to RELATIVE_FIRST");
-		}
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->error("Failed to open sqlite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
 	}
 	else
 	{
 		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("'SQLite3' object requires 'File' and 'Query' for point : '{}'", sqlite.toStyledString());
+			log->debug("Opened sqlite3 DB '{}' for {} {}.", filename, type, index);
+		sqlite3_stmt* stmt;
+		auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
+		if(rv != SQLITE_OK)
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->error("Failed to prepare SQLite3 query '{}' for {} {} : '{}'", query, type, index, sqlite3_errstr(rv));
+		}
+		else if (sqlite3_column_count(stmt) != 2)
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
+		}
+		else
+		{
+			if(auto log = odc::spdlog_get("SimPort"))
+				log->debug("Prepared SQLite3 query '{}' for {} {}", query, type, index);
+			auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
+			m_db_stats[type+std::to_string(index)] = DB_STATEMENT(stmt,deleter);
+
+			auto index_bind_index = sqlite3_bind_parameter_index(stmt, ":INDEX");
+			if(index_bind_index)
+			{
+				auto rv = sqlite3_bind_int(stmt, index_bind_index, index);
+				if(rv != SQLITE_OK)
+				{
+					if(auto log = odc::spdlog_get("SimPort"))
+						log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", index, query, sqlite3_errstr(rv));
+					m_db_stats.erase(type+std::to_string(index));
+				}
+				else
+				{
+					if(auto log = odc::spdlog_get("SimPort"))
+						log->debug("Bound index ({}) to prepared SQLite3 query '{}'", index, query, sqlite3_errstr(rv));
+				}
+			}
+
+			auto type_bind_index = sqlite3_bind_parameter_index(stmt, ":TYPE");
+			if(type_bind_index)
+			{
+				auto rv = sqlite3_bind_text(stmt, type_bind_index, type.c_str(), -1, SQLITE_TRANSIENT);
+				if(rv != SQLITE_OK)
+				{
+					if(auto log = odc::spdlog_get("SimPort"))
+						log->error("Failed to bind type ({}) to prepared SQLite3 query '{}' : '{}'", type, query, sqlite3_errstr(rv));
+					m_db_stats.erase(type+std::to_string(index));
+				}
+				else
+				{
+					if(auto log = odc::spdlog_get("SimPort"))
+						log->debug("Bound type ({}) to prepared SQLite3 query '{}'", type, query, sqlite3_errstr(rv));
+				}
+			}
+
+			if(sqlite.isMember("TimestampHandling"))
+				m_db_ts_handling[type+std::to_string(index)] = m_ParseTimestampHandling(sqlite["TimestampHandling"].asString());
+		}
 	}
 }
 

@@ -338,6 +338,11 @@ void DNP3MasterPort::Build()
 	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 
+	//set the internal sizes of the ADPU buffers - we make it symetric by using MaxTxFragSize for both
+	//	but maybe we should have separate setting???
+	StackConfig.master.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;
+	StackConfig.master.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;
+
 	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
 	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
 
@@ -381,7 +386,11 @@ void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::I
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::FrozenCounter> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryOutputStatus> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogOutputStatus> >& meas){ LoadT(meas); }
-void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas){ /*LoadT(meas);*/ }
+void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
+{
+	if(info.gv == opendnp3::GroupVariation::Group111Var0) //TODO: implement another ODC type for static data if there's any use for it
+		LoadT(meas);
+}
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas){ /*LoadT(meas);*/ }
@@ -403,11 +412,22 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 		});
 }
 
+template<>
+inline void DNP3MasterPort::LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
+{
+	meas.ForeachItem([this](const opendnp3::Indexed<opendnp3::OctetString>&pair)
+		{
+			auto event = ToODC(pair.value, pair.index, Name);
+			PublishEvent(event);
+			pDB->Set(event);
+		});
+}
+
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::DNPTime>& values)
 {
 	values.ForeachItem([](const opendnp3::DNPTime time)
 		{
-			//TODO: master recieved time...
+			//TODO: master received time...
 		});
 }
 
@@ -443,7 +463,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: upstream port connected, performing on-demand connection.", Name);
+				log->info("{}: Upstream port connected, performing on-demand connection.", Name);
 
 			pIOS->post([this]()
 				{
@@ -454,6 +474,9 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
 		if (stack_enabled && !InDemand() && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->info("{}: No upstream connections left, performing on-demand disconnection.", Name);
+
 			pIOS->post([this]()
 				{
 					DisableStack();
@@ -558,7 +581,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			{
 				// Turn the payload into double64, then convert to the target.
 				double value = 0;
-				CommandStatus status;
+				CommandStatus status = CommandStatus::UNDEFINED;
 				switch (event->GetEventType())
 				{
 					case EventType::AnalogOutputInt16:
@@ -626,8 +649,8 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 					{
 						if (value > std::numeric_limits<float>::max())
 							value = std::numeric_limits<float>::max();
-						if (value < std::numeric_limits<float>::min())
-							value = std::numeric_limits<float>::min();
+						if (value < std::numeric_limits<float>::lowest())
+							value = std::numeric_limits<float>::lowest();
 						opendnp3::AnalogOutputFloat32 lCommand;
 						lCommand.value = static_cast<float>(value);
 						lCommand.status = FromODC(status);

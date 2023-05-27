@@ -53,6 +53,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::Counter& dnp3, const size_t ind
 std::shared_ptr<EventInfo> ToODC(const opendnp3::FrozenCounter& dnp3, const size_t ind = 0, const std::string& source = "");
 std::shared_ptr<EventInfo> ToODC(const opendnp3::BinaryOutputStatus& dnp3, const size_t ind = 0, const std::string& source = "");
 std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputStatus& dnp3, const size_t ind = 0, const std::string& source = "");
+std::shared_ptr<EventInfo> ToODC(const opendnp3::OctetString& dnp3, const size_t ind = 0, const std::string& source = "");
 std::shared_ptr<EventInfo> ToODC(const opendnp3::BinaryQuality& dnp3, const size_t ind = 0, const std::string& source = "");
 std::shared_ptr<EventInfo> ToODC(const opendnp3::DoubleBitBinaryQuality& dnp3, const size_t ind = 0, const std::string& source = "");
 std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogQuality& dnp3, const size_t ind = 0, const std::string& source = "");

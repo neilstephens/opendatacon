@@ -60,6 +60,43 @@ public:
 					return IUIResponder::GenerateResult("Bad parameter");
 			},"Set the average update interval of point(s) and returns if the operation was succesful. Syntax: 'SetUpdateInterval <SimPort|Regex> <PointType> <Index|Regex|CommaList> <Period(ms)>");
 
+		this->AddCommand("SetStdDevScaling", [this](const ParamCollection &params) -> const Json::Value
+			{
+				//param 0: Scaling factor for std devs
+				auto target = GetTarget(params).lock();
+				if(!target)
+					return IUIResponder::GenerateResult("No SimPort matched");
+				//check mandatory params are there
+				if(params.count("0") == 0)
+				{
+				      return IUIResponder::GenerateResult("Bad parameter");
+				}
+				double scale_factor;
+				try
+				{
+				      scale_factor = std::stod(params.at("0"));
+				}
+				catch(std::exception&)
+				{
+				      return IUIResponder::GenerateResult("Bad parameter");
+				}
+				target->UISetStdDevScaling(scale_factor);
+				return IUIResponder::GenerateResult("Success");
+			},"Set a standard deviation scaling factor to shrink or stretch the random distribution of analog values. Syntax: 'SetStdDevScaling <SimPort|Regex> <scale_factor>");
+
+		this->AddCommand("ToggleAbsAnalogs", [this](const ParamCollection &params) -> const Json::Value
+			{
+				//no params
+				auto target = GetTarget(params).lock();
+				if(!target)
+					return IUIResponder::GenerateResult("No SimPort matched");
+
+				auto toggle_result = target->UIToggleAbsAnalogs();
+				auto ret = IUIResponder::GenerateResult("Success");
+				ret["Toggle Result"] = toggle_result;
+				return ret;
+			},"Toggle absolute value for random analog values. Syntax: 'ToggleAbsAnalogs <SimPort|Regex>");
+
 		this->AddCommand("SendEvent", [this](const ParamCollection &params) -> const Json::Value
 			{
 				return this->PointCommand(params, false);
@@ -89,6 +126,12 @@ public:
 				else
 					return IUIResponder::GenerateResult("Bad parameter");
 			},"Removes override from point(s) and returns if the operation was succesful. Syntax: 'ReleasePoint <SimPort|Regex> <PointType> <Index|Regex|CommaList>");
+
+		this->AddCommand("SQLite3Version", [](const ParamCollection &params) -> const Json::Value
+			{
+				return IUIResponder::GenerateResult(SQLITE_VERSION " " SQLITE_SOURCE_ID);
+
+			},"Returns the version of embedded SQLite3 code.");
 	}
 	const Json::Value PointCommand (const ParamCollection &params, const bool force)
 	{

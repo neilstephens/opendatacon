@@ -27,13 +27,21 @@ foreach(CONF_FILE ${CONF_FILES})
 	message("Reading ${CONF_FILE} into ${VAR_NAME}")
 	file(READ ${CONF_FILE} ${VAR_NAME} PARENT_SCOPE)
 endforeach()
+
+set(CONF_FILE "${CMAKE_SOURCE_DIR}/ExampleConfig/FileTransferTestEtoE/transfer.conf")
+get_filename_component(NOEXT ${CONF_FILE} NAME_WE)
+set(VAR_NAME ${NOEXT}_conf)
+message("Reading ${CONF_FILE} into ${VAR_NAME}")
+file(READ ${CONF_FILE} ${VAR_NAME} PARENT_SCOPE)
+
 configure_file(ConfStrings.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/ConfStrings.cpp)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp ../../opendatacon/DataConnector.cpp)
 add_definitions(-DMAIN_EXE)
 
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
 target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
+add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})

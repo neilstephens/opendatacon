@@ -46,7 +46,7 @@ public:
 	{}
 	void Enable() override
 	{
-		pTimer = pIOS->make_steady_timer(std::chrono::seconds(3));
+		pTimer = pIOS->make_steady_timer(std::chrono::milliseconds(100));
 		pTimer->async_wait(
 			[this](asio::error_code err_code)
 			{

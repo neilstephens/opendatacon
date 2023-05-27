@@ -19,7 +19,6 @@
  */
 
 #include "ConsoleUI.h"
-#include <opendatacon/Version.h>
 #include <opendatacon/util.h>
 #include <fstream>
 #include <iomanip>
@@ -226,10 +225,11 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 
 	//turn any regex it into a list of targets
 	Json::Value target_list;
-	if(!T_regex_str.empty() && command != "List") //List is a special case - handles it's own regex
+	if(!T_regex_str.empty())
 	{
 		params["Target"] = T_regex_str;
-		target_list = pResponder->ExecuteCommand("List", params)["Items"];
+		if(command != "List") //Use List to handle the regex for the other commands
+			target_list = pResponder->ExecuteCommand("List", params)["Items"];
 	}
 
 	int arg_num = 0;

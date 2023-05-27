@@ -122,9 +122,10 @@ public:
 	TimestampOverride_t TimestampOverride;
 
 	// Event buffer limits
-	uint16_t MaxBinaryEvents;  /// The number of binary events the outstation will buffer before overflowing
-	uint16_t MaxAnalogEvents;  /// The number of analog events the outstation will buffer before overflowing
-	uint16_t MaxCounterEvents; /// The number of counter events the outstation will buffer before overflowing
+	uint16_t MaxBinaryEvents;      /// The number of binary events the outstation will buffer before overflowing
+	uint16_t MaxAnalogEvents;      /// The number of analog events the outstation will buffer before overflowing
+	uint16_t MaxCounterEvents;     /// The number of counter events the outstation will buffer before overflowing
+	uint16_t MaxOctetStringEvents; /// The number of octet string events the outstation will buffer before overflowing
 
 	// Point Configuration
 	// TODO: use struct or class for point configuration
@@ -134,6 +135,9 @@ public:
 	std::map<uint16_t, opendnp3::PointClass> BinaryClasses;
 	std::map<uint16_t, opendnp3::StaticBinaryVariation> StaticBinaryResponses;
 	std::map<uint16_t, opendnp3::EventBinaryVariation> EventBinaryResponses;
+
+	std::vector<uint16_t> OctetStringIndexes;
+	std::map<uint16_t, opendnp3::PointClass> OctetStringClasses;
 
 	std::vector<uint32_t> AnalogIndexes;
 	std::map<uint16_t, opendnp3::Analog> AnalogStartVals;

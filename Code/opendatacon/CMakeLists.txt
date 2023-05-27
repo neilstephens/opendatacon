@@ -45,7 +45,7 @@ else()
 	endif()
 endif()
 
-add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST})
+add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST} $<TARGET_OBJECTS:VersionStrings>)
 target_include_directories(${PROJECT_NAME} PRIVATE "${TCLAP_HOME}/include")
 target_link_libraries(${PROJECT_NAME} ODC ${DL})
 

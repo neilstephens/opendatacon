@@ -51,6 +51,13 @@ namespace odc
 ENABLE_BITWISE(TimestampMode)
 }
 
+struct SQLite3Defaults
+{
+	TimestampMode timestamp_handling = TimestampMode::FIRST;
+	std::string db_filename = "SimPort.db3";
+	std::string db_query = "select timestamp,value from events where [index] = :INDEX and type = :TYPE";
+};
+
 // Hide some of the code to make Logging cleaner
 #define LOGTRACE(...) \
 	if (auto log = odc::spdlog_get("SimPort")) \
@@ -74,8 +81,8 @@ public:
 	SimPortConf();
 
 	void ProcessElements(const Json::Value& json_root);
-	std::unordered_map<std::string, DB_STATEMENT> GetDBStats() const;
-	TimestampMode TimestampHandling() const;
+	DB_STATEMENT GetDBStat(const EventType ev_type, const size_t index) const;
+	TimestampMode TimestampHandling(const EventType ev_type, const size_t index) const;
 	void Name(const std::string& name);
 	double DefaultStdDev() const;
 
@@ -91,6 +98,7 @@ public:
 	void Payload(odc::EventType type, std::size_t index, double payload);
 	double Payload(odc::EventType type, std::size_t index) const;
 	double StartValue(odc::EventType type, std::size_t index) const;
+	odc::QualityFlags StartQuality(odc::EventType type, std::size_t index) const;
 	void ForcedState(odc::EventType type, std::size_t index, bool value);
 	bool ForcedState(odc::EventType type, std::size_t index) const;
 	void UpdateInterval(odc::EventType type, std::size_t index, std::size_t value);
@@ -106,18 +114,23 @@ public:
 	std::vector<std::shared_ptr<BinaryFeedback>> BinaryFeedbacks(std::size_t index) const;
 	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index) const;
 
+	std::atomic_bool abs_analogs;
+	std::atomic<double> std_dev_scaling;
+
 private:
 	std::string m_name;
-	TimestampMode m_timestamp_handling;
+	SQLite3Defaults m_db_defaults;
 	std::unordered_map<std::string, DB_STATEMENT> m_db_stats;
+	std::unordered_map<std::string, TimestampMode> m_db_ts_handling;
 	std::shared_ptr<SimPortData> m_pport_data;
 
+	TimestampMode m_ParseTimestampHandling(const std::string& ts_mode) const;
 	bool m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const;
 
 	void m_ProcessAnalogs(const Json::Value& analogs);
 	void m_ProcessBinaries(const Json::Value& binaires);
 	void m_ProcessBinaryControls(const Json::Value& binary_controls);
-	void m_ProcessSQLite3(const Json::Value& sqlite, std::size_t index);
+	void m_ProcessSQLite3(const Json::Value& sqlite, const std::string& type, const std::size_t index);
 	void m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, std::size_t index,
 		std::size_t update_interval);
 	void m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index);

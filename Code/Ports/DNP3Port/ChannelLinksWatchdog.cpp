@@ -1,7 +1,8 @@
 #include "ChannelLinksWatchdog.h"
 #include "DNP3Port.h"
 
-ChannelLinksWatchdog::ChannelLinksWatchdog()
+ChannelLinksWatchdog::ChannelLinksWatchdog(const WatchdogBark& mode):
+	mode(mode)
 {}
 
 void ChannelLinksWatchdog::LinkUp_(std::weak_ptr<odc::DataPort> pPort)
@@ -13,13 +14,30 @@ void ChannelLinksWatchdog::LinkUp_(std::weak_ptr<odc::DataPort> pPort)
 void ChannelLinksWatchdog::LinkDown_(std::weak_ptr<odc::DataPort> pPort)
 {
 	DownSet.insert(pPort);
-	if(UpSet.erase(pPort) && UpSet.empty())
+	const auto wasUp = UpSet.erase(pPort);
+	switch(mode)
 	{
-		for(auto weak : DownSet)
+		case WatchdogBark::ONFIRST:
+			if(wasUp)
+				Bark();
+			return;
+		case WatchdogBark::ONFINAL:
+			if(wasUp && UpSet.empty())
+				Bark();
+			return;
+		default:
+			return;
+	}
+}
+
+void ChannelLinksWatchdog::Bark()
+{
+	for(auto& Set : {UpSet,DownSet})
+		for(auto weak : Set)
 			if(auto p = weak.lock())
 				std::static_pointer_cast<DNP3Port>(p)->ChannelWatchdogTrigger(true);
-		for(auto weak : DownSet)
+	for(auto& Set : {UpSet,DownSet})
+		for(auto weak : Set)
 			if(auto p = weak.lock())
 				std::static_pointer_cast<DNP3Port>(p)->ChannelWatchdogTrigger(false);
-	}
 }

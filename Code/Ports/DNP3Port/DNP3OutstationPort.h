@@ -117,4 +117,6 @@ private:
 	void ClearIINFlags(const std::string& flags) const;
 };
 
+template<> void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetString meas, uint16_t index);
+
 #endif /* DNP3SERVERPORT_H_ */

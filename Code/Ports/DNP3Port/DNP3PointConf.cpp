@@ -94,7 +94,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	// Event buffer limits
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),
-	MaxCounterEvents(1000)
+	MaxCounterEvents(1000),
+	MaxOctetStringEvents(1000)
 {
 	ProcessFile();
 }
@@ -241,7 +242,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		else
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->error("CommsPoint an 'Index' and a 'FailValue'.");
+				log->error("CommsPoint needs an 'Index' and a 'FailValue'.");
 		}
 		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
 			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
@@ -323,7 +324,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("EventCounterResponse"))
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
 	if (JSONRoot.isMember("AnalogControlResponse"))
-		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["EventAnalogResponse"].asString()); // defaults to 32 bit no time
+		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["AnalogControlResponse"].asString());
 
 	// Timestamp Override Alternatives
 	if (JSONRoot.isMember("TimestampOverride"))
@@ -342,12 +343,60 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	}
 
 	// Event buffer limits
+	auto cap_evenbuffer_size = [&](const std::string& eb_key) -> uint16_t
+					   {
+						   const auto EBsize = JSONRoot[eb_key].asUInt();
+						   if(EBsize > std::numeric_limits<uint16_t>::max())
+						   {
+							   if(auto log = odc::spdlog_get("DNP3Port"))
+								   log->error("Max size for DNP3 event buffer capped. Reduced {} from {} to {}. Set in config to avoid this error.", eb_key, EBsize, std::numeric_limits<uint16_t>::max());
+							   return std::numeric_limits<uint16_t>::max();
+						   }
+						   return EBsize;
+					   };
+
 	if (JSONRoot.isMember("MaxBinaryEvents"))
-		MaxBinaryEvents = JSONRoot["MaxBinaryEvents"].asUInt();
+		MaxBinaryEvents = cap_evenbuffer_size("MaxBinaryEvents");
 	if (JSONRoot.isMember("MaxAnalogEvents"))
-		MaxAnalogEvents = JSONRoot["MaxAnalogEvents"].asUInt();
+		MaxAnalogEvents = cap_evenbuffer_size("MaxAnalogEvents");
 	if (JSONRoot.isMember("MaxCounterEvents"))
-		MaxCounterEvents = JSONRoot["MaxCounterEvents"].asUInt();
+		MaxCounterEvents = cap_evenbuffer_size("MaxCounterEvents");
+	if (JSONRoot.isMember("MaxOctetStringEvents"))
+		MaxOctetStringEvents = cap_evenbuffer_size("MaxOctetStringEvents");
+
+	auto GetIndexRange = [](const auto& PointArrayElement) -> std::tuple<bool,size_t,size_t>
+				   {
+					   size_t start, stop;
+					   if(PointArrayElement.isMember("Index"))
+						   start = stop = PointArrayElement["Index"].asUInt();
+					   else if(PointArrayElement["Range"].isMember("Start") && PointArrayElement["Range"].isMember("Stop"))
+					   {
+						   start = PointArrayElement["Range"]["Start"].asUInt();
+						   stop = PointArrayElement["Range"]["Stop"].asUInt();
+					   }
+					   else
+					   {
+						   if(auto log = odc::spdlog_get("DNP3Port"))
+							   log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", PointArrayElement.toStyledString());
+						   return {false,0,0};
+					   }
+					   return {true,start,stop};
+				   };
+
+	auto InsertOrDeleteIndex = [](const auto& PointArrayElement, auto& IndexVec, auto index) -> bool
+					   {
+						   if (std::find(IndexVec.begin(),IndexVec.end(),index) == IndexVec.end())
+							   IndexVec.push_back(index);
+
+						   auto start_val = PointArrayElement["StartVal"].asString();
+						   if (start_val == "D")
+						   {
+							   auto it = std::find(IndexVec.begin(),IndexVec.end(),index);
+							   IndexVec.erase(it);
+							   return false;
+						   }
+						   return true;
+					   };
 
 	//common point configuration
 	if(JSONRoot.isMember("Analogs"))
@@ -355,32 +404,18 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Analogs = JSONRoot["Analogs"];
 		for(Json::ArrayIndex n = 0; n < Analogs.size(); ++n)
 		{
+			auto [success, start, stop] = GetIndexRange(Analogs[n]);
+			if(!success)
+				continue;
+
 			double deadband = 0;
 			if(Analogs[n].isMember("Deadband"))
 			{
 				deadband = Analogs[n]["Deadband"].asDouble();
 			}
-			size_t start, stop;
-			if(Analogs[n].isMember("Index"))
-				start = stop = Analogs[n]["Index"].asUInt();
-			else if(Analogs[n]["Range"].isMember("Start") && Analogs[n]["Range"].isMember("Stop"))
-			{
-				start = Analogs[n]["Range"]["Start"].asUInt();
-				stop = Analogs[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Analogs[n].toStyledString());
-				continue;
-			}
+
 			for(auto index = start; index <= stop; index++)
 			{
-				bool exists = false;
-				for(auto existing_index : AnalogIndexes)
-					if(existing_index == index)
-						exists = true;
-
 				AnalogClasses[index] = GetClass(Analogs[n]);
 				if (Analogs[n].isMember("StaticAnalogResponse"))
 					StaticAnalogResponses[index] = StringToStaticAnalogResponse(Analogs[n]["StaticAnalogResponse"].asString());
@@ -393,27 +428,23 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 				AnalogDeadbands[index] = deadband;
 
-				if(!exists)
-					AnalogIndexes.push_back(index);
+				if(!InsertOrDeleteIndex(Analogs[n],AnalogIndexes,index))
+				{
+					if(AnalogStartVals.count(index))
+						AnalogStartVals.erase(index);
+					if(AnalogClasses.count(index))
+						AnalogClasses.erase(index);
+					StaticAnalogResponses.erase(index);
+					EventAnalogResponses.erase(index);
+					AnalogDeadbands.erase(index);
+					continue;
+				}
 
 				if(Analogs[n].isMember("StartVal"))
 				{
 					opendnp3::Flags flags;
 					std::string start_val = Analogs[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(AnalogStartVals.count(index))
-							AnalogStartVals.erase(index);
-						if(AnalogClasses.count(index))
-							AnalogClasses.erase(index);
-						for(auto it = AnalogIndexes.begin(); it != AnalogIndexes.end(); it++)
-							if(*it == index)
-							{
-								AnalogIndexes.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "X")
+					if(start_val == "X")
 					{
 						flags.Set(opendnp3::AnalogQuality::COMM_LOST);
 						AnalogStartVals[index] = opendnp3::Analog(0,flags);
@@ -436,27 +467,11 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto Binaries = JSONRoot["Binaries"];
 		for(Json::ArrayIndex n = 0; n < Binaries.size(); ++n)
 		{
-			size_t start, stop;
-			if(Binaries[n].isMember("Index"))
-				start = stop = Binaries[n]["Index"].asUInt();
-			else if(Binaries[n]["Range"].isMember("Start") && Binaries[n]["Range"].isMember("Stop"))
-			{
-				start = Binaries[n]["Range"]["Start"].asUInt();
-				stop = Binaries[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", Binaries[n].toStyledString());
+			auto [success, start, stop] = GetIndexRange(Binaries[n]);
+			if(!success)
 				continue;
-			}
 			for(auto index = start; index <= stop; index++)
 			{
-				bool exists = false;
-				for(auto existing_index : BinaryIndexes)
-					if(existing_index == index)
-						exists = true;
-
 				BinaryClasses[index] = GetClass(Binaries[n]);
 				if (Binaries[n].isMember("StaticBinaryResponse"))
 					StaticBinaryResponses[index] = StringToStaticBinaryResponse(Binaries[n]["StaticBinaryResponse"].asString());
@@ -467,27 +482,22 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				else
 					EventBinaryResponses[index] = EventBinaryResponse;
 
-				if(!exists)
-					BinaryIndexes.push_back(index);
+				if(!InsertOrDeleteIndex(Binaries[n],BinaryIndexes,index))
+				{
+					if(BinaryStartVals.count(index))
+						BinaryStartVals.erase(index);
+					if(BinaryClasses.count(index))
+						BinaryClasses.erase(index);
+					StaticBinaryResponses.erase(index);
+					EventBinaryResponses.erase(index);
+					continue;
+				}
 
 				if(Binaries[n].isMember("StartVal"))
 				{
 					opendnp3::Flags flags;
 					std::string start_val = Binaries[n]["StartVal"].asString();
-					if(start_val == "D") //delete this index
-					{
-						if(BinaryStartVals.count(index))
-							BinaryStartVals.erase(index);
-						if(BinaryClasses.count(index))
-							BinaryClasses.erase(index);
-						for(auto it = BinaryIndexes.begin(); it != BinaryIndexes.end(); it++)
-							if(*it == index)
-							{
-								BinaryIndexes.erase(it);
-								break;
-							}
-					}
-					else if(start_val == "X")
+					if(start_val == "X")
 					{
 						flags.Set(opendnp3::BinaryQuality::COMM_LOST);
 						BinaryStartVals[index] = opendnp3::Binary(false,flags);
@@ -505,47 +515,34 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(BinaryIndexes.begin(),BinaryIndexes.end());
 	}
 
+	if (JSONRoot.isMember("OctetStrings"))
+	{
+		const auto OctetStrings = JSONRoot["OctetStrings"];
+		for (Json::ArrayIndex n = 0; n < OctetStrings.size(); ++n)
+		{
+			auto [success, start, stop] = GetIndexRange(OctetStrings[n]);
+			if(!success)
+				continue;
+			for (auto index = start; index <= stop; index++)
+			{
+				if(!InsertOrDeleteIndex(OctetStrings[n],OctetStringIndexes,index))
+					continue;
+				OctetStringClasses[index] = GetClass(OctetStrings[n]);
+			}
+		}
+		std::sort(OctetStringIndexes.begin(), OctetStringIndexes.end());
+	}
+
 	if(JSONRoot.isMember("BinaryControls"))
 	{
 		const auto BinaryControls= JSONRoot["BinaryControls"];
 		for(Json::ArrayIndex n = 0; n < BinaryControls.size(); ++n)
 		{
-			size_t start, stop;
-			if(BinaryControls[n].isMember("Index"))
-				start = stop = BinaryControls[n]["Index"].asUInt();
-			else if(BinaryControls[n]["Range"].isMember("Start") && BinaryControls[n]["Range"].isMember("Stop"))
-			{
-				start = BinaryControls[n]["Range"]["Start"].asUInt();
-				stop = BinaryControls[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", BinaryControls[n].toStyledString());
+			auto [success, start, stop] = GetIndexRange(BinaryControls[n]);
+			if(!success)
 				continue;
-			}
 			for(auto index = start; index <= stop; index++)
-			{
-
-				bool exists = false;
-				for(auto existing_index : ControlIndexes)
-					if(existing_index == index)
-						exists = true;
-
-				if(!exists)
-					ControlIndexes.push_back(index);
-
-				auto start_val = BinaryControls[n]["StartVal"].asString();
-				if(start_val == "D")
-				{
-					for(auto it = ControlIndexes.begin(); it != ControlIndexes.end(); it++)
-						if(*it == index)
-						{
-							ControlIndexes.erase(it);
-							break;
-						}
-				}
-			}
+				InsertOrDeleteIndex(BinaryControls[n],ControlIndexes,index);
 		}
 		std::sort(ControlIndexes.begin(),ControlIndexes.end());
 	}
@@ -556,46 +553,18 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		const auto AnalogControls = JSONRoot["AnalogControls"];
 		for (Json::ArrayIndex n = 0; n < AnalogControls.size(); ++n)
 		{
-			size_t start, stop;
-			if (AnalogControls[n].isMember("Index"))
-				start = stop = AnalogControls[n]["Index"].asUInt();
-			else if (AnalogControls[n]["Range"].isMember("Start") && AnalogControls[n]["Range"].isMember("Stop"))
-			{
-				start = AnalogControls[n]["Range"]["Start"].asUInt();
-				stop = AnalogControls[n]["Range"]["Stop"].asUInt();
-			}
-			else
-			{
-				if (auto log = odc::spdlog_get("DNP3Port"))
-					log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", AnalogControls[n].toStyledString());
+			auto [success, start, stop] = GetIndexRange(AnalogControls[n]);
+			if(!success)
 				continue;
-			}
 			for (auto index = start; index <= stop; index++)
 			{
-
-				bool exists = false;
-				for (auto existing_index : AnalogControlIndexes)
-					if (existing_index == index)
-						exists = true;
-
 				if (AnalogControls[n].isMember("AnalogControlResponse"))
 					ControlAnalogResponses[index] = StringToEventAnalogControlResponse(AnalogControls[n]["AnalogControlResponse"].asString());
 				else
 					ControlAnalogResponses[index] = EventAnalogControlResponse;
 
-				if (!exists)
-					AnalogControlIndexes.push_back(index);
-
-				auto start_val = AnalogControls[n]["StartVal"].asString();
-				if (start_val == "D")
-				{
-					for (auto it = AnalogControlIndexes.begin(); it != AnalogControlIndexes.end(); it++)
-						if (*it == index)
-						{
-							AnalogControlIndexes.erase(it);
-							break;
-						}
-				}
+				if(!InsertOrDeleteIndex(AnalogControls[n], AnalogControlIndexes, index))
+					ControlAnalogResponses.erase(index);
 			}
 		}
 		std::sort(AnalogControlIndexes.begin(), AnalogControlIndexes.end());

@@ -28,6 +28,10 @@
 #include <regex>
 #include <utility>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <exception>
+#include <filesystem>
 
 const std::size_t bcd_pack_size = 4;
 
@@ -270,14 +274,150 @@ std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size)
 	return decimal.substr(decimal.size() - size, size);
 }
 
-std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds)
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string format)
 {
 	auto tm = spdlog::details::os::localtime(milliseconds / 1000);
-	char buff[64] = {0};
-	std::sprintf(buff, "%04d-%02d-%02d %02d:%02d:%02d.%03d",
-		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-		tm.tm_hour, tm.tm_min, tm.tm_sec, static_cast<int>(milliseconds % 1000));
-	return std::string(buff);
+
+	//do milliseconds ourself
+	std::string milli_padded = "000";
+	std::sprintf(milli_padded.data(),"%03d",static_cast<int>(milliseconds % 1000));
+	auto milli_pos = format.find("%e");
+	while(milli_pos != format.npos)
+	{
+		format.erase(milli_pos, 2);
+		format.insert(milli_pos, milli_padded);
+		milli_pos = format.find("%e",milli_pos);
+	}
+
+	std::ostringstream ss;
+	ss << std::put_time(&tm, format.c_str());
+
+	return ss.str();
 }
+
+msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format)
+{
+	//do milliseconds ourself
+	size_t msec = 0;
+	auto milli_pos = format.find("%e");
+	if(milli_pos != format.npos)
+	{
+		if(milli_pos != format.size()-2)
+			throw std::runtime_error("datetime_to_since_epoch("+format+"): %e (millisecond) format only supported as suffix");
+		format.resize(format.size()-2);
+		//remove "xxx" milliseconds from the end
+		auto msec_str = date_str.substr(date_str.size()-3);
+		date_str.resize(date_str.size()-3);
+		try
+		{
+			msec = std::stoi(msec_str);
+		}
+		catch(const std::exception& e)
+		{
+			throw std::runtime_error("datetime_to_since_epoch(): Error parsing milliseconds '"+msec_str+"'.");
+		}
+	}
+
+	//parse the rest using iomanip
+	std::istringstream date_iss(date_str);
+	std::tm tm;
+	date_iss >> std::get_time(&tm, format.c_str());
+	if(date_iss.fail())
+		throw std::runtime_error("datetime_to_since_epoch("+format+"): Error parsing datetime '"+date_str+"'.");
+
+	//get_time leaves isdst undefined. -1 means let mktime decide
+	tm.tm_isdst = -1;
+
+	auto time_point = std::chrono::system_clock::from_time_t(mktime(&tm));
+	return std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch()).count()+msec;
+}
+
+static const auto sec_from_fsepoch_to_sysepoch = []()
+								 {
+									 auto fs_now = std::filesystem::file_time_type::clock::now();
+									 auto sys_now = std::chrono::system_clock::now();
+
+									 auto fs_since_epoch = fs_now.time_since_epoch();
+									 auto sys_since_epoch = sys_now.time_since_epoch();
+
+									 //how long fs epoch is since system epoch - assume a round number of seconds
+									 return std::chrono::round<std::chrono::seconds>(sys_since_epoch - fs_since_epoch);
+								 } ();
+
+std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& fstime)
+{
+	auto time_since_fsepoch = fstime.time_since_epoch();
+	auto converted = std::chrono::duration_cast<std::chrono::system_clock::duration>(time_since_fsepoch + sec_from_fsepoch_to_sysepoch);
+
+	return std::chrono::system_clock::time_point(converted);
+}
+
+std::filesystem::file_time_type sys_to_fs_time_point(const std::chrono::system_clock::time_point& systime)
+{
+	auto time_since_sysepoch = systime.time_since_epoch();
+	auto converted = std::chrono::duration_cast<std::filesystem::file_time_type::clock::duration>(time_since_sysepoch - sec_from_fsepoch_to_sysepoch);
+
+	return std::filesystem::file_time_type(converted);
+}
+
+//this is faster than using stringstream to format to hex - minimises allocations
+constexpr char hexnibble[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+std::string buf2hex(const uint8_t* data, size_t size)
+{
+	std::string str(size*2,'.');
+	for (size_t i = 0; i < size; i++)
+	{
+		str[2*i] = hexnibble[(data[i] & 0xF0) >> 4];
+		str[2*i+1] = hexnibble[data[i] & 0x0F];
+	}
+	return str;
+}
+uint8_t hexchar2byte(const char& hexChar)
+{
+	if(hexChar >= '0' && hexChar <= '9')
+		return hexChar-'0';
+	if(hexChar >= 'a' && hexChar <= 'f')
+		return hexChar-'a'+10;
+	if(hexChar >= 'A' && hexChar <= 'F')
+		return hexChar-'A'+10;
+	throw std::invalid_argument("hexchar2byte(): require characters [0-9a-fA-F]");
+}
+std::vector<uint8_t> hex2buf(const std::string& hexStr)
+{
+	if(hexStr.size()%2)
+		throw std::invalid_argument("hex2buf(): require even number of hex nibbles to covert to bytes");
+	const size_t bufSize = hexStr.size()/2;
+	std::vector<uint8_t> buf(bufSize);
+	for(size_t i = 0; i < bufSize; i++)
+		buf[i] = (hexchar2byte(hexStr[i*2]) << 4) + hexchar2byte(hexStr[i*2+1]);
+	return buf;
+}
+
+uint16_t crc_ccitt(const uint8_t* const data, const size_t length, uint16_t crc, const uint16_t poly)
+{
+	for(size_t i = 0; i < length; i++)
+	{
+		crc ^= static_cast<uint16_t>(data[i]) << 8;
+		for(auto j = 0; j < 8; j++)
+			crc = (crc & 0x8000) ? (crc << 1) ^ poly : crc << 1;
+	}
+	return crc;
+}
+
+//Define a little shared pointer factory
+//this is used make shared pointers that will both construct and destroy from in libODC
+//useful for EventInfo payloads that need shared pointers - because they will be passed accross shared lib / DLL boundaries
+template<typename T>
+std::shared_ptr<T> make_shared(T&& X)
+{
+	static auto del = [](T* ptr){delete ptr;};
+	return std::shared_ptr<T>(new T{std::move(X)}, del);
+}
+#define MAKE_SHARED(T) template std::shared_ptr<T> make_shared(T&&)
+//only clunky bit is that we have to instantiate for all the required underlying types
+//add more here if you get linker errors
+MAKE_SHARED(std::string);
+MAKE_SHARED(std::vector<char>);
+MAKE_SHARED(std::vector<uint8_t>);
 
 } // namespace odc

@@ -56,7 +56,7 @@ public:
 		                       event->GetSourcePort()+"_"+
 		                       ToString(event->GetQuality())+"_"+
 		                       std::to_string(event->GetTimestamp());
-		if(event->GetPayloadString() == correct_payload)
+		if(event->GetEventType() == EventType::OctetString && ToString(event->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw) == correct_payload)
 		{
 			(*pStatusCallback)(CommandStatus::SUCCESS);
 			return;

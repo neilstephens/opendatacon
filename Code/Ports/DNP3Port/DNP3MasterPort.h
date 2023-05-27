@@ -92,7 +92,7 @@ protected:
 	bool AssignClassDuringStartup() final
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: AssignClassDuringStartup() called.", Name);
+			log->trace("{}: AssignClassDuringStartup() called.", Name);
 		return false;
 	}
 	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final
@@ -164,5 +164,7 @@ private:
 
 	template<typename T> void LoadT(const opendnp3::ICollection<opendnp3::Indexed<T> >& meas);
 };
+
+template<> void DNP3MasterPort::LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas);
 
 #endif /* DNP3CLIENTPORT_H_ */

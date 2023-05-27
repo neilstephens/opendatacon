@@ -375,6 +375,7 @@ void ImportODCModule()
 
 // Startup the interpreter - need to have matching tear down in destructor.
 PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
+	python_strand(odc::asio_service::Get()->make_strand()),
 	running(false),
 	keep_running(true),
 	PythonMainThread([=](){Run(GlobalUseSystemPython);})
@@ -388,6 +389,14 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
 // Run() will act as the 'Main' thread
 void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 {
+	//some linux distros don't link some python libraries to the main libpython library
+	//resulting in unresolved symbols when loading those libs
+	//	observed on OEL/Redhat python 3.6, Ubuntu 20.04 python 3.8
+	//	the work-around is to load libpython globally to make the symbols available
+	#ifdef PYTHON_LINK_WO
+	auto python_lib = dlopen(PYTHON_LINK_WO, RTLD_LAZY|RTLD_GLOBAL);
+	#endif
+
 	try
 	{
 		LOGDEBUG("Py_Initialize");
@@ -492,6 +501,9 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 	{
 		LOGERROR("Exception on main Python thread De-init - {}", e.what());
 	}
+	#ifdef PYTHON_LINK_WO
+	if(python_lib) dlclose(python_lib);
+	#endif
 }
 
 PythonInitWrapper::~PythonInitWrapper()
@@ -521,6 +533,7 @@ PythonWrapper::~PythonWrapper()
 		Py_XDECREF(pyFuncDisable);
 		Py_XDECREF(pyTimerHandler);
 		Py_XDECREF(pyRestHandler);
+		Py_XDECREF(pyPublishCallbackHandler);
 
 		RemoveWrapperMapping();
 		Py_XDECREF(pyInstance);
@@ -532,8 +545,7 @@ PythonWrapper::~PythonWrapper()
 	}
 }
 
-void PythonWrapper::Build(const std::string& modulename, const std::string& pyPathName, const std::string& pyLoadModuleName,
-	const std::string& pyClassName, const std::string& PortName, bool GlobalUseSystemPython)
+void PythonWrapper::Build(const std::string& pyPathName, const std::string& PortName, const PyPortConf* const pPortConf)
 {
 	// First we make sure there is a gobal instance of PythonInitWrapper
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
@@ -546,7 +558,7 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 		auto deinit_del = [](PythonInitWrapper* mgr_ptr)
 					{init_flag.clear(std::memory_order_release); delete mgr_ptr; };
 		this->PyMgr = std::shared_ptr<PythonInitWrapper>(
-			new PythonInitWrapper(GlobalUseSystemPython),
+			new PythonInitWrapper(pPortConf->GlobalUseSystemPython),
 			deinit_del);
 		weak_mgr = this->PyMgr;
 	}
@@ -573,12 +585,12 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	PyList_Append(sysPath, programName);
 	Py_DECREF(programName);
 
-	const auto pyUniCodeModuleName = PyUnicode_FromString(pyLoadModuleName.c_str());
+	const auto pyUniCodeModuleName = PyUnicode_FromString(pPortConf->pyModuleName.c_str());
 
 	pyModule = PyImport_Import(pyUniCodeModuleName);
 	if (pyModule == nullptr)
 	{
-		LOGERROR("Could not load Python Module - {} from {}", pyLoadModuleName, pyPathName);
+		LOGERROR("Could not load Python Module - {} from {}", pPortConf->pyModuleName, pyPathName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Module");
 	}
@@ -593,13 +605,13 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	}
 
 	// Build the name of a callable class
-	PyObject* pyClass = PyDict_GetItemString(pyDict, pyClassName.c_str());
+	PyObject* pyClass = PyDict_GetItemString(pyDict, pPortConf->pyClassName.c_str());
 
 	// Py_XDECREF(pyDict);	// Borrowed reference, dont destruct
 
 	if (pyClass == nullptr)
 	{
-		LOGERROR("Could not load Python Class Reference - {}", pyClassName);
+		LOGERROR("Could not load Python Class Reference - {}", pPortConf->pyClassName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Class");
 	}
@@ -640,6 +652,8 @@ void PythonWrapper::Build(const std::string& modulename, const std::string& pyPa
 	pyFuncEvent = GetFunction(pyInstance, "EventHandler");
 	pyTimerHandler = GetFunction(pyInstance, "TimerHandler");
 	pyRestHandler = GetFunction(pyInstance, "RestRequestHandler");
+	if(pPortConf->pyEnablePublishCallbackHandler)
+		pyPublishCallbackHandler = GetFunction(pyInstance, "PublishCallbackHandler");
 }
 
 void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONOverride)
@@ -774,7 +788,15 @@ CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcev
 		auto pyIndex = PyLong_FromSize_t(odcevent->GetIndex());
 		auto pyTime = PyLong_FromUnsignedLongLong(odcevent->GetTimestamp());             // msSinceEpoch
 		auto pyQuality = PyUnicode_FromString(ToString(odcevent->GetQuality()).c_str()); // String quality flags
-		auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString().c_str());
+		auto pyPayload = PyUnicode_FromString(odcevent->GetPayloadString(OctetStringFormat).c_str());
+		if(!pyPayload)
+		{
+			std::string msg = "";
+			if(odcevent->GetEventType() == EventType::OctetString)
+				msg = "Consider using \"OctetStringFormat\":\"Hex\" to receive non-printable characters.";
+			LOGERROR("{}: Event(): PyUnicode_FromString(payload) failed.{}",Name,msg);
+			return CommandStatus::UNDEFINED;
+		}
 		auto pySender = PyUnicode_FromString(SenderName.c_str());
 
 		// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
@@ -873,6 +895,47 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 	return "Did not get a response from Python RestHandler";
 }
 
+void PythonWrapper::CallPublishCallback(const std::string& evt_type, const size_t index, const std::string& quality, const std::string& payload, const msSinceEpoch_t time, const std::string& status)
+{
+	if(!pyPublishCallbackHandler)
+	{
+		LOGERROR("{}: EnablePublishCallbackHandler == true, but failed to find Python handler", Name);
+		return;
+	}
+	try
+	{
+		GetPythonGIL g;
+		if (!g.OkToContinue())
+		{
+			LOGERROR("Error - Interpreter Closing Down in SetTimer");
+			return;
+		}
+		auto pyArgs = PyTuple_New(6);
+		auto pyEventType = PyUnicode_FromString(evt_type.c_str());
+		auto pyIndex = PyLong_FromSize_t(index);
+		auto pyQuality = PyUnicode_FromString(quality.c_str());
+		auto pyPayload = PyUnicode_FromString(payload.c_str());
+		auto pyTime = PyLong_FromUnsignedLongLong(time);
+		auto pyStatus = PyUnicode_FromString(status.c_str());
+
+		// The py values above are stolen into the pyArgs structure - so only need to release pyArgs
+		PyTuple_SetItem(pyArgs, 0, pyEventType);
+		PyTuple_SetItem(pyArgs, 1, pyIndex);
+		PyTuple_SetItem(pyArgs, 2, pyQuality);
+		PyTuple_SetItem(pyArgs, 3, pyPayload);
+		PyTuple_SetItem(pyArgs, 4, pyTime);
+		PyTuple_SetItem(pyArgs, 5, pyStatus);
+
+		PyObject* pyResult = PyCall(pyPublishCallbackHandler, pyArgs); // No passed variables, assume no delayed return
+		if (pyResult) Py_DECREF(pyResult);
+		Py_DECREF(pyArgs);
+	}
+	catch (std::exception& e)
+	{
+		LOGERROR("Exception Caught calling pyPublishCallbackHandler() - {}", e.what());
+	}
+}
+
 #ifdef _MSC_VER
 #pragma region
 #pragma region WorkerFunctions
@@ -890,31 +953,6 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 		return nullptr;
 	}
 	return pyFunc;
-}
-
-void PythonWrapper::DumpStackTrace()
-{
-	PyThreadState* tstate = PyThreadState_GET();
-	if (nullptr != tstate && nullptr != tstate->frame)
-	{
-		PyFrameObject* frame = tstate->frame;
-
-		LOGERROR("Python stack trace:");
-		while (nullptr != frame)
-		{
-			// int line = frame->f_lineno;
-			/*
-			 frame->f_lineno will not always return the correct line number
-			 you need to call PyCode_Addr2Line().
-			*/
-			int line = PyCode_Addr2Line(frame->f_code, frame->f_lasti);
-			const char* filename = PyUnicode_AsUTF8(frame->f_code->co_filename);
-			const char* funcname = PyUnicode_AsUTF8(frame->f_code->co_name);
-			printf("    %s(%d): %s\n", filename, line, funcname);
-			LOGERROR(fmt::format("Trace : {}({}): {}", filename, line, funcname));
-			frame = frame->f_back;
-		}
-	}
 }
 
 void PythonWrapper::PyErrOutput()
@@ -938,7 +976,6 @@ void PythonWrapper::PyErrOutput()
 			if (err_msg)
 			{
 				LOGERROR("Python Error {}", err_msg);
-				PythonWrapper::DumpStackTrace();
 			}
 		}
 		PyErr_Restore(ptype, pvalue, ptraceback); // Do we need to do this or DECREF the variables? This seems to work.

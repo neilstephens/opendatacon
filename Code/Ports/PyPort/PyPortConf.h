@@ -27,10 +27,11 @@
 #ifndef PyPortCONF_H_
 #define PyPortCONF_H_
 
-#include <memory>
-#include <string>
 #include <opendatacon/DataPortConf.h>
 #include <opendatacon/ConfigParser.h>
+#include <opendatacon/IOTypes.h>
+#include <memory>
+#include <string>
 
 class PyPortConf: public DataPortConf
 {
@@ -44,6 +45,8 @@ public:
 		pyTagPrefixString(""),
 		pyEventsAreQueued(false),
 		pyOnlyQueueEventsWithTags(false),
+		pyEnablePublishCallbackHandler(false),
+		pyOctetStringFormat(odc::DataToStringMethod::Raw),
 		GlobalUseSystemPython(false)
 	{}
 
@@ -55,6 +58,8 @@ public:
 	std::string pyTagPrefixString;
 	bool pyEventsAreQueued;
 	bool pyOnlyQueueEventsWithTags;
+	bool pyEnablePublishCallbackHandler;
+	odc::DataToStringMethod pyOctetStringFormat;
 	bool GlobalUseSystemPython;
 
 	//std::unique_ptr<PyPointConf> pPointConf;

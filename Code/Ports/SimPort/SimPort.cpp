@@ -30,7 +30,7 @@
 #include "sqlite3/sqlite3.h"
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
-#include <opendatacon/Version.h>
+#include <opendatacon/version.h>
 #include <chrono>
 #include <limits>
 #include <memory>
@@ -92,8 +92,8 @@ void SimPort::Enable()
 		{
 			if(!enabled)
 			{
-			      PortUp();
 			      enabled = true;
+			      PortUp();
 			      if(!httpServerToken.ServerID.empty())
 					HttpServerManager::StartConnection(httpServerToken);
 			}
@@ -106,10 +106,10 @@ void SimPort::Disable()
 		{
 			if(enabled)
 			{
-			      enabled = false;
 			      PortDown();
 			      if(!httpServerToken.ServerID.empty())
 					HttpServerManager::StopConnection(httpServerToken);
+			      enabled = false;
 			}
 		});
 }
@@ -213,7 +213,8 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 	msSinceEpoch_t ts = msSinceEpoch();
 	try
 	{
-		val = std::stod(value);
+		if(value != "StartVal")
+			val = std::stod(value);
 		if (!timestamp.empty())
 			ts = std::stoull(timestamp);
 	}
@@ -222,20 +223,33 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 		return false;
 	}
 
-	QualityFlags Q = quality.empty() ? QualityFlags::ONLINE : QualityFlagsFromString(quality);
-	if (Q == QualityFlags::NONE)
+	QualityFlags Q = quality.empty() ?
+	                 (value == "StartVal" ? QualityFlags::NONE : QualityFlags::ONLINE)
+	                 : QualityFlagsFromString(quality);
+
+	if (Q == QualityFlags::NONE && value != "StartVal")
 		return false;
 
 	auto indexes = IndexesFromString(index, type);
 	if (ValidEventType(type) && (indexes.size() > 0))
 	{
+		auto point_qual = Q;
 		for (std::size_t index : indexes)
 		{
-			if (force)
+			if(force)
 			{
 				pSimConf->ForcedState(type, index, true);
 			}
-			auto event = std::make_shared<EventInfo>(type, index, Name, Q, ts);
+			else if(pSimConf->ForcedState(type, index))
+				continue;
+
+			if(value == "StartVal")
+			{
+				val = pSimConf->StartValue(type, index);
+				if(Q == QualityFlags::NONE)
+					point_qual = pSimConf->StartQuality(type, index);
+			}
+			auto event = std::make_shared<EventInfo>(type, index, Name, point_qual, ts);
 			if (type == EventType::Binary)
 				event->SetPayload<EventType::Binary>(std::move(val));
 			if (type == EventType::Analog)
@@ -302,6 +316,16 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 	return true;
 }
 
+void SimPort::UISetStdDevScaling(double scale_factor)
+{
+	pSimConf->std_dev_scaling = scale_factor;
+}
+bool SimPort::UIToggleAbsAnalogs()
+{
+	pSimConf->abs_analogs = !pSimConf->abs_analogs;
+	return pSimConf->abs_analogs;
+}
+
 bool SimPort::UIRelease(EventType type, const std::string& index)
 {
 	return SetForcedState(index, type, false);
@@ -323,103 +347,60 @@ bool SimPort::SetForcedState(const std::string& index, EventType type, bool forc
 	return result;
 }
 
+template<odc::EventType event_type>
+void SimPort::ResetPoint(std::size_t index)
+{
+	auto event = pSimConf->Event(event_type, index);
+	event->SetTimestamp(msSinceEpoch());
+	event->SetPayload<event_type>(pSimConf->StartValue(event_type, index));
+	event->SetQuality(pSimConf->StartQuality(event_type, index));
+	PostPublishEvent(event);
+}
+
+template<odc::EventType event_type>
+void SimPort::ResetPoints()
+{
+	for(auto index : pSimConf->Indexes(event_type))
+		ResetPoint<event_type>(index);
+}
+
 void SimPort::PortUp()
 {
 	auto now = msSinceEpoch();
-	std::vector<std::size_t> indexes = pSimConf->Indexes(odc::EventType::Analog);
 
-	for(auto index : indexes)
+	for(const auto& type : {odc::EventType::Analog,odc::EventType::Binary})
 	{
-		ptimer_t ptimer = pIOS->make_steady_timer();
-		pSimConf->Timer("Analog"+std::to_string(index), ptimer);
-
-		//Check if we're configured to load this point from DB
-		const auto db_stats = pSimConf->GetDBStats();
-		if(db_stats.find("Analog"+std::to_string(index)) != db_stats.end())
+		std::vector<std::size_t> indexes = pSimConf->Indexes(type);
+		for(auto index : indexes)
 		{
-			auto event = std::make_shared<EventInfo>(EventType::Analog,index,Name);
-			NextEventFromDB(event);
-			int64_t time_offset = 0;
-			const auto timestamp_handling = pSimConf->TimestampHandling();
-			if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
+			ptimer_t ptimer = pIOS->make_steady_timer();
+			pSimConf->Timer(ToString(type)+std::to_string(index), ptimer);
+
+			if(TryStartEventsFromDB(type,index,now,ptimer))
+				continue;
+			//else do random events
+
+			auto event = pSimConf->Event(type, index);
+			event->SetTimestamp(msSinceEpoch());
+			if(!pSimConf->ForcedState(type,index))
+				PostPublishEvent(event);
+
+			auto interval = pSimConf->UpdateInterval(type, index);
+			if (interval)
 			{
-				if(!!(timestamp_handling & TimestampMode::FIRST))
-				{
-					time_offset = now - event->GetTimestamp();
-				}
-				else if(!!(timestamp_handling & TimestampMode::TOD))
-				{
-					auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
-					auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
-					time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now).count()
-					              - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_ts).count();
-				}
-				else
-				{
-					throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
-				}
+				auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
+				ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
+				ptimer->async_wait([=](asio::error_code err_code)
+					{
+						if (enabled && !err_code)
+						{
+						      if(type == odc::EventType::Analog)
+								StartAnalogEvents(index);
+						      else if(type == odc::EventType::Binary)
+								StartBinaryEvents(index, !event->GetPayload<odc::EventType::Binary>());
+						}
+					});
 			}
-			if(!(timestamp_handling & TimestampMode::FASTFORWARD))
-			{
-				//Find the first event that's not in the past
-				while(now > (event->GetTimestamp()+time_offset))
-					NextEventFromDB(event);
-			}
-
-			msSinceEpoch_t delta;
-			if(now > event->GetTimestamp())
-				delta = 0;
-			else
-				delta = event->GetTimestamp() - now;
-			ptimer->expires_from_now(std::chrono::milliseconds(delta));
-			ptimer->async_wait([=](asio::error_code err_code)
-				{
-					if(enabled && !err_code)
-						SpawnEvent(event, ptimer, time_offset);
-					//else - break timer cycle
-				});
-
-			continue;
-		}
-
-		auto event = pSimConf->Event(odc::EventType::Analog, index);
-		event->SetTimestamp(msSinceEpoch());
-		PostPublishEvent(event);
-
-		auto interval = pSimConf->UpdateInterval(odc::EventType::Analog, index);
-		if (interval)
-		{
-			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-			ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			ptimer->async_wait([=](asio::error_code err_code)
-				{
-					if (enabled && !err_code)
-						StartAnalogEvents(index);
-				});
-		}
-	}
-
-	indexes = pSimConf->Indexes(odc::EventType::Binary);
-	for(auto index : indexes)
-	{
-		auto event = pSimConf->Event(odc::EventType::Binary, index);
-		bool val = event->GetPayload<odc::EventType::Binary>();
-		event->SetTimestamp(msSinceEpoch());
-		PostPublishEvent(event);
-
-		ptimer_t ptimer = pIOS->make_steady_timer();
-		pSimConf->Timer("Binary"+std::to_string(index), ptimer);
-
-		auto interval = pSimConf->UpdateInterval(odc::EventType::Binary, index);
-		if (interval)
-		{
-			auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-			ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
-			ptimer->async_wait([=](asio::error_code err_code)
-				{
-					if (enabled && !err_code)
-						StartBinaryEvents(index, !val);
-				});
 		}
 	}
 }
@@ -429,39 +410,111 @@ void SimPort::PortDown()
 	pSimConf->CancelTimers();
 }
 
+bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, const msSinceEpoch_t now, const ptimer_t ptimer)
+{
+	//Check if we're configured to load this point from DB
+	auto db_stat = pSimConf->GetDBStat(type,index);
+	if(db_stat)
+	{
+		auto event = std::make_shared<EventInfo>(type,index,Name);
+		NextEventFromDB(event);
+		auto time_offset = InitDBTimestampHandling(event, now);
+
+		msSinceEpoch_t delta;
+		if(now > event->GetTimestamp())
+			delta = 0;
+		else
+			delta = event->GetTimestamp() - now;
+		ptimer->expires_from_now(std::chrono::milliseconds(delta));
+		ptimer->async_wait([=](asio::error_code err_code)
+			{
+				if(enabled && !err_code)
+					SpawnEvent(event, ptimer, time_offset);
+				//else - break timer cycle
+			});
+
+		return true;
+	}
+	return false;
+}
+
 void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
-	if(event->GetEventType() == EventType::Analog)
+	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
+	auto rv = sqlite3_step(db_stat.get());
+	if(rv == SQLITE_ROW)
 	{
-		auto db_stats = pSimConf->GetDBStats();
-		auto rv = sqlite3_step(db_stats["Analog"+std::to_string(event->GetIndex())].get());
-		if(rv == SQLITE_ROW)
+		auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stat.get(),0));
+		event->SetTimestamp(t);
+		switch(event->GetEventType())
 		{
-			auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stats["Analog"+std::to_string(event->GetIndex())].get(),0));
-			//TODO: apply some relative offset to time
-			event->SetTimestamp(t);
-			event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stats["Analog"+std::to_string(event->GetIndex())].get(),1));
+			case EventType::Analog:
+			{
+				event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stat.get(),1));
+				break;
+			}
+			case EventType::Binary:
+			{
+				auto val = sqlite3_column_int(db_stat.get(),1);
+				event->SetPayload<EventType::Binary>(val != 0);
+				break;
+			}
+			default:
+				break;
+		}
+		return;
+	}
+	else if(rv == SQLITE_DONE)
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
+	}
+	else
+	{
+		if(auto log = odc::spdlog_get("SimPort"))
+			log->error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
+	}
+	//no more records or error - wait forever
+	auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
+	event->SetTimestamp(forever);
+}
+
+int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event, const msSinceEpoch_t now)
+{
+	int64_t time_offset = 0;
+	const auto timestamp_handling = pSimConf->TimestampHandling(event->GetEventType(),event->GetIndex());
+	if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
+	{
+		if(!!(timestamp_handling & TimestampMode::FIRST))
+		{
+			time_offset = now - event->GetTimestamp();
+		}
+		else if(!!(timestamp_handling & TimestampMode::TOD))
+		{
+			auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
+			auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
+			time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now).count()
+			              - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_ts).count();
 		}
 		else
 		{
-			//wait forever
-			auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
-			event->SetTimestamp(forever);
+			throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
 		}
 	}
-	else if(auto log = odc::spdlog_get("SimPort"))
+	if(!(timestamp_handling & TimestampMode::FASTFORWARD))
 	{
-		log->error("{} : Unsupported EventType : '{}'", ToString(event->GetEventType()));
-		return;
+		//Find the first event that's not in the past
+		while(now > (event->GetTimestamp()+time_offset))
+			NextEventFromDB(event);
 	}
+	return time_offset;
 }
 
 void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//Check if we're configured to load this point from DB
-	const auto db_stats = pSimConf->GetDBStats();
-	if(db_stats.find("Analog"+std::to_string(event->GetIndex())) !=
-	   db_stats.end())
+	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
+	if(db_stat)
 	{
 		NextEventFromDB(event);
 		event->SetTimestamp(event->GetTimestamp()+time_offset);
@@ -483,7 +536,7 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	}
 	else if(auto log = odc::spdlog_get("SimPort"))
 	{
-		log->error("{} : Unsupported EventType : '{}'", ToString(event->GetEventType()));
+		log->error("{} : Unsupported EventType : '{}'", Name, ToString(event->GetEventType()));
 		return;
 	}
 	else
@@ -528,6 +581,8 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTime
 */
 void SimPort::Build()
 {
+	pSimConf->ProcessElements(JSONConf);
+
 	pEnableDisableSync = pIOS->make_strand();
 	auto shared_this = std::static_pointer_cast<SimPort>(shared_from_this());
 	this->SimCollection->insert_or_assign(this->Name,shared_this);
@@ -551,7 +606,7 @@ void SimPort::Build()
 
 		HttpServerManager::AddHandler(httpServerToken, "GET /", roothandler);
 
-		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", ODC_VERSION_STRING, odc::GetConfigVersion());
+		std::string VersionResp = fmt::format("{{\"ODCVersion\":\"{}\",\"ConfigFileVersion\":\"{}\"}}", odc::version_string(), odc::GetConfigVersion());
 		auto versionhandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
 			{
 				rep.status = http::reply::ok;
@@ -733,7 +788,11 @@ void SimPort::Build()
 */
 void SimPort::ProcessElements(const Json::Value& json_root)
 {
-	pSimConf->ProcessElements(json_root);
+	//This function is called multiple times (includes, overrides etc)
+	//Store and override the config, so we can pass it to SimPortConf to process it one hit in Build()
+	auto MemberNames = json_root.getMemberNames();
+	for(auto mn : MemberNames)
+		JSONConf[mn] = json_root[mn];
 }
 
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -742,7 +801,7 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	std::string message = "Control not supported";
 	std::size_t index = 0;
 	//if(auto log = odc::spdlog_get("SimPort"))
-	//    log->trace("{}: Recieved control for Name {}", Name);
+	//    log->trace("{}: Received control for Name {}", Name);
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{

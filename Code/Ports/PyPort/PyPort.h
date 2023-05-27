@@ -43,14 +43,13 @@ using namespace odc;
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
-enum PointType { Binary = 0, Analog = 1, BinaryControl = 2, AnalogControl = 3};
-
 // We have a map of these structures, for each sender to this port. This way we only need one port to handle all inbound data on the event bus.
 class PortMapClass
 {
 public:
 	std::unordered_map<size_t, std::string> AnalogMap;
 	std::unordered_map<size_t, std::string> BinaryMap;
+	std::unordered_map<size_t, std::string> OctetStringMap;
 	std::unordered_map<size_t, std::string> BinaryControlMap;
 	std::unordered_map<size_t, std::string> AnalogControlMap;
 };
@@ -77,12 +76,9 @@ public:
 
 	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
 
-	// Keep track of each PyPort so static methods can get access to the correct PyPort instance
-	static std::unordered_map<PyObject*, PyPort*> PyPorts;
-
 	size_t GetEventQueueSize() { return pWrapper->GetEventQueueSize(); }
 	std::string GetTagValue(const std::string& SenderName, EventType Eventt, size_t Index);
-	void ProcessPoints(PointType ptype, const Json::Value& JSONNode);
+	void ProcessPoints(EventType ptype, const Json::Value& JSONNode);
 	void SetTimer(uint32_t id, uint32_t delayms);
 
 protected:
@@ -91,15 +87,13 @@ protected:
 
 private:
 	std::unique_ptr<PythonWrapper> pWrapper;
-	std::string JSONMain;
-	std::string JSONOverride;
+
+	Json::Value JSONConf;
+
 	std::unordered_map<std::string, std::shared_ptr<PortMapClass>> PortTagMap;
 
 	ServerTokenType pServer;
 
-	// We need one strand, for ALL python ports, so that we control access to the Python Interpreter to one thread.
-	static std::shared_ptr<asio::io_context::strand> python_strand;
-	static std::once_flag python_strand_flag;
 	std::shared_timed_mutex timer_mutex;
 	std::unordered_map<uint32_t, pTimer_t> timers;
 

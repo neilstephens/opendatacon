@@ -21,6 +21,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -61,7 +62,18 @@ inline msSinceEpoch_t msSinceEpoch()
 		       (std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds);
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string format = "%Y-%m-%d %H:%M:%S.%e");
+msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format = "%Y-%m-%d %H:%M:%S.%e");
+std::chrono::system_clock::time_point fs_to_sys_time_point(const std::filesystem::file_time_type& fstime);
+std::filesystem::file_time_type sys_to_fs_time_point(const std::chrono::system_clock::time_point& systime);
+
+std::string buf2hex(const uint8_t *data, size_t size);
+std::vector<uint8_t> hex2buf(const std::string& hexStr);
+
+uint16_t crc_ccitt(const uint8_t* const data, const size_t length, uint16_t crc = 0xFFFF, const uint16_t poly = 0x1021);
+
+template<typename T>
+std::shared_ptr<T> make_shared(T&& X);
 
 } //namspace odc
 
