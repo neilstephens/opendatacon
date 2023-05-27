@@ -299,7 +299,7 @@ inline void SendEvent(ControlCode code, std::size_t index, std::shared_ptr<DataP
 	{
 		IOS->run_one();
 	}
-	REQUIRE(cb_status == status);
+	CHECK(cb_status == status);
 }
 
 /*
@@ -373,7 +373,7 @@ TEST_CASE("TestConfigLoad")
 		sim_port->Build();
 		sim_port->Enable();
 		const bool result = sim_port->GetCurrentState()["AnalogPayload"].isMember("0");
-		REQUIRE(result == true);
+		CHECK(result == true);
 	}
 
 	UnLoadModule(port_lib);
@@ -406,12 +406,14 @@ TEST_CASE("TestForcedPoint")
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
+		//give some time for PortUp() to finish
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "12345.6789");
 		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
-		REQUIRE(sim_port->GetCurrentState()["AnalogPayload"]["0"] == "12345.678900");
+		CHECK(value["RESULT"].asString() == "Success");
+		CHECK(sim_port->GetCurrentState()["AnalogPayload"]["0"] == "12345.678900");
 		sim_port->Disable();
 	}
 
@@ -449,7 +451,7 @@ TEST_CASE("TestReleasePoint")
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "");
 		Json::Value value = resp->ExecuteCommand("ReleasePoint", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
+		CHECK(value["RESULT"].asString() == "Success");
 		sim_port->Disable();
 	}
 
@@ -483,13 +485,15 @@ TEST_CASE("TestAnalogEventToAll")
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
+		//give some time for PortUp() to finish
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", ".*", "12345.6789");
 		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
+		CHECK(value["RESULT"].asString() == "Success");
 		for (std::size_t index : ANALOG_INDEXES)
-			REQUIRE(sim_port->GetCurrentState()["AnalogPayload"][std::to_string(index)] == "12345.678900");
+			CHECK(sim_port->GetCurrentState()["AnalogPayload"][std::to_string(index)] == "12345.678900");
 		sim_port->Disable();
 	}
 
@@ -523,13 +527,15 @@ TEST_CASE("TestBinaryEventToAll")
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
+		//give some time for PortUp() to finish
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
 		Json::Value value = resp->ExecuteCommand("ForcePoint", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
+		CHECK(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
-			REQUIRE(sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)] == "1");
+			CHECK(sim_port->GetCurrentState()["BinaryPayload"][std::to_string(index)] == "1");
 		sim_port->Disable();
 	}
 
@@ -563,13 +569,15 @@ TEST_CASE("TestBinaryEventQuality")
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
+		//give some time for PortUp() to finish
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
+		CHECK(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
-			REQUIRE(sim_port->GetCurrentState()["BinaryQuality"][std::to_string(index)] == "|ONLINE|");
+			CHECK(sim_port->GetCurrentState()["BinaryQuality"][std::to_string(index)] == "|ONLINE|");
 		sim_port->Disable();
 	}
 
@@ -603,13 +611,15 @@ TEST_CASE("TestAnalogEventQuality")
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
+		//give some time for PortUp() to finish
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
+		CHECK(value["RESULT"].asString() == "Success");
 		for (std::size_t index : ANALOG_INDEXES)
-			REQUIRE(sim_port->GetCurrentState()["AnalogQuality"][std::to_string(index)] == "|ONLINE|");
+			CHECK(sim_port->GetCurrentState()["AnalogQuality"][std::to_string(index)] == "|ONLINE|");
 		sim_port->Disable();
 	}
 
@@ -643,19 +653,30 @@ TEST_CASE("TestBinaryEventTimestamp")
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
+		//give some time for PortUp() to finish
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
-		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
 		char buf[64] = {0};
-		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
-		const std::string now_time(buf);
+		const std::time_t before = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&before));
+		const std::string before_time(buf);
+
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
+
+		const std::time_t after = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&after));
+		const std::string after_time(buf);
+
+		CHECK(value["RESULT"].asString() == "Success");
 		for (std::size_t index : BINARY_INDEXES)
 		{
 			const std::string dt = sim_port->GetCurrentState()["BinaryTimestamp"][std::to_string(index)].asString();
-			REQUIRE(now_time == dt.substr(0, now_time.size()));
+			auto evt_time = dt.substr(0, before_time.size());
+			CAPTURE(before_time,evt_time,after_time);
+			CHECK((evt_time == before_time || evt_time == after_time));
 		}
 		sim_port->Disable();
 	}
@@ -690,19 +711,30 @@ TEST_CASE("TestAnalogEventTimestamp")
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
+		//give some time for PortUp() to finish
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
-		const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
 		char buf[64] = {0};
-		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
-		const std::string now_time(buf);
-		const ParamCollection params = BuildParams("Binary", ".*", "1");
+		const std::time_t before = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&before));
+		const std::string before_time(buf);
+
+		const ParamCollection params = BuildParams("Analog", ".*", "123.4567");
 		Json::Value value = resp->ExecuteCommand("SendEvent", params);
-		REQUIRE(value["RESULT"].asString() == "Success");
+
+		const std::time_t after = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::localtime(&after));
+		const std::string after_time(buf);
+
+		CHECK(value["RESULT"].asString() == "Success");
 		for (std::size_t index : ANALOG_INDEXES)
 		{
 			const std::string dt = sim_port->GetCurrentState()["AnalogTimestamp"][std::to_string(index)].asString();
-			REQUIRE(now_time == dt.substr(0, now_time.size()));
+			auto evt_time = dt.substr(0, before_time.size());
+			CAPTURE(before_time,evt_time,after_time);
+			CHECK((evt_time == before_time || evt_time == after_time));
 		}
 		sim_port->Disable();
 	}
@@ -735,10 +767,10 @@ TEST_CASE("TestLatchOn")
 		sim_port->Enable();
 
 		std::string result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
-		REQUIRE(result == "0");
+		CHECK(result == "0");
 		SendEvent(ControlCode::LATCH_ON, 0, sim_port, CommandStatus::SUCCESS);
 		result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
-		REQUIRE(result == "1");
+		CHECK(result == "1");
 		sim_port->Disable();
 	}
 
@@ -770,10 +802,10 @@ TEST_CASE("TestLatchOff")
 		sim_port->Enable();
 
 		std::string result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
-		REQUIRE(result == "0");
+		CHECK(result == "0");
 		SendEvent(ControlCode::TRIP_PULSE_ON, 0, sim_port, CommandStatus::SUCCESS);
 		result = sim_port->GetCurrentState()["BinaryPayload"]["0"].asString();
-		REQUIRE(result == "0");
+		CHECK(result == "0");
 		sim_port->Disable();
 	}
 
@@ -812,7 +844,7 @@ TEST_CASE("PulseTestAnalogTapChangerRaise")
 		sim_port->Enable();
 
 		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
-		REQUIRE(result == "5.000000");
+		CHECK(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
@@ -821,7 +853,7 @@ TEST_CASE("PulseTestAnalogTapChangerRaise")
 		for (int i = 6; i <= 10; ++i)
 		{
 			SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+			CHECK(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -829,7 +861,7 @@ TEST_CASE("PulseTestAnalogTapChangerRaise")
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
 		SendEvent(ControlCode::UNDEFINED, 2, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+		CHECK(10 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
@@ -867,7 +899,7 @@ TEST_CASE("PulseTestAnalogTapChangerLower")
 		sim_port->Enable();
 
 		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
-		REQUIRE(result == "5.000000");
+		CHECK(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -876,7 +908,7 @@ TEST_CASE("PulseTestAnalogTapChangerLower")
 		for (int i = 4; i >= 0; --i)
 		{
 			SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+			CHECK(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -884,7 +916,7 @@ TEST_CASE("PulseTestAnalogTapChangerLower")
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(ControlCode::UNDEFINED, 3, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+		CHECK(0 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
@@ -922,7 +954,7 @@ TEST_CASE("PulseTestAnalogTapChangerRandom")
 		sim_port->Enable();
 
 		int tap_position = std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString());
-		REQUIRE(tap_position == 5);
+		CHECK(tap_position == 5);
 		for (int i = 0; i < 20; ++i)
 		{
 			CommandStatus status = CommandStatus::SUCCESS;
@@ -940,7 +972,7 @@ TEST_CASE("PulseTestAnalogTapChangerRandom")
 				status = CommandStatus::OUT_OF_RANGE;
 			}
 			SendEvent(ControlCode::UNDEFINED, 2 + index, sim_port, status);
-			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+			CHECK(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 		sim_port->Disable();
 	}
@@ -975,7 +1007,7 @@ TEST_CASE("PulseTestBinaryTapChangerRaise")
 
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(5 == odc::to_decimal(binary));
+		CHECK(5 == odc::to_decimal(binary));
 
 		/*
 		  As we know the index 7 tap changer's default position is 5
@@ -986,7 +1018,7 @@ TEST_CASE("PulseTestBinaryTapChangerRaise")
 		{
 			SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
+			CHECK(i == static_cast<int>(odc::to_decimal(binary)));
 		}
 
 		/*
@@ -995,7 +1027,7 @@ TEST_CASE("PulseTestBinaryTapChangerRaise")
 		 */
 		SendEvent(ControlCode::UNDEFINED, 4, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(10 == odc::to_decimal(binary));
+		CHECK(10 == odc::to_decimal(binary));
 
 		/*
 		  test the corner cases now.
@@ -1034,7 +1066,7 @@ TEST_CASE("PulseTestBinaryTapChangerLower")
 
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(5 == odc::to_decimal(binary));
+		CHECK(5 == odc::to_decimal(binary));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -1044,7 +1076,7 @@ TEST_CASE("PulseTestBinaryTapChangerLower")
 		{
 			SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
+			CHECK(i == static_cast<int>(odc::to_decimal(binary)));
 		}
 		/*
 		  test the corner cases now.
@@ -1052,7 +1084,7 @@ TEST_CASE("PulseTestBinaryTapChangerLower")
 		 */
 		SendEvent(ControlCode::UNDEFINED, 5, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(0 == odc::to_decimal(binary));
+		CHECK(0 == odc::to_decimal(binary));
 
 		/*
 		  test the corner cases now.
@@ -1092,7 +1124,7 @@ TEST_CASE("PulseTestBinaryTapChangerRandom")
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
 		int tap_position = odc::to_decimal(binary);
-		REQUIRE(tap_position == 5);
+		CHECK(tap_position == 5);
 		for (int i = 0; i < 20; ++i)
 		{
 			CommandStatus status = CommandStatus::SUCCESS;
@@ -1111,7 +1143,7 @@ TEST_CASE("PulseTestBinaryTapChangerRandom")
 			}
 			SendEvent(ControlCode::UNDEFINED, 4 + index, sim_port, status);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(tap_position == static_cast<int>(odc::to_decimal(binary)));
+			CHECK(tap_position == static_cast<int>(odc::to_decimal(binary)));
 		}
 		sim_port->Disable();
 	}
@@ -1144,7 +1176,7 @@ TEST_CASE("PulseTestBCDTapChangerRaise")
 		sim_port->Enable();
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
-		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(5 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
@@ -1153,14 +1185,14 @@ TEST_CASE("PulseTestBCDTapChangerRaise")
 		for (int i = 6; i <= 10; ++i)
 		{
 			SendEvent(ControlCode::UNDEFINED, 6, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(ControlCode::UNDEFINED, 6, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(10 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(10 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1197,7 +1229,7 @@ TEST_CASE("PulseTestBCDTapChangerLower")
 		sim_port->Enable();
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
-		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(5 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -1206,14 +1238,14 @@ TEST_CASE("PulseTestBCDTapChangerLower")
 		for (int i = 4; i >= 0; --i)
 		{
 			SendEvent(ControlCode::UNDEFINED, 7, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(ControlCode::UNDEFINED, 7, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(0 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1251,7 +1283,7 @@ TEST_CASE("PulseTestBCDTapChangerRandom")
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
 		int tap_position = GetBCDEncodedString(indexes, sim_port);
-		REQUIRE(tap_position == 5);
+		CHECK(tap_position == 5);
 		for (int i = 0; i < 20; ++i)
 		{
 			CommandStatus status = CommandStatus::SUCCESS;
@@ -1269,7 +1301,7 @@ TEST_CASE("PulseTestBCDTapChangerRandom")
 				status = CommandStatus::OUT_OF_RANGE;
 			}
 			SendEvent(ControlCode::UNDEFINED, 6 + index, sim_port, status);
-			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		sim_port->Disable();
 	}
@@ -1308,7 +1340,7 @@ TEST_CASE("OnOffTestAnalogTapChangerRaise")
 		sim_port->Enable();
 
 		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
-		REQUIRE(result == "5.000000");
+		CHECK(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
@@ -1317,7 +1349,7 @@ TEST_CASE("OnOffTestAnalogTapChangerRaise")
 		for (int i = 6; i <= 10; ++i)
 		{
 			SendEvent(CODES[1][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+			CHECK(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -1325,7 +1357,7 @@ TEST_CASE("OnOffTestAnalogTapChangerRaise")
 		  we will test to raise the tap changer beyond the upper limit mark
 		 */
 		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(10 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+		CHECK(10 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 
 		/*
 		  test the corner cases now.
@@ -1363,7 +1395,7 @@ TEST_CASE("OnOffTestAnalogTapChangerLower")
 		sim_port->Enable();
 
 		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["7"].asString();
-		REQUIRE(result == "5.000000");
+		CHECK(result == "5.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -1372,7 +1404,7 @@ TEST_CASE("OnOffTestAnalogTapChangerLower")
 		for (int i = 4; i >= 0; --i)
 		{
 			SendEvent(CODES[0][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+			CHECK(i == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 
 		/*
@@ -1380,7 +1412,7 @@ TEST_CASE("OnOffTestAnalogTapChangerLower")
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 8, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+		CHECK(0 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1411,19 +1443,19 @@ TEST_CASE("OnOffTestAnalogTapChangerStepRaiseLower")
 		sim_port->Enable();
 
 		std::string result = sim_port->GetCurrentState()["AnalogPayload"]["17"].asString();
-		REQUIRE(result == "9.000000");
+		CHECK(result == "9.000000");
 		/*
 		  As we know the index 7 tap changer's default position is 9, step is 2
 		  Raise -> 11
 		*/
 		SendEvent(CODES[1][0], 20, sim_port, CommandStatus::SUCCESS);
-		REQUIRE(11 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
+		CHECK(11 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
 
 		SendEvent(CODES[1][0], 20, sim_port, CommandStatus::SUCCESS);
-		REQUIRE(13 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
+		CHECK(13 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
 
 		SendEvent(CODES[1][0], 21, sim_port, CommandStatus::SUCCESS);
-		REQUIRE(11 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
+		CHECK(11 == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["17"].asString()));
 	}
 	UnLoadModule(port_lib);
 	TestTearDown();
@@ -1470,7 +1502,7 @@ TEST_CASE("OnOffTestAnalogTapChangerRandom")
 				status = CommandStatus::OUT_OF_RANGE;
 			}
 			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 8, sim_port, status);
-			REQUIRE(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
+			CHECK(tap_position == std::stoi(sim_port->GetCurrentState()["AnalogPayload"]["7"].asString()));
 		}
 		sim_port->Disable();
 	}
@@ -1504,7 +1536,7 @@ TEST_CASE("OnOffTestBinaryTapChangerRaise")
 
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(5 == odc::to_decimal(binary));
+		CHECK(5 == odc::to_decimal(binary));
 
 		/*
 		  As we know the index 7 tap changer's default position is 5
@@ -1515,7 +1547,7 @@ TEST_CASE("OnOffTestBinaryTapChangerRaise")
 		{
 			SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
+			CHECK(i == static_cast<int>(odc::to_decimal(binary)));
 		}
 
 		/*
@@ -1524,7 +1556,7 @@ TEST_CASE("OnOffTestBinaryTapChangerRaise")
 		 */
 		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(10 == odc::to_decimal(binary));
+		CHECK(10 == odc::to_decimal(binary));
 
 		/*
 		  test the corner cases now.
@@ -1563,7 +1595,7 @@ TEST_CASE("OnOffTestBinaryTapChangerLower")
 
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(5 == odc::to_decimal(binary));
+		CHECK(5 == odc::to_decimal(binary));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -1573,7 +1605,7 @@ TEST_CASE("OnOffTestBinaryTapChangerLower")
 		{
 			SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::SUCCESS);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(i == static_cast<int>(odc::to_decimal(binary)));
+			CHECK(i == static_cast<int>(odc::to_decimal(binary)));
 		}
 		/*
 		  test the corner cases now.
@@ -1581,7 +1613,7 @@ TEST_CASE("OnOffTestBinaryTapChangerLower")
 		 */
 		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 9, sim_port, CommandStatus::OUT_OF_RANGE);
 		binary = GetBinaryEncodedString(indexes, sim_port);
-		REQUIRE(0 == odc::to_decimal(binary));
+		CHECK(0 == odc::to_decimal(binary));
 
 		/*
 		  test the corner cases now.
@@ -1621,7 +1653,7 @@ TEST_CASE("OnOffTestBinaryTapChangerRandom")
 		const std::vector<std::size_t> indexes = {11, 12, 13, 14};
 		std::string binary = GetBinaryEncodedString(indexes, sim_port);
 		int tap_position = odc::to_decimal(binary);
-		REQUIRE(tap_position == 5);
+		CHECK(tap_position == 5);
 		for (int i = 0; i < 20; ++i)
 		{
 			CommandStatus status = CommandStatus::SUCCESS;
@@ -1640,7 +1672,7 @@ TEST_CASE("OnOffTestBinaryTapChangerRandom")
 			}
 			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 9, sim_port, status);
 			binary = GetBinaryEncodedString(indexes, sim_port);
-			REQUIRE(tap_position == static_cast<int>(odc::to_decimal(binary)));
+			CHECK(tap_position == static_cast<int>(odc::to_decimal(binary)));
 		}
 		sim_port->Disable();
 	}
@@ -1673,7 +1705,7 @@ TEST_CASE("OnOffTestBCDTapChangerRaise")
 		sim_port->Enable();
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
-		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(5 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
@@ -1682,14 +1714,14 @@ TEST_CASE("OnOffTestBCDTapChangerRaise")
 		for (int i = 6; i <= 10; ++i)
 		{
 			SendEvent(CODES[1][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(CODES[1][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(10 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(10 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1726,7 +1758,7 @@ TEST_CASE("OnOffTestBCDTapChangerLower")
 		sim_port->Enable();
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
-		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(5 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -1735,14 +1767,14 @@ TEST_CASE("OnOffTestBCDTapChangerLower")
 		for (int i = 4; i >= 0; --i)
 		{
 			SendEvent(CODES[0][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(CODES[0][RandomNumber(0, 999) % 3], 10, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(0 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1780,7 +1812,7 @@ TEST_CASE("OnOffTestBCDTapChangerRandom")
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
 		int tap_position = GetBCDEncodedString(indexes, sim_port);
-		REQUIRE(tap_position == 5);
+		CHECK(tap_position == 5);
 		for (int i = 0; i < 20; ++i)
 		{
 			CommandStatus status = CommandStatus::SUCCESS;
@@ -1798,7 +1830,7 @@ TEST_CASE("OnOffTestBCDTapChangerRandom")
 				status = CommandStatus::OUT_OF_RANGE;
 			}
 			SendEvent(CODES[index][RandomNumber(0, 999) % 3], 10, sim_port, status);
-			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		sim_port->Disable();
 	}
@@ -1831,7 +1863,7 @@ TEST_CASE("OnOffBCDTapChangerRaiseWithTrip")
 		sim_port->Enable();
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
-		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(5 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Raise -> 6, Raise -> 7, Raise -> 8, Raise -> 9, Raise -> 10
@@ -1840,14 +1872,14 @@ TEST_CASE("OnOffBCDTapChangerRaiseWithTrip")
 		for (int i = 6; i <= 10; ++i)
 		{
 			SendEvent(TRIP_CODES[1], 11, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(TRIP_CODES[1], 11, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(10 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(10 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1884,7 +1916,7 @@ TEST_CASE("OnOffTestBCDTapChangerLowerWithClose")
 		sim_port->Enable();
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
-		REQUIRE(5 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(5 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  As we know the index 7 tap changer's default position is 5
 		  Lower -> 4, Lower -> 3, Lower -> 2, Lower -> 1, Lower -> 0
@@ -1893,14 +1925,14 @@ TEST_CASE("OnOffTestBCDTapChangerLowerWithClose")
 		for (int i = 4; i >= 0; --i)
 		{
 			SendEvent(TRIP_CODES[0], 11, sim_port, CommandStatus::SUCCESS);
-			REQUIRE(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(i == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		/*
 		  test the corner cases now.
 		  we will test to raise the tap changer beyond the lower limit mark
 		 */
 		SendEvent(TRIP_CODES[0], 11, sim_port, CommandStatus::OUT_OF_RANGE);
-		REQUIRE(0 == GetBCDEncodedString(indexes, sim_port));
+		CHECK(0 == GetBCDEncodedString(indexes, sim_port));
 		/*
 		  test the corner cases now.
 		  send the event with an index which doesnt exist
@@ -1938,7 +1970,7 @@ TEST_CASE("OnOffTestBCDTapChangerRandomWithClose")
 
 		const std::vector<std::size_t> indexes = {10, 11, 12, 13, 14};
 		int tap_position = GetBCDEncodedString(indexes, sim_port);
-		REQUIRE(tap_position == 5);
+		CHECK(tap_position == 5);
 		for (int i = 0; i < 20; ++i)
 		{
 			CommandStatus status = CommandStatus::SUCCESS;
@@ -1956,7 +1988,7 @@ TEST_CASE("OnOffTestBCDTapChangerRandomWithClose")
 				status = CommandStatus::OUT_OF_RANGE;
 			}
 			SendEvent(TRIP_CODES[index], 11, sim_port, status);
-			REQUIRE(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
+			CHECK(tap_position == static_cast<int>(GetBCDEncodedString(indexes, sim_port)));
 		}
 		sim_port->Disable();
 	}

@@ -240,6 +240,9 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 			{
 				pSimConf->ForcedState(type, index, true);
 			}
+			else if(pSimConf->ForcedState(type, index))
+				continue;
+
 			if(value == "StartVal")
 			{
 				val = pSimConf->StartValue(type, index);
@@ -379,7 +382,8 @@ void SimPort::PortUp()
 
 			auto event = pSimConf->Event(type, index);
 			event->SetTimestamp(msSinceEpoch());
-			PostPublishEvent(event);
+			if(!pSimConf->ForcedState(type,index))
+				PostPublishEvent(event);
 
 			auto interval = pSimConf->UpdateInterval(type, index);
 			if (interval)
