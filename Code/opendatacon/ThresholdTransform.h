@@ -31,6 +31,8 @@
 #include <cfloat>
 #include <opendatacon/Transform.h>
 
+using namespace odc;
+
 class ThresholdTransform: public Transform
 {
 public:

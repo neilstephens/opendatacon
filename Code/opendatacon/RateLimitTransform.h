@@ -32,6 +32,8 @@
 #include <unordered_map>
 #include <opendatacon/util.h>
 
+using namespace odc;
+
 class RateLimitTransform: public Transform
 {
 public:

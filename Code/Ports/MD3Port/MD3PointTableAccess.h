@@ -27,8 +27,6 @@
 #ifndef MD3POINTTABLEACCESS_H_
 #define MD3POINTTABLEACCESS_H_
 #include "MD3.h"
-#include "MD3PointConf.h"
-//#include "MD3PortConf.h"
 #include "MD3Utility.h"
 #include <unordered_map>
 #include <vector>

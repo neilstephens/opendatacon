@@ -32,6 +32,8 @@
 #include <opendatacon/Transform.h>
 #include <opendatacon/IOTypes.h>
 
+using namespace odc;
+
 class LogicInvTransform: public Transform
 {
 public:
