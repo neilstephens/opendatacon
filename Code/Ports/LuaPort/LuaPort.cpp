@@ -43,7 +43,14 @@ void LuaPort::Build()
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
 	auto ret = luaL_dofile(LuaState, pConf->LuaFile.c_str());
 	if(ret != LUA_OK)
-		throw std::runtime_error(Name+": Failed to read LuaFile '"+pConf->LuaFile+"'.");
+		throw std::runtime_error(Name+": Failed to read LuaFile '"+pConf->LuaFile+"'. Error: "+lua_tostring(LuaState, -1));
+
+	for(const auto& func_name : {"Enable","Disable","ProcessConfig","EventHandler"})
+	{
+		lua_getglobal(LuaState, func_name);
+		if(!lua_isfunction(LuaState, -1))
+			throw std::runtime_error(Name+": Lua code doesn't have '"+func_name+"' function.");
+	}
 }
 void LuaPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
