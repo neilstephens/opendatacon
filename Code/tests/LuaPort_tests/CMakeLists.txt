@@ -16,37 +16,14 @@
  #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
- #
-add_subdirectory(ODC_tests)
+ # 
+project(LuaPort_tests)
 
-if(DNP3PORT)
-add_subdirectory(DNP3Port_tests)
-endif()
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h)
 
-if(MD3PORT)
-add_subdirectory(MD3Port_tests)
-endif()
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC ${DL})
 
-if(CBPORT)
-add_subdirectory(CBPort_tests)
-endif()
-
-if(PYPORT)
-add_subdirectory(PyPort_tests)
-endif()
-
-if(SIMPORT)
-add_subdirectory(SimPort_tests)
-endif()
-
-if(FILETRANSFERPORT)
-add_subdirectory(FileTransferPort_tests)
-endif()
-
-if(LUAPORT)
-add_subdirectory(LuaPort_tests)
-endif()
-
-if(FULL)
-add_subdirectory(Integration_tests)
-endif()
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
+add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})
