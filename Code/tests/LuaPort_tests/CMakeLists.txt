@@ -21,6 +21,15 @@ project(LuaPort_tests)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h)
 
+if("${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
+	configure_file(test.lua ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test.lua COPYONLY )
+else()
+	foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
+		string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
+		configure_file(test.lua ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG}}/test.lua COPYONLY )
+	endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
+endif()
+
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${DL})
 

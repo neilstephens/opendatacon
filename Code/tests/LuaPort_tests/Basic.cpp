@@ -46,8 +46,7 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 		delptr deletePort = GetPortDestroyer(portlib, "Lua");
 		REQUIRE(deletePort);
 
-		//TODO: put something in the config
-		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", ""), deletePort);
+		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
 
 		PUT->Build();
 		PUT->Enable();
@@ -80,8 +79,7 @@ TEST_CASE(SUITE("ConstructBuildEnableDestroy"))
 		delptr deletePort = GetPortDestroyer(portlib, "Lua");
 		REQUIRE(deletePort);
 
-		//TODO: put something in the config
-		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", ""), deletePort);
+		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
 
 		PUT->Build();
 		PUT->Enable();
