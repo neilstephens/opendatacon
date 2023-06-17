@@ -52,7 +52,6 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 private:
-	std::string LuaFile;
 	lua_State* LuaState = luaL_newstate();
 };
 

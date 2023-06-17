@@ -26,20 +26,12 @@
 
 #ifndef LuaPortConf_H_
 #define LuaPortConf_H_
-#include "LuaPointConf.h"
 #include <opendatacon/DataPort.h>
-
-enum class TranferDirection { TX, RX };
 
 class LuaPortConf: public DataPortConf
 {
 public:
-	LuaPortConf(const std::string& FileName)
-	{
-		pPointConf = std::make_unique<LuaPointConf>(FileName);
-	}
-
-	std::unique_ptr<LuaPointConf> pPointConf;
+	std::string LuaFile;
 };
 
 #endif /* LuaPortConf_H_ */

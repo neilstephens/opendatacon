@@ -30,7 +30,7 @@
 LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
-	pConf = std::make_unique<LuaPortConf>(ConfFilename);
+	pConf = std::make_unique<LuaPortConf>();
 	ProcessFile();
 }
 
@@ -40,9 +40,10 @@ void LuaPort::Disable()
 {}
 void LuaPort::Build()
 {
-	auto ret = luaL_dofile(LuaState, LuaFile.c_str());
+	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
+	auto ret = luaL_dofile(LuaState, pConf->LuaFile.c_str());
 	if(ret != LUA_OK)
-		throw std::runtime_error(Name+": Failed to read LuaFile '"+LuaFile+"'.");
+		throw std::runtime_error(Name+": Failed to read LuaFile '"+pConf->LuaFile+"'.");
 }
 void LuaPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
@@ -56,7 +57,9 @@ void LuaPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
+	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
+
 	if(JSONRoot.isMember("LuaFile"))
-		LuaFile = JSONRoot["LuaFile"].asString();
+		pConf->LuaFile = JSONRoot["LuaFile"].asString();
 }
 
