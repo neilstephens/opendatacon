@@ -81,9 +81,9 @@ public:
 
 	void CreateBinaryControl(std::size_t index,
 		const std::string& port_source,
-		odc::FeedbackType type,
+		FeedbackType type,
 		const std::vector<std::size_t>& indexes,
-		const std::vector<odc::PositionAction>& action,
+		const std::vector<PositionAction>& action,
 		std::size_t lower_limit, std::size_t raise_limit,
 		double tap_step);
 	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index) const;
