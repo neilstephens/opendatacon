@@ -42,7 +42,7 @@ void LuaPort::Disable()
 {}
 void LuaPort::Build()
 {
-	ExportIOTypeWrappersToLua(LuaState);
+	ExportIOTypeWrappersToLua(LuaState,Name);
 	luaL_openlibs(LuaState);
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
 	auto ret = luaL_dofile(LuaState, pConf->LuaFile.c_str());

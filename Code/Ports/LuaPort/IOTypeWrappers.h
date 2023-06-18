@@ -29,6 +29,6 @@
 
 #include "CLua.h"
 
-void ExportIOTypeWrappersToLua(lua_State* const L);
+void ExportIOTypeWrappersToLua(lua_State* const L, const std::string& Name);
 
 #endif // IOTYPEWRAPPERS_H
