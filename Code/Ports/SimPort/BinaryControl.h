@@ -38,6 +38,54 @@
 
 enum class FeedbackMode { PULSE, LATCH };
 
+enum class FeedbackType : uint8_t
+{
+	ANALOG = 1,
+	BINARY = 2,
+	BCD = 3,
+	UNDEFINED = 4
+};
+
+enum class PositionAction : uint8_t
+{
+	RAISE = 1,
+	LOWER = 2,
+	UNDEFINED = 3
+};
+
+inline FeedbackType ToFeedbackType(const std::string& str_type)
+{
+	FeedbackType type = FeedbackType::UNDEFINED;
+	if (odc::to_lower(str_type) == "analog")
+		type = FeedbackType::ANALOG;
+	else if (odc::to_lower(str_type) == "binary")
+		type = FeedbackType::BINARY;
+	else if (odc::to_lower(str_type) == "bcd")
+		type = FeedbackType::BCD;
+	return type;
+}
+
+inline PositionAction ToPositionAction(const std::string& str_action)
+{
+	PositionAction action = PositionAction::UNDEFINED;
+	if (odc::to_lower(str_action) == "raise")
+		action = PositionAction::RAISE;
+	else if (odc::to_lower(str_action) == "lower")
+		action = PositionAction::LOWER;
+	else if (auto log = odc::spdlog_get("SimPort"))
+		log->error("Invalid action for Postion feedback (use 'RAISE' or 'LOWER') : '{}'", str_action);
+	return action;
+}
+
+inline std::string ToString(const FeedbackType type)
+{
+	ENUMSTRING(type, FeedbackType, ANALOG            )
+	ENUMSTRING(type, FeedbackType, BINARY            )
+	ENUMSTRING(type, FeedbackType, BCD               )
+	ENUMSTRING(type, FeedbackType, UNDEFINED         )
+	return "<no_string_representation>";
+}
+
 //DNP3 has 3 control models: complimentary (1-output) latch, complimentary 2-output (pulse), activation (1-output) pulse
 //We can generalise, and come up with a simpler superset:
 //	-have an arbitrary length list of outputs
@@ -65,15 +113,15 @@ struct BinaryFeedback
 
 struct PositionFeedback
 {
-	PositionFeedback(odc::FeedbackType feedback_type,
-		const std::vector<odc::PositionAction>& an,
+	PositionFeedback(FeedbackType feedback_type,
+		const std::vector<PositionAction>& an,
 		const std::vector<std::size_t>& index,
 		std::size_t l_limit, std::size_t r_limit,
 		double r_tap_step):
 		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit), tap_step(r_tap_step) {}
 
-	odc::FeedbackType type;
-	std::vector<odc::PositionAction> action;
+	FeedbackType type;
+	std::vector<PositionAction> action;
 	std::vector<std::size_t> indexes;
 	std::size_t lower_limit;
 	std::size_t raise_limit;
@@ -93,9 +141,9 @@ public:
 
 	void CreateBinaryControl(std::size_t index,
 		const std::string& port_source,
-		odc::FeedbackType type,
+		FeedbackType type,
 		const std::vector<std::size_t>& indexes,
-		const std::vector<odc::PositionAction>& action,
+		const std::vector<PositionAction>& action,
 		std::size_t lower_limit, std::size_t raise_limit,
 		double tap_step);
 	std::shared_ptr<PositionFeedback> GetPositionFeedback(std::size_t index);
