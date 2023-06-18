@@ -25,8 +25,9 @@
  */
 
 #include "LuaPort.h"
+#include "LuaPortConf.h"
 #include "CLua.h"
-#include "IOTypeWrappers.h"
+#include "Wrappers.h"
 #include <opendatacon/util.h>
 
 LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -42,7 +43,7 @@ void LuaPort::Disable()
 {}
 void LuaPort::Build()
 {
-	ExportIOTypeWrappersToLua(LuaState,Name);
+	ExportWrappersToLua(LuaState,Name);
 	luaL_openlibs(LuaState);
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
 	auto ret = luaL_dofile(LuaState, pConf->LuaFile.c_str());

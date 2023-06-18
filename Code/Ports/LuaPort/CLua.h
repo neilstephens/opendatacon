@@ -24,9 +24,6 @@
  *      Author: Neil Stephens
  */
 
-#ifndef CLUA_H
-#define CLUA_H
-
 extern "C"
 {
 #include <lua.h>
@@ -34,4 +31,3 @@ extern "C"
 #include <lauxlib.h>
 }
 
-#endif // CLUA_H

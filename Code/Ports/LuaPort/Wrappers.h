@@ -18,18 +18,23 @@
  *	limitations under the License.
  */
 /*
- * IOTypeWrappers.h
+ * Wrappers.h
  *
  *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
+#ifndef WRAPPERS_H
+#define WRAPPERS_H
 
-#ifndef IOTYPEWRAPPERS_H
-#define IOTYPEWRAPPERS_H
+#include "IOTypeWrappers.h"
+#include "LogWrappers.h"
+#include <string>
 
-#include "CLua.h"
+inline void ExportWrappersToLua(lua_State* const L, const std::string& Name)
+{
+	ExportEventTypes(L);
+	ExportQualityFlags(L);
+	ExportLogWrappers(L,Name);
+}
 
-void ExportEventTypes(lua_State* const L);
-void ExportQualityFlags(lua_State* const L);
-
-#endif // IOTYPEWRAPPERS_H
+#endif // WRAPPERS_H
