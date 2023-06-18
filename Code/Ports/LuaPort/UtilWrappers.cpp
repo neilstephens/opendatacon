@@ -18,26 +18,26 @@
  *	limitations under the License.
  */
 /*
- * Wrappers.h
+ *  UtilWrappers.cpp
  *
  *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
-#ifndef WRAPPERS_H
-#define WRAPPERS_H
-
-#include "IOTypeWrappers.h"
-#include "LogWrappers.h"
-#include "UtilWrappers.h"
-#include <string>
-
-inline void ExportWrappersToLua(lua_State* const L, const std::string& Name)
+#include "CLua.h"
+#include <opendatacon/util.h>
+void ExportUtilWrappers(lua_State* const L)
 {
-	ExportEventTypes(L);
-	ExportQualityFlags(L);
-	ExportCommandStatus(L);
-	ExportLogWrappers(L,Name);
-	ExportUtilWrappers(L);
+	lua_pushcfunction(L, [](lua_State* const L) -> int
+		{
+			lua_pushinteger(L, odc::msSinceEpoch());
+			return 1; //number of lua ret vals pushed onto the stack
+		});
+	lua_setglobal(L, "msSinceEpoch");
+	lua_pushcfunction(L, [](lua_State* const L) -> int
+		{
+			auto ms = lua_tointeger(L,-1);
+			lua_pushstring(L, odc::since_epoch_to_datetime(ms).c_str());
+			return 1; //number of lua ret vals pushed onto the stack
+		});
+	lua_setglobal(L, "msSinceEpochToDateTime");
 }
-
-#endif // WRAPPERS_H

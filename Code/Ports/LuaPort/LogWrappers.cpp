@@ -45,7 +45,7 @@ void ExportLogWrappers(lua_State* const L, const std::string& Name)
 				auto msg = lua_tostring(L,-1);
 				auto log = odc::spdlog_get("LuaPort");
 				if(log)
-					log->log(lvl,"{}: {}",name,msg);
+					log->log(lvl,"[Lua] {}: {}",name,msg);
 				lua_pushboolean(L, !!log);
 				return 1; //number of lua ret vals pushed onto the stack
 			}, 2);

@@ -50,6 +50,9 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 
 		PUT->Build();
 		PUT->Enable();
+		auto event = std::make_shared<EventInfo>(EventType::OctetString,123);
+		event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("test event")));
+		PUT->Event(event,"test_harness",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 		PUT->Disable();
 
 		work.reset();

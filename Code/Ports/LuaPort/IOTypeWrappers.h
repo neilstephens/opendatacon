@@ -31,5 +31,6 @@
 
 void ExportEventTypes(lua_State* const L);
 void ExportQualityFlags(lua_State* const L);
+void ExportCommandStatus(lua_State* const L);
 
 #endif // IOTYPEWRAPPERS_H

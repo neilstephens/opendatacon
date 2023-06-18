@@ -29,23 +29,18 @@
 
 void ExportEventTypes(lua_State* const L)
 {
+	//Make a table that has the values of each event type
+	lua_newtable(L);
 	auto event_type = odc::EventType::BeforeRange;
 	while((event_type+1) != odc::EventType::AfterRange)
 	{
 		event_type = event_type+1;
-		auto lua_return = static_cast< std::underlying_type_t<odc::EventType> >(event_type);
-
-		//push value to be captured by closure (called upvalue)
-		lua_pushinteger(L,lua_return);
-		lua_pushcclosure(L, [](lua_State* const L) -> int
-			{
-				lua_pushvalue(L, lua_upvalueindex(1));
-				return 1; //number of lua ret vals pushed onto the stack
-			}, 1);
-
-		//give the closure a name to call from lau
-		lua_setglobal(L, (ToString(event_type)+"EventType").c_str());
+		auto lua_val = static_cast< std::underlying_type_t<odc::EventType> >(event_type);
+		lua_pushstring(L, ToString(event_type).c_str());
+		lua_pushinteger(L, lua_val);
+		lua_settable(L, -3);
 	}
+	lua_setglobal(L,"EventType");
 }
 
 void ExportQualityFlags(lua_State* const L)
@@ -87,5 +82,42 @@ void ExportQualityFlags(lua_State* const L)
 			return 1; //number of lua ret vals pushed onto the stack
 		});
 	lua_setglobal(L, "QualityFlags");
+}
+
+void ExportCommandStatus(lua_State* const L)
+{
+	//Make a table that has the values
+	lua_newtable(L);
+	for(const auto& cmd_stat :
+	{
+		odc::CommandStatus::SUCCESS ,
+		odc::CommandStatus::TIMEOUT,
+		odc::CommandStatus::NO_SELECT,
+		odc::CommandStatus::FORMAT_ERROR,
+		odc::CommandStatus::NOT_SUPPORTED,
+		odc::CommandStatus::ALREADY_ACTIVE,
+		odc::CommandStatus::HARDWARE_ERROR,
+		odc::CommandStatus::LOCAL,
+		odc::CommandStatus::TOO_MANY_OPS,
+		odc::CommandStatus::NOT_AUTHORIZED,
+		odc::CommandStatus::AUTOMATION_INHIBIT,
+		odc::CommandStatus::PROCESSING_LIMITED,
+		odc::CommandStatus::OUT_OF_RANGE,
+		odc::CommandStatus::DOWNSTREAM_LOCAL,
+		odc::CommandStatus::ALREADY_COMPLETE,
+		odc::CommandStatus::BLOCKED,
+		odc::CommandStatus::CANCELLED,
+		odc::CommandStatus::BLOCKED_OTHER_MASTER,
+		odc::CommandStatus::DOWNSTREAM_FAIL,
+		odc::CommandStatus::NON_PARTICIPATING,
+		odc::CommandStatus::UNDEFINED
+	})
+	{
+		auto lua_val = static_cast< std::underlying_type_t<odc::CommandStatus> >(cmd_stat);
+		lua_pushstring(L, ToString(cmd_stat).c_str());
+		lua_pushinteger(L, lua_val);
+		lua_settable(L, -3);
+	}
+	lua_setglobal(L,"CommandStatus");
 }
 

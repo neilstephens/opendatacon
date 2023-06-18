@@ -46,7 +46,10 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 private:
+	void PushEventInfo(std::shared_ptr<const EventInfo> event);
+
 	lua_State* LuaState = luaL_newstate();
+	Json::Value JSONConf;
 };
 
 #endif /* LuaPort_H_ */
