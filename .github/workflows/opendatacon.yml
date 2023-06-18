@@ -181,6 +181,9 @@ jobs:
     - name: FileTransferPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
+    - name: LuaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
@@ -320,6 +323,9 @@ jobs:
     - name: FileTransferPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
+    - name: LuaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: /github/workspace/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
