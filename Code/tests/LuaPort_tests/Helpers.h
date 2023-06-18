@@ -33,6 +33,7 @@
 #include <opendatacon/util.h>
 #include <opendatacon/Platform.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <whereami++.h>
 #include <fstream>
 #include <filesystem>
 #include <random>
@@ -64,11 +65,8 @@ inline void TestTearDown()
 
 inline Json::Value GetConfigJSON()
 {
-	static const char* conf = R"001(
-	{
-        "LuaFile" : "test.lua",
-        "Blah" : "Blah"
-    })001";
+	std::string ExePath = whereami::getExecutablePath().dirname();
+	std::string conf = "{\"LuaFile\" : \""+ExePath+"/test.lua\"}";
 
 	std::istringstream iss(conf);
 	Json::CharReaderBuilder JSONReader;
