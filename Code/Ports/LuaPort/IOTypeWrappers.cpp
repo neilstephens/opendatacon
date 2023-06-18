@@ -18,36 +18,33 @@
  *	limitations under the License.
  */
 /*
- * LuaPort.h
+ * IOTypeWrappers.cpp
  *
- *  Created on: 17/06/2023
+ *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
 
-#ifndef LuaPort_H_
-#define LuaPort_H_
-
-#include "LuaPortConf.h"
 #include "CLua.h"
-#include <opendatacon/DataPort.h>
+#include <opendatacon/IOTypes.h>
 
-using namespace odc;
-
-class LuaPort: public DataPort
+void ExportIOTypeWrappersToLua(lua_State* const L)
 {
-public:
-	LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
+	auto event_type = odc::EventType::BeforeRange;
+	while((event_type+1) != odc::EventType::AfterRange)
+	{
+		event_type = event_type+1;
+		auto lua_return = static_cast< std::underlying_type_t<odc::EventType> >(event_type);
 
-	void Enable() override;
-	void Disable() override;
-	void Build() override;
+		//push value to be captured by closure (called upvalue)
+		lua_pushinteger(L,lua_return);
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				lua_pushvalue(L, lua_upvalueindex(1));
+				return 1; //number of lua ret vals pushed onto the stack
+			}, 1);
 
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+		//give the closure a name to call from lau
+		lua_setglobal(L, (ToString(event_type)+"EventType").c_str());
+	}
+}
 
-	void ProcessElements(const Json::Value& JSONRoot) override;
-
-private:
-	lua_State* LuaState = luaL_newstate();
-};
-
-#endif /* LuaPort_H_ */

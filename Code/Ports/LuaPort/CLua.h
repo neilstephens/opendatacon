@@ -18,36 +18,20 @@
  *	limitations under the License.
  */
 /*
- * LuaPort.h
+ * CLua.h
  *
- *  Created on: 17/06/2023
+ *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
 
-#ifndef LuaPort_H_
-#define LuaPort_H_
+#ifndef CLUA_H
+#define CLUA_H
 
-#include "LuaPortConf.h"
-#include "CLua.h"
-#include <opendatacon/DataPort.h>
-
-using namespace odc;
-
-class LuaPort: public DataPort
+extern "C"
 {
-public:
-	LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
+}
 
-	void Enable() override;
-	void Disable() override;
-	void Build() override;
-
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-
-	void ProcessElements(const Json::Value& JSONRoot) override;
-
-private:
-	lua_State* LuaState = luaL_newstate();
-};
-
-#endif /* LuaPort_H_ */
+#endif // CLUA_H

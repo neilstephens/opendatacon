@@ -19,3 +19,9 @@ function EventHandler(EventType, Index, Time, Quality, Payload, Sender)
 	print("[Lua] EventHandler( "..EventType..","..Index..")");
 	return;
 end
+
+B = BinaryEventType();
+A = AnalogEventType();
+
+print("[Lua] AnalogEventType() returns " .. A);
+print("[Lua] BinaryEventType() returns " .. B);

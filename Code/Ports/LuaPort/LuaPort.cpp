@@ -20,11 +20,13 @@
 /*
  * LuaPort.cpp
  *
- *  Created on: 19/01/2023
+ *  Created on: 17/06/2023
  *      Author: Neil Stephens
  */
 
 #include "LuaPort.h"
+#include "CLua.h"
+#include "IOTypeWrappers.h"
 #include <opendatacon/util.h>
 
 LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -40,10 +42,12 @@ void LuaPort::Disable()
 {}
 void LuaPort::Build()
 {
+	ExportIOTypeWrappersToLua(LuaState);
+	luaL_openlibs(LuaState);
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
 	auto ret = luaL_dofile(LuaState, pConf->LuaFile.c_str());
 	if(ret != LUA_OK)
-		throw std::runtime_error(Name+": Failed to read LuaFile '"+pConf->LuaFile+"'. Error: "+lua_tostring(LuaState, -1));
+		throw std::runtime_error(Name+": Failed to load LuaFile '"+pConf->LuaFile+"'. Error: "+lua_tostring(LuaState, -1));
 
 	for(const auto& func_name : {"Enable","Disable","ProcessConfig","EventHandler"})
 	{

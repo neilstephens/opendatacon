@@ -18,36 +18,17 @@
  *	limitations under the License.
  */
 /*
- * LuaPort.h
+ * IOTypeWrappers.h
  *
- *  Created on: 17/06/2023
+ *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
 
-#ifndef LuaPort_H_
-#define LuaPort_H_
+#ifndef IOTYPEWRAPPERS_H
+#define IOTYPEWRAPPERS_H
 
-#include "LuaPortConf.h"
 #include "CLua.h"
-#include <opendatacon/DataPort.h>
 
-using namespace odc;
+void ExportIOTypeWrappersToLua(lua_State* const L);
 
-class LuaPort: public DataPort
-{
-public:
-	LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
-
-	void Enable() override;
-	void Disable() override;
-	void Build() override;
-
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-
-	void ProcessElements(const Json::Value& JSONRoot) override;
-
-private:
-	lua_State* LuaState = luaL_newstate();
-};
-
-#endif /* LuaPort_H_ */
+#endif // IOTYPEWRAPPERS_H
