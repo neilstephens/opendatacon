@@ -50,6 +50,7 @@ void LuaPort::Build()
 {
 	//populate the Lua state with wrapped types and helper functions
 	ExportWrappersToLua(LuaState,Name);
+	ExportLuaPublishEvent();
 	luaL_openlibs(LuaState);
 
 	//load the lua code
@@ -146,3 +147,12 @@ void LuaPort::PushEventInfo(std::shared_ptr<const EventInfo> event)
 	//TODO: payload
 }
 
+void LuaPort::PopEventInfo(const std::shared_ptr<EventInfo>& event)
+{
+	//TODO:
+}
+
+void LuaPort::ExportLuaPublishEvent()
+{
+	//TODO:
+}

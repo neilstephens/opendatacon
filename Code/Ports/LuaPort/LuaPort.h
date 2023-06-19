@@ -48,6 +48,8 @@ public:
 
 private:
 	void PushEventInfo(std::shared_ptr<const EventInfo> event);
+	void PopEventInfo(const std::shared_ptr<EventInfo>& event);
+	void ExportLuaPublishEvent();
 
 	lua_State* LuaState = luaL_newstate();
 	Json::Value JSONConf;

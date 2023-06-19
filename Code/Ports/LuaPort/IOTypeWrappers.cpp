@@ -121,3 +121,55 @@ void ExportCommandStatus(lua_State* const L)
 	lua_setglobal(L,"CommandStatus");
 }
 
+//TODO: ControlCode
+//TODO: ConnectState
+//TODO: OctetStringBuffer
+
+//TODO: Payloads
+//EventType::Binary                   , bool)
+//EventType::DoubleBitBinary          , std::pair<bool,bool>)
+//EventType::Analog                   , double)
+//EventType::Counter                  , uint32_t)
+//EventType::FrozenCounter            , uint32_t)
+//EventType::BinaryOutputStatus       , bool)
+//EventType::AnalogOutputStatus       , double)
+//EventType::BinaryCommandEvent       , CommandStatus)
+//EventType::AnalogCommandEvent       , CommandStatus)
+//EventType::OctetString              , OctetStringBuffer)
+//EventType::TimeAndInterval          , std::tuple<msSinceEpoch_t,uint32_t,uint8_t>)
+//EventType::SecurityStat             , std::pair<uint16_t,uint32_t>)
+//EventType::ControlRelayOutputBlock  , ControlRelayOutputBlock)
+//EventType::AnalogOutputInt16        , std::pair<int16_t,CommandStatus>)
+//EventType::AnalogOutputInt32        , std::pair<int32_t,CommandStatus>)
+//EventType::AnalogOutputFloat32      , std::pair<float,CommandStatus>
+//EventType::AnalogOutputDouble64     , std::pair<double,CommandStatus>)
+//EventType::BinaryQuality            , QualityFlags)
+//EventType::DoubleBitBinaryQuality   , QualityFlags)
+//EventType::AnalogQuality            , QualityFlags)
+//EventType::CounterQuality           , QualityFlags)
+//EventType::BinaryOutputStatusQuality, QualityFlags)
+//EventType::FrozenCounterQuality     , QualityFlags)
+//EventType::AnalogOutputStatusQuality, QualityFlags)
+//EventType::FileAuth                 , char) //stub
+//EventType::FileCommand              , char) //stub
+//EventType::FileCommandStatus        , char) //stub
+//EventType::FileTransport            , char) //stub
+//EventType::FileTransportStatus      , char) //stub
+//EventType::FileDescriptor           , char) //stub
+//EventType::FileSpecString           , char) //stub
+//EventType::ConnectState             , ConnectState)
+//EventType::Reserved1                , char) //stub
+//EventType::Reserved2                , char) //stub
+//EventType::Reserved3                , char) //stub
+//EventType::Reserved4                , char) //stub
+//EventType::Reserved5                , char) //stub
+//EventType::Reserved6                , char) //stub
+//EventType::Reserved7                , char) //stub
+//EventType::Reserved8                , char) //stub
+//EventType::Reserved9                , char) //stub
+//EventType::Reserved10               , char) //stub
+//EventType::Reserved11               , char) //stub
+//EventType::Reserved12               , char) //stub
+
+//TODO: ToString for Everything, eg ToString.ControlCode(aCC) from lua etc.
+//TODO: FromString for Everything, eg FromString.ControlCode(aCCString) from lua etc.
