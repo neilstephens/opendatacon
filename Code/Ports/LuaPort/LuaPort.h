@@ -36,6 +36,7 @@ class LuaPort: public DataPort
 {
 public:
 	LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
+	~LuaPort();
 
 	void Enable() override;
 	void Disable() override;

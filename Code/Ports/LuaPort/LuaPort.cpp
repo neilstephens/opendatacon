@@ -37,6 +37,11 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 	ProcessFile();
 }
 
+LuaPort::~LuaPort()
+{
+	lua_close(LuaState);
+}
+
 void LuaPort::Enable()
 {}
 void LuaPort::Disable()
