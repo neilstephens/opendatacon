@@ -66,18 +66,9 @@ inline void TestTearDown()
 inline Json::Value GetConfigJSON()
 {
 	std::string ExePath = whereami::getExecutablePath().dirname();
-	std::string conf = "{\"LuaFile\" : \""+ExePath+"/test.lua\"}";
-
-	std::istringstream iss(conf);
-	Json::CharReaderBuilder JSONReader;
-	std::string err_str;
+	auto lua_path = (std::filesystem::path(ExePath) / std::filesystem::path("test.lua")).string();
 	Json::Value json_conf;
-	bool parse_success = Json::parseFromStream(JSONReader,iss, &json_conf, &err_str);
-	if (!parse_success)
-	{
-		if(auto log = odc::spdlog_get("LuaPort"))
-			log->error("Failed to parse configuration: '{}'", err_str);
-	}
+	json_conf["LuaFile"] = lua_path;
 	return json_conf;
 }
 
