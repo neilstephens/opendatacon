@@ -112,7 +112,14 @@ void LuaPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 
 	//now call lua Event()
 	const int argc = 3; const int retc = 0;
-	lua_pcall(LuaState,argc,retc,0);
+	auto ret = lua_pcall(LuaState,argc,retc,0);
+	if(ret != LUA_OK)
+	{
+		std::string err = lua_tostring(LuaState, -1);
+		if(auto log = odc::spdlog_get("LuaPort"))
+			log->error("{}: Lua Event() call error: {}",Name,err);
+		lua_pop(LuaState,1);
+	}
 }
 
 void LuaPort::ProcessElements(const Json::Value& JSONRoot)
@@ -245,7 +252,7 @@ void LuaPort::ExportLuaPublishEvent()
 			{
 			      lua_pushvalue(L,2);                             //push a copy, because luaL_ref pops
 			      auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
-			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>([L,LuaCBref](CommandStatus status)
+			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>([L,LuaCBref,self](CommandStatus status)
 					{
 						auto lua_status = static_cast< std::underlying_type_t<odc::CommandStatus> >(status);
 						//get callback from the registry back on stack
@@ -255,7 +262,14 @@ void LuaPort::ExportLuaPublishEvent()
 
 						//now call
 						const int argc = 1; const int retc = 0;
-						lua_pcall(L,argc,retc,0);
+						auto ret = lua_pcall(L,argc,retc,0);
+						if(ret != LUA_OK)
+						{
+						      std::string err = lua_tostring(L, -1);
+						      if(auto log = odc::spdlog_get("LuaPort"))
+								log->error("{}: Lua PublishEvent() callback error: {}",self->Name,err);
+						      lua_pop(L,1);
+						}
 					});
 			      self->PublishEvent(event, cb);
 			}

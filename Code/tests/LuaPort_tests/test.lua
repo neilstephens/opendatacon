@@ -21,13 +21,27 @@ function Build()
 	return;
 end
 
+function dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
+
 --opendatacon mandates an Event() function
 function Event(EventInfo, SenderName, StatusCallback)
 	log.info("Event(): EventType ".. ToString.EventType(EventInfo.EventType)..
            ", Index "..EventInfo.Index..
            ", Timestamp "..msSinceEpochToDateTime(EventInfo.Timestamp)..
            ", QualityFlags "..ToString.QualityFlags(EventInfo.QualityFlags)..
-           --", Payload "..EventInfo.Payload..
+           ", Payload "..dump(EventInfo.Payload)..
            ", SenderName "..SenderName);
   StatusCallback(CommandStatus.SUCCESS);
   
@@ -36,6 +50,7 @@ function Event(EventInfo, SenderName, StatusCallback)
       log.info("Publish callback called with "..ToString.CommandStatus(cmd_stat));
   end
   
+  --this blows up sometimes because I haven't synchronised access to the lua state yet
   PublishEvent(EventInfo,CB);
 	
   return;
