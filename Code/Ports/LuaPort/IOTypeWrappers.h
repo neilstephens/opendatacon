@@ -28,9 +28,32 @@
 #define IOTYPEWRAPPERS_H
 
 #include "CLua.h"
+#include <opendatacon/IOTypes.h>
 
 void ExportEventTypes(lua_State* const L);
 void ExportQualityFlags(lua_State* const L);
 void ExportCommandStatus(lua_State* const L);
+void ExportControlCodes(lua_State* const L);
+void ExportConnectStates(lua_State* const L);
+void ExportPayloadFactory(lua_State* const L);
+void ExportToStringFunctions(lua_State* const L);
+
+void PushPayload(lua_State* const L, odc::EventType evt_type, std::shared_ptr<const odc::EventInfo> event = nullptr);
+void PushPayload(lua_State* const L, bool payload);
+void PushPayload(lua_State* const L, odc::DBB payload);
+void PushPayload(lua_State* const L, double payload);
+void PushPayload(lua_State* const L, uint32_t payload);
+void PushPayload(lua_State* const L, odc::CommandStatus payload);
+void PushPayload(lua_State* const L, odc::OctetStringBuffer payload);
+void PushPayload(lua_State* const L, odc::TAI payload);
+void PushPayload(lua_State* const L, odc::SS payload);
+void PushPayload(lua_State* const L, odc::ControlRelayOutputBlock payload);
+void PushPayload(lua_State* const L, odc::AO16 payload);
+void PushPayload(lua_State* const L, odc::AO32 payload);
+void PushPayload(lua_State* const L, odc::AOF payload);
+void PushPayload(lua_State* const L, odc::AOD payload);
+void PushPayload(lua_State* const L, odc::QualityFlags payload);
+void PushPayload(lua_State* const L, char payload);
+void PushPayload(lua_State* const L, odc::ConnectState payload);
 
 #endif // IOTYPEWRAPPERS_H

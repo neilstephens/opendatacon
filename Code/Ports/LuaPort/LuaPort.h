@@ -48,7 +48,7 @@ public:
 
 private:
 	void PushEventInfo(std::shared_ptr<const EventInfo> event);
-	void PopEventInfo(const std::shared_ptr<EventInfo>& event);
+	std::shared_ptr<EventInfo> PopEventInfo() const;
 	void ExportLuaPublishEvent();
 
 	lua_State* LuaState = luaL_newstate();

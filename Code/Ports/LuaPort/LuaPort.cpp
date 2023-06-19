@@ -53,11 +53,28 @@ void LuaPort::Build()
 	ExportLuaPublishEvent();
 	luaL_openlibs(LuaState);
 
+	auto OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Hex);
+	if (JSONConf.isMember("OctetStringFormat"))
+	{
+		auto fmt = JSONConf["OctetStringFormat"].asString();
+		if(fmt == "Hex")
+			OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Hex);
+		else if(fmt == "Raw")
+			OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Raw);
+		else
+			throw std::invalid_argument("OctetStringFormat should be Raw or Hex, not " + fmt);
+	}
+	lua_pushinteger(LuaState,OSF);
+	lua_setglobal(LuaState,"OctetStringFormat");
+
 	//load the lua code
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
 	auto ret = luaL_dofile(LuaState, pConf->LuaFile.c_str());
 	if(ret != LUA_OK)
-		throw std::runtime_error(Name+": Failed to load LuaFile '"+pConf->LuaFile+"'. Error: "+lua_tostring(LuaState, -1));
+	{
+		std::string err = lua_tostring(LuaState, -1);
+		throw std::runtime_error(Name+": Failed to load LuaFile '"+pConf->LuaFile+"'. Error: "+err);
+	}
 
 	for(const auto& func_name : {"Enable","Disable","Build","Event"})
 	{
@@ -144,15 +161,109 @@ void LuaPort::PushEventInfo(std::shared_ptr<const EventInfo> event)
 	lua_pushinteger(LuaState, event->GetTimestamp());
 	lua_settable(LuaState, -3);
 
-	//TODO: payload
+	//Payload
+	lua_pushstring(LuaState, "Payload");
+	PushPayload(LuaState,event->GetEventType(),event);
+	lua_settable(LuaState, -3);
 }
 
-void LuaPort::PopEventInfo(const std::shared_ptr<EventInfo>& event)
+std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
 {
-	//TODO:
+	if(!lua_istable(LuaState,1))
+	{
+		if(auto log = odc::spdlog_get("LuaPort"))
+			log->error("{}: EventInfo table argument not found.",Name);
+		return nullptr;
+	}
+
+	//EventType
+	lua_getfield(LuaState, 1, "EventType");
+	if(!lua_isinteger(LuaState,-1))
+		return nullptr;
+	auto et = static_cast<EventType>(lua_tointeger(LuaState,-1));
+	auto event = std::make_shared<EventInfo>(et);
+
+	//Index
+	lua_getfield(LuaState, 1, "Index");
+	if(lua_isinteger(LuaState,-1))
+		event->SetIndex(lua_tointeger(LuaState,-1));
+
+	//SourcePort
+	lua_getfield(LuaState, 1, "SourcePort");
+	if(lua_isstring(LuaState,-1))
+		event->SetSource(lua_tostring(LuaState,-1));
+	else
+		event->SetSource(Name);
+
+	//QualityFlags
+	lua_getfield(LuaState, 1, "QualityFlags");
+	if(lua_isinteger(LuaState,-1))
+		event->SetQuality(static_cast<QualityFlags>(lua_tointeger(LuaState,-1)));
+
+	//Timestamp
+	lua_getfield(LuaState, 1, "Timestamp");
+	if(lua_isinteger(LuaState,-1))
+		event->SetTimestamp(lua_tointeger(LuaState,-1));
+	else if(lua_isstring(LuaState,-1))
+	{
+		try
+		{
+			event->SetTimestamp(odc::datetime_to_since_epoch(lua_tostring(LuaState,-1)));
+		}
+		catch(const std::exception& e)
+		{
+			if(auto log = odc::spdlog_get("LuaPort"))
+				log->error("{}: Lua EventInfo Timestamp error: {}",Name,e.what());
+		}
+	}
+
+	//TODO: Payload
+	event->SetPayload();
+
+	return event;
 }
 
 void LuaPort::ExportLuaPublishEvent()
 {
-	//TODO:
+	//push closure with one upvalue (to capture 'this')
+	lua_pushlightuserdata(LuaState, this);
+	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
+		{
+			//retrieve 'this'
+			auto self = static_cast<const LuaPort*>(lua_topointer(L, lua_upvalueindex(1)));
+
+			//first arg is EventInfo
+			auto event = self->PopEventInfo();
+			if(!event)
+			{
+			      lua_pushboolean(L, false);
+			      return 1;
+			}
+
+			//optional second arg is command status callback
+			if(lua_isfunction(L,2))
+			{
+			      lua_pushvalue(L,2);                             //push a copy, because luaL_ref pops
+			      auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
+			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>([L,LuaCBref](CommandStatus status)
+					{
+						auto lua_status = static_cast< std::underlying_type_t<odc::CommandStatus> >(status);
+						//get callback from the registry back on stack
+						lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCBref);
+						//push the status argument
+						lua_pushinteger(L,lua_status);
+
+						//now call
+						const int argc = 1; const int retc = 0;
+						lua_pcall(L,argc,retc,0);
+					});
+			      self->PublishEvent(event, cb);
+			}
+			else
+				self->PublishEvent(event);
+
+			lua_pushboolean(L, true);
+			return 1; //number of lua ret vals pushed onto the stack
+		}, 1);
+	lua_setglobal(LuaState,"PublishEvent");
 }

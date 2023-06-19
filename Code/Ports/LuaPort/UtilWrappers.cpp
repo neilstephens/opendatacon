@@ -25,6 +25,7 @@
  */
 #include "CLua.h"
 #include <opendatacon/util.h>
+#include <opendatacon/IOTypes.h>
 void ExportUtilWrappers(lua_State* const L)
 {
 	lua_pushcfunction(L, [](lua_State* const L) -> int
@@ -40,4 +41,39 @@ void ExportUtilWrappers(lua_State* const L)
 			return 1; //number of lua ret vals pushed onto the stack
 		});
 	lua_setglobal(L, "msSinceEpochToDateTime");
+
+	//DataToStringMethod enum
+	lua_newtable(L);
+	lua_pushstring(L,"Hex");
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::DataToStringMethod> >(odc::DataToStringMethod::Hex));
+	lua_settable(L, -3);
+	lua_pushstring(L,"Raw");
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::DataToStringMethod> >(odc::DataToStringMethod::Raw));
+	lua_settable(L, -3);
+	lua_setglobal(L, "DataToStringMethod");
+
+	lua_pushcfunction(L, [](lua_State* const L) -> int
+		{
+			auto buf = lua_tostring(L,-1);
+			lua_pushstring(L,odc::buf2hex((uint8_t*)buf,strlen(buf)).c_str());
+			return 1;
+		});
+	lua_setglobal(L, "String2Hex");
+	lua_pushcfunction(L, [](lua_State* const L) -> int
+		{
+			auto hex = lua_tostring(L,-1);
+			try
+			{
+			      auto buf = odc::hex2buf(hex);
+			      std::string str((char*)buf.data(),buf.size());
+			      lua_pushstring(L,str.c_str());
+			      return 1;
+			}
+			catch(const std::exception& e)
+			{
+			      lua_pushnil(L);
+			      return 1;
+			}
+		});
+	lua_setglobal(L, "Hex2String");
 }

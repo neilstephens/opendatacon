@@ -23,6 +23,7 @@
  */
 #include "Helpers.h"
 #include "../PortLoader.h"
+#include "../../../opendatacon/NullPort.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
@@ -48,11 +49,20 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
 
+		NullPort Null("Null","","");
+		PUT->Subscribe(&Null,"Null");
+		Null.Subscribe(PUT.get(),"PortUnderTest");
+
 		PUT->Build();
+		Null.Build();
 		PUT->Enable();
+		Null.Enable();
 		auto event = std::make_shared<EventInfo>(EventType::OctetString,123);
 		event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("test event")));
 		PUT->Event(event,"test_harness",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+		auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,666);
+		event2->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
+		PUT->Event(event2,"test_harness",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 		PUT->Disable();
 
 		work.reset();

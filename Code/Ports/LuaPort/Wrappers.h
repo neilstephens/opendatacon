@@ -33,10 +33,17 @@
 
 inline void ExportWrappersToLua(lua_State* const L, const std::string& Name)
 {
+	//IOTypes
 	ExportEventTypes(L);
 	ExportQualityFlags(L);
 	ExportCommandStatus(L);
+	ExportControlCodes(L);
+	ExportConnectStates(L);
+	ExportPayloadFactory(L);
+	ExportToStringFunctions(L);
+	//Logging
 	ExportLogWrappers(L,Name);
+	//Util
 	ExportUtilWrappers(L);
 }
 

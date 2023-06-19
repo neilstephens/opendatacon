@@ -24,6 +24,7 @@
  *      Author: Neil Stephens
  */
 
+#include "IOTypeWrappers.h"
 #include "CLua.h"
 #include <opendatacon/IOTypes.h>
 
@@ -121,55 +122,293 @@ void ExportCommandStatus(lua_State* const L)
 	lua_setglobal(L,"CommandStatus");
 }
 
-//TODO: ControlCode
-//TODO: ConnectState
-//TODO: OctetStringBuffer
+void ExportControlCodes(lua_State* const L)
+{
+	//Make a table that has the values
+	lua_newtable(L);
+	for(const auto& ctrl_code :
+	{
+		odc::ControlCode::NUL,
+		odc::ControlCode::PULSE_ON,
+		odc::ControlCode::PULSE_OFF,
+		odc::ControlCode::LATCH_ON,
+		odc::ControlCode::LATCH_OFF,
+		odc::ControlCode::CLOSE_PULSE_ON,
+		odc::ControlCode::TRIP_PULSE_ON,
+		odc::ControlCode::UNDEFINED
+	})
+	{
+		auto lua_val = static_cast< std::underlying_type_t<odc::ControlCode> >(ctrl_code);
+		lua_pushstring(L, ToString(ctrl_code).c_str());
+		lua_pushinteger(L, lua_val);
+		lua_settable(L, -3);
+	}
+	lua_setglobal(L,"ControlCode");
+}
 
-//TODO: Payloads
-//EventType::Binary                   , bool)
-//EventType::DoubleBitBinary          , std::pair<bool,bool>)
-//EventType::Analog                   , double)
-//EventType::Counter                  , uint32_t)
-//EventType::FrozenCounter            , uint32_t)
-//EventType::BinaryOutputStatus       , bool)
-//EventType::AnalogOutputStatus       , double)
-//EventType::BinaryCommandEvent       , CommandStatus)
-//EventType::AnalogCommandEvent       , CommandStatus)
-//EventType::OctetString              , OctetStringBuffer)
-//EventType::TimeAndInterval          , std::tuple<msSinceEpoch_t,uint32_t,uint8_t>)
-//EventType::SecurityStat             , std::pair<uint16_t,uint32_t>)
-//EventType::ControlRelayOutputBlock  , ControlRelayOutputBlock)
-//EventType::AnalogOutputInt16        , std::pair<int16_t,CommandStatus>)
-//EventType::AnalogOutputInt32        , std::pair<int32_t,CommandStatus>)
-//EventType::AnalogOutputFloat32      , std::pair<float,CommandStatus>
-//EventType::AnalogOutputDouble64     , std::pair<double,CommandStatus>)
-//EventType::BinaryQuality            , QualityFlags)
-//EventType::DoubleBitBinaryQuality   , QualityFlags)
-//EventType::AnalogQuality            , QualityFlags)
-//EventType::CounterQuality           , QualityFlags)
-//EventType::BinaryOutputStatusQuality, QualityFlags)
-//EventType::FrozenCounterQuality     , QualityFlags)
-//EventType::AnalogOutputStatusQuality, QualityFlags)
-//EventType::FileAuth                 , char) //stub
-//EventType::FileCommand              , char) //stub
-//EventType::FileCommandStatus        , char) //stub
-//EventType::FileTransport            , char) //stub
-//EventType::FileTransportStatus      , char) //stub
-//EventType::FileDescriptor           , char) //stub
-//EventType::FileSpecString           , char) //stub
-//EventType::ConnectState             , ConnectState)
-//EventType::Reserved1                , char) //stub
-//EventType::Reserved2                , char) //stub
-//EventType::Reserved3                , char) //stub
-//EventType::Reserved4                , char) //stub
-//EventType::Reserved5                , char) //stub
-//EventType::Reserved6                , char) //stub
-//EventType::Reserved7                , char) //stub
-//EventType::Reserved8                , char) //stub
-//EventType::Reserved9                , char) //stub
-//EventType::Reserved10               , char) //stub
-//EventType::Reserved11               , char) //stub
-//EventType::Reserved12               , char) //stub
+void ExportConnectStates(lua_State* const L)
+{
+	//Make a table that has the values
+	lua_newtable(L);
+	for(const auto& conn_st :
+	{
+		odc::ConnectState::PORT_UP,
+		odc::ConnectState::CONNECTED,
+		odc::ConnectState::DISCONNECTED,
+		odc::ConnectState::PORT_DOWN
+	})
+	{
+		auto lua_val = static_cast< std::underlying_type_t<odc::ConnectState> >(conn_st);
+		lua_pushstring(L, ToString(conn_st).c_str());
+		lua_pushinteger(L, lua_val);
+		lua_settable(L, -3);
+	}
+	lua_setglobal(L,"ConnectState");
+}
 
-//TODO: ToString for Everything, eg ToString.ControlCode(aCC) from lua etc.
-//TODO: FromString for Everything, eg FromString.ControlCode(aCCString) from lua etc.
+void ExportPayloadFactory(lua_State* const L)
+{
+	//Make a table of Payload factory functions
+	//Make a table that has the values of each event type
+	lua_newtable(L);
+	auto event_type = odc::EventType::BeforeRange;
+	while((event_type+1) != odc::EventType::AfterRange)
+	{
+		event_type = event_type+1;
+		auto lua_et_val = static_cast< std::underlying_type_t<odc::EventType> >(event_type);
+
+		//push table key
+		lua_pushstring(L, ToString(event_type).c_str());
+
+		//push table value - closure with one upvalues
+		lua_pushinteger(L,lua_et_val);
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				auto event_type = static_cast<odc::EventType>(lua_tointeger(L, lua_upvalueindex(1)));
+				PushPayload(L,event_type);
+				return 1; //number of lua ret vals pushed onto the stack
+			}, 1);
+
+		//add key value pair to table
+		lua_settable(L, -3);
+	}
+	lua_setglobal(L,"MakePayload");
+}
+
+#define TOSTRING_TABLE_ENTRY(T)\
+	lua_pushstring(L, #T);\
+	lua_pushcfunction(L, [](lua_State* const L) -> int\
+	{\
+		lua_pushstring(L, ToString(static_cast<odc::T>(lua_tointeger(L,-1))).c_str());\
+		return 1;\
+	});\
+	lua_settable(L, -3)
+void ExportToStringFunctions(lua_State* const L)
+{
+	lua_newtable(L);
+	TOSTRING_TABLE_ENTRY(EventType);
+	TOSTRING_TABLE_ENTRY(QualityFlags);
+	TOSTRING_TABLE_ENTRY(CommandStatus);
+	TOSTRING_TABLE_ENTRY(ControlCode);
+	TOSTRING_TABLE_ENTRY(ConnectState);
+	lua_setglobal(L, "ToString");
+}
+
+#define PAYLOAD_CASE(T)\
+	case T:\
+	{\
+		auto payload = event ? event->GetPayload<T>()\
+		               : typename odc::EventTypePayload<T>::type();\
+		PushPayload(L,payload);\
+		break;\
+	}
+void PushPayload(lua_State* const L, odc::EventType evt_type, std::shared_ptr<const odc::EventInfo> event)
+{
+	switch(evt_type)
+	{
+		PAYLOAD_CASE(odc::EventType::Binary                   )
+		PAYLOAD_CASE(odc::EventType::DoubleBitBinary          )
+		PAYLOAD_CASE(odc::EventType::Analog                   )
+		PAYLOAD_CASE(odc::EventType::Counter                  )
+		PAYLOAD_CASE(odc::EventType::FrozenCounter            )
+		PAYLOAD_CASE(odc::EventType::BinaryOutputStatus       )
+		PAYLOAD_CASE(odc::EventType::AnalogOutputStatus       )
+		PAYLOAD_CASE(odc::EventType::BinaryCommandEvent       )
+		PAYLOAD_CASE(odc::EventType::AnalogCommandEvent       )
+		PAYLOAD_CASE(odc::EventType::OctetString              )
+		PAYLOAD_CASE(odc::EventType::TimeAndInterval          )
+		PAYLOAD_CASE(odc::EventType::SecurityStat             )
+		PAYLOAD_CASE(odc::EventType::ControlRelayOutputBlock  )
+		PAYLOAD_CASE(odc::EventType::AnalogOutputInt16        )
+		PAYLOAD_CASE(odc::EventType::AnalogOutputInt32        )
+		PAYLOAD_CASE(odc::EventType::AnalogOutputFloat32      )
+		PAYLOAD_CASE(odc::EventType::AnalogOutputDouble64     )
+		PAYLOAD_CASE(odc::EventType::BinaryQuality            )
+		PAYLOAD_CASE(odc::EventType::DoubleBitBinaryQuality   )
+		PAYLOAD_CASE(odc::EventType::AnalogQuality            )
+		PAYLOAD_CASE(odc::EventType::CounterQuality           )
+		PAYLOAD_CASE(odc::EventType::BinaryOutputStatusQuality)
+		PAYLOAD_CASE(odc::EventType::FrozenCounterQuality     )
+		PAYLOAD_CASE(odc::EventType::AnalogOutputStatusQuality)
+		PAYLOAD_CASE(odc::EventType::FileAuth                 )
+		PAYLOAD_CASE(odc::EventType::FileCommand              )
+		PAYLOAD_CASE(odc::EventType::FileCommandStatus        )
+		PAYLOAD_CASE(odc::EventType::FileTransport            )
+		PAYLOAD_CASE(odc::EventType::FileTransportStatus      )
+		PAYLOAD_CASE(odc::EventType::FileDescriptor           )
+		PAYLOAD_CASE(odc::EventType::FileSpecString           )
+		PAYLOAD_CASE(odc::EventType::ConnectState             )
+		PAYLOAD_CASE(odc::EventType::Reserved1                )
+		PAYLOAD_CASE(odc::EventType::Reserved2                )
+		PAYLOAD_CASE(odc::EventType::Reserved3                )
+		PAYLOAD_CASE(odc::EventType::Reserved4                )
+		PAYLOAD_CASE(odc::EventType::Reserved5                )
+		PAYLOAD_CASE(odc::EventType::Reserved6                )
+		PAYLOAD_CASE(odc::EventType::Reserved7                )
+		PAYLOAD_CASE(odc::EventType::Reserved8                )
+		PAYLOAD_CASE(odc::EventType::Reserved9                )
+		PAYLOAD_CASE(odc::EventType::Reserved10               )
+		PAYLOAD_CASE(odc::EventType::Reserved11               )
+		PAYLOAD_CASE(odc::EventType::Reserved12               )
+		default:
+			lua_pushnil(L);
+			break;
+	}
+}
+
+void PushPayload(lua_State* const L, bool payload)
+{
+	lua_pushboolean(L,payload);
+}
+void PushPayload(lua_State* const L, odc::DBB payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "First");
+	lua_pushboolean(L, payload.first);
+	lua_settable(L, -3);
+	lua_pushstring(L, "Second");
+	lua_pushboolean(L, payload.second);
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, double payload)
+{
+	lua_pushnumber(L,payload);
+}
+void PushPayload(lua_State* const L, uint32_t payload)
+{
+	lua_pushinteger(L,payload);
+}
+void PushPayload(lua_State* const L, odc::CommandStatus payload)
+{
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::CommandStatus> >(payload));
+}
+void PushPayload(lua_State* const L, odc::OctetStringBuffer payload)
+{
+	lua_getglobal(L,"OctetStringFormat");
+	auto OSF = static_cast<odc::DataToStringMethod>(lua_tointeger(L,-1));
+	lua_pop(L,1);
+	auto chardata = static_cast<const char*>(payload.data());
+	auto rawdata = static_cast<const uint8_t*>(payload.data());
+	switch(OSF)
+	{
+		case odc::DataToStringMethod::Raw:
+			lua_pushstring(L, std::string(chardata,payload.size()).c_str());
+		case odc::DataToStringMethod::Hex:
+		default:
+			lua_pushstring(L, odc::buf2hex(rawdata,payload.size()).c_str());
+	}
+}
+void PushPayload(lua_State* const L, odc::TAI payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "Timestamp");
+	lua_pushinteger(L, std::get<0>(payload));
+	lua_settable(L, -3);
+	lua_pushstring(L, "Interval");
+	lua_pushinteger(L, std::get<1>(payload));
+	lua_settable(L, -3);
+	lua_pushstring(L, "Units");
+	lua_pushinteger(L, std::get<2>(payload));
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, odc::SS payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "First");
+	lua_pushinteger(L, std::get<0>(payload));
+	lua_settable(L, -3);
+	lua_pushstring(L, "Second");
+	lua_pushinteger(L, std::get<1>(payload));
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, odc::ControlRelayOutputBlock payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "ControlCode");
+	lua_pushinteger(L, static_cast< std::underlying_type_t<odc::ControlCode> >(payload.functionCode));
+	lua_settable(L, -3);
+	lua_pushstring(L, "Count");
+	lua_pushinteger(L, payload.count);
+	lua_settable(L, -3);
+	lua_pushstring(L, "msOnTime");
+	lua_pushinteger(L, payload.onTimeMS);
+	lua_settable(L, -3);
+	lua_pushstring(L, "msOffTime");
+	lua_pushinteger(L, payload.offTimeMS);
+	lua_settable(L, -3);
+	lua_pushstring(L, "CommandStatus");
+	lua_pushinteger(L, static_cast< std::underlying_type_t<odc::CommandStatus> >(payload.status));
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, odc::AO16 payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "Value");
+	lua_pushinteger(L, payload.first);
+	lua_settable(L, -3);
+	lua_pushstring(L, "CommandStatus");
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::CommandStatus> >(payload.second));
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, odc::AO32 payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "Value");
+	lua_pushinteger(L, payload.first);
+	lua_settable(L, -3);
+	lua_pushstring(L, "CommandStatus");
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::CommandStatus> >(payload.second));
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, odc::AOF payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "Value");
+	lua_pushnumber(L, payload.first);
+	lua_settable(L, -3);
+	lua_pushstring(L, "CommandStatus");
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::CommandStatus> >(payload.second));
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, odc::AOD payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "Value");
+	lua_pushnumber(L, payload.first);
+	lua_settable(L, -3);
+	lua_pushstring(L, "CommandStatus");
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::CommandStatus> >(payload.second));
+	lua_settable(L, -3);
+}
+void PushPayload(lua_State* const L, odc::QualityFlags payload)
+{
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::QualityFlags> >(payload));
+}
+void PushPayload(lua_State* const L, char payload)
+{
+	lua_pushinteger(L,payload);
+}
+void PushPayload(lua_State* const L, odc::ConnectState payload)
+{
+	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::ConnectState> >(payload));
+}

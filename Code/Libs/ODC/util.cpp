@@ -314,7 +314,7 @@ msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format)
 		}
 		catch(const std::exception& e)
 		{
-			throw std::runtime_error("datetime_to_since_epoch(): Error parsing milliseconds '"+msec_str+"'.");
+			throw std::runtime_error("datetime_to_since_epoch("+format+"): Error parsing milliseconds '"+msec_str+"'.");
 		}
 	}
 

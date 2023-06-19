@@ -35,7 +35,11 @@ void ExportLogWrappers(lua_State* const L, const std::string& Name)
 	for(uint8_t i = 0; i < 7; i++)
 	{
 		const auto& level = spdlog::level::level_string_views[i].data();
+
+		//push table key
 		lua_pushstring(L, level);
+
+		//push table value - closure with two upvalues
 		lua_pushstring(L, Name.c_str());
 		lua_pushinteger(L,i);
 		lua_pushcclosure(L, [](lua_State* const L) -> int
@@ -49,6 +53,8 @@ void ExportLogWrappers(lua_State* const L, const std::string& Name)
 				lua_pushboolean(L, !!log);
 				return 1; //number of lua ret vals pushed onto the stack
 			}, 2);
+
+		//add key value pair to table
 		lua_settable(L, -3);
 	}
 	lua_setglobal(L, "log");
