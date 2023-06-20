@@ -39,13 +39,21 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 
 LuaPort::~LuaPort()
 {
+	//TODO: check if destruction of ports is always sychronous
+	//...and block if there's outstanding handlers etc.
 	lua_close(LuaState);
 }
 
 void LuaPort::Enable()
-{}
+{
+	//TODO:
+}
 void LuaPort::Disable()
-{}
+{
+	//TODO:
+}
+
+//Build is called while there's only one active thread, so we don't need to sync access to LuaState here
 void LuaPort::Build()
 {
 	//populate the Lua state with wrapped types and helper functions
@@ -86,6 +94,8 @@ void LuaPort::Build()
 
 void LuaPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
+	//TODO: synch access to LuaState below
+
 	if(auto log = spdlog::get("LuaPort"))
 		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 
@@ -136,6 +146,7 @@ void LuaPort::ProcessElements(const Json::Value& JSONRoot)
 		pConf->LuaFile = JSONRoot["LuaFile"].asString();
 }
 
+//PushEventInfo must only be called from the the LuaState sync strand
 void LuaPort::PushEventInfo(std::shared_ptr<const EventInfo> event)
 {
 	//make a lua table for event info on stack
@@ -173,7 +184,8 @@ void LuaPort::PushEventInfo(std::shared_ptr<const EventInfo> event)
 	PushPayload(LuaState,event->GetEventType(),event);
 	lua_settable(LuaState, -3);
 }
-
+//PopEventInfo must only be called from the the LuaState sync strand
+//	(or from lua code - which will be running on the strand anyway)
 std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
 {
 	if(!lua_istable(LuaState,1))
@@ -230,6 +242,7 @@ std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
 	return event;
 }
 
+//This is only called from Build(), so no sync required.
 void LuaPort::ExportLuaPublishEvent()
 {
 	//push closure with one upvalue (to capture 'this')
