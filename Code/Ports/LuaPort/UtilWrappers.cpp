@@ -54,8 +54,9 @@ void ExportUtilWrappers(lua_State* const L)
 
 	lua_pushcfunction(L, [](lua_State* const L) -> int
 		{
-			auto buf = lua_tostring(L,-1);
-			lua_pushstring(L,odc::buf2hex((uint8_t*)buf,strlen(buf)).c_str());
+			size_t len;
+			auto buf = lua_tolstring(L,-1,&len);
+			lua_pushstring(L,odc::buf2hex((uint8_t*)buf,len).c_str());
 			return 1;
 		});
 	lua_setglobal(L, "String2Hex");
@@ -65,8 +66,7 @@ void ExportUtilWrappers(lua_State* const L)
 			try
 			{
 			      auto buf = odc::hex2buf(hex);
-			      std::string str((char*)buf.data(),buf.size());
-			      lua_pushstring(L,str.c_str());
+			      lua_pushlstring(L,(char*)buf.data(),buf.size());
 			      return 1;
 			}
 			catch(const std::exception& e)
