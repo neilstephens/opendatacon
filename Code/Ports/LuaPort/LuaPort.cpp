@@ -307,7 +307,7 @@ void LuaPort::CallLuaGlobalVoidVoidFunc(const std::string& FnName)
 {
 	if(!LuaState) return;
 
-	lua_getglobal(LuaState, "FnName");
+	lua_getglobal(LuaState, FnName.c_str());
 
 	//no args, so just call it
 	const int argc = 0; const int retc = 0;
