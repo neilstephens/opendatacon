@@ -70,6 +70,7 @@ private:
 	void PushEventInfo(std::shared_ptr<const EventInfo> event);
 	std::shared_ptr<EventInfo> PopEventInfo() const;
 	void ExportLuaPublishEvent();
+	void CallLuaGlobalVoidVoidFunc(const std::string& FnName);
 
 	lua_State* LuaState = luaL_newstate();
 	Json::Value JSONConf;

@@ -51,14 +51,12 @@ LuaPort::~LuaPort()
 //only called on Lua sync strand
 void LuaPort::Enable_()
 {
-	if(!LuaState) return;
-	//TODO:
+	CallLuaGlobalVoidVoidFunc("Enable");
 }
 //only called on Lua sync strand
 void LuaPort::Disable_()
 {
-	if(!LuaState) return;
-	//TODO:
+	CallLuaGlobalVoidVoidFunc("Disable");
 }
 
 //Build is called while there's only one active thread, so we don't need to sync access to LuaState here
@@ -302,4 +300,23 @@ void LuaPort::ExportLuaPublishEvent()
 			return 1; //number of lua ret vals pushed onto the stack
 		}, 1);
 	lua_setglobal(LuaState,"PublishEvent");
+}
+
+//Must only be called from the the LuaState sync strand
+void LuaPort::CallLuaGlobalVoidVoidFunc(const std::string& FnName)
+{
+	if(!LuaState) return;
+
+	lua_getglobal(LuaState, "FnName");
+
+	//no args, so just call it
+	const int argc = 0; const int retc = 0;
+	auto ret = lua_pcall(LuaState,argc,retc,0);
+	if(ret != LUA_OK)
+	{
+		std::string err = lua_tostring(LuaState, -1);
+		if(auto log = odc::spdlog_get("LuaPort"))
+			log->error("{}: Lua {}() call error: {}",Name,FnName,err);
+		lua_pop(LuaState,1);
+	}
 }
