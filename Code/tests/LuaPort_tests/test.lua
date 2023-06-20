@@ -50,7 +50,6 @@ function Event(EventInfo, SenderName, StatusCallback)
       log.info("Publish callback called with "..ToString.CommandStatus(cmd_stat));
   end
   
-  --this blows up sometimes because I haven't synchronised access to the lua state yet
   PublishEvent(EventInfo,CB);
 	
   return;

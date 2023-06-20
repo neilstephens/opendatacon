@@ -39,17 +39,25 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 
 LuaPort::~LuaPort()
 {
-	//TODO: check if destruction of ports is always sychronous
-	//...and block if there's outstanding handlers etc.
-	lua_close(LuaState);
+	pLuaSyncStrand->post([this,h{handler_tracker}](){lua_close(LuaState);LuaState=nullptr;});
+
+	//Wait for outstanding handlers
+	std::weak_ptr<void> tracker = handler_tracker;
+	handler_tracker.reset();
+	while(!tracker.expired() && !pIOS->stopped())
+		pIOS->poll_one();
 }
 
-void LuaPort::Enable()
+//only called on Lua sync strand
+void LuaPort::Enable_()
 {
+	if(!LuaState) return;
 	//TODO:
 }
-void LuaPort::Disable()
+//only called on Lua sync strand
+void LuaPort::Disable_()
 {
+	if(!LuaState) return;
 	//TODO:
 }
 
@@ -92,12 +100,13 @@ void LuaPort::Build()
 	}
 }
 
-void LuaPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+//only called on Lua sync strand
+void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	//TODO: synch access to LuaState below
-
 	if(auto log = spdlog::get("LuaPort"))
 		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
+
+	if(!LuaState) return;
 
 	//Get ready to call the lua function
 	lua_getglobal(LuaState, "Event");

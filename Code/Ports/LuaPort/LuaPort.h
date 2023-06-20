@@ -38,15 +38,35 @@ public:
 	LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 	~LuaPort();
 
-	void Enable() override;
-	void Disable() override;
+	void Enable() override
+	{
+		pLuaSyncStrand->post([this,h{handler_tracker}](){Enable_();});
+	}
+
+	void Disable() override
+	{
+		pLuaSyncStrand->post([this,h{handler_tracker}](){Disable_();});
+	}
+
 	void Build() override;
 
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
+	{
+		pLuaSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
+	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 private:
+	//copy this to posted handlers so we can manage lifetime
+	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
+	std::unique_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();
+
+	//synchronised versions of pubil counterparts above
+	void Enable_();
+	void Disable_();
+	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
+
 	void PushEventInfo(std::shared_ptr<const EventInfo> event);
 	std::shared_ptr<EventInfo> PopEventInfo() const;
 	void ExportLuaPublishEvent();
