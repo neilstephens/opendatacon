@@ -38,10 +38,6 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 
 	//Go through the typical life cycle of a port, albeit short
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "Lua");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "Lua");
@@ -55,6 +51,11 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 
 		PUT->Build();
 		Null.Build();
+
+		auto ios = odc::asio_service::Get();
+		auto work = ios->make_work();
+		std::thread t([ios](){ios->run();});
+
 		PUT->Enable();
 		Null.Enable();
 		auto event = std::make_shared<EventInfo>(EventType::OctetString,123);
@@ -83,10 +84,6 @@ TEST_CASE(SUITE("ConstructBuildEnableDestroy"))
 
 	//Test the destruction of an enabled port (happens in case of exception)
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "Lua");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "Lua");
@@ -95,6 +92,11 @@ TEST_CASE(SUITE("ConstructBuildEnableDestroy"))
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
 
 		PUT->Build();
+
+		auto ios = odc::asio_service::Get();
+		auto work = ios->make_work();
+		std::thread t([ios](){ios->run();});
+
 		PUT->Enable();
 		PUT.reset();
 

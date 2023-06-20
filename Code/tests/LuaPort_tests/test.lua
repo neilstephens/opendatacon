@@ -112,6 +112,20 @@ DBBEvt =
 MyStatusCB = function(cmd_stat) log.trace("DBBEvt callback result "..ToString.CommandStatus(cmd_stat)) end;
 PublishEvent(DBBEvt, MyStatusCB);
 
+--for a more complex event type, use MakePayload to get a default, then just change what you want:
+MyControlEvent =
+{
+  EventType = EventType.ControlRelayOutputBlock,
+  Index = 555,
+  Payload = MakePayload.ControlRelayOutputBlock()
+};
+
+MyControlEvent.Payload.ControlCode = ControlCode.LATCH_OFF;
+log.info("Payload constructed: "..dump(MyControlEvent.Payload));
+PublishEvent(MyControlEvent);
+
+
+
 
 
 

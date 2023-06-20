@@ -272,8 +272,10 @@ void LuaPort::ExportLuaPublishEvent()
 			{
 			      lua_pushvalue(L,2);                             //push a copy, because luaL_ref pops
 			      auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
-			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>([L,LuaCBref,self](CommandStatus status)
+			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self](CommandStatus status)
 					{
+						if(!self->LuaState) return;
+
 						auto lua_status = static_cast< std::underlying_type_t<odc::CommandStatus> >(status);
 						//get callback from the registry back on stack
 						lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCBref);
@@ -290,7 +292,7 @@ void LuaPort::ExportLuaPublishEvent()
 								log->error("{}: Lua PublishEvent() callback error: {}",self->Name,err);
 						      lua_pop(L,1);
 						}
-					});
+					}));
 			      self->PublishEvent(event, cb);
 			}
 			else
