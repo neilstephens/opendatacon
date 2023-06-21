@@ -39,13 +39,13 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 
 LuaPort::~LuaPort()
 {
-	pLuaSyncStrand->post([this,h{handler_tracker}](){lua_close(LuaState);LuaState=nullptr;});
-
 	//Wait for outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
 	while(!tracker.expired() && !pIOS->stopped())
 		pIOS->poll_one();
+
+	lua_close(LuaState);
 }
 
 //only called on Lua sync strand
@@ -272,7 +272,7 @@ void LuaPort::ExportLuaPublishEvent()
 			{
 			      lua_pushvalue(L,2);                             //push a copy, because luaL_ref pops
 			      auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
-			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self](CommandStatus status)
+			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self,h{self->handler_tracker}](CommandStatus status)
 					{
 						if(!self->LuaState) return;
 
