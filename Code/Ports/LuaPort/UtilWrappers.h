@@ -27,7 +27,9 @@
 #define UTILWRAPPERS_H
 
 #include "CLua.h"
+namespace Json { class Value; }
 
 void ExportUtilWrappers(lua_State* const L);
+void PushJSON(lua_State* const L, const Json::Value& JSON);
 
 #endif // UTILWRAPPERS_H

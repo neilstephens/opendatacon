@@ -67,6 +67,10 @@ void LuaPort::Build()
 	ExportLuaPublishEvent();
 	luaL_openlibs(LuaState);
 
+	//Export our JSON config as a Lua table
+	PushJSON(LuaState,JSONConf);
+	lua_setglobal(LuaState,"PortConfig");
+
 	auto OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Hex);
 	if (JSONConf.isMember("OctetStringFormat"))
 	{
@@ -96,6 +100,8 @@ void LuaPort::Build()
 		if(!lua_isfunction(LuaState, -1))
 			throw std::runtime_error(Name+": Lua code doesn't have '"+func_name+"' function.");
 	}
+
+	CallLuaGlobalVoidVoidFunc("Build");
 }
 
 //only called on Lua sync strand
