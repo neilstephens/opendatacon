@@ -243,8 +243,18 @@ std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
 		}
 	}
 
-	//TODO: Payload
-	event->SetPayload();
+	//Payload
+	lua_getfield(LuaState, 1, "Payload");
+	try
+	{
+		PopPayload(LuaState, event);
+	}
+	catch(const std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("LuaPort"))
+			log->error("{}: Lua EventInfo Payload error: {}",Name,e.what());
+		event->SetPayload();
+	}
 
 	return event;
 }

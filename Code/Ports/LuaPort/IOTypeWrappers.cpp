@@ -214,7 +214,7 @@ void ExportToStringFunctions(lua_State* const L)
 	lua_setglobal(L, "ToString");
 }
 
-#define PAYLOAD_CASE(T)\
+#define PUSH_PAYLOAD_CASE(T)\
 	case T:\
 	{\
 		auto payload = event ? event->GetPayload<T>()\
@@ -226,50 +226,50 @@ void PushPayload(lua_State* const L, odc::EventType evt_type, std::shared_ptr<co
 {
 	switch(evt_type)
 	{
-		PAYLOAD_CASE(odc::EventType::Binary                   )
-		PAYLOAD_CASE(odc::EventType::DoubleBitBinary          )
-		PAYLOAD_CASE(odc::EventType::Analog                   )
-		PAYLOAD_CASE(odc::EventType::Counter                  )
-		PAYLOAD_CASE(odc::EventType::FrozenCounter            )
-		PAYLOAD_CASE(odc::EventType::BinaryOutputStatus       )
-		PAYLOAD_CASE(odc::EventType::AnalogOutputStatus       )
-		PAYLOAD_CASE(odc::EventType::BinaryCommandEvent       )
-		PAYLOAD_CASE(odc::EventType::AnalogCommandEvent       )
-		PAYLOAD_CASE(odc::EventType::OctetString              )
-		PAYLOAD_CASE(odc::EventType::TimeAndInterval          )
-		PAYLOAD_CASE(odc::EventType::SecurityStat             )
-		PAYLOAD_CASE(odc::EventType::ControlRelayOutputBlock  )
-		PAYLOAD_CASE(odc::EventType::AnalogOutputInt16        )
-		PAYLOAD_CASE(odc::EventType::AnalogOutputInt32        )
-		PAYLOAD_CASE(odc::EventType::AnalogOutputFloat32      )
-		PAYLOAD_CASE(odc::EventType::AnalogOutputDouble64     )
-		PAYLOAD_CASE(odc::EventType::BinaryQuality            )
-		PAYLOAD_CASE(odc::EventType::DoubleBitBinaryQuality   )
-		PAYLOAD_CASE(odc::EventType::AnalogQuality            )
-		PAYLOAD_CASE(odc::EventType::CounterQuality           )
-		PAYLOAD_CASE(odc::EventType::BinaryOutputStatusQuality)
-		PAYLOAD_CASE(odc::EventType::FrozenCounterQuality     )
-		PAYLOAD_CASE(odc::EventType::AnalogOutputStatusQuality)
-		PAYLOAD_CASE(odc::EventType::FileAuth                 )
-		PAYLOAD_CASE(odc::EventType::FileCommand              )
-		PAYLOAD_CASE(odc::EventType::FileCommandStatus        )
-		PAYLOAD_CASE(odc::EventType::FileTransport            )
-		PAYLOAD_CASE(odc::EventType::FileTransportStatus      )
-		PAYLOAD_CASE(odc::EventType::FileDescriptor           )
-		PAYLOAD_CASE(odc::EventType::FileSpecString           )
-		PAYLOAD_CASE(odc::EventType::ConnectState             )
-		PAYLOAD_CASE(odc::EventType::Reserved1                )
-		PAYLOAD_CASE(odc::EventType::Reserved2                )
-		PAYLOAD_CASE(odc::EventType::Reserved3                )
-		PAYLOAD_CASE(odc::EventType::Reserved4                )
-		PAYLOAD_CASE(odc::EventType::Reserved5                )
-		PAYLOAD_CASE(odc::EventType::Reserved6                )
-		PAYLOAD_CASE(odc::EventType::Reserved7                )
-		PAYLOAD_CASE(odc::EventType::Reserved8                )
-		PAYLOAD_CASE(odc::EventType::Reserved9                )
-		PAYLOAD_CASE(odc::EventType::Reserved10               )
-		PAYLOAD_CASE(odc::EventType::Reserved11               )
-		PAYLOAD_CASE(odc::EventType::Reserved12               )
+		PUSH_PAYLOAD_CASE(odc::EventType::Binary                   )
+		PUSH_PAYLOAD_CASE(odc::EventType::DoubleBitBinary          )
+		PUSH_PAYLOAD_CASE(odc::EventType::Analog                   )
+		PUSH_PAYLOAD_CASE(odc::EventType::Counter                  )
+		PUSH_PAYLOAD_CASE(odc::EventType::FrozenCounter            )
+		PUSH_PAYLOAD_CASE(odc::EventType::BinaryOutputStatus       )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogOutputStatus       )
+		PUSH_PAYLOAD_CASE(odc::EventType::BinaryCommandEvent       )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogCommandEvent       )
+		PUSH_PAYLOAD_CASE(odc::EventType::OctetString              )
+		PUSH_PAYLOAD_CASE(odc::EventType::TimeAndInterval          )
+		PUSH_PAYLOAD_CASE(odc::EventType::SecurityStat             )
+		PUSH_PAYLOAD_CASE(odc::EventType::ControlRelayOutputBlock  )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogOutputInt16        )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogOutputInt32        )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogOutputFloat32      )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogOutputDouble64     )
+		PUSH_PAYLOAD_CASE(odc::EventType::BinaryQuality            )
+		PUSH_PAYLOAD_CASE(odc::EventType::DoubleBitBinaryQuality   )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogQuality            )
+		PUSH_PAYLOAD_CASE(odc::EventType::CounterQuality           )
+		PUSH_PAYLOAD_CASE(odc::EventType::BinaryOutputStatusQuality)
+		PUSH_PAYLOAD_CASE(odc::EventType::FrozenCounterQuality     )
+		PUSH_PAYLOAD_CASE(odc::EventType::AnalogOutputStatusQuality)
+		PUSH_PAYLOAD_CASE(odc::EventType::FileAuth                 )
+		PUSH_PAYLOAD_CASE(odc::EventType::FileCommand              )
+		PUSH_PAYLOAD_CASE(odc::EventType::FileCommandStatus        )
+		PUSH_PAYLOAD_CASE(odc::EventType::FileTransport            )
+		PUSH_PAYLOAD_CASE(odc::EventType::FileTransportStatus      )
+		PUSH_PAYLOAD_CASE(odc::EventType::FileDescriptor           )
+		PUSH_PAYLOAD_CASE(odc::EventType::FileSpecString           )
+		PUSH_PAYLOAD_CASE(odc::EventType::ConnectState             )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved1                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved2                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved3                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved4                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved5                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved6                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved7                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved8                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved9                )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved10               )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved11               )
+		PUSH_PAYLOAD_CASE(odc::EventType::Reserved12               )
 		default:
 			lua_pushnil(L);
 			break;
@@ -412,3 +412,294 @@ void PushPayload(lua_State* const L, odc::ConnectState payload)
 {
 	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::ConnectState> >(payload));
 }
+
+
+
+template <> bool PopPayload(lua_State* const L)
+{
+	if(!lua_isboolean(L,-1))
+		throw std::invalid_argument("Payload is not a lua boolean value.");
+	return lua_toboolean(L,-1);
+}
+template<> odc::DBB PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'First' and 'Second' member booleans.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "First");
+	if(!lua_isboolean(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "Second");
+	if(!lua_isboolean(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_toboolean(L,-2), lua_toboolean(L,-1) };
+}
+template<> double PopPayload(lua_State* const L)
+{
+	if(!lua_isnumber(L,-1))
+		throw std::invalid_argument("Payload is not a lua number value.");
+	return lua_tonumber(L,-1);
+}
+template<> uint32_t PopPayload(lua_State* const L)
+{
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument("Payload is not a lua integer value.");
+	return lua_tointeger(L,-1);
+}
+template<> odc::CommandStatus PopPayload(lua_State* const L)
+{
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument("Payload is not a lua integer value.");
+	return static_cast<odc::CommandStatus>(lua_tointeger(L,-1));
+}
+template<> odc::OctetStringBuffer PopPayload(lua_State* const L)
+{
+	lua_getglobal(L,"OctetStringFormat");
+	auto OSF = static_cast<odc::DataToStringMethod>(lua_tointeger(L,-1));
+	lua_pop(L,1);
+
+	if(!lua_isstring(L,-1))
+		throw std::invalid_argument("Payload is not a lua string value.");
+
+	std::string unmodified_string = lua_tostring(L,-1);
+
+	switch(OSF)
+	{
+		case odc::DataToStringMethod::Hex:
+			try
+			{
+				return odc::OctetStringBuffer(odc::hex2buf(unmodified_string));
+			}
+			catch(const std::exception& e)
+			{
+				throw std::invalid_argument(fmt::format("Invalid hex string '{}': {}", unmodified_string, e.what()));
+			}
+		case odc::DataToStringMethod::Raw:
+		default:
+			return odc::OctetStringBuffer(unmodified_string);
+	}
+}
+template<> odc::TAI PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'Timestamp', 'Interval' and 'Units' member integers.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "Timestamp");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "Interval");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -3, "Units");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_tointeger(L,-3), lua_tointeger(L,-2), lua_tointeger(L,-1) };
+}
+template<> odc::SS PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'First' and 'Second' member integers.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "First");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "Second");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_tointeger(L,-2), lua_tointeger(L,-1) };
+}
+template<> odc::ControlRelayOutputBlock PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'ControlCode', 'Count', 'msOnTime', 'msOffTime' and 'CommandStatus' member integers.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "ControlCode");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "Count");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -3, "msOnTime");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -4, "msOffTime");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -5, "CommandStatus");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	odc::ControlRelayOutputBlock CROB;
+	CROB.functionCode = static_cast<odc::ControlCode>(lua_tointeger(L,-5));
+	CROB.count = lua_tointeger(L,-4);
+	CROB.onTimeMS = lua_tointeger(L,-3);
+	CROB.offTimeMS = lua_tointeger(L,-2);
+	CROB.status = static_cast<odc::CommandStatus>(lua_tointeger(L,-1));
+
+	return CROB;
+}
+template<> odc::AO16 PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'Value' and 'CommandStatus' member integers.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "Value");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "CommandStatus");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_tointeger(L,-2), static_cast<odc::CommandStatus>(lua_tointeger(L,-1)) };
+}
+template<> odc::AO32 PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'Value' and 'CommandStatus' member integers.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "Value");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "CommandStatus");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_tointeger(L,-2), static_cast<odc::CommandStatus>(lua_tointeger(L,-1)) };
+}
+template<> odc::AOF PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'Value' (number) and 'CommandStatus' (integer) members.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "Value");
+	if(!lua_isnumber(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "CommandStatus");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_tonumber(L,-2), static_cast<odc::CommandStatus>(lua_tointeger(L,-1)) };
+}
+template<> odc::AOD PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'Value' (number) and 'CommandStatus' (integer) members.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "Value");
+	if(!lua_isnumber(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "CommandStatus");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_tonumber(L,-2), static_cast<odc::CommandStatus>(lua_tointeger(L,-1)) };
+}
+template<> odc::QualityFlags PopPayload(lua_State* const L)
+{
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument("Payload is not a lua integer value.");
+	return static_cast<odc::QualityFlags>(lua_tointeger(L,-1));
+}
+template<> char PopPayload(lua_State* const L)
+{
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument("Payload is not a lua integer value.");
+	return lua_tointeger(L,-1);
+}
+template<> odc::ConnectState PopPayload(lua_State* const L)
+{
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument("Payload is not a lua integer value.");
+	return static_cast<odc::ConnectState>(lua_tointeger(L,-1));
+}
+
+#define POP_PAYLOAD_CASE(T)\
+	case T:\
+	{\
+		event->SetPayload<T>(PopPayload<typename odc::EventTypePayload<T>::type>(L));\
+		break;\
+	}
+void PopPayload(lua_State* const L, std::shared_ptr<odc::EventInfo> event)
+{
+	switch(event->GetEventType())
+	{
+		POP_PAYLOAD_CASE(odc::EventType::Binary                   )
+		POP_PAYLOAD_CASE(odc::EventType::DoubleBitBinary          )
+		POP_PAYLOAD_CASE(odc::EventType::Analog                   )
+		POP_PAYLOAD_CASE(odc::EventType::Counter                  )
+		POP_PAYLOAD_CASE(odc::EventType::FrozenCounter            )
+		POP_PAYLOAD_CASE(odc::EventType::BinaryOutputStatus       )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogOutputStatus       )
+		POP_PAYLOAD_CASE(odc::EventType::BinaryCommandEvent       )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogCommandEvent       )
+		POP_PAYLOAD_CASE(odc::EventType::OctetString              )
+		POP_PAYLOAD_CASE(odc::EventType::TimeAndInterval          )
+		POP_PAYLOAD_CASE(odc::EventType::SecurityStat             )
+		POP_PAYLOAD_CASE(odc::EventType::ControlRelayOutputBlock  )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogOutputInt16        )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogOutputInt32        )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogOutputFloat32      )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogOutputDouble64     )
+		POP_PAYLOAD_CASE(odc::EventType::BinaryQuality            )
+		POP_PAYLOAD_CASE(odc::EventType::DoubleBitBinaryQuality   )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogQuality            )
+		POP_PAYLOAD_CASE(odc::EventType::CounterQuality           )
+		POP_PAYLOAD_CASE(odc::EventType::BinaryOutputStatusQuality)
+		POP_PAYLOAD_CASE(odc::EventType::FrozenCounterQuality     )
+		POP_PAYLOAD_CASE(odc::EventType::AnalogOutputStatusQuality)
+		POP_PAYLOAD_CASE(odc::EventType::FileAuth                 )
+		POP_PAYLOAD_CASE(odc::EventType::FileCommand              )
+		POP_PAYLOAD_CASE(odc::EventType::FileCommandStatus        )
+		POP_PAYLOAD_CASE(odc::EventType::FileTransport            )
+		POP_PAYLOAD_CASE(odc::EventType::FileTransportStatus      )
+		POP_PAYLOAD_CASE(odc::EventType::FileDescriptor           )
+		POP_PAYLOAD_CASE(odc::EventType::FileSpecString           )
+		POP_PAYLOAD_CASE(odc::EventType::ConnectState             )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved1                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved2                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved3                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved4                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved5                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved6                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved7                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved8                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved9                )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved10               )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved11               )
+		POP_PAYLOAD_CASE(odc::EventType::Reserved12               )
+		default:
+			throw std::runtime_error("Can't parse Payload for unknown EventType "+ToString(event->GetEventType()));
+	}
+}
+

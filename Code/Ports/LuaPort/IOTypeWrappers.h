@@ -56,4 +56,7 @@ void PushPayload(lua_State* const L, odc::QualityFlags payload);
 void PushPayload(lua_State* const L, char payload);
 void PushPayload(lua_State* const L, odc::ConnectState payload);
 
+void PopPayload(lua_State* const L, std::shared_ptr<odc::EventInfo> event);
+template <typename T> T PopPayload(lua_State* const L);
+
 #endif // IOTYPEWRAPPERS_H
