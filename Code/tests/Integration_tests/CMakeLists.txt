@@ -36,7 +36,7 @@ file(READ ${CONF_FILE} ${VAR_NAME} PARENT_SCOPE)
 
 configure_file(ConfStrings.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/ConfStrings.cpp)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp ../../opendatacon/DataConnector.cpp)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp ../../opendatacon/DataConnector.cpp ConfStrings.cpp.in)
 add_definitions(-DMAIN_EXE)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)

@@ -19,16 +19,15 @@
  # 
 project(LuaPort_tests)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h)
+set(CONF_FILE "${CMAKE_SOURCE_DIR}/ExampleConfig/SelfDocumentingLuaPort/LuaPortDoco.lua")
+get_filename_component(NOEXT ${CONF_FILE} NAME_WE)
+set(VAR_NAME ${NOEXT}_lua)
+message("Reading ${CONF_FILE} into ${VAR_NAME}")
+file(READ ${CONF_FILE} ${VAR_NAME} PARENT_SCOPE)
 
-if("${CMAKE_CONFIGURATION_TYPES}" STREQUAL "")
-	configure_file(test.lua ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test.lua COPYONLY )
-else()
-	foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
-		string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
-		configure_file(test.lua ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG}}/test.lua COPYONLY )
-	endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
-endif()
+configure_file(ConfStrings.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/ConfStrings.cpp)
+
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ConfStrings.cpp.in)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC ${DL})

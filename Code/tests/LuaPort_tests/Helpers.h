@@ -33,15 +33,16 @@
 #include <opendatacon/util.h>
 #include <opendatacon/Platform.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include <whereami++.h>
 #include <fstream>
 #include <filesystem>
 #include <random>
 
 extern spdlog::level::level_enum log_level;
+void PrepConfFiles(bool init);
 
 inline void TestSetup()
 {
+	PrepConfFiles(true);
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 	auto pLibLogger = std::make_shared<spdlog::logger>("LuaPort", console_sink);
 	pLibLogger->set_level(log_level);
@@ -60,15 +61,14 @@ inline void TestSetup()
 }
 inline void TestTearDown()
 {
+	PrepConfFiles(false);
 	odc::spdlog_drop_all(); // Close off everything
 }
 
 inline Json::Value GetConfigJSON()
 {
-	std::string ExePath = whereami::getExecutablePath().dirname();
-	auto lua_path = (std::filesystem::path(ExePath) / std::filesystem::path("test.lua")).string();
 	Json::Value json_conf;
-	json_conf["LuaFile"] = lua_path;
+	json_conf["LuaFile"] = "LuaPortDoco.lua";
 	return json_conf;
 }
 
