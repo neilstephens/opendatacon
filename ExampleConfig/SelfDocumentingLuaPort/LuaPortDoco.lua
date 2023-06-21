@@ -66,8 +66,14 @@ Q = QualityFlags(QualityFlag.COMM_LOST,QualityFlag.RESTART);
 log.info("QualityFlags() returns " .. Q .. ": " .. ToString.QualityFlags(Q));
 
 -- You can get ms since epoch, and convert to something readable
+-- msSinceEpoch() with no args gets the time 'now'
 DT = msSinceEpochToDateTime(msSinceEpoch());
 log.info("msSinceEpochToDateTime() returns "..DT);
+-- You can get fancy and even use formatter strings
+some_time_fmt1 = "09/02/1983 @ 13:42:01.234";
+some_time_msse = msSinceEpoch(some_time_fmt1,"%d/%m/%Y @ %H:%M:%S.%e");
+some_time_fmt2 = msSinceEpochToDateTime(some_time_msse, "%H-%M-%S.%e ON %Y-%m-%d");
+log.info(some_time_fmt1.." reformatted as "..some_time_fmt2);
 
 --optionally change the default OctetString formatting
 --Can also set this in the Port JSON config
@@ -120,7 +126,7 @@ MyControlEvent =
   Payload = MakePayload.ControlRelayOutputBlock()
 };
 
-MyControlEvent.Payload.ControlCode = ControlCode.LATCH_OFF;
+MyControlEvent.Payload.ControlCode = ControlCode.PULSE_ON;
 log.info("Payload constructed: "..dump(MyControlEvent.Payload));
 PublishEvent(MyControlEvent);
 

@@ -30,14 +30,41 @@ void ExportUtilWrappers(lua_State* const L)
 {
 	lua_pushcfunction(L, [](lua_State* const L) -> int
 		{
+			if(lua_isstring(L,1)) //there's a datetime string to convert
+			{
+			      if(lua_isstring(L,2)) //there's also a format string
+			      {
+			            lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1),lua_tostring(L,2)));
+			            return 1;
+				}
+			      lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1)));
+			      return 1;
+			}
 			lua_pushinteger(L, odc::msSinceEpoch());
 			return 1; //number of lua ret vals pushed onto the stack
 		});
 	lua_setglobal(L, "msSinceEpoch");
+
 	lua_pushcfunction(L, [](lua_State* const L) -> int
 		{
-			auto ms = lua_tointeger(L,-1);
-			lua_pushstring(L, odc::since_epoch_to_datetime(ms).c_str());
+			if(!lua_isinteger(L,1))
+			{
+			      lua_pushnil(L);
+			      return 1;
+			}
+			if(lua_isstring(L,2)) //there's a format string
+			{
+			      try
+			      {
+			            lua_pushstring(L, odc::since_epoch_to_datetime(lua_tointeger(L,1),lua_tostring(L,2)).c_str());
+				}
+			      catch(const std::exception& e)
+			      {
+			            lua_pushnil(L);
+				}
+			      return 1;
+			}
+			lua_pushstring(L, odc::since_epoch_to_datetime(lua_tointeger(L,1)).c_str());
 			return 1; //number of lua ret vals pushed onto the stack
 		});
 	lua_setglobal(L, "msSinceEpochToDateTime");
