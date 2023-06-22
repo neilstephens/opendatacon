@@ -87,25 +87,29 @@ Json::Value JSONFromTable(lua_State* const L, int idx)
 	if(!lua_istable(L,idx))
 		return Json::nullValue;
 
-	Json::Value JSON;
-
 	//store both keys and values until we know if the table is an array
 	std::vector<std::string> keys;
 	std::vector<Json::Value> vals;
-	bool isArr = true;
+	bool isArr = false;
 	lua_Integer arr_idx = 1;
 	// push nil for lua_next to indicate it needs to pick the first key
 	lua_pushnil(L);
 	while (lua_next(L, idx) != 0)
 	{
-		if(!isArr || !lua_isinteger(L,-2) || lua_tointeger(L,-2) != arr_idx)
-			isArr = false;
+		isArr = ((isArr || arr_idx == 1) && lua_isinteger(L,-2) && lua_tointeger(L,-2) == arr_idx);
+
 		if(!lua_isstring(L,-2))
 			keys.push_back("INVALID_KEY_"+std::to_string(arr_idx));
 		else
 		{
-			//FIXME: can't use tostring because it changes numbers and confuses lua_next
-			keys.push_back(lua_tostring(L,-2));
+			if(lua_isboolean(L,-2))
+				keys.push_back(std::to_string(lua_toboolean(L,-2)));
+			else if(lua_isinteger(L,-2))
+				keys.push_back(std::to_string(lua_tointeger(L,-2)));
+			else if(lua_isnumber(L,-2))
+				keys.push_back(std::to_string(lua_tonumber(L,-2)));
+			else
+				keys.push_back(lua_tostring(L,-2));
 		}
 
 		if(lua_isboolean(L,-1))
@@ -115,13 +119,15 @@ Json::Value JSONFromTable(lua_State* const L, int idx)
 		else if(lua_isnumber(L,-1))
 			vals.push_back(lua_tonumber(L,-1));
 		else if(lua_isstring(L,-1))
-			vals.push_back(Json::Int64(lua_tointeger(L,-1)));
+			vals.push_back(lua_tostring(L,-1));
 		else
 			vals.push_back(JSONFromTable(L,-1));
 
 		lua_pop(L,1);
 		arr_idx++;
 	}
+
+	Json::Value JSON;
 	if(isArr)
 	{
 		JSON = Json::arrayValue;
@@ -129,9 +135,10 @@ Json::Value JSONFromTable(lua_State* const L, int idx)
 			JSON[n] = vals[n];
 		return JSON;
 	}
+	JSON = Json::objectValue;
 	size_t i=0;
 	for(const auto& k : keys)
-		JSON[k] = vals[i];
+		JSON[k] = vals[i++];
 	return JSON;
 }
 

@@ -55,9 +55,13 @@ function do_example_stuff()
   
   -- If you need to decode JSON strings,
   -- Just like the port config was converted to a table, the function is here for general usage
-  TableFromJSON = DecodeJSON('{"this" : ["is", "a" , "json", "string"], "test" : {}}');
+  SomeJSON = '{"this" : ["is", "a" , "json", "string",{"test" : 42}], "empty" : {}, "float" : 0.12345}';
+  
+  TableFromJSON = DecodeJSON(SomeJSON);
   JSONFromTable = EncodeJSON(TableFromJSON);
   TableFromJSON.this[1] = "isn't";
+  
+  log.info("JSON: "..SomeJSON);
   log.info("Table: "..dump(TableFromJSON));
   log.info("JSON: "..JSONFromTable);
   
