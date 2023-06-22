@@ -67,7 +67,7 @@ void PushJSON(lua_State* const L, const Json::Value& JSON)
 		lua_pushinteger(L,JSON.asInt64());
 		return;
 	}
-	if(JSON.isDouble())
+	if(JSON.isNumeric())
 	{
 		lua_pushnumber(L,JSON.asDouble());
 		return;
@@ -77,6 +77,9 @@ void PushJSON(lua_State* const L, const Json::Value& JSON)
 		lua_pushstring(L,JSON.asCString());
 		return;
 	}
+	//TODO: log or throw - shouldn't get here
+	lua_pushnil(L);
+	return;
 }
 
 Json::Value JSONFromTable(lua_State* const L, int idx)
@@ -85,7 +88,7 @@ Json::Value JSONFromTable(lua_State* const L, int idx)
 		idx = lua_gettop(L) + (idx+1);
 
 	if(!lua_istable(L,idx))
-		return Json::nullValue;
+		return Json::Value::nullSingleton();
 
 	//store both keys and values until we know if the table is an array
 	std::vector<std::string> keys;
@@ -127,15 +130,14 @@ Json::Value JSONFromTable(lua_State* const L, int idx)
 		arr_idx++;
 	}
 
-	Json::Value JSON;
 	if(isArr)
 	{
-		JSON = Json::arrayValue;
+		Json::Value JSON(Json::arrayValue);
 		for(Json::ArrayIndex n=0; n<vals.size(); n++)
 			JSON[n] = vals[n];
 		return JSON;
 	}
-	JSON = Json::objectValue;
+	Json::Value JSON(Json::objectValue);
 	size_t i=0;
 	for(const auto& k : keys)
 		JSON[k] = vals[i++];
