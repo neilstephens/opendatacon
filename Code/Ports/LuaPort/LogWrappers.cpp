@@ -30,6 +30,8 @@
 
 void ExportLogWrappers(lua_State* const L, const std::string& Name)
 {
+	lua_getglobal(L,"odc");
+
 	//Make a table of log functions
 	lua_newtable(L);
 	for(uint8_t i = 0; i < 7; i++)
@@ -57,5 +59,5 @@ void ExportLogWrappers(lua_State* const L, const std::string& Name)
 		//add key value pair to table
 		lua_settable(L, -3);
 	}
-	lua_setglobal(L, "log");
+	lua_setfield(L,-2,"log");
 }

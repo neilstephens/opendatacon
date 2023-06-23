@@ -62,15 +62,18 @@ void LuaPort::Disable_()
 //Build is called while there's only one active thread, so we don't need to sync access to LuaState here
 void LuaPort::Build()
 {
-	//populate the Lua state with wrapped types and helper functions
-	ExportWrappersToLua(LuaState,Name);
-	ExportLuaPublishEvent();
-	luaL_openlibs(LuaState);
+	//top level table "odc"
+	lua_newtable(LuaState);
 
-	//Export our JSON config as a Lua table
+	//Export our name
+	lua_pushstring(LuaState,Name.c_str());
+	lua_setfield(LuaState,-2,"Name");
+
+	//Export our JSON config
 	PushJSON(LuaState,JSONConf);
-	lua_setglobal(LuaState,"PortConfig");
+	lua_setfield(LuaState,-2,"Config");
 
+	//Export the OctetString format if it's in the config
 	auto OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Hex);
 	if (JSONConf.isMember("OctetStringFormat"))
 	{
@@ -83,7 +86,13 @@ void LuaPort::Build()
 			throw std::invalid_argument("OctetStringFormat should be Raw or Hex, not " + fmt);
 	}
 	lua_pushinteger(LuaState,OSF);
-	lua_setglobal(LuaState,"OctetStringFormat");
+	lua_setfield(LuaState,-2,"OctetStringFormat");
+
+	lua_setglobal(LuaState,"odc");
+
+	ExportWrappersToLua(LuaState,Name);
+	ExportLuaPublishEvent();
+	luaL_openlibs(LuaState);
 
 	//load the lua code
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
@@ -123,6 +132,8 @@ void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& 
 
 	//put callback on stack as a closure as last/third arg
 	auto cb = new SharedStatusCallback_t(pStatusCallback);
+	//FIXME: there's a way to get the lua garbage collector to delete this when the closure is destroyed (I think)
+	//	for now, delete when the closure is called. It should be called every time.
 	lua_pushlightuserdata(LuaState,cb);
 	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
 		{
@@ -197,11 +208,14 @@ void LuaPort::PushEventInfo(std::shared_ptr<const EventInfo> event)
 	PushPayload(LuaState,event->GetEventType(),event);
 	lua_settable(LuaState, -3);
 }
-//PopEventInfo must only be called from the the LuaState sync strand
+//EventInfoFromLua must only be called from the the LuaState sync strand
 //	(or from lua code - which will be running on the strand anyway)
-std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
+std::shared_ptr<EventInfo> LuaPort::EventInfoFromLua(int idx) const
 {
-	if(!lua_istable(LuaState,1))
+	if(idx < 0)
+		idx = lua_gettop(LuaState) + (idx+1);
+
+	if(!lua_istable(LuaState,idx))
 	{
 		if(auto log = odc::spdlog_get("LuaPort"))
 			log->error("{}: EventInfo table argument not found.",Name);
@@ -209,31 +223,31 @@ std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
 	}
 
 	//EventType
-	lua_getfield(LuaState, 1, "EventType");
+	lua_getfield(LuaState, idx, "EventType");
 	if(!lua_isinteger(LuaState,-1))
 		return nullptr;
 	auto et = static_cast<EventType>(lua_tointeger(LuaState,-1));
 	auto event = std::make_shared<EventInfo>(et);
 
 	//Index
-	lua_getfield(LuaState, 1, "Index");
+	lua_getfield(LuaState, idx, "Index");
 	if(lua_isinteger(LuaState,-1))
 		event->SetIndex(lua_tointeger(LuaState,-1));
 
 	//SourcePort
-	lua_getfield(LuaState, 1, "SourcePort");
+	lua_getfield(LuaState, idx, "SourcePort");
 	if(lua_isstring(LuaState,-1))
 		event->SetSource(lua_tostring(LuaState,-1));
 	else
 		event->SetSource(Name);
 
 	//QualityFlags
-	lua_getfield(LuaState, 1, "QualityFlags");
+	lua_getfield(LuaState, idx, "QualityFlags");
 	if(lua_isinteger(LuaState,-1))
 		event->SetQuality(static_cast<QualityFlags>(lua_tointeger(LuaState,-1)));
 
 	//Timestamp
-	lua_getfield(LuaState, 1, "Timestamp");
+	lua_getfield(LuaState, idx, "Timestamp");
 	if(lua_isinteger(LuaState,-1))
 		event->SetTimestamp(lua_tointeger(LuaState,-1));
 	else if(lua_isstring(LuaState,-1))
@@ -250,7 +264,7 @@ std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
 	}
 
 	//Payload
-	lua_getfield(LuaState, 1, "Payload");
+	lua_getfield(LuaState, idx, "Payload");
 	try
 	{
 		PopPayload(LuaState, event);
@@ -268,6 +282,7 @@ std::shared_ptr<EventInfo> LuaPort::PopEventInfo() const
 //This is only called from Build(), so no sync required.
 void LuaPort::ExportLuaPublishEvent()
 {
+	lua_getglobal(LuaState,"odc");
 	//push closure with one upvalue (to capture 'this')
 	lua_pushlightuserdata(LuaState, this);
 	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
@@ -276,7 +291,7 @@ void LuaPort::ExportLuaPublishEvent()
 			auto self = static_cast<const LuaPort*>(lua_topointer(L, lua_upvalueindex(1)));
 
 			//first arg is EventInfo
-			auto event = self->PopEventInfo();
+			auto event = self->EventInfoFromLua(1);
 			if(!event)
 			{
 			      lua_pushboolean(L, false);
@@ -317,7 +332,7 @@ void LuaPort::ExportLuaPublishEvent()
 			lua_pushboolean(L, true);
 			return 1; //number of lua ret vals pushed onto the stack
 		}, 1);
-	lua_setglobal(LuaState,"PublishEvent");
+	lua_setfield(LuaState,-2,"PublishEvent");
 }
 
 //Must only be called from the the LuaState sync strand

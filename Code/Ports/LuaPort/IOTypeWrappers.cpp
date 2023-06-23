@@ -30,6 +30,7 @@
 
 void ExportEventTypes(lua_State* const L)
 {
+	lua_getglobal(L,"odc");
 	//Make a table that has the values of each event type
 	lua_newtable(L);
 	auto event_type = odc::EventType::BeforeRange;
@@ -41,11 +42,12 @@ void ExportEventTypes(lua_State* const L)
 		lua_pushinteger(L, lua_val);
 		lua_settable(L, -3);
 	}
-	lua_setglobal(L,"EventType");
+	lua_setfield(L,-2,"EventType");
 }
 
 void ExportQualityFlags(lua_State* const L)
 {
+	lua_getglobal(L,"odc");
 	//Make a table that has the values of each flag
 	lua_newtable(L);
 	for(const auto& qual :
@@ -68,7 +70,7 @@ void ExportQualityFlags(lua_State* const L)
 		lua_pushinteger(L, lua_val);
 		lua_settable(L, -3);
 	}
-	lua_setglobal(L,"QualityFlag");
+	lua_setfield(L,-2,"QualityFlag");
 
 	//Make a helper function for combining quality flags
 	lua_pushcfunction(L, [](lua_State* const L) -> int
@@ -82,11 +84,12 @@ void ExportQualityFlags(lua_State* const L)
 			lua_pushinteger(L, lua_return);
 			return 1; //number of lua ret vals pushed onto the stack
 		});
-	lua_setglobal(L, "QualityFlags");
+	lua_setfield(L,-2,"QualityFlags");
 }
 
 void ExportCommandStatus(lua_State* const L)
 {
+	lua_getglobal(L,"odc");
 	//Make a table that has the values
 	lua_newtable(L);
 	for(const auto& cmd_stat :
@@ -119,11 +122,12 @@ void ExportCommandStatus(lua_State* const L)
 		lua_pushinteger(L, lua_val);
 		lua_settable(L, -3);
 	}
-	lua_setglobal(L,"CommandStatus");
+	lua_setfield(L,-2,"CommandStatus");
 }
 
 void ExportControlCodes(lua_State* const L)
 {
+	lua_getglobal(L,"odc");
 	//Make a table that has the values
 	lua_newtable(L);
 	for(const auto& ctrl_code :
@@ -143,11 +147,12 @@ void ExportControlCodes(lua_State* const L)
 		lua_pushinteger(L, lua_val);
 		lua_settable(L, -3);
 	}
-	lua_setglobal(L,"ControlCode");
+	lua_setfield(L,-2,"ControlCode");
 }
 
 void ExportConnectStates(lua_State* const L)
 {
+	lua_getglobal(L,"odc");
 	//Make a table that has the values
 	lua_newtable(L);
 	for(const auto& conn_st :
@@ -163,11 +168,12 @@ void ExportConnectStates(lua_State* const L)
 		lua_pushinteger(L, lua_val);
 		lua_settable(L, -3);
 	}
-	lua_setglobal(L,"ConnectState");
+	lua_setfield(L,-2,"ConnectState");
 }
 
 void ExportPayloadFactory(lua_State* const L)
 {
+	lua_getglobal(L,"odc");
 	//Make a table of Payload factory functions
 	//Make a table that has the values of each event type
 	lua_newtable(L);
@@ -192,7 +198,7 @@ void ExportPayloadFactory(lua_State* const L)
 		//add key value pair to table
 		lua_settable(L, -3);
 	}
-	lua_setglobal(L,"MakePayload");
+	lua_setfield(L,-2,"MakePayload");
 }
 
 #define TOSTRING_TABLE_ENTRY(T)\
@@ -205,13 +211,14 @@ void ExportPayloadFactory(lua_State* const L)
 	lua_settable(L, -3)
 void ExportToStringFunctions(lua_State* const L)
 {
+	lua_getglobal(L,"odc");
 	lua_newtable(L);
 	TOSTRING_TABLE_ENTRY(EventType);
 	TOSTRING_TABLE_ENTRY(QualityFlags);
 	TOSTRING_TABLE_ENTRY(CommandStatus);
 	TOSTRING_TABLE_ENTRY(ControlCode);
 	TOSTRING_TABLE_ENTRY(ConnectState);
-	lua_setglobal(L, "ToString");
+	lua_setfield(L,-2,"ToString");
 }
 
 #define PUSH_PAYLOAD_CASE(T)\
@@ -304,9 +311,10 @@ void PushPayload(lua_State* const L, odc::CommandStatus payload)
 }
 void PushPayload(lua_State* const L, odc::OctetStringBuffer payload)
 {
-	lua_getglobal(L,"OctetStringFormat");
+	lua_getglobal(L,"odc");
+	lua_getfield(L,-1,"OctetStringFormat");
 	auto OSF = static_cast<odc::DataToStringMethod>(lua_tointeger(L,-1));
-	lua_pop(L,1);
+	lua_pop(L,2);
 	auto chardata = static_cast<const char*>(payload.data());
 	auto rawdata = static_cast<const uint8_t*>(payload.data());
 	switch(OSF)
