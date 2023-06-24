@@ -27,9 +27,15 @@
 #define UTILWRAPPERS_H
 
 #include "CLua.h"
+#include <opendatacon/asio.h>
+#include <string>
 namespace Json { class Value; }
 
-void ExportUtilWrappers(lua_State* const L);
+void ExportUtilWrappers(lua_State* const L,
+	std::shared_ptr<asio::io_service::strand> pSyncStrand,
+	std::shared_ptr<void> handler_tracker,
+	const std::string& Name,
+	const std::string& LogName);
 void PushJSON(lua_State* const L, const Json::Value& JSON);
 
 #endif // UTILWRAPPERS_H

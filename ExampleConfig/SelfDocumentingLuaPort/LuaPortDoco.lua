@@ -135,6 +135,8 @@ function open_for_business_example()
   local ConnectedEvent = { EventType = odc.EventType.ConnectState, Payload = odc.ConnectState.CONNECTED };
   odc.PublishEvent(PortUpEvent);
   odc.PublishEvent(Connected);
+  --setting a timer here. Be sure to cancel it if we close for business, or we'll make everyone wait!
+  TimerCancel = odc.msTimerCallback(10000,function(err_code)odc.log.info("Timer: "..err_code)end);
 end
 
 function closed_for_business_example()
@@ -142,6 +144,7 @@ function closed_for_business_example()
   local PortDownEvent = { EventType = odc.EventType.ConnectState, Payload = odc.ConnectState.PORT_DOWN };
   odc.PublishEvent(DisconnectedEvent);
   odc.PublishEvent(PortDownEvent);
+  TimerCancel();
 end
 
 function process_config_example()

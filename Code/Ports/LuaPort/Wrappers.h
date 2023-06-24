@@ -29,9 +29,14 @@
 #include "IOTypeWrappers.h"
 #include "LogWrappers.h"
 #include "UtilWrappers.h"
+#include <opendatacon/asio.h>
 #include <string>
 
-inline void ExportWrappersToLua(lua_State* const L, const std::string& Name)
+inline void ExportWrappersToLua(lua_State* const L,
+	std::shared_ptr<asio::io_service::strand> pSyncStrand,
+	std::shared_ptr<void> handler_tracker,
+	const std::string& Name,
+	const std::string& LogName)
 {
 	//IOTypes
 	ExportEventTypes(L);
@@ -42,9 +47,9 @@ inline void ExportWrappersToLua(lua_State* const L, const std::string& Name)
 	ExportPayloadFactory(L);
 	ExportToStringFunctions(L);
 	//Logging
-	ExportLogWrappers(L,Name);
+	ExportLogWrappers(L,Name,LogName);
 	//Util
-	ExportUtilWrappers(L);
+	ExportUtilWrappers(L,pSyncStrand,handler_tracker,Name,LogName);
 }
 
 #endif // WRAPPERS_H

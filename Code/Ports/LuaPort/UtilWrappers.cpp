@@ -177,7 +177,11 @@ Json::Value JSONFromLua(lua_State* const L, int idx, bool asKey)
 	}
 }
 
-void ExportUtilWrappers(lua_State* const L)
+void ExportUtilWrappers(lua_State* const L,
+	std::shared_ptr<asio::io_service::strand> pSyncStrand,
+	std::shared_ptr<void> handler_tracker,
+	const std::string& Name,
+	const std::string& LogName)
 {
 	lua_getglobal(L,"odc");
 
@@ -291,5 +295,56 @@ void ExportUtilWrappers(lua_State* const L)
 			}
 		});
 	lua_setfield(L,-2,"Hex2String");
+
+	//msTimerCallback() to get a callback after x ms
+	lua_pushlightuserdata(L,new std::weak_ptr<asio::io_service::strand>(pSyncStrand));
+	lua_pushlightuserdata(L,new std::weak_ptr<void>(handler_tracker));
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, ([](lua_State* const L) -> int
+				   {
+					   if(lua_gettop(L) != 2 || !lua_isinteger(L,1) || !lua_isfunction(L,2))
+					   {
+					         lua_pushnil(L);
+					         return 1;
+					   }
+					   auto timer_ms = lua_tointeger(L,1);
+					   auto ppSync = static_cast<std::weak_ptr<asio::io_service::strand>*>(lua_touserdata(L, lua_upvalueindex(1)));
+					   auto sync = ppSync->lock(); delete ppSync;
+					   auto ppTracker = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(2)));
+					   auto tracker = ppTracker->lock(); delete ppTracker;
+					   std::string name(lua_tostring(L, lua_upvalueindex(3)));
+					   std::string logname(lua_tostring(L, lua_upvalueindex(4)));
+					   auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pops
+					   std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer();
+					   pTimer->expires_from_now(std::chrono::milliseconds(timer_ms));
+					   pTimer->async_wait(sync->wrap([L,tracker,name,logname,LuaCBref,pTimer](asio::error_code err)
+						   {
+							   //get callback from the registry back on stack
+							   lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCBref);
+							   lua_pushstring(L,err.message().c_str());
+
+							   //now call
+							   const int argc = 1; const int retc = 0;
+							   auto ret = lua_pcall(L,argc,retc,0);
+							   if(ret != LUA_OK)
+							   {
+							         std::string call_err = lua_tostring(L, -1);
+							         if(auto log = odc::spdlog_get(logname))
+									   log->error("{}: Error calling timer lua callback: {}",name,call_err);
+							         lua_pop(L,1);
+							   }
+						   }));
+					   //return a cancel function
+					   lua_pushlightuserdata(L,new decltype(pTimer)(pTimer));
+					   lua_pushcclosure(L, [](lua_State* const L) -> int
+						   {
+							   auto ppTimer = static_cast<std::shared_ptr<asio::steady_timer>*>(lua_touserdata(L, lua_upvalueindex(1)));
+							   (*ppTimer)->cancel();
+							   return 0;
+						   },1);
+					   return 1;
+				   }),4);
+	lua_setfield(L,-2,"msTimerCallback");
 }
 

@@ -75,7 +75,7 @@ void LuaPort::Build()
 	}
 	lua_setglobal(LuaState,"odc");
 
-	ExportWrappersToLua(LuaState,Name);
+	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaPort");
 	ExportLuaPublishEvent();
 	luaL_openlibs(LuaState);
 

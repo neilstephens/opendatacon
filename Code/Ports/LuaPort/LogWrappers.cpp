@@ -28,7 +28,7 @@
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 
-void ExportLogWrappers(lua_State* const L, const std::string& Name)
+void ExportLogWrappers(lua_State* const L, const std::string& Name, const std::string& LogName)
 {
 	lua_getglobal(L,"odc");
 
@@ -41,20 +41,22 @@ void ExportLogWrappers(lua_State* const L, const std::string& Name)
 		//push table key
 		lua_pushstring(L, level);
 
-		//push table value - closure with two upvalues
+		//push table value - closure with three upvalues
 		lua_pushstring(L, Name.c_str());
+		lua_pushstring(L, LogName.c_str());
 		lua_pushinteger(L,i);
 		lua_pushcclosure(L, [](lua_State* const L) -> int
 			{
 				auto name = lua_tostring(L, lua_upvalueindex(1));
-				auto lvl = static_cast<spdlog::level::level_enum>(lua_tointeger(L, lua_upvalueindex(2)));
+				auto logname = lua_tostring(L, lua_upvalueindex(2));
+				auto lvl = static_cast<spdlog::level::level_enum>(lua_tointeger(L, lua_upvalueindex(3)));
 				auto msg = lua_tostring(L,-1);
-				auto log = odc::spdlog_get("LuaPort");
+				auto log = odc::spdlog_get(logname);
 				if(log)
 					log->log(lvl,"[Lua] {}: {}",name,msg);
 				lua_pushboolean(L, !!log);
 				return 1; //number of lua ret vals pushed onto the stack
-			}, 2);
+			}, 3);
 
 		//add key value pair to table
 		lua_settable(L, -3);
