@@ -39,6 +39,9 @@ function Event(EventInfo, SenderName, StatusCallback)
   return;
 end
 
+--------------------- Functions below are just for the purposes of this demo LuaPort
+--------------------- Only the four functions above are needed by the opendatacon port interface
+
 function do_example_stuff()
   -- There's a bunch of enum values you can access, and logging functions
   odc.log.info("EventType.Analog : " .. odc.EventType.Analog);
@@ -87,7 +90,6 @@ function do_example_stuff()
   local TryAnyway = odc.Hex2String(NotHex);
   if TryAnyway == nil then odc.log.error(string.format("'%s' is not a hex string",NotHex)) end
   
-  
   --example publish a Binary event
   local MyEventInfo = {};
   MyEventInfo.EventType = odc.EventType.Binary;
@@ -128,6 +130,7 @@ function do_example_stuff()
   odc.PublishEvent(MyControlEvent);
   
   odc.log.info("Here's everything under 'odc' for good measure: "..odc.EncodeJSON(odc));
+  odc.log.info("...Plus all the default payloads from odc.MakePayload(): "..dump_default_payloads_json());
 
 end
    
@@ -150,5 +153,26 @@ function process_config_example()
   local serialised_as_json = odc.EncodeJSON(conf);
   odc.log.info("Turned my config back into JSON : "..serialised_as_json);
 end
+
+function dump_default_payloads_json()
+  EventTypeNames = get_sorted_keys(odc.EventType);
+  AllPayloads = "";
+  for _,ETName in pairs(EventTypeNames) do
+    AllPayloads = AllPayloads.."\n"..ETName.." => "..odc.EncodeJSON(odc.MakePayload[ETName]());
+  end
+  return AllPayloads;
+end
+
+function get_sorted_keys(Tab)
+  local n=1; local ks = {};
+  for k,_ in pairs(Tab) do
+    ks[n] = k;
+    n=n+1;
+  end
+  table.sort(ks);
+  return ks;
+end
+
+
 
 
