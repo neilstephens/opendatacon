@@ -311,20 +311,7 @@ void PushPayload(lua_State* const L, odc::CommandStatus payload)
 }
 void PushPayload(lua_State* const L, odc::OctetStringBuffer payload)
 {
-	lua_getglobal(L,"odc");
-	lua_getfield(L,-1,"OctetStringFormat");
-	auto OSF = static_cast<odc::DataToStringMethod>(lua_tointeger(L,-1));
-	lua_pop(L,2);
-	auto chardata = static_cast<const char*>(payload.data());
-	auto rawdata = static_cast<const uint8_t*>(payload.data());
-	switch(OSF)
-	{
-		case odc::DataToStringMethod::Raw:
-			lua_pushstring(L, std::string(chardata,payload.size()).c_str());
-		case odc::DataToStringMethod::Hex:
-		default:
-			lua_pushstring(L, odc::buf2hex(rawdata,payload.size()).c_str());
-	}
+	lua_pushlstring(L,static_cast<const char *>(payload.data()),payload.size());
 }
 void PushPayload(lua_State* const L, odc::TAI payload)
 {
@@ -466,30 +453,12 @@ template<> odc::CommandStatus PopPayload(lua_State* const L)
 }
 template<> odc::OctetStringBuffer PopPayload(lua_State* const L)
 {
-	lua_getglobal(L,"OctetStringFormat");
-	auto OSF = static_cast<odc::DataToStringMethod>(lua_tointeger(L,-1));
-	lua_pop(L,1);
-
 	if(!lua_isstring(L,-1))
 		throw std::invalid_argument("Payload is not a lua string value.");
 
-	std::string unmodified_string = lua_tostring(L,-1);
-
-	switch(OSF)
-	{
-		case odc::DataToStringMethod::Hex:
-			try
-			{
-				return odc::OctetStringBuffer(odc::hex2buf(unmodified_string));
-			}
-			catch(const std::exception& e)
-			{
-				throw std::invalid_argument(fmt::format("Invalid hex string '{}': {}", unmodified_string, e.what()));
-			}
-		case odc::DataToStringMethod::Raw:
-		default:
-			return odc::OctetStringBuffer(unmodified_string);
-	}
+	size_t len;
+	auto buf = lua_tolstring(L,-1,&len);
+	return odc::OctetStringBuffer(std::vector(buf,buf+len));
 }
 template<> odc::TAI PopPayload(lua_State* const L)
 {

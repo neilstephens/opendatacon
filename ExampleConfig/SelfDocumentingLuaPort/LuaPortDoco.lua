@@ -75,15 +75,11 @@ function do_example_stuff()
   odc.log.info("JSON: "..SomeJSON);
   odc.log.info("JSON after decode and re-encode with formatting: "..JSONFromTable);
   
-  --optionally change the default OctetString formatting
-  --Can also set this in the Port JSON config
-  odc.OctetStringFormat = odc.DataToStringMethod.Hex;
-  
-  --little helpers if you're using Hex formatted OctetString payloads
+  --little helpers if you're sending/receiving binary OctetString payloads
   local MyHexString = odc.String2Hex("raw string");
   local MyRawString = odc.Hex2String(MyHexString);
   odc.log.info("'raw string' =>String2Hex=> '"..MyHexString.."' =>Hex2String=> '"..MyRawString.."'");
-  --including binary
+  --with binary
   local MyBinHexString = odc.String2Hex(string.char(0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55));
   odc.log.info("String2Hex(string.char(0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55)) returns "..MyBinHexString);
   local NotHex = "abcdefgh";

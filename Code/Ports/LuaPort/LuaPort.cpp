@@ -64,30 +64,15 @@ void LuaPort::Build()
 {
 	//top level table "odc"
 	lua_newtable(LuaState);
-
-	//Export our name
-	lua_pushstring(LuaState,Name.c_str());
-	lua_setfield(LuaState,-2,"Name");
-
-	//Export our JSON config
-	PushJSON(LuaState,JSONConf);
-	lua_setfield(LuaState,-2,"Config");
-
-	//Export the OctetString format if it's in the config
-	auto OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Hex);
-	if (JSONConf.isMember("OctetStringFormat"))
 	{
-		auto fmt = JSONConf["OctetStringFormat"].asString();
-		if(fmt == "Hex")
-			OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Hex);
-		else if(fmt == "Raw")
-			OSF = static_cast< std::underlying_type_t<odc::DataToStringMethod> >(DataToStringMethod::Raw);
-		else
-			throw std::invalid_argument("OctetStringFormat should be Raw or Hex, not " + fmt);
-	}
-	lua_pushinteger(LuaState,OSF);
-	lua_setfield(LuaState,-2,"OctetStringFormat");
+		//Export our name
+		lua_pushstring(LuaState,Name.c_str());
+		lua_setfield(LuaState,-2,"Name");
 
+		//Export our JSON config
+		PushJSON(LuaState,JSONConf);
+		lua_setfield(LuaState,-2,"Config");
+	}
 	lua_setglobal(LuaState,"odc");
 
 	ExportWrappersToLua(LuaState,Name);

@@ -263,16 +263,6 @@ void ExportUtilWrappers(lua_State* const L)
 		});
 	lua_setfield(L,-2,"msSinceEpochToDateTime");
 
-	//DataToStringMethod enum
-	lua_newtable(L);
-	lua_pushstring(L,"Hex");
-	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::DataToStringMethod> >(odc::DataToStringMethod::Hex));
-	lua_settable(L, -3);
-	lua_pushstring(L,"Raw");
-	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::DataToStringMethod> >(odc::DataToStringMethod::Raw));
-	lua_settable(L, -3);
-	lua_setfield(L,-2,"DataToStringMethod");
-
 	//String2Hex
 	lua_pushcfunction(L, [](lua_State* const L) -> int
 		{
