@@ -17,7 +17,7 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(LuaPort)
+project(LuaTransform)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
@@ -25,7 +25,7 @@ add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} Lua)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER transforms)
 
 install(CODE
 "

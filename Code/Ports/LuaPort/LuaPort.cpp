@@ -104,8 +104,6 @@ void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& 
 	if(auto log = spdlog::get("LuaPort"))
 		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 
-	if(!LuaState) return;
-
 	//Get ready to call the lua function
 	lua_getglobal(LuaState, "Event");
 
@@ -290,8 +288,6 @@ void LuaPort::ExportLuaPublishEvent()
 			      auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
 			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self,h{self->handler_tracker}](CommandStatus status)
 					{
-						if(!self->LuaState) return;
-
 						auto lua_status = static_cast< std::underlying_type_t<odc::CommandStatus> >(status);
 						//get callback from the registry back on stack
 						lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCBref);
@@ -323,8 +319,6 @@ void LuaPort::ExportLuaPublishEvent()
 //Must only be called from the the LuaState sync strand
 void LuaPort::CallLuaGlobalVoidVoidFunc(const std::string& FnName)
 {
-	if(!LuaState) return;
-
 	lua_getglobal(LuaState, FnName.c_str());
 
 	//no args, so just call it
