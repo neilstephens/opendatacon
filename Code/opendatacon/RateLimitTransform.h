@@ -37,8 +37,7 @@ using namespace odc;
 class RateLimitTransform: public Transform
 {
 public:
-	RateLimitTransform(const Json::Value& params):
-		Transform(params)
+	RateLimitTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
 		std::string name = "DEFAULT";
 		if (params.isMember("Name") && params["Name"].isString())

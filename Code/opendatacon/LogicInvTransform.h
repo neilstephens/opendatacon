@@ -37,8 +37,7 @@ using namespace odc;
 class LogicInvTransform: public Transform
 {
 public:
-	LogicInvTransform(const Json::Value& params):
-		Transform(params)
+	LogicInvTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{}
 
 	bool Event(std::shared_ptr<EventInfo> event) override

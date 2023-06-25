@@ -38,11 +38,16 @@ namespace odc
 class Transform
 {
 public:
-	Transform(const Json::Value& params): params(params){}
+	Transform(const std::string& Name, const Json::Value& params):
+		Name(Name),
+		params(params)
+	{}
 	virtual ~Transform(){}
 
 	virtual bool Event(std::shared_ptr<EventInfo> event) = 0;
 
+protected:
+	std::string Name;
 	Json::Value params;
 };
 

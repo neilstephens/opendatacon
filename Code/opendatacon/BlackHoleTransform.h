@@ -35,7 +35,7 @@ using namespace odc;
 class BlackHoleTransform: public Transform
 {
 public:
-	BlackHoleTransform(const Json::Value& params): Transform(params)
+	BlackHoleTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{}
 
 	bool Event(std::shared_ptr<EventInfo> event) override

@@ -36,8 +36,7 @@ using namespace odc;
 class RandTransform: public Transform
 {
 public:
-	RandTransform(const Json::Value& params):
-		Transform(params)
+	RandTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{}
 
 	bool Event(std::shared_ptr<EventInfo> event) override

@@ -36,8 +36,7 @@ using namespace odc;
 class ThresholdTransform: public Transform
 {
 public:
-	ThresholdTransform(const Json::Value& params):
-		Transform(params),
+	ThresholdTransform(const std::string& Name, const Json::Value& params): Transform(Name,params),
 		pass_on(false),
 		already_under(false),
 		threshold(-DBL_MAX)

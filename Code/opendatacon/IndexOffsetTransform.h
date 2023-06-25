@@ -35,7 +35,7 @@ using namespace odc;
 class IndexOffsetTransform: public Transform
 {
 public:
-	IndexOffsetTransform(const Json::Value& params): Transform(params)
+	IndexOffsetTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
 		if(params.isMember("Offset") && params["Offset"].isInt())
 			offset = params["Offset"].asInt();

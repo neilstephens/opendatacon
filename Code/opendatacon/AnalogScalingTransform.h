@@ -34,7 +34,7 @@ using namespace odc;
 class AnalogScalingTransform: public Transform
 {
 public:
-	AnalogScalingTransform(const Json::Value& params): Transform(params)
+	AnalogScalingTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
 		if(!params.isMember("Indexes") || !params["Indexes"].isArray())
 		{
