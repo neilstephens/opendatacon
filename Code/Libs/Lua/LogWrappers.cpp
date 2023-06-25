@@ -24,7 +24,7 @@
  *      Author: Neil Stephens
  */
 
-#include "CLua.h"
+#include <Lua/CLua.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 

@@ -23,7 +23,7 @@
  *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
-#include "CLua.h"
+#include <Lua/CLua.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 #include <json/json.h>

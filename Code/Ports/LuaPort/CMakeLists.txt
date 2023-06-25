@@ -17,36 +17,13 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(LuaPort LANGUAGES C CXX)
+project(LuaPort)
 
-include(FetchContent)
-
-set(LUA_VERSION "5.4.6")
-set(LUA_HASH "SHA256=7d5ea1b9cb6aa0b59ca3dde1c6adcb57ef83a1ba8e5432c0ecd06bf439b3ad88")
-
-FetchContent_Declare(
-	lua
-	URL https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz
-	URL_HASH ${LUA_HASH}
-)
-
-FetchContent_GetProperties(lua)
-if(NOT lua_POPULATED)
-	FetchContent_Populate(lua)
-endif()
-
-set(LUA_SRC ${lua_SOURCE_DIR}/src)
-file(GLOB ${PROJECT_NAME}_SRC ${LUA_SRC}/*.c ${LUA_SRC}/*.h *.cpp *.h *.def)
-list(REMOVE_ITEM ${PROJECT_NAME}_SRC ${LUA_SRC}/lua.c ${LUA_SRC}/luac.c)
-
-if(UNIX)
-	set(LUA_DEFS "${LUA_DEFS} LUA_USE_POSIX")
-endif()
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${LUA_DEFS})
-target_include_directories(${PROJECT_NAME} PRIVATE ${LUA_SRC})
-target_link_libraries(${PROJECT_NAME} ODC)
+target_link_libraries(${PROJECT_NAME} Lua)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)

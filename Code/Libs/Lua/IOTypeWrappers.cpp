@@ -25,7 +25,7 @@
  */
 
 #include "IOTypeWrappers.h"
-#include "CLua.h"
+#include <Lua/CLua.h>
 #include <opendatacon/IOTypes.h>
 
 void ExportEventTypes(lua_State* const L)

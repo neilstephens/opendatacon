@@ -27,7 +27,7 @@
 #ifndef LuaPort_H_
 #define LuaPort_H_
 
-#include "CLua.h"
+#include <Lua/CLua.h>
 #include <opendatacon/DataPort.h>
 
 using namespace odc;

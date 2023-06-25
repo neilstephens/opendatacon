@@ -26,7 +26,7 @@
 #ifndef LOGWRAPPERS_H
 #define LOGWRAPPERS_H
 
-#include "CLua.h"
+#include <Lua/CLua.h>
 #include <string>
 
 void ExportLogWrappers(lua_State* const L, const std::string& Name, const std::string& LogName);

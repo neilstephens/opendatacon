@@ -18,24 +18,38 @@
  *	limitations under the License.
  */
 /*
- *  UtilWrappers.h
+ * Wrappers.h
  *
  *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
-#ifndef UTILWRAPPERS_H
-#define UTILWRAPPERS_H
+#ifndef WRAPPERS_H
+#define WRAPPERS_H
 
-#include "CLua.h"
+#include "../../IOTypeWrappers.h"
+#include "../../LogWrappers.h"
+#include "../../UtilWrappers.h"
 #include <opendatacon/asio.h>
 #include <string>
-namespace Json { class Value; }
 
-void ExportUtilWrappers(lua_State* const L,
+inline void ExportWrappersToLua(lua_State* const L,
 	std::shared_ptr<asio::io_service::strand> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
 	const std::string& Name,
-	const std::string& LogName);
-void PushJSON(lua_State* const L, const Json::Value& JSON);
+	const std::string& LogName)
+{
+	//IOTypes
+	ExportEventTypes(L);
+	ExportQualityFlags(L);
+	ExportCommandStatus(L);
+	ExportControlCodes(L);
+	ExportConnectStates(L);
+	ExportPayloadFactory(L);
+	ExportToStringFunctions(L);
+	//Logging
+	ExportLogWrappers(L,Name,LogName);
+	//Util
+	ExportUtilWrappers(L,pSyncStrand,handler_tracker,Name,LogName);
+}
 
-#endif // UTILWRAPPERS_H
+#endif // WRAPPERS_H

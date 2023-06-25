@@ -44,11 +44,12 @@ end
 
 function do_example_stuff()
   -- There's a bunch of enum values you can access, and logging functions
-  odc.log.info("EventType.Analog : " .. odc.EventType.Analog);
-  odc.log.info("EventType.Binary : " .. odc.EventType.Binary);
-  odc.log.info("CommandStatus.SUCCESS : " .. odc.CommandStatus.SUCCESS);
+  odc.log.critical("EventType.Analog : " .. odc.EventType.Analog);
+  odc.log.error("EventType.Binary : " .. odc.EventType.Binary);
+  odc.log.warning("CommandStatus.SUCCESS : " .. odc.CommandStatus.SUCCESS);
   odc.log.info("QualityFlag.COMM_LOST : " .. odc.QualityFlag.COMM_LOST);
-  odc.log.info("QualityFlag.RESTART : " .. odc.QualityFlag.RESTART);
+  odc.log.debug("QualityFlag.RESTART : " .. odc.QualityFlag.RESTART);
+  odc.log.trace("ControlCode.PULSE_ON : " .. odc.ControlCode.PULSE_ON);
   
   --Quality flags can be combined (it's just bitwise OR convenience function)
   local Q = odc.QualityFlags(odc.QualityFlag.COMM_LOST,odc.QualityFlag.RESTART);
@@ -134,7 +135,7 @@ function open_for_business_example()
   local PortUpEvent = { EventType = odc.EventType.ConnectState, Payload = odc.ConnectState.PORT_UP };
   local ConnectedEvent = { EventType = odc.EventType.ConnectState, Payload = odc.ConnectState.CONNECTED };
   odc.PublishEvent(PortUpEvent);
-  odc.PublishEvent(Connected);
+  odc.PublishEvent(ConnectedEvent);
   --setting a timer here. Be sure to cancel it if we close for business, or we'll make everyone wait!
   TimerCancel = odc.msTimerCallback(10000,function(err_code)odc.log.info("Timer: "..err_code)end);
 end

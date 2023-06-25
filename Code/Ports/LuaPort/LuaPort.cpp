@@ -26,8 +26,8 @@
 
 #include "LuaPort.h"
 #include "LuaPortConf.h"
-#include "CLua.h"
-#include "Wrappers.h"
+#include <Lua/CLua.h>
+#include <Lua/Wrappers.h>
 #include <opendatacon/util.h>
 
 LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
