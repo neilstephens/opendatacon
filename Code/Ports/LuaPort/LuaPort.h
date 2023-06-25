@@ -67,8 +67,6 @@ private:
 	void Disable_();
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
-	void PushEventInfo(std::shared_ptr<const EventInfo> event);
-	std::shared_ptr<EventInfo> EventInfoFromLua(int idx) const;
 	void ExportLuaPublishEvent();
 	void CallLuaGlobalVoidVoidFunc(const std::string& FnName);
 

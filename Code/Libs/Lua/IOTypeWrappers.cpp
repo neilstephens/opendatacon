@@ -408,7 +408,98 @@ void PushPayload(lua_State* const L, odc::ConnectState payload)
 	lua_pushinteger(L,static_cast< std::underlying_type_t<odc::ConnectState> >(payload));
 }
 
+void PushEventInfo(lua_State* const L, std::shared_ptr<const odc::EventInfo> event)
+{
+	//make a lua table for event info on stack
+	lua_newtable(L);
 
+	//EventType
+	auto lua_et = static_cast< std::underlying_type_t<odc::EventType> >(event->GetEventType());
+	lua_pushstring(L, "EventType");
+	lua_pushinteger(L, lua_et);
+	lua_settable(L, -3);
+
+	//Index
+	lua_pushstring(L, "Index");
+	lua_pushinteger(L, event->GetIndex());
+	lua_settable(L, -3);
+
+	//SourcePort
+	lua_pushstring(L, "SourcePort");
+	lua_pushstring(L, event->GetSourcePort().c_str());
+	lua_settable(L, -3);
+
+	//Quality
+	auto lua_q = static_cast< std::underlying_type_t<odc::QualityFlags> >(event->GetQuality());
+	lua_pushstring(L, "QualityFlags");
+	lua_pushinteger(L, lua_q);
+	lua_settable(L, -3);
+
+	//Timestamp
+	lua_pushstring(L, "Timestamp");
+	lua_pushinteger(L, event->GetTimestamp());
+	lua_settable(L, -3);
+
+	//Payload
+	lua_pushstring(L, "Payload");
+	PushPayload(L,event->GetEventType(),event);
+	lua_settable(L, -3);
+}
+
+std::shared_ptr<odc::EventInfo> EventInfoFromLua(lua_State* const L, const std::string& Name, const std::string& LogName, int idx)
+{
+	if(idx < 0)
+		idx = lua_gettop(L) + (idx+1);
+
+	if(!lua_istable(L,idx))
+	{
+		if(auto log = odc::spdlog_get(LogName))
+			log->error("{}: EventInfo table argument not found.",Name);
+		return nullptr;
+	}
+
+	//EventType
+	lua_getfield(L, idx, "EventType");
+	if(!lua_isinteger(L,-1))
+		return nullptr;
+	auto et = static_cast<odc::EventType>(lua_tointeger(L,-1));
+	auto event = std::make_shared<odc::EventInfo>(et);
+
+	//Index
+	lua_getfield(L, idx, "Index");
+	if(lua_isinteger(L,-1))
+		event->SetIndex(lua_tointeger(L,-1));
+
+	//SourcePort
+	lua_getfield(L, idx, "SourcePort");
+	if(lua_isstring(L,-1))
+		event->SetSource(lua_tostring(L,-1));
+
+	//QualityFlags
+	lua_getfield(L, idx, "QualityFlags");
+	if(lua_isinteger(L,-1))
+		event->SetQuality(static_cast<odc::QualityFlags>(lua_tointeger(L,-1)));
+
+	//Timestamp
+	lua_getfield(L, idx, "Timestamp");
+	if(lua_isinteger(L,-1))
+		event->SetTimestamp(lua_tointeger(L,-1));
+
+	//Payload
+	lua_getfield(L, idx, "Payload");
+	try
+	{
+		PopPayload(L, event);
+	}
+	catch(const std::exception& e)
+	{
+		if(auto log = odc::spdlog_get(LogName))
+			log->error("{}: Lua EventInfo Payload error: {}",Name,e.what());
+		event->SetPayload();
+	}
+
+	return event;
+}
 
 template <> bool PopPayload(lua_State* const L)
 {

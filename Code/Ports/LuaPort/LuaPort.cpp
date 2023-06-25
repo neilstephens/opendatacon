@@ -108,7 +108,7 @@ void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& 
 	lua_getglobal(LuaState, "Event");
 
 	//first arg
-	PushEventInfo(event);
+	PushEventInfo(LuaState,event);
 
 	//put sendername on stack as second arg
 	lua_pushstring(LuaState, SenderName.c_str());
@@ -153,115 +153,6 @@ void LuaPort::ProcessElements(const Json::Value& JSONRoot)
 		pConf->LuaFile = JSONRoot["LuaFile"].asString();
 }
 
-//PushEventInfo must only be called from the the LuaState sync strand
-void LuaPort::PushEventInfo(std::shared_ptr<const EventInfo> event)
-{
-	//make a lua table for event info on stack
-	lua_newtable(LuaState);
-
-	//EventType
-	auto lua_et = static_cast< std::underlying_type_t<odc::EventType> >(event->GetEventType());
-	lua_pushstring(LuaState, "EventType");
-	lua_pushinteger(LuaState, lua_et);
-	lua_settable(LuaState, -3);
-
-	//Index
-	lua_pushstring(LuaState, "Index");
-	lua_pushinteger(LuaState, event->GetIndex());
-	lua_settable(LuaState, -3);
-
-	//SourcePort
-	lua_pushstring(LuaState, "SourcePort");
-	lua_pushstring(LuaState, event->GetSourcePort().c_str());
-	lua_settable(LuaState, -3);
-
-	//Quality
-	auto lua_q = static_cast< std::underlying_type_t<odc::QualityFlags> >(event->GetQuality());
-	lua_pushstring(LuaState, "QualityFlags");
-	lua_pushinteger(LuaState, lua_q);
-	lua_settable(LuaState, -3);
-
-	//Timestamp
-	lua_pushstring(LuaState, "Timestamp");
-	lua_pushinteger(LuaState, event->GetTimestamp());
-	lua_settable(LuaState, -3);
-
-	//Payload
-	lua_pushstring(LuaState, "Payload");
-	PushPayload(LuaState,event->GetEventType(),event);
-	lua_settable(LuaState, -3);
-}
-//EventInfoFromLua must only be called from the the LuaState sync strand
-//	(or from lua code - which will be running on the strand anyway)
-std::shared_ptr<EventInfo> LuaPort::EventInfoFromLua(int idx) const
-{
-	if(idx < 0)
-		idx = lua_gettop(LuaState) + (idx+1);
-
-	if(!lua_istable(LuaState,idx))
-	{
-		if(auto log = odc::spdlog_get("LuaPort"))
-			log->error("{}: EventInfo table argument not found.",Name);
-		return nullptr;
-	}
-
-	//EventType
-	lua_getfield(LuaState, idx, "EventType");
-	if(!lua_isinteger(LuaState,-1))
-		return nullptr;
-	auto et = static_cast<EventType>(lua_tointeger(LuaState,-1));
-	auto event = std::make_shared<EventInfo>(et);
-
-	//Index
-	lua_getfield(LuaState, idx, "Index");
-	if(lua_isinteger(LuaState,-1))
-		event->SetIndex(lua_tointeger(LuaState,-1));
-
-	//SourcePort
-	lua_getfield(LuaState, idx, "SourcePort");
-	if(lua_isstring(LuaState,-1))
-		event->SetSource(lua_tostring(LuaState,-1));
-	else
-		event->SetSource(Name);
-
-	//QualityFlags
-	lua_getfield(LuaState, idx, "QualityFlags");
-	if(lua_isinteger(LuaState,-1))
-		event->SetQuality(static_cast<QualityFlags>(lua_tointeger(LuaState,-1)));
-
-	//Timestamp
-	lua_getfield(LuaState, idx, "Timestamp");
-	if(lua_isinteger(LuaState,-1))
-		event->SetTimestamp(lua_tointeger(LuaState,-1));
-	else if(lua_isstring(LuaState,-1))
-	{
-		try
-		{
-			event->SetTimestamp(odc::datetime_to_since_epoch(lua_tostring(LuaState,-1)));
-		}
-		catch(const std::exception& e)
-		{
-			if(auto log = odc::spdlog_get("LuaPort"))
-				log->error("{}: Lua EventInfo Timestamp error: {}",Name,e.what());
-		}
-	}
-
-	//Payload
-	lua_getfield(LuaState, idx, "Payload");
-	try
-	{
-		PopPayload(LuaState, event);
-	}
-	catch(const std::exception& e)
-	{
-		if(auto log = odc::spdlog_get("LuaPort"))
-			log->error("{}: Lua EventInfo Payload error: {}",Name,e.what());
-		event->SetPayload();
-	}
-
-	return event;
-}
-
 //This is only called from Build(), so no sync required.
 void LuaPort::ExportLuaPublishEvent()
 {
@@ -274,12 +165,14 @@ void LuaPort::ExportLuaPublishEvent()
 			auto self = static_cast<const LuaPort*>(lua_topointer(L, lua_upvalueindex(1)));
 
 			//first arg is EventInfo
-			auto event = self->EventInfoFromLua(1);
+			auto event = EventInfoFromLua(L,self->Name,"LuaPort",1);
 			if(!event)
 			{
 			      lua_pushboolean(L, false);
 			      return 1;
 			}
+			if(event->GetSourcePort()=="")
+				event->SetSource(self->Name);
 
 			//optional second arg is command status callback
 			if(lua_isfunction(L,2))

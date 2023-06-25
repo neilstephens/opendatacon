@@ -56,6 +56,9 @@ void PushPayload(lua_State* const L, odc::QualityFlags payload);
 void PushPayload(lua_State* const L, char payload);
 void PushPayload(lua_State* const L, odc::ConnectState payload);
 
+void PushEventInfo(lua_State* const L, std::shared_ptr<const odc::EventInfo> event);
+std::shared_ptr<odc::EventInfo> EventInfoFromLua(lua_State* const L, const std::string& Name, const std::string& LogName, int idx);
+
 void PopPayload(lua_State* const L, std::shared_ptr<odc::EventInfo> event);
 template <typename T> T PopPayload(lua_State* const L);
 

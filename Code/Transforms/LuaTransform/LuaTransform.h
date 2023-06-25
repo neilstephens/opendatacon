@@ -62,8 +62,6 @@ private:
 	//synchronised versions of pubilic counterpart above
 	bool Event_(std::shared_ptr<EventInfo> event);
 
-	void PushEventInfo(std::shared_ptr<const EventInfo> event);
-	std::shared_ptr<EventInfo> EventInfoFromLua(int idx) const;
 	lua_State* LuaState = luaL_newstate();
 };
 
