@@ -21,6 +21,7 @@
  */
 #include "TestDNP3Helpers.h"
 #include "../PortLoader.h"
+#include "../ThreadPool.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
@@ -34,10 +35,6 @@ TEST_CASE(SUITE("TCP link"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		//make an outstation port
 		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOutstation);
@@ -63,6 +60,8 @@ TEST_CASE(SUITE("TCP link"))
 		//get them to build themselves using their configs
 		OPUT->Build();
 		MPUT->Build();
+
+		ThreadPool thread_pool(1);
 
 		//turn them on
 		OPUT->Enable();
@@ -103,11 +102,6 @@ TEST_CASE(SUITE("TCP link"))
 		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
 
 		MPUT->Disable();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);
@@ -128,10 +122,6 @@ TEST_CASE(SUITE("Serial link"))
 		auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 		REQUIRE(portlib);
 		{
-			auto ios = odc::asio_service::Get();
-			auto work = ios->make_work();
-			std::thread t([ios](){ios->run();});
-
 			if(system("socat pty,raw,echo=0,link=SerialEndpoint1 pty,raw,echo=0,link=SerialEndpoint2 &"))
 			{
 				WARN("socat system call failed");
@@ -171,6 +161,8 @@ TEST_CASE(SUITE("Serial link"))
 			//get them to build themselves using their configs
 			OPUT->Build();
 			MPUT->Build();
+
+			ThreadPool thread_pool(1);
 
 			//turn them on
 			OPUT->Enable();
@@ -216,11 +208,6 @@ TEST_CASE(SUITE("Serial link"))
 			{
 				WARN("kill socat system call failed");
 			}
-
-			work.reset();
-			ios->run();
-			t.join();
-			ios.reset();
 		}
 		//Unload the library
 		UnLoadModule(portlib);

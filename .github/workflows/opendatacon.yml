@@ -242,16 +242,11 @@ jobs:
       run: |
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat psmisc make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat psmisc make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static libmodbus libmodbus-devel
         ln -s /usr/bin/cmake3 /bin/cmake
         mkdir -p /opt/openssl-root
         ln -s /usr/include/openssl11 /opt/openssl-root/include
         ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
-        #Extras that aren-t yum-able
-        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-devel-3.0.8-1.el7.x86_64.rpm
-        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-3.0.8-1.el7.x86_64.rpm
-        rpm -i libmodbus-3.0.8-1.el7.x86_64.rpm
-        rpm -i libmodbus-devel-3.0.8-1.el7.x86_64.rpm    
         # To get Python3.6 we need scl-util-build tools
         curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
         rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
