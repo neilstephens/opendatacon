@@ -90,11 +90,16 @@ bool LuaTransform::Event_(std::shared_ptr<EventInfo> event)
 		return false;
 	}
 	if(!lua_istable(LuaState,-1))
+	{
+		lua_pop(LuaState,1);
 		return false;
+	}
 	if(auto transformed = EventInfoFromLua(LuaState,Name,"LuaTransform",-1))
 	{
 		event.swap(transformed);
+		lua_pop(LuaState,1);
 		return true;
 	}
+	lua_pop(LuaState,1);
 	return false;
 }

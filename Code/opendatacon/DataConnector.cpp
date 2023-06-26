@@ -257,6 +257,10 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 	//Do we have a connection for this sender?
 	if(connection_count > 0)
 	{
+		//TODO: if Transform::Event() was refactored to take a callback instead of returning bool
+		//	this block of code could potentially become asynchronous.
+		//	The callback of each Transform::Event() could call the next.
+		//	The last Transform::Event() callback could call the DataPort::Event()s
 		auto new_event_obj = std::make_shared<EventInfo>(*event);
 		if(SenderTransforms.count(SenderName))
 		{
