@@ -23,6 +23,7 @@
  */
 #include "Helpers.h"
 #include "../PortLoader.h"
+#include "../ThreadPool.h"
 #include "../../../include/opendatacon/IOTypes.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
@@ -41,10 +42,6 @@ TEST_CASE(SUITE("Sequence Reordering"))
 	auto portlib = LoadModule(GetLibFileName("FileTransferPort"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
@@ -55,6 +52,9 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", conf), deletePort);
 
 		PUT->Build();
+
+		ThreadPool thread_pool(1);
+
 		PUT->Enable();
 
 		std::atomic_bool cb_exec = false;
@@ -243,11 +243,6 @@ TEST_CASE(SUITE("Sequence Reordering"))
 		}
 
 		PUT->Disable();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	TestTearDown();
 	UnLoadModule(portlib);

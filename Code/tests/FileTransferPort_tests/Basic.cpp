@@ -23,6 +23,7 @@
  */
 #include "Helpers.h"
 #include "../PortLoader.h"
+#include "../ThreadPool.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
@@ -37,10 +38,6 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 
 	//Go through the typical life cycle of a port, albeit short
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
@@ -50,13 +47,11 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", ""), deletePort);
 
 		PUT->Build();
+
+		ThreadPool thread_pool(1);
+
 		PUT->Enable();
 		PUT->Disable();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 
 	TestTearDown();
@@ -71,10 +66,6 @@ TEST_CASE(SUITE("ConstructBuildEnableDestroy"))
 
 	//Test the destruction of an enabled port (happens in case of exception)
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
@@ -84,13 +75,11 @@ TEST_CASE(SUITE("ConstructBuildEnableDestroy"))
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", ""), deletePort);
 
 		PUT->Build();
+
+		ThreadPool thread_pool(1);
+
 		PUT->Enable();
 		PUT.reset();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 
 	TestTearDown();
