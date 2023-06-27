@@ -40,7 +40,7 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp .
 add_definitions(-DMAIN_EXE)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
-target_link_libraries(${PROJECT_NAME} ODC ${DL})
+target_link_libraries(${PROJECT_NAME} LuaUICommander ${DL})
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)

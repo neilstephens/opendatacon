@@ -28,6 +28,7 @@
 #ifndef __opendatacon__ConsoleUI__
 #define __opendatacon__ConsoleUI__
 #include "tinycon.h"
+#include <LuaUICommander.h>
 #include <opendatacon/IUI.h>
 #include <opendatacon/asio.h>
 #include <vector>
@@ -63,8 +64,11 @@ private:
 	std::map<std::string,std::string> mDescriptions;
 	std::string help_intro;
 
+	LuaUICommander ScriptRunner;
+	Json::Value ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss);
+
 	/* Internal functions */
-	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
+	Json::Value ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
 
 	/* Internal functions for auto completion and console prompt handling */
 	void AddRootCommands(const std::string& cmd, std::vector<std::string>& matches);

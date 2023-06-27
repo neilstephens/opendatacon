@@ -197,6 +197,8 @@ void LuaPort::ExportLuaPublishEvent()
 								log->error("{}: Lua PublishEvent() callback error: {}",self->Name,err);
 						      lua_pop(L,1);
 						}
+						//release the reference to the callback
+						luaL_unref(L, LUA_REGISTRYINDEX, LuaCBref);
 					}));
 			      self->PublishEvent(event, cb);
 			}

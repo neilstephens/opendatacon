@@ -28,7 +28,11 @@ using namespace odc;
 
 ConsoleUI::ConsoleUI():
 	tinyConsole("odc> "),
-	context("")
+	context(""),
+	ScriptRunner([this](const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss) -> Json::Value
+		{
+			return ScriptCommandHandler(responder_name,cmd,args_iss);
+		}, "ConsoleUI")
 {
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
 		  "the first argument is taken as a regex to match which items in the collection the "
@@ -92,6 +96,34 @@ ConsoleUI::ConsoleUI():
 			}
 			std::cout<<std::endl;
 		},"Get help on commands. Optional argument of specific command.");
+
+	AddCommand("RunCommandScript",[this](std::stringstream& LineStream)
+		{
+			std::string filename,ID;
+			if(LineStream>>filename && LineStream>>ID)
+			{
+			      std::ifstream fin(filename);
+			      if(fin.is_open())
+			      {
+			            std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
+			            auto started = ScriptRunner.Execute(lua_code,ID);
+			            std::cout<<"Execution start: "<<(started ? "SUCCESS" : "FAILURE")<<std::endl;
+			            return;
+				}
+			      std::cout<<"Failed to open file."<<std::endl;
+			      return;
+			}
+			std::cout<<"Usage: 'RunCommandScript <lua_filename> <ID>'"<<std::endl;
+		},"Load a Lua script to automate sending UI commands. Usage: 'RunCommandScript <lua_filename> <ID>'. ID is a arbitrary user-specified ID that can be used with 'StatCommandScript'");
+
+	AddCommand("StatCommandScript",[this](std::stringstream& LineStream)
+		{
+			std::string ID;
+			if(LineStream>>ID)
+				std::cout<<"Script "<<ID<<(ScriptRunner.Completed(ID) ? " completed" : " running")<<std::endl;
+			else
+				std::cout<<"Usage: 'StatCommandScript <ID>'"<<std::endl;
+		},"Check the execution status of a command script started by 'RunCommandScript'. Usage: 'StatCommandScript <ID>'");
 }
 
 ConsoleUI::~ConsoleUI(void)
@@ -215,7 +247,15 @@ int ConsoleUI::hotkeys(char c)
 	return 0;
 }
 
-void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
+Json::Value ConsoleUI::ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss)
+{
+	auto it = Responders.find(responder_name);
+	if(it == Responders.end())
+		return IUIResponder::GenerateResult("Bad command");
+	return ExecuteCommand(it->second, cmd, args_iss);
+}
+
+Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
 {
 	ParamCollection params;
 
@@ -237,20 +277,20 @@ void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string
 	while(extract_delimited_string("\"'`",args,Val))
 		params[std::to_string(arg_num++)] = Val;
 
+	Json::Value results;
 	if(target_list.size() > 0) //there was a list resolved
 	{
 		for(auto& target : target_list)
 		{
 			params["Target"] = target.asString();
-			auto result = pResponder->ExecuteCommand(command, params);
-			std::cout<<target.asString()+":\n"<<result.toStyledString()<<std::endl;
+			results[target.asString()] = pResponder->ExecuteCommand(command, params);
 		}
 	}
 	else //There was no list - execute anyway
-	{
-		auto result = pResponder->ExecuteCommand(command, params);
-		std::cout<<result.toStyledString()<<std::endl;
-	}
+		results = pResponder->ExecuteCommand(command, params);
+
+	std::cout<<results.toStyledString()<<std::endl;
+	return results;
 }
 
 void ConsoleUI::AddRootCommands(const std::string& cmd, std::vector<std::string>& matches)
