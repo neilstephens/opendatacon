@@ -129,12 +129,13 @@ void DataConcentrator::RefreshIUIResponders()
 
 void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 {
-	interface->AddCommand("shutdown",[this](std::stringstream& ss)
+	interface->AddCommand("shutdown",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::thread([this](){this->Shutdown();}).detach();
+			return IUIResponder::GenerateResult("Success");
 		}
 		,"Shutdown opendatacon");
-	interface->AddCommand("reload_config",[this](std::stringstream& ss)
+	interface->AddCommand("reload_config",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::string filename;
 			if(!(ss >> filename))
@@ -151,35 +152,44 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 					else
 						this->ReloadConfig(filename);
 				}).detach();
+			return IUIResponder::GenerateResult("Initiated");
 		}
 		,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename> <optional_delay_override>]");
-	interface->AddCommand("version",[] (std::stringstream& ss)
+	interface->AddCommand("version",[] (std::stringstream& ss) -> Json::Value
 		{
-			std::cout<<"Release " << odc::version_string() <<std::endl
-			         <<"Submodules:"<<std::endl
-			         <<"\t"<<odc::submodules_version_string()<<std::endl
-			         <<"Running config: "<<odc::GetConfigVersion()<<std::endl;
+			std::stringstream oss;
+			oss<<"Release " << odc::version_string()
+			   <<"\nSubmodules:"
+			   <<"\n\t"<<odc::submodules_version_string()
+			   <<"\nRunning config: "<<odc::GetConfigVersion();
+			std::cout<<oss.str()<<std::endl;
+			return IUIResponder::GenerateResult(oss.str());
 
 		},"Print version information");
-	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss)
+	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->SetLogLevel(ss);
+			/* FIXME: should return json */ this->SetLogLevel(ss);
+			return IUIResponder::GenerateResult("Success");
 		},"Set the threshold for logging");
-	interface->AddCommand("flush_logs",[] (std::stringstream& ss)
+	interface->AddCommand("flush_logs",[] (std::stringstream& ss) -> Json::Value
 		{
 			odc::spdlog_flush_all();
+			return IUIResponder::GenerateResult("Success");
 		},"Flush all registered loggers and sinks");
-	interface->AddCommand("add_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("add_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->AddLogSink(ss);
+			/* FIXME: should return json */ this->AddLogSink(ss);
+			return IUIResponder::GenerateResult("Success");
 		},"Add a log sink. WARNING: May cause missed log messages momentarily");
-	interface->AddCommand("del_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("del_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->DeleteLogSink(ss);
+			/* FIXME: should return json */ this->DeleteLogSink(ss);
+			return IUIResponder::GenerateResult("Success");
 		},"Delete a log sink. WARNING: May cause missed log messages momentarily");
-	interface->AddCommand("ls_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("ls_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->ListLogSinks();
+			/* FIXME: should return json */ this->ListLogSinks();
+			return IUIResponder::GenerateResult("Success");
 		},"List the names of all the log sinks");
 
 	interface->SetResponders(RespondersMasterCopy);

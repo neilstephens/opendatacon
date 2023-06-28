@@ -40,7 +40,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& web
 	log_q_size(log_q_size)
 {}
 
-void WebUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
+void WebUI::AddCommand(const std::string& name, std::function<Json::Value  (std::stringstream&)> callback, const std::string& desc)
 {
 	RootCommands[name] = callback;
 }

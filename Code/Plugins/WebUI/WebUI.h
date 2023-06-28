@@ -43,7 +43,7 @@ public:
 	WebUI(uint16_t port, const std::string& web_root, const std::string& web_crt, const std::string& web_key, const std::string& tcp_port, size_t log_q_size);
 
 	/* Implement IUI interface */
-	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
+	void AddCommand(const std::string& name, std::function<Json::Value  (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
 	void Build() override;
 	void Enable() override;
 	void Disable() override;

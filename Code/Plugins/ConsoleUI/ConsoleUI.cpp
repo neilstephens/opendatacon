@@ -38,7 +38,7 @@ ConsoleUI::ConsoleUI():
 		  "the first argument is taken as a regex to match which items in the collection the "
 		  "command will run for. The remainer of the arguments should be parameter Name/Value pairs."
 		  "Eg. Collection Dosomething \".*OnlyAFewMatch.*\" arg_to_dosomething ...");
-	AddCommand("help",[this](std::stringstream& LineStream)
+	AddCommand("help",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string arg;
 			std::cout<<std::endl;
@@ -95,9 +95,10 @@ ConsoleUI::ConsoleUI():
 				}
 			}
 			std::cout<<std::endl;
+			return IUIResponder::GenerateResult("Success");
 		},"Get help on commands. Optional argument of specific command.");
 
-	AddCommand("RunCommandScript",[this](std::stringstream& LineStream)
+	AddCommand("RunCommandScript",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string filename,ID;
 			if(LineStream>>filename && LineStream>>ID)
@@ -107,22 +108,28 @@ ConsoleUI::ConsoleUI():
 			      {
 			            std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
 			            auto started = ScriptRunner.Execute(lua_code,ID);
-			            std::cout<<"Execution start: "<<(started ? "SUCCESS" : "FAILURE")<<std::endl;
-			            return;
+			            auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
+			            std::cout<<msg<<std::endl;
+			            return IUIResponder::GenerateResult(msg);
 				}
 			      std::cout<<"Failed to open file."<<std::endl;
-			      return;
+			      return IUIResponder::GenerateResult("Failed to open file.");
 			}
 			std::cout<<"Usage: 'RunCommandScript <lua_filename> <ID>'"<<std::endl;
+			return IUIResponder::GenerateResult("Bad parameter");
 		},"Load a Lua script to automate sending UI commands. Usage: 'RunCommandScript <lua_filename> <ID>'. ID is a arbitrary user-specified ID that can be used with 'StatCommandScript'");
 
-	AddCommand("StatCommandScript",[this](std::stringstream& LineStream)
+	AddCommand("StatCommandScript",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string ID;
 			if(LineStream>>ID)
-				std::cout<<"Script "<<ID<<(ScriptRunner.Completed(ID) ? " completed" : " running")<<std::endl;
-			else
-				std::cout<<"Usage: 'StatCommandScript <ID>'"<<std::endl;
+			{
+			      auto msg = "Script "+ID+(ScriptRunner.Completed(ID) ? " completed" : " running");
+			      std::cout<<msg<<std::endl;
+			      return IUIResponder::GenerateResult(msg);
+			}
+			std::cout<<"Usage: 'StatCommandScript <ID>'"<<std::endl;
+			return IUIResponder::GenerateResult("Bad parameter");
 		},"Check the execution status of a command script started by 'RunCommandScript'. Usage: 'StatCommandScript <ID>'");
 }
 
@@ -131,7 +138,7 @@ ConsoleUI::~ConsoleUI(void)
 	Disable();
 }
 
-void ConsoleUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
+void ConsoleUI::AddCommand(const std::string& name, std::function<Json::Value (std::stringstream&)> callback, const std::string& desc)
 {
 	mCmds[name] = callback;
 	mDescriptions[name] = desc;
@@ -249,13 +256,20 @@ int ConsoleUI::hotkeys(char c)
 
 Json::Value ConsoleUI::ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss)
 {
+	constexpr bool quiet = true; //supress console output
+
+	auto root_cmd_it = mCmds.find(cmd);
+	if(responder_name == "" && root_cmd_it != mCmds.end())
+		return mCmds.at(cmd)(args_iss);
+
 	auto it = Responders.find(responder_name);
-	if(it == Responders.end())
-		return IUIResponder::GenerateResult("Bad command");
-	return ExecuteCommand(it->second, cmd, args_iss);
+	if(it != Responders.end())
+		return ExecuteCommand(it->second, cmd, args_iss, quiet);
+
+	return IUIResponder::GenerateResult("Bad command");
 }
 
-Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
+Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, bool quiet)
 {
 	ParamCollection params;
 
@@ -289,7 +303,8 @@ Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std:
 	else //There was no list - execute anyway
 		results = pResponder->ExecuteCommand(command, params);
 
-	std::cout<<results.toStyledString()<<std::endl;
+	if(!quiet)
+		std::cout<<results.toStyledString()<<std::endl;
 	return results;
 }
 
