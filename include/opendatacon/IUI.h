@@ -32,11 +32,13 @@
 #include <opendatacon/asio.h>
 #include <memory>
 
+using CmdFunc_t = std::function<Json::Value (std::stringstream& args)>;
+
 class IUI
 {
 public:
 	virtual ~IUI(){}
-	virtual void AddCommand(const std::string& name, std::function<Json::Value (std::stringstream&)> callback, const std::string& desc = "No description available\n") = 0;
+	virtual void AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc = "No description available\n") = 0;
 	virtual void Build() = 0;
 	virtual void Enable() = 0;
 	virtual void Disable() = 0;

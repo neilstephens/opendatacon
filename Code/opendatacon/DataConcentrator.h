@@ -94,11 +94,11 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<std::ostream>> pTCPostreams;
 
 	std::unordered_map<std::string, spdlog::sink_ptr> LogSinks;
-	inline void ListLogSinks();
-	inline void ListLogLevels();
-	void SetLogLevel(std::stringstream& ss);
-	void AddLogSink(std::stringstream& ss);
-	void DeleteLogSink(std::stringstream& ss);
+	inline void ListLogSinks(Json::Value& out);
+	inline void ListLogLevels(Json::Value& out);
+	Json::Value SetLogLevel(std::stringstream& ss);
+	Json::Value AddLogSink(std::stringstream& ss);
+	Json::Value DeleteLogSink(std::stringstream& ss);
 	size_t log_flush_period = 0;
 
 	void ParkThread();

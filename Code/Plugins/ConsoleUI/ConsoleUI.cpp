@@ -109,10 +109,8 @@ ConsoleUI::ConsoleUI():
 			            std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
 			            auto started = ScriptRunner.Execute(lua_code,ID);
 			            auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
-			            std::cout<<msg<<std::endl;
 			            return IUIResponder::GenerateResult(msg);
 				}
-			      std::cout<<"Failed to open file."<<std::endl;
 			      return IUIResponder::GenerateResult("Failed to open file.");
 			}
 			std::cout<<"Usage: 'RunCommandScript <lua_filename> <ID>'"<<std::endl;
@@ -125,7 +123,6 @@ ConsoleUI::ConsoleUI():
 			if(LineStream>>ID)
 			{
 			      auto msg = "Script "+ID+(ScriptRunner.Completed(ID) ? " completed" : " running");
-			      std::cout<<msg<<std::endl;
 			      return IUIResponder::GenerateResult(msg);
 			}
 			std::cout<<"Usage: 'StatCommandScript <ID>'"<<std::endl;
@@ -138,7 +135,7 @@ ConsoleUI::~ConsoleUI(void)
 	Disable();
 }
 
-void ConsoleUI::AddCommand(const std::string& name, std::function<Json::Value (std::stringstream&)> callback, const std::string& desc)
+void ConsoleUI::AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc)
 {
 	mCmds[name] = callback;
 	mDescriptions[name] = desc;
@@ -192,7 +189,7 @@ int ConsoleUI::trigger (const std::string& s)
 		}
 		else
 		{
-			ExecuteCommand(Responders[cmd],rcmd,LineStream);
+			std::cout<<ExecuteCommand(Responders[cmd],rcmd,LineStream).toStyledString()<<std::endl;
 		}
 	}
 	else if(!this->context.empty() && cmd == "exit")
@@ -206,19 +203,18 @@ int ConsoleUI::trigger (const std::string& s)
 		if(mCmds.count(cmd))
 		{
 			/* regular command */
-			mCmds[cmd](LineStream);
+			std::cout<<mCmds[cmd](LineStream).toStyledString()<<std::endl;
 		}
 		else
 		{
 			//contextual command
-			ExecuteCommand(Responders[this->context],cmd,LineStream);
+			std::cout<<ExecuteCommand(Responders[this->context],cmd,LineStream).toStyledString()<<std::endl;
 		}
 	}
 	else if(mCmds.count(cmd))
 	{
 		/* regular command */
-
-		mCmds[cmd](LineStream);
+		std::cout<<mCmds[cmd](LineStream).toStyledString()<<std::endl;
 	}
 	else
 	{
@@ -256,20 +252,18 @@ int ConsoleUI::hotkeys(char c)
 
 Json::Value ConsoleUI::ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss)
 {
-	constexpr bool quiet = true; //supress console output
-
 	auto root_cmd_it = mCmds.find(cmd);
 	if(responder_name == "" && root_cmd_it != mCmds.end())
 		return mCmds.at(cmd)(args_iss);
 
 	auto it = Responders.find(responder_name);
 	if(it != Responders.end())
-		return ExecuteCommand(it->second, cmd, args_iss, quiet);
+		return ExecuteCommand(it->second, cmd, args_iss);
 
 	return IUIResponder::GenerateResult("Bad command");
 }
 
-Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, bool quiet)
+Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
 {
 	ParamCollection params;
 
@@ -303,8 +297,6 @@ Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std:
 	else //There was no list - execute anyway
 		results = pResponder->ExecuteCommand(command, params);
 
-	if(!quiet)
-		std::cout<<results.toStyledString()<<std::endl;
 	return results;
 }
 

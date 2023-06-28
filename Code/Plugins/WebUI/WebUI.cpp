@@ -40,7 +40,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& web
 	log_q_size(log_q_size)
 {}
 
-void WebUI::AddCommand(const std::string& name, std::function<Json::Value  (std::stringstream&)> callback, const std::string& desc)
+void WebUI::AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc)
 {
 	RootCommands[name] = callback;
 }
@@ -249,8 +249,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 		if (RootCommands.find(command) == RootCommands.end())
 			value["Result"] = "Command " + command + " not found !!!";
 		else
-			RootCommands[command](iss);
-		value["Result"] = "Success";
+			value = RootCommands[command](iss);
 		result_cb(std::move(value));
 	}
 	else if(Responders.find(responder) != Responders.end())

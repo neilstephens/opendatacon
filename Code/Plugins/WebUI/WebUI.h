@@ -43,7 +43,7 @@ public:
 	WebUI(uint16_t port, const std::string& web_root, const std::string& web_crt, const std::string& web_key, const std::string& tcp_port, size_t log_q_size);
 
 	/* Implement IUI interface */
-	void AddCommand(const std::string& name, std::function<Json::Value  (std::stringstream&)> callback, const std::string& desc = "No description available\n") override;
+	void AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc = "No description available\n") override;
 	void Build() override;
 	void Enable() override;
 	void Disable() override;
@@ -76,7 +76,7 @@ private:
 	/*Param Collection with POST from client side*/
 	ParamCollection params;
 	/* UI response handlers */
-	std::unordered_map<std::string, std::function<void (std::stringstream&)>> RootCommands;
+	std::unordered_map<std::string, CmdFunc_t> RootCommands;
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb);
 	void HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb);
 	void ConnectToTCPServer();
