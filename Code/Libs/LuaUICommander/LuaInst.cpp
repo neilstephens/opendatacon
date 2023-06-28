@@ -29,10 +29,10 @@
 #include <string>
 #include <chrono>
 
-LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, const std::string& ID, const std::string& LoggerName):
+LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, const std::string& LoggerName, const std::string& ID, std::stringstream& script_args):
 	CmdHandler(CmdHandler),
-	ID(ID),
-	LoggerName(LoggerName)
+	LoggerName(LoggerName),
+	ID(ID)
 {
 	//top level table "odc"
 	lua_newtable(L);
@@ -54,7 +54,7 @@ LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, 
 				size_t idx = 3;
 				std::stringstream args;
 				while(lua_isstring(L,idx))
-					args<<lua_tostring(L,idx++);
+					args<<lua_tostring(L,idx++)<<"\n";
 				auto json_result = self->CmdHandler(responder_name,cmd,args);
 				PushJSON(L,json_result);
 				return 1;
@@ -79,7 +79,8 @@ LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, 
 	if(!lua_isfunction(L, -1))
 		throw std::runtime_error(ID+": Lua code doesn't have 'SendCommands' function.");
 
-	pStrand->post([this,h{handler_tracker}](){Runner();});
+	std::string remaining = script_args.str().substr(script_args.tellg());
+	pStrand->post([this,remaining,h{handler_tracker}](){Runner(remaining);});
 }
 LuaInst::~LuaInst()
 {
@@ -100,12 +101,19 @@ bool LuaInst::Completed()
 }
 
 //only call Runner() on strand
-void LuaInst::Runner()
+void LuaInst::Runner(const std::string& args)
 {
 	if(!cancelled)
 	{
 		lua_getglobal(L, "SendCommands");
-		const int argc = 0; const int retc = 1;
+		int argc = 0;
+		std::stringstream args_ss(args); std::string arg;
+		while(args_ss>>arg)
+		{
+			lua_pushstring(L,arg.c_str());
+			argc++;
+		}
+		const int retc = 1;
 		auto ret = lua_pcall(L,argc,retc,0);
 		if(ret != LUA_OK)
 		{

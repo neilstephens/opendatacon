@@ -39,12 +39,12 @@ using CommandHandler = std::function<Json::Value(const std::string& responder_na
 class LuaInst
 {
 public:
-	LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, const std::string& ID, const std::string& LoggerName);
+	LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, const std::string& LoggerName, const std::string& ID, std::stringstream& script_args);
 	~LuaInst();
 	bool Completed();
 private:
 	//only call Runner() on strand
-	void Runner();
+	void Runner(const std::string& args = "");
 
 	std::atomic_bool cancelled = false;
 	std::atomic_bool completed = false;
@@ -55,8 +55,8 @@ private:
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	const CommandHandler& CmdHandler;
-	const std::string ID;
 	const std::string LoggerName;
+	const std::string ID;
 };
 
 #endif // LUAINST_H

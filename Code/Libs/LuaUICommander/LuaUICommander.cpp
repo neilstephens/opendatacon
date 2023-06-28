@@ -36,16 +36,17 @@ LuaUICommander::~LuaUICommander()
 	Scripts.clear();
 }
 
-bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID)
+bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args)
 {
 	try
 	{
 		std::unique_lock<std::shared_mutex> lck(ScriptsMtx);
-		auto [itr,was_inserted] = Scripts.try_emplace(ID,lua_code,CmdHandler,ID,LoggerName);
+		auto [itr,was_inserted] = Scripts.try_emplace(ID,lua_code,CmdHandler,LoggerName,ID,script_args);
 		return was_inserted;
 	}
 	catch(const std::exception& e)
 	{
+		//TODO: log an error
 		return false;
 	}
 }

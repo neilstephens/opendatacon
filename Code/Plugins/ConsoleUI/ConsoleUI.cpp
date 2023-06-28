@@ -98,7 +98,7 @@ ConsoleUI::ConsoleUI():
 			return IUIResponder::GenerateResult("Success");
 		},"Get help on commands. Optional argument of specific command.");
 
-	AddCommand("RunCommandScript",[this](std::stringstream& LineStream) -> Json::Value
+	AddCommand("run_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string filename,ID;
 			if(LineStream>>filename && LineStream>>ID)
@@ -107,17 +107,17 @@ ConsoleUI::ConsoleUI():
 			      if(fin.is_open())
 			      {
 			            std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
-			            auto started = ScriptRunner.Execute(lua_code,ID);
+			            auto started = ScriptRunner.Execute(lua_code,ID,LineStream);
 			            auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
 			            return IUIResponder::GenerateResult(msg);
 				}
 			      return IUIResponder::GenerateResult("Failed to open file.");
 			}
-			std::cout<<"Usage: 'RunCommandScript <lua_filename> <ID>'"<<std::endl;
+			std::cout<<"Usage: 'run_cmd_script <lua_filename> <ID> [script args]'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
-		},"Load a Lua script to automate sending UI commands. Usage: 'RunCommandScript <lua_filename> <ID>'. ID is a arbitrary user-specified ID that can be used with 'StatCommandScript'");
+		},"Load a Lua script to automate sending UI commands. Usage: 'run_cmd_script <lua_filename> <ID> [script args]'. ID is a arbitrary user-specified ID that can be used with 'stat_cmd_script'");
 
-	AddCommand("StatCommandScript",[this](std::stringstream& LineStream) -> Json::Value
+	AddCommand("stat_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string ID;
 			if(LineStream>>ID)
@@ -125,9 +125,9 @@ ConsoleUI::ConsoleUI():
 			      auto msg = "Script "+ID+(ScriptRunner.Completed(ID) ? " completed" : " running");
 			      return IUIResponder::GenerateResult(msg);
 			}
-			std::cout<<"Usage: 'StatCommandScript <ID>'"<<std::endl;
+			std::cout<<"Usage: 'stat_cmd_script <ID>'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
-		},"Check the execution status of a command script started by 'RunCommandScript'. Usage: 'StatCommandScript <ID>'");
+		},"Check the execution status of a command script started by 'run_cmd_script'. Usage: 'stat_cmd_script <ID>'");
 }
 
 ConsoleUI::~ConsoleUI(void)
