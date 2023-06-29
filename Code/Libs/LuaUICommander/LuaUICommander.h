@@ -34,7 +34,7 @@
 class LuaUICommander
 {
 public:
-	LuaUICommander(CommandHandler&& CmdHandler, const std::string& LoggerName);
+	LuaUICommander(CommandHandler&& CmdHandler, MessageHandler&& MsgHandler, const std::string& LoggerName);
 	~LuaUICommander();
 	bool Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args);
 	void Cancel(const std::string& ID);
@@ -44,6 +44,7 @@ private:
 	std::unordered_map<std::string,LuaInst> Scripts;
 	std::shared_mutex ScriptsMtx;
 	CommandHandler CmdHandler;
+	MessageHandler MsgHandler;
 	const std::string LoggerName;
 };
 

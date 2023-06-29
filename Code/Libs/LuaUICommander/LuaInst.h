@@ -35,11 +35,17 @@
 #include <atomic>
 
 using CommandHandler = std::function<Json::Value(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss)>;
+using MessageHandler = std::function<void (const std::string& ID, const std::string& msg)>;
 
 class LuaInst
 {
 public:
-	LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, const std::string& LoggerName, const std::string& ID, std::stringstream& script_args);
+	LuaInst(const std::string& lua_code,
+		const CommandHandler& CmdHandler,
+		const MessageHandler& MsgHandler,
+		const std::string& LoggerName,
+		const std::string& ID,
+		std::stringstream& script_args);
 	~LuaInst();
 	bool Completed();
 private:
@@ -55,6 +61,7 @@ private:
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	const CommandHandler& CmdHandler;
+	const MessageHandler& MsgHandler;
 	const std::string LoggerName;
 	const std::string ID;
 };

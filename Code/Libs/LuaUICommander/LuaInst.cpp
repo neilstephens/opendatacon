@@ -29,8 +29,14 @@
 #include <string>
 #include <chrono>
 
-LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, const std::string& LoggerName, const std::string& ID, std::stringstream& script_args):
+LuaInst::LuaInst(const std::string& lua_code,
+	const CommandHandler& CmdHandler,
+	const MessageHandler& MsgHandler,
+	const std::string& LoggerName,
+	const std::string& ID,
+	std::stringstream& script_args):
 	CmdHandler(CmdHandler),
+	MsgHandler(MsgHandler),
 	LoggerName(LoggerName),
 	ID(ID)
 {
@@ -43,7 +49,7 @@ LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, 
 			{
 				//retrieve 'this'
 				auto self = static_cast<LuaInst*>(lua_touserdata(L, lua_upvalueindex(1)));
-				if(!(lua_isstring(L,1) && lua_isstring(L,1)))
+				if(!(lua_isstring(L,1) && lua_isstring(L,2)))
 				{
 				//TODO: log an error
 				      lua_pushnil(L);
@@ -60,6 +66,23 @@ LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, 
 				return 1;
 			},1);
 		lua_setfield(L,-2,"UICommand");
+
+		//push a UIMessage closure capturing 'this'
+		lua_pushlightuserdata(L,this);
+		lua_pushcclosure(L,[](lua_State* const L) -> int
+			{
+				//retrieve 'this'
+				auto self = static_cast<LuaInst*>(lua_touserdata(L, lua_upvalueindex(1)));
+				if(!lua_isstring(L,1))
+				{
+				//TODO: log an error
+				      return 0;
+				}
+				auto msg = lua_tostring(L,1);
+				self->MsgHandler(self->ID,msg);
+				return 0;
+			},1);
+		lua_setfield(L,-2,"UIMessage");
 	}
 	lua_setglobal(L,"odc");
 
@@ -79,7 +102,7 @@ LuaInst::LuaInst(const std::string& lua_code, const CommandHandler& CmdHandler, 
 	if(!lua_isfunction(L, -1))
 		throw std::runtime_error(ID+": Lua code doesn't have 'SendCommands' function.");
 
-	std::string remaining = script_args.str().substr(script_args.tellg());
+	std::string remaining = !script_args.eof() ? script_args.str().substr(script_args.tellg()) : "";
 	pStrand->post([this,remaining,h{handler_tracker}](){Runner(remaining);});
 }
 LuaInst::~LuaInst()

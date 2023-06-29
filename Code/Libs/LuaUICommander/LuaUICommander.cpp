@@ -24,9 +24,11 @@
  *      Author: Neil Stephens
  */
 #include "LuaUICommander.h"
+#include <opendatacon/util.h>
 
-LuaUICommander::LuaUICommander(CommandHandler&& CmdHandler, const std::string& LoggerName):
+LuaUICommander::LuaUICommander(CommandHandler&& CmdHandler, MessageHandler&& MsgHandler, const std::string& LoggerName):
 	CmdHandler(CmdHandler),
+	MsgHandler(MsgHandler),
 	LoggerName(LoggerName)
 {}
 
@@ -41,12 +43,23 @@ bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID,
 	try
 	{
 		std::unique_lock<std::shared_mutex> lck(ScriptsMtx);
-		auto [itr,was_inserted] = Scripts.try_emplace(ID,lua_code,CmdHandler,LoggerName,ID,script_args);
+
+		//first clear complete scripts
+		std::vector<std::string> rem;
+		for(auto&[id,script] : Scripts)
+			if(script.Completed())
+				rem.push_back(id);
+		for(auto& id : rem)
+			Scripts.erase(id);
+
+		auto [itr,was_inserted] = Scripts.try_emplace(ID,lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
+		//TODO: log warning on clash
 		return was_inserted;
 	}
 	catch(const std::exception& e)
 	{
-		//TODO: log an error
+		if(auto log = odc::spdlog_get(LoggerName))
+			log->error("Failed loading Lua command script. Error: '{}'",e.what());
 		return false;
 	}
 }

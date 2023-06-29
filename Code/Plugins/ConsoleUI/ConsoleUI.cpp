@@ -29,10 +29,17 @@ using namespace odc;
 ConsoleUI::ConsoleUI():
 	tinyConsole("odc> "),
 	context(""),
+	mute_scripts(false),
 	ScriptRunner([this](const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss) -> Json::Value
 		{
 			return ScriptCommandHandler(responder_name,cmd,args_iss);
-		}, "ConsoleUI")
+		},
+		[this](const std::string& ID, const std::string& msg)
+		{
+			if(!mute_scripts)
+				std::cout<<"[Lua] "<<ID<<": "<<msg<<std::endl;
+		},
+		"ConsoleUI")
 {
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
 		  "the first argument is taken as a regex to match which items in the collection the "
@@ -128,6 +135,24 @@ ConsoleUI::ConsoleUI():
 			std::cout<<"Usage: 'stat_cmd_script <ID>'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Check the execution status of a command script started by 'run_cmd_script'. Usage: 'stat_cmd_script <ID>'");
+
+	AddCommand("cancel_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
+		{
+			std::string ID;
+			if(LineStream>>ID)
+			{
+			      ScriptRunner.Cancel(ID);
+			      return IUIResponder::GenerateResult("Success");
+			}
+			std::cout<<"Usage: 'cancel_cmd_script <ID>'"<<std::endl;
+			return IUIResponder::GenerateResult("Bad parameter");
+		},"Cancel the execution of a command script started by 'run_cmd_script' the next time it returns or yeilds. Usage: 'cancel_cmd_script <ID>'");
+
+	AddCommand("toggle_script_mute",[this](std::stringstream& LineStream) -> Json::Value
+		{
+			mute_scripts = !mute_scripts;
+			return mute_scripts ? IUIResponder::GenerateResult("Muted") : IUIResponder::GenerateResult("Unmuted");
+		},"Toggle whether messages from command scripts will be printed to the console.");
 }
 
 ConsoleUI::~ConsoleUI(void)

@@ -64,6 +64,7 @@ private:
 	std::map<std::string,std::string> mDescriptions;
 	std::string help_intro;
 
+	std::atomic_bool mute_scripts;
 	LuaUICommander ScriptRunner;
 	Json::Value ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss);
 
