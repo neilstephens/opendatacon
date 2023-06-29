@@ -45,13 +45,18 @@ LuaInst::LuaInst(const std::string& lua_code,
 	{
 		//push a UICommand closure capturing 'this'
 		lua_pushlightuserdata(L,this);
+		lua_pushstring(L,ID.c_str());
+		lua_pushstring(L,LoggerName.c_str());
 		lua_pushcclosure(L,[](lua_State* const L) -> int
 			{
 				//retrieve 'this'
 				auto self = static_cast<LuaInst*>(lua_touserdata(L, lua_upvalueindex(1)));
 				if(!(lua_isstring(L,1) && lua_isstring(L,2)))
 				{
-				//TODO: log an error
+				      std::string name = lua_tostring(L, lua_upvalueindex(2));
+				      std::string logname = lua_tostring(L, lua_upvalueindex(3));
+				      if(auto log = odc::spdlog_get(logname))
+						log->error("{}: UICommand() requires 'responder name' and 'command' string args.",name);
 				      lua_pushnil(L);
 				      return 1;
 				}
@@ -64,29 +69,33 @@ LuaInst::LuaInst(const std::string& lua_code,
 				auto json_result = self->CmdHandler(responder_name,cmd,args);
 				PushJSON(L,json_result);
 				return 1;
-			},1);
+			},3);
 		lua_setfield(L,-2,"UICommand");
 
 		//push a UIMessage closure capturing 'this'
 		lua_pushlightuserdata(L,this);
+		lua_pushstring(L,ID.c_str());
+		lua_pushstring(L,LoggerName.c_str());
 		lua_pushcclosure(L,[](lua_State* const L) -> int
 			{
 				//retrieve 'this'
 				auto self = static_cast<LuaInst*>(lua_touserdata(L, lua_upvalueindex(1)));
 				if(!lua_isstring(L,1))
 				{
-				//TODO: log an error
+				      std::string name = lua_tostring(L, lua_upvalueindex(2));
+				      std::string logname = lua_tostring(L, lua_upvalueindex(3));
+				      if(auto log = odc::spdlog_get(logname))
+						log->error("{}: UIMessage() requires string argument.",name);
 				      return 0;
 				}
 				auto msg = lua_tostring(L,1);
 				self->MsgHandler(self->ID,msg);
 				return 0;
-			},1);
+			},3);
 		lua_setfield(L,-2,"UIMessage");
 	}
 	lua_setglobal(L,"odc");
 
-	//TODO: fix hard coded names below
 	ExportWrappersToLua(L,pStrand,handler_tracker,ID,LoggerName);
 	luaL_openlibs(L);
 

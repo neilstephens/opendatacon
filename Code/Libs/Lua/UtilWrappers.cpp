@@ -77,7 +77,6 @@ void PushJSON(lua_State* const L, const Json::Value& JSON)
 		lua_pushstring(L,JSON.asCString());
 		return;
 	}
-	//TODO: log or throw - shouldn't get here
 	lua_pushnil(L);
 	return;
 }
@@ -170,10 +169,7 @@ Json::Value JSONFromLua(lua_State* const L, int idx, bool asKey)
 		case LUA_TTHREAD:
 			return "LUA_TTHREAD_"+ToString(lua_topointer(L,idx));
 		default:
-		{
-			//TODO: shouldn't get here - log or throw
 			return "LUA_UNKNOWN_TYPE";
-		}
 	}
 }
 
@@ -188,10 +184,16 @@ void ExportUtilWrappers(lua_State* const L,
 	//Decode JSON
 	//	We can already push JSON to the Lua stack for passing config
 	//	So we might as well expose the jsoncpp parser too
-	lua_pushcfunction(L, [](lua_State* const L) -> int
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
 		{
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
 			if(!lua_isstring(L,1))
 			{
+			      if(auto log = odc::spdlog_get(logname))
+					log->error("{}: DecodeJSON() called by lua; Argument not string.",name);
 			      lua_pushnil(L);
 			      return 1;
 			}
@@ -202,12 +204,14 @@ void ExportUtilWrappers(lua_State* const L,
 			bool parse_success = Json::parseFromStream(JSONReader,json_ss, &JSON, &err_str);
 			if (!parse_success)
 			{
-			      lua_pushstring(L,("Failed to parse JSON: "+err_str).c_str());
+			      if(auto log = odc::spdlog_get(logname))
+					log->error("{}: Failed to parse JSON: '{}'.",name,err_str);
+			      lua_pushnil(L);
 			      return 1;
 			}
 			PushJSON(L,JSON);
 			return 1;
-		});
+		},2);
 	lua_setfield(L,-2,"DecodeJSON");
 
 	//EncodeJSON - wouldn't be nice to provide decode without encode
@@ -225,29 +229,48 @@ void ExportUtilWrappers(lua_State* const L,
 	lua_setfield(L,-2,"EncodeJSON");
 
 	//Expose msSinceEpoch()
-	lua_pushcfunction(L, [](lua_State* const L) -> int
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
 		{
 			if(lua_isstring(L,1)) //there's a datetime string to convert
 			{
-			      if(lua_isstring(L,2)) //there's also a format string
+			      try
 			      {
-			            lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1),lua_tostring(L,2)));
+			            if(lua_isstring(L,2)) //there's also a format string
+			            {
+			                  lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1),lua_tostring(L,2)));
+			                  return 1;
+					}
+			            lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1)));
 			            return 1;
 				}
-			      lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1)));
-			      return 1;
+			      catch(const std::exception& e)
+			      {
+			            std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			            std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			            if(auto log = odc::spdlog_get(logname))
+						log->error("{}: msSinceEpoch() called from lua; Exception: '{}'.",name,e.what());
+			            lua_pushnil(L);
+			            return 1;
+				}
 			}
 			lua_pushinteger(L, odc::msSinceEpoch());
 			return 1; //number of lua ret vals pushed onto the stack
-		});
+		},2);
 	lua_setfield(L,-2,"msSinceEpoch");
 
 	//DateTime string conversion
-	lua_pushcfunction(L, [](lua_State* const L) -> int
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
 		{
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
 			if(!lua_isinteger(L,1))
 			{
-			//TODO: log an error
+			      if(auto log = odc::spdlog_get(logname))
+					log->error("{}: msSinceEpochToDateTime() called from lua; Argument not integer.",name);
 			      lua_pushnil(L);
 			      return 1;
 			}
@@ -260,11 +283,12 @@ void ExportUtilWrappers(lua_State* const L,
 			}
 			catch(const std::exception& e)
 			{
-			//TODO: log an error
+			      if(auto log = odc::spdlog_get(logname))
+					log->error("{}: msSinceEpochToDateTime() called from lua; Exception '{}'.",name,e.what());
 			      lua_pushnil(L);
 			}
 			return 1; //number of lua ret vals pushed onto the stack
-		});
+		},2);
 	lua_setfield(L,-2,"msSinceEpochToDateTime");
 
 	//String2Hex
@@ -278,7 +302,9 @@ void ExportUtilWrappers(lua_State* const L,
 	lua_setfield(L,-2,"String2Hex");
 
 	//Hex2String
-	lua_pushcfunction(L, [](lua_State* const L) -> int
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
 		{
 			auto hex = lua_tostring(L,-1);
 			try
@@ -289,11 +315,14 @@ void ExportUtilWrappers(lua_State* const L,
 			}
 			catch(const std::exception& e)
 			{
-			//TODO: log an error
+			      std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			      std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			      if(auto log = odc::spdlog_get(logname))
+					log->error("{}: Hex2String() called from lua; Exception '{}'.",name,e.what());
 			      lua_pushnil(L);
 			      return 1;
 			}
-		});
+		},2);
 	lua_setfield(L,-2,"Hex2String");
 
 

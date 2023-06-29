@@ -53,7 +53,11 @@ bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID,
 			Scripts.erase(id);
 
 		auto [itr,was_inserted] = Scripts.try_emplace(ID,lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
-		//TODO: log warning on clash
+		if(!was_inserted)
+		{
+			if(auto log = odc::spdlog_get(LoggerName))
+				log->warn("There is already a running script with ID '{}'",ID);
+		}
 		return was_inserted;
 	}
 	catch(const std::exception& e)
