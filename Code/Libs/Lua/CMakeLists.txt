@@ -21,8 +21,7 @@ project(Lua LANGUAGES C CXX)
 
 include(FetchContent)
 
-set(LUA_VERSION "5.4.6")
-set(LUA_HASH "SHA256=7d5ea1b9cb6aa0b59ca3dde1c6adcb57ef83a1ba8e5432c0ecd06bf439b3ad88")
+#see Code/cmake/version.cmake for where LUA_VERSION is declared
 
 FetchContent_Declare(
 	lua
