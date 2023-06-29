@@ -124,6 +124,22 @@ ConsoleUI::ConsoleUI():
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Load a Lua script to automate sending UI commands. Usage: 'run_cmd_script <lua_filename> <ID> [script args]'. ID is a arbitrary user-specified ID that can be used with 'stat_cmd_script'");
 
+	AddCommand("base64_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
+		{
+			std::string Base64,ID;
+			if(LineStream>>Base64 && LineStream>>ID)
+			{
+			      std::string lua_code = b64decode(Base64);
+			      if(auto log = odc::spdlog_get("ConsoleUI"))
+					log->trace("Decoded base64 as:\n{}",lua_code);
+			      auto started = ScriptRunner.Execute(lua_code,ID,LineStream);
+			      auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
+			      return IUIResponder::GenerateResult(msg);
+			}
+			std::cout<<"Usage: 'base64_cmd_script <base64_encoded_script> <ID> [script args]'"<<std::endl;
+			return IUIResponder::GenerateResult("Bad parameter");
+		},"Similar to 'run_cmd_script', but instead of loading the lua code from file, decodes it directly from base64 entered at the console");
+
 	AddCommand("stat_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string ID;
