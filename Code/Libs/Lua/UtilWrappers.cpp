@@ -296,9 +296,19 @@ void ExportUtilWrappers(lua_State* const L,
 		});
 	lua_setfield(L,-2,"Hex2String");
 
+
 	//msTimerCallback() to get a callback after x ms
-	lua_pushlightuserdata(L,new std::weak_ptr<asio::io_service::strand>(pSyncStrand));
-	lua_pushlightuserdata(L,new std::weak_ptr<void>(handler_tracker));
+	//Two weak_ptr user data objects, plus two strings, makes 4 upvalues
+	auto p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
+	new(p) std::weak_ptr<asio::io_service::strand>(pSyncStrand);
+	luaL_getmetatable(L, "std_weak_ptr");
+	lua_setmetatable(L, -2);
+
+	p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
+	new(p) std::weak_ptr<void>(handler_tracker);
+	luaL_getmetatable(L, "std_weak_ptr");
+	lua_setmetatable(L, -2);
+
 	lua_pushstring(L,Name.c_str());
 	lua_pushstring(L,LogName.c_str());
 	lua_pushcclosure(L, ([](lua_State* const L) -> int
@@ -310,9 +320,9 @@ void ExportUtilWrappers(lua_State* const L,
 					   }
 					   auto timer_ms = lua_tointeger(L,1);
 					   auto ppSync = static_cast<std::weak_ptr<asio::io_service::strand>*>(lua_touserdata(L, lua_upvalueindex(1)));
-					   auto sync = ppSync->lock(); delete ppSync;
+					   auto sync = ppSync->lock();
 					   auto ppTracker = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(2)));
-					   auto tracker = ppTracker->lock(); delete ppTracker;
+					   auto tracker = ppTracker->lock();
 					   std::string name(lua_tostring(L, lua_upvalueindex(3)));
 					   std::string logname(lua_tostring(L, lua_upvalueindex(4)));
 					   auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pops

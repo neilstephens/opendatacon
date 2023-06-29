@@ -113,17 +113,17 @@ void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& 
 	//put sendername on stack as second arg
 	lua_pushstring(LuaState, SenderName.c_str());
 
-	//put callback on stack as a closure as last/third arg
-	auto cb = new SharedStatusCallback_t(pStatusCallback);
-	//FIXME: there's a way to get the lua garbage collector to delete this when the closure is destroyed (I think)
-	//	for now, delete when the closure is called. It should be called every time.
-	lua_pushlightuserdata(LuaState,cb);
+	//put callback closure on stack as last/third arg
+	//shared_ptr userdata up-value
+	auto p = lua_newuserdatauv(LuaState,sizeof(SharedStatusCallback_t),0);
+	new(p) SharedStatusCallback_t(pStatusCallback);
+	luaL_getmetatable(LuaState, "std_shared_ptr");
+	lua_setmetatable(LuaState, -2);
 	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
 		{
 			auto cb = static_cast<SharedStatusCallback_t*>(lua_touserdata(L, lua_upvalueindex(1)));
 			auto cmd_stat = static_cast<CommandStatus>(lua_tointeger(L, -1));
 			(**cb)(cmd_stat);
-			delete cb;
 			return 0; //number of lua ret vals pushed onto the stack
 		}, 1);
 

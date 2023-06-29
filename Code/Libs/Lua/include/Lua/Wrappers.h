@@ -32,12 +32,16 @@
 #include <opendatacon/asio.h>
 #include <string>
 
+void ExportMetaTables(lua_State* const L);
+
 inline void ExportWrappersToLua(lua_State* const L,
 	std::shared_ptr<asio::io_service::strand> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
 	const std::string& Name,
 	const std::string& LogName)
 {
+	//UserData Metatables
+	ExportMetaTables(L);
 	//IOTypes
 	ExportEventTypes(L);
 	ExportQualityFlags(L);
