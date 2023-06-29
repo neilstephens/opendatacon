@@ -32,7 +32,7 @@
 LuaTransform::LuaTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 {
 	if(!params.isObject() || !params.isMember("LuaFile") || !params["LuaFile"].isString())
-		throw std::runtime_error("LuaTransform requires 'Parameters' object with 'LuaFile' member string: {}"+params.toStyledString());
+		throw std::runtime_error("LuaTransform requires 'Parameters' object with 'LuaFile' member string: "+params.toStyledString());
 	//top level table "odc"
 	lua_newtable(LuaState);
 	{
@@ -96,7 +96,8 @@ bool LuaTransform::Event_(std::shared_ptr<EventInfo> event)
 	}
 	if(auto transformed = EventInfoFromLua(LuaState,Name,"LuaTransform",-1))
 	{
-		event.swap(transformed);
+		std::destroy_at(event.get());
+		new(event.get()) EventInfo(*transformed.get());
 		lua_pop(LuaState,1);
 		return true;
 	}
