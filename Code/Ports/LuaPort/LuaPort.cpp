@@ -115,15 +115,16 @@ void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& 
 
 	//put callback closure on stack as last/third arg
 	//shared_ptr userdata up-value
-	auto p = lua_newuserdatauv(LuaState,sizeof(SharedStatusCallback_t),0);
-	new(p) SharedStatusCallback_t(pStatusCallback);
-	luaL_getmetatable(LuaState, "std_shared_ptr");
+	auto p = lua_newuserdatauv(LuaState,sizeof(std::shared_ptr<void>),0);
+	new(p) std::shared_ptr<void>(pStatusCallback);
+	luaL_getmetatable(LuaState, "std_shared_ptr_void");
 	lua_setmetatable(LuaState, -2);
 	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
 		{
-			auto cb = static_cast<SharedStatusCallback_t*>(lua_touserdata(L, lua_upvalueindex(1)));
+			auto cb_void = static_cast<std::shared_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+			auto cb = std::static_pointer_cast<SharedStatusCallback_t::element_type>(*cb_void);
 			auto cmd_stat = static_cast<CommandStatus>(lua_tointeger(L, -1));
-			(**cb)(cmd_stat);
+			(*cb)(cmd_stat);
 			return 0; //number of lua ret vals pushed onto the stack
 		}, 1);
 

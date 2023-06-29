@@ -300,13 +300,13 @@ void ExportUtilWrappers(lua_State* const L,
 	//msTimerCallback() to get a callback after x ms
 	//Two weak_ptr user data objects, plus two strings, makes 4 upvalues
 	auto p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
-	new(p) std::weak_ptr<asio::io_service::strand>(pSyncStrand);
-	luaL_getmetatable(L, "std_weak_ptr");
+	new(p) std::weak_ptr<void>(pSyncStrand);
+	luaL_getmetatable(L, "std_weak_ptr_void");
 	lua_setmetatable(L, -2);
 
 	p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
 	new(p) std::weak_ptr<void>(handler_tracker);
-	luaL_getmetatable(L, "std_weak_ptr");
+	luaL_getmetatable(L, "std_weak_ptr_void");
 	lua_setmetatable(L, -2);
 
 	lua_pushstring(L,Name.c_str());
@@ -319,8 +319,8 @@ void ExportUtilWrappers(lua_State* const L,
 					         return 1;
 					   }
 					   auto timer_ms = lua_tointeger(L,1);
-					   auto ppSync = static_cast<std::weak_ptr<asio::io_service::strand>*>(lua_touserdata(L, lua_upvalueindex(1)));
-					   auto sync = ppSync->lock();
+					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
 					   auto ppTracker = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(2)));
 					   auto tracker = ppTracker->lock();
 					   std::string name(lua_tostring(L, lua_upvalueindex(3)));
