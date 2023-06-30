@@ -33,10 +33,8 @@ void ExportMetaTables(lua_State* const L)
 	luaL_newmetatable(L,"std_weak_ptr_void");
 	lua_pushcfunction(L, [](lua_State* const L) -> int
 		{
-			auto weak_ptr = static_cast<std::weak_ptr<void>*>(lua_touserdata(L,1));
-			//std::cout<<"!!!!!!!!!!!!!!!!!!!!! RESET WEAK PTR !!!!!!!!!!!!!!!!!!!!!!!"<<std::endl;
-			weak_ptr->reset();
-			std::destroy_at(&weak_ptr);
+			auto ppWeakVoid = static_cast<std::weak_ptr<void>*>(lua_touserdata(L,1));
+			std::destroy_at(ppWeakVoid);
 			return 0;
 		});
 	lua_setfield(L,-2,"__gc");
@@ -44,10 +42,8 @@ void ExportMetaTables(lua_State* const L)
 	luaL_newmetatable(L,"std_shared_ptr_void");
 	lua_pushcfunction(L, [](lua_State* const L) -> int
 		{
-			auto shared_ptr = static_cast<std::shared_ptr<void>*>(lua_touserdata(L,1));
-			//std::cout<<"!!!!!!!!!!!!!!!!!!!!! RESET SHARED PTR !!!!!!!!!!!!!!!!!!!!!!!"<<std::endl;
-			shared_ptr->reset();
-			std::destroy_at(&shared_ptr);
+			auto ppSharedVoid = static_cast<std::shared_ptr<void>*>(lua_touserdata(L,1));
+			std::destroy_at(ppSharedVoid);
 			return 0;
 		});
 	lua_setfield(L,-2,"__gc");
