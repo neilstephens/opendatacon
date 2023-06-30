@@ -354,7 +354,18 @@ void ExportUtilWrappers(lua_State* const L,
 					   auto tracker = ppTracker->lock();
 					   std::string name(lua_tostring(L, lua_upvalueindex(3)));
 					   std::string logname(lua_tostring(L, lua_upvalueindex(4)));
-					   auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pops
+
+					   if(!tracker || !sync)
+					   {
+					         std::string msg("Something is terribly wrong. The Lua sync strand or the handler_tracker has been destroyed, while Lua is executing!");
+					         if(auto log = odc::spdlog_get(logname))
+							   log->error("{}: {}",name);
+					         throw std::runtime_error(msg);
+					   }
+
+					   //pop callback off the top of the stack - we checked it's there (above)
+					   auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX);
+
 					   std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer();
 					   pTimer->expires_from_now(std::chrono::milliseconds(timer_ms));
 					   pTimer->async_wait(sync->wrap([L,tracker,name,logname,LuaCBref,pTimer](asio::error_code err)
