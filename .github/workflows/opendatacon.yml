@@ -54,7 +54,7 @@ jobs:
       name: Set log level
       shell: bash
       run: |
-        [ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
+        ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
 
     - uses: actions/checkout@v2
       with:
@@ -231,7 +231,7 @@ jobs:
       name: Set log level
       shell: bash
       run: |
-        [ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
+        ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
         
     - name: Start run wrapper
       run: echo '#!/bin/bash' >> $HOME/run.sh
