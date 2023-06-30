@@ -28,7 +28,7 @@
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 
-void ExportLogWrappers(lua_State* const L, const std::string& Name, const std::string& LogName)
+extern "C" void ExportLogWrappers(lua_State* const L, const std::string& Name, const std::string& LogName)
 {
 	lua_getglobal(L,"odc");
 
@@ -61,5 +61,29 @@ void ExportLogWrappers(lua_State* const L, const std::string& Name, const std::s
 		//add key value pair to table
 		lua_settable(L, -3);
 	}
+
+	//Table for log level enums
+	lua_newtable(L);
+	{
+		for(uint8_t i = 0; i < 7; i++)
+		{
+			lua_pushinteger(L,i);
+			lua_setfield(L,-2,spdlog::level::level_string_views[i].data());
+		}
+		lua_pushcfunction(L, [](lua_State* const L) -> int
+			{
+				if(!lua_isinteger(L,1))
+				{
+				      lua_pushnil(L);
+				      return 1;
+				}
+				auto l = static_cast<spdlog::level::level_enum>(lua_tointeger(L,1));
+				lua_pushstring(L,spdlog::level::to_string_view(l).data());
+				return 1;
+			});
+		lua_setfield(L,-2,"ToString");
+	}
+	lua_setfield(L,-2,"level");
+
 	lua_setfield(L,-2,"log");
 }

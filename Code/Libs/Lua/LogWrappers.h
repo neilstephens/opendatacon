@@ -29,6 +29,6 @@
 #include <Lua/CLua.h>
 #include <string>
 
-void ExportLogWrappers(lua_State* const L, const std::string& Name, const std::string& LogName);
+extern "C" void ExportLogWrappers(lua_State* const L, const std::string& Name, const std::string& LogName);
 
 #endif // LOGWRAPPERS_H

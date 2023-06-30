@@ -26,6 +26,7 @@
 
 #include "DataConcentrator.h"
 #include "NullPort.h"
+#include "LuaLogSink.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/asio_syslog_spdlog_sink.h>
 #include <opendatacon/spdlog.h>
@@ -417,6 +418,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	//delete old ones in case this is a re-load
 	LogSinks.erase("tcp");
 	LogSinks.erase("syslog");
+	LogSinks.erase("lualog");
 	LogSinks.erase("file");
 	LogSinks.erase("console");
 	ReloadLogSinks(LogSinks);
@@ -483,6 +485,38 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 				*pIOS,host,port,1,local_host,app,category);
 			syslog_sink->set_level(syslog_level);
 			LogSinks["syslog"] = syslog_sink;
+		}
+	}
+
+	//TODO: document these config options
+	if(JSONRoot.isMember("LuaLog"))
+	{
+		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+		auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
+
+		if(!JSONRoot["LuaLog"].isMember("LuaFile"))
+		{
+			temp_logger->error("LuaLog needs a 'LuaFile' field. Ignoring: ", JSONRoot["LuaLog"].toStyledString());
+		}
+		else
+		{
+			auto lualog_level_name = JSONRoot["LuaLog"].isMember("LogLevel") ? JSONRoot["LuaLog"]["LogLevel"].asString() : "";
+
+			auto lualog_level = spdlog::level::from_str(lualog_level_name);
+			//check for no match and set defaults
+			if(lualog_level == spdlog::level::off && lualog_level_name != "off")
+				lualog_level = log_level;
+
+			try
+			{
+				auto lualog_sink = std::make_shared<LuaLogSink>("lualog",JSONRoot["LuaLog"]["LuaFile"].asString());
+				lualog_sink->set_level(lualog_level);
+				LogSinks["lualog"] = lualog_sink;
+			}
+			catch(const std::exception& e)
+			{
+				temp_logger->error("{}",e.what());
+			}
 		}
 	}
 

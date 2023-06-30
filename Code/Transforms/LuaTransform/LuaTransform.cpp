@@ -96,8 +96,12 @@ bool LuaTransform::Event_(std::shared_ptr<EventInfo> event)
 	}
 	if(auto transformed = EventInfoFromLua(LuaState,Name,"LuaTransform",-1))
 	{
+		//FIXME: this is UB until C++20 because EventInfo has a const member
+		//	Making Transform::Event async instead of returning bool will avoid the need for it
+		//	See DataConnector.cpp for notes on making it async.
 		std::destroy_at(event.get());
 		new(event.get()) EventInfo(*transformed.get());
+
 		lua_pop(LuaState,1);
 		return true;
 	}

@@ -28,7 +28,7 @@
 #include <memory>
 #include <iostream>
 
-void ExportMetaTables(lua_State* const L)
+extern "C" void ExportMetaTables(lua_State* const L)
 {
 	luaL_newmetatable(L,"std_weak_ptr_void");
 	lua_pushcfunction(L, [](lua_State* const L) -> int

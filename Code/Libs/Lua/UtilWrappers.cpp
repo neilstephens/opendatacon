@@ -173,7 +173,7 @@ Json::Value JSONFromLua(lua_State* const L, int idx, bool asKey)
 	}
 }
 
-void ExportUtilWrappers(lua_State* const L,
+extern "C" void ExportUtilWrappers(lua_State* const L,
 	std::shared_ptr<asio::io_service::strand> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
 	const std::string& Name,

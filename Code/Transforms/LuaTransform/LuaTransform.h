@@ -39,6 +39,7 @@ public:
 	LuaTransform(const std::string& Name, const Json::Value& params);
 	~LuaTransform();
 
+	//TODO:
 	//It isn't great that this is sychronous:
 	//Makes handing off to the Lua strand awkward because we have to wait for the result.
 	//See DataConnector.cpp for notes on making it async.

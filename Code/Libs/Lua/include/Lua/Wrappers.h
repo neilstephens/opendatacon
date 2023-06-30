@@ -32,7 +32,7 @@
 #include <opendatacon/asio.h>
 #include <string>
 
-void ExportMetaTables(lua_State* const L);
+extern "C" void ExportMetaTables(lua_State* const L);
 
 inline void ExportWrappersToLua(lua_State* const L,
 	std::shared_ptr<asio::io_service::strand> pSyncStrand,
