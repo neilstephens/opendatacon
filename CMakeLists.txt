@@ -65,7 +65,7 @@ add_library(VersionStrings OBJECT ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/v
 set_property(TARGET VersionStrings PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # various optional libraries and projects
-option(FULL "Build all optional projects (DNP3Port, JSONPort, ModbusPort, PyPort, SimPort, MD3Port, CBPort, Tests, ConsoleUI, WebUI)" OFF)
+option(FULL "Build all options" OFF)
 option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
 option(USE_SPDLOG_SUBMODULE "Use git submodule to download spdlog header library" ON)
 

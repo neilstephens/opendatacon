@@ -64,11 +64,11 @@
         * OS: Operating System - either Linux, Darwin (for OSX), or Windows
         * Arch: Architecture - processor family, bits and/or extensions - x86/i386, x64/x86_64/AMD64, arm(hf|el) etc.
         * OS_ver: target platform details - this doesn't have to match your system exactly because most dependencies are bundled.
-            * el6: for Linux systems with older system libraries (glibc), like RHEL/CentOS/OEL 6
+            * el7: for Linux systems with older system libraries (glibc), like RHEL/CentOS/OEL 7
             * rpi: Raspbian linux
             * version numbers for OSX and Windows system/SDK.
 
-* Windows builds require the the [x86 MSVC redistributable](https://aka.ms/vs/15/release/VC_redist.x86.exe) or [x64 MSVC redistributable](https://aka.ms/vs/15/release/VC_redist.x64.exe)
+* Windows builds require the the [x86 MSVC redistributable](https://aka.ms/vs/17/release/vc_redist.x86.exe) or [x64 MSVC redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe)
 
 * Run the installer, accept the license conditions, choose where to install
 
@@ -89,7 +89,7 @@ The minimal requirement of a data concentrator is to connect multiple data chann
 
 These core features are abstract by design, to allow for extension. Some extensions are included in opendatacon, the features of which will be covered in corresponding sections of this manual.
 
-The only real constraint to whether a particular data stream can be handled by opendatacon, is whether the data can be meaningfully 'wrapped' or translated to the internal data structure used by opendatacon. This is discussed further in the internal data structure section. Suffice to say that most SCADA data, irrespective of protocol, should not pose a problem due to the common nature of SCADA applications, and it's difficult to conceive of a data stream that couldn't be wrapped.
+The only real constraint to whether a particular data stream can be handled by opendatacon, is whether the data can be meaningfully 'wrapped' or translated to the internal data structure used by opendatacon. This is discussed further in the internal data structure section. Suffice to say that most SCADA data, irrespective of protocol, should not pose a problem due to the common nature of SCADA applications, and even arbitray binary data can be wrapped in the more general data types.
 
 ## Building and Installing
 
@@ -97,7 +97,7 @@ opendatacon uses the CMake build system.
 
 ### Build system requirements
 
-*   Modern C++14 compiler (currently developed under msvc, g++ and clang)
+*   Modern C++17 compiler (currently developed under msvc, g++ and clang)
 
 ### Dependencies
 
@@ -109,35 +109,41 @@ Core dependencies are set up as git submodules and the default cmake config will
 
 Plugin specific dependencies:
 
-* DNP3Port: automatak opendnp3: https://www.automatak.com/opendnp3/
+* DNP3Port: opendnp3 fork : https://github.com/neilstephens/opendnp3
     * default cmake config will auto download and build
-* WebUI: libmicrohttpd https://www.gnu.org/software/libmicrohttpd/
-    * available in most linux repos (try install libmicrohttpd-dev or libmicrohttpd-devel)
-    * download and build yourself for windows - or search the net for binaries
+* WebUI: https://gitlab.com/eidheim/Simple-Web-Server.git
+    * default cmake config will auto download and build
 * ModbusPort: libmodbus http://libmodbus.org/
     * available in most linux repos (try install libmodbus-dev or libmodbus-devel)
     * download and build yourself for windows - or search the net for binaries
+* LuaPort, LuaTransform, LuaLogSink, LuaUICommander
+    * Lua! did you guess? http://www.lua.org
 
 ### CMake options
 
 #### Optional components
 
-*   FULL - build all the optional components
-*   TEST - build the optional test suite
-*   WEBUI - build the optional Web user interface plugin
-*   CONSOLEUI - build the optional console user interface plugin
-*   DNP3PORT - build the optional DNP3 protocol ports
-*   JSONPORT - build the optional JSON stream ports
-*   MODBUSPORT - build the optional modbus protocol ports
-*   SIMPORT - build the optional simulated input/output port
-*   MD3PORT - build the optional MD3 protocol ports
+* TESTS - Build tests
+* WEBUI - Build the http(s) web user interface
+* DNP3PORT - Build DNP3 Port
+* JSONPORT - Build JSON Port
+* PYPORT - Build Python Port
+* MODBUSPORT - Build Modbus Port
+* SIMPORT - Build Simulation Port
+* MD3PORT - Build MD3 Port
+* CBPORT - Build Conitel-Baker Port
+* FILETRANSFERPORT - Build File Transfer Port
+* LUAPORT - Build Lua Port
+* LUATRANSFORM - Build Lua Transform
+* LUALOGSINK - Build Lua log sink plugin
+* LUAUICOMMANDER - Build Lua UI command script plugin
+* CONSOLEUI - Build the console user interface
 
 #### Other options
 
 *   STATIC_LIBSTDC++ - link in libstdc++ statically
 *   PACKAGE_LIBSTDC++ - optionally include libstdc++ shared library in installation package
 *   PACKAGE_LIBMODBUS - include in the installation package 
-*   PACKAGE_LIBMICROHTTPD - include in the installation package
 
 #### Dependency search locations
 
@@ -146,8 +152,7 @@ If you don't want cmake to download/build for you, or you have manually installe
 *   DNP3_HOME
 *   ASIO_HOME
 *   TCLAP_HOME
-*   MODBUS_HOME
-*   MICROHTTPD_HOME   
+*   MODBUS_HOME 
 
 #### Cross-compiler options
 
@@ -163,18 +168,17 @@ cmake . "-Bbuild-xcode" -G "Xcode" "-DFULL=ON"
 ```
 
 #### Visual Studio build and install
-The following assumes that dependencies have been build and installed in c:\local accordingly.
+The following demonstrates some custom dependency paths
 ```
-cmake . "-Bbuild-win32" -G "Visual Studio 12 2013" "-DFULL=ON" "-DDNP3_HOME=c:\local\dnp3" "-DASIO_HOME=C:\local\asio-1.10.1" "-DTCLAP_HOME=c:\local\tclap" "-DMICROHTTPD_HOME=c:\local\microhttpd"
+cmake -B D:\odc\build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=D:\odc/build/install -G"Visual Studio 17 2022" -Ax64 -DCMAKE_CONFIGURATION_TYPES=Release -DMODBUS_HOME=c:\libmodbus\windows64 -DPYTHON_HOME=C:\Python\3.7.9\x64  -DFULL=ON
 ```
 
 #### Ubuntu build and install using Makefiles
 
 1.  Install build system and dependencies:
 ```
-sudo apt-get install libasio-dev libtclap-dev libmicrohttpd-dev libmodbus-dev
+sudo apt-get install libmodbus-dev libssl-dev
 ```
-You will also need to build and install opendnp3.
 2.  Create build system for desired environment
 ```
 cmake . "-Bbuild-make" -G "Unix Makefiles" "-DFULL=ON"
@@ -210,15 +214,20 @@ Port 1 and port 2 are subscribed to each other. Port 1 and port 3 are also subsc
 
 ### Ports
 
-Ports are the interface between opendatacon and the outside world. It is a Port's job to translate from/to the internal data structures used by opendatacon to/from an external protocol. For example, as of opendatacon 0.4.0, there are built in Port types:
+Ports are the interface between opendatacon and the outside world. It is a Port's job to translate from/to the internal data structures used by opendatacon to/from an external protocol. For example, as of opendatacon 1.9.0, there are built in Port types:
 
-*   DNP3 Master Port
-*   DNP3 Outstation Port
-*   Modbus Master Port
-*   Modbus Outstation Port
-*   Simulation Port
-*   JSON Client Port
 *   Null port
+*   DNP3 Master and Outstation ports
+*   Modbus Master and Outstation ports
+*   Simulation Port
+*   JSON Client and Server ports
+*   Conitel Master and Outstation ports
+*   MD3 Master and Outstation ports
+*   File transfer port
+*   Python port (deprecated in favour of Lua port below)
+*   Lua port
+    * Lua port allows custom run-time port implementations
+    * See the ExampleConfig directory to see how you can write your own port in Lua
 
 ### Connectors
 
@@ -232,22 +241,23 @@ Connections simply open a bi-directional data path between two ports, by subscri
 
 Transforms filter and transform data on entry to a Connector (ie. they're uni-directional), for a single source of data (sending port). They can be thought of as a subscription filter. For example, a transform could be implemented to add timestamps to untimestamped data, or deadband or throttle a data stream.
 
+Custom Transforms can be implemented in Lua (see example configs in the repo)
+
 ### Extensibility
 
-The basic components, described above, form the basis of an extensible platform (read API). Specific Ports and Transforms can be developed to interface/wrap arbitrary protocols and do arbitrary manipulation. And more generally, plugins can be developed, eg. user interface plugins like the included WebUI (more on this later). See the API section of this document for more details.
+The basic components, described above, form the basis of an extensible platform.
+Generally, any combination of ports can be connected together because they share the same abstract API. This also includes custom ports and transforms, so it's quite easy to create an adaptor for any of the supported protocols for your specific use case.
 
 ## Internal data structure
 
-When discussing the configuration of the basic components, it's necessary to understand the structure of the data that is to be manipulated. The internal data structures of opendatacon were adopted from the data structures in the opendnp3 library, because this library was the basis for the first port implementations. The key concepts are:
+The internal data structures of opendatacon were adopted from the data structures in the dnp3 protocol, because this was one of the first port implementations. But it also happens to be a very comprehensive protocol, which covers a broad range of data types
 
 *   Data is encapsulated by events
-*   Events have three parts:
-    *   A measurement or payload of type
-        *   Analog - a real number (plus quality flags)
-        *   Binary - on/off open/close 1/0 etc (plus quality flags), or
-        *   Control - currently only binary or unary controls
-    *   An implicit or explicit timestamp
-    *   An index or address
+*   Events have four parts:
+    *   Measurement/Payload
+    *   Timestamp
+    *   Index/Address
+    *   Quality flags
 *   Ports can send and recieve events, and use the index and type as an address to map data from/to multiple points.
 
 ## Configuration files and syntax
@@ -269,7 +279,7 @@ Starting with an example configuration:
     "LogName" :   "ODC_Log",
     "LogFileSizekB"   : 50000,
     "NumLogFiles":    1,
-    "LOG_LEVEL":  "NORMAL",
+    "LogLevel":  "error",
      
     "Ports" :
     [
@@ -278,7 +288,7 @@ Starting with an example configuration:
             "Type" : "DNP3Master",
             "Library" : "DNP3Port",
             "ConfFilename" : "DMCDNP3_Master.conf",
-            "ConfOverrides" : { "IP" : "172.24.128.23", "Port" : 20000, "MasterAddr" : 0, "OutstationAddr" : 1}
+            "ConfOverrides" : { "IP" : "192.168.5.6", "Port" : 20000, "MasterAddr" : 0, "OutstationAddr" : 1}
         },
         {
             "Name" : "OutPort_23",
@@ -312,7 +322,7 @@ Here are the available keys for configuration of the main opendatacon configurat
 | "LogName" | string | filepath/name prefix for log message files. A number and .txt file extension will be appended | No | "datacon_log" |
 | "NumLogFiles" | number | A non-zero number, denoting the number of log files to be used as a 'rolling buffer' of logs. Eg. If 3 is given, files LogName0.txt, <span>LogName1.txt, <span>LogName2.txt will be written to in sequential modulo 3 order.</span></span> | No | 5 |
 | "LogFileSizekB" | number | The size in kilobytes after which a log file is full, and the logging system will start a new log file. | No | 5120 |
-| "LOG_LEVEL" | string | Either "NOTHING", "NORMAL", "ALL_COMMS", or "ALL". This defines the verbosity of the log messages generated. This corresponds directly with the log levels used by the open dnp3 library, since the DNP3 port implementations are the primary usage of opendatacon as of 0.3.0 | No | "NORMAL" |
+| "LogLevel" | string | "trace", "debug", "info", "warning", "error", "critical" or "off" | No | "error" |
 
 ### Port configuration
 
@@ -458,6 +468,13 @@ There are no expected parameters for the Rand transform. Any given will be ignor
 
 ## Extensions
 
+If the inbuilt types, and bundled extensions don't meet your needs, then you opt to use a custom Port, Transform, Log sink, or UI script to do what you want. Each of these base components has an implementation to let you load a Lua script to do what you want. See the examples:
+```
+ExampleConfig/SelfDocumentingLuaPort/
+```
+```
+ExampleConfig/LuaTransform_n_CommandScript/
+```
 ### DNP3 Port Library
 
 #### Features
@@ -809,24 +826,9 @@ extern "C" void delete_PORTNAMEPort(DataPort*);
 PORTNAME in the example above is the name used as "Type" in the port configuration. It must return a pointer to a new heap allocated instance of a descendant of C++ class DataPort. The declaration of DataPort is included here for context. The whole class hierarchy for DataPort from the public header files (include directory in the opendatacon repository) is needed in practice.
 
 ```C++
-class DataPort: public IOHandler, public ConfigParser
-{
-    public: 
-        DataPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-                IOHandler(aName),
-                ConfigParser(aConfFilename, aConfOverrides),
-                pConf(nullptr)
-        {};
-
-        virtual void Enable()=0; virtual void Disable()=0;
-        virtual void Build()=0;
-        virtual void ProcessElements(const Json::Value& JSONRoot)=0;
-        virtual const Json::Value GetStatistics() const { return Json::Value(); };
-        virtual const Json::Value GetCurrentState() const { return Json::Value(); };
-    protected:
-        std::unique_ptr&lt;DataPortConf&gt; pConf;
-};
+See include/opendatacon/DataPort.h 
 ```
+If you're not keen to write and build a DataPort in C++, check out LuaPort, which allows you to load a Lua script as a port implementation.
 
 ### Transform
 
@@ -840,43 +842,13 @@ The 'newing' function just has to construct a instance of a class derriving from
 
 The 'deleting' function just has to destroy the specified object.
 
-Here is the Transform class declaration, taken from the public header file directory (include dir installed with opendatacon) of opendatacon, for context:
-
 ```C++
-class Transform
-{
-public:
-	Transform(const Json::Value& params): params(params){}
-	virtual ~Transform(){}
-
-	virtual bool Event(Binary& meas, uint16_t& index) { return true; }
-	virtual bool Event(DoubleBitBinary& meas, uint16_t& index) { return true; }
-	virtual bool Event(Analog& meas, uint16_t& index) { return true; }
-	virtual bool Event(Counter& meas, uint16_t& index) { return true; }
-	virtual bool Event(FrozenCounter& meas, uint16_t& index) { return true; }
-	virtual bool Event(BinaryOutputStatus& meas, uint16_t& index) { return true; }
-	virtual bool Event(AnalogOutputStatus& meas, uint16_t& index) { return true; }
-	virtual bool Event(ControlRelayOutputBlock& arCommand, uint16_t index) { return true; }
-	virtual bool Event(AnalogOutputInt16& arCommand, uint16_t index) { return true; }
-	virtual bool Event(AnalogOutputInt32& arCommand, uint16_t index) { return true; }
-	virtual bool Event(AnalogOutputFloat32& arCommand, uint16_t index) { return true; }
-	virtual bool Event(AnalogOutputDouble64& arCommand, uint16_t index) { return true; }
-
-	virtual bool Event(BinaryQuality qual, uint16_t index) { return true; }
-	virtual bool Event(DoubleBitBinaryQuality qual, uint16_t index) { return true; }
-	virtual bool Event(AnalogQuality qual, uint16_t index) { return true; }
-	virtual bool Event(CounterQuality qual, uint16_t index) { return true; }
-	virtual bool Event(FrozenCounterQuality qual, uint16_t index) { return true; }
-	virtual bool Event(BinaryOutputStatusQuality qual, uint16_t index) { return true; }
-	virtual bool Event(AnalogOutputStatusQuality qual, uint16_t index) { return true; }
-
-	virtual bool Event(ConnectState state, uint16_t index){ return true; }
-
-	Json::Value params;
-};
+See include/opendatacon/Transform.h 
 ```
-
 
 ### User interface
 
+```C++
+See include/opendatacon/IUI.h 
+```
 
