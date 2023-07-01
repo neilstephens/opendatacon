@@ -1,8 +1,21 @@
  
--- log sink that stores a rolling buffer of everything,
--- prints the unprinted portion of the buffer when a message breaches the threshold level
--- prints "..." to indicate there were unprinted messages
- 
+-- provide a function called LogSink opendatacon will call it with args:
+--    Time - integer ms since epoch
+--    LoggerName - the log 'topic'
+--    Level - integer (enumerate with ocd.log.level)
+--    Message - string with the actual log message
+
+function LogSink(Time,LoggerName,Level,Message)
+  local record = odc.msSinceEpochToDateTime(Time).." || "..LoggerName.." || "..odc.log.level.ToString(Level).." || "..Message;
+  checkLevel(Level,record);
+end
+
+
+-- This example log sink stores a rolling buffer of everything,
+-- and when a message comes in over the threshold log level,
+-- it prints the unprinted portion of the buffer to file.
+-- Also prints "..." to indicate if there were unprinted messages
+
 local file = io.open("context.log","w");
 
 local threshold = odc.log.level.error;
@@ -12,9 +25,8 @@ local pos = 1;
 local not_printed = 0;
 local gap_printed = false;
 
-function LogSink(Time,LoggerName,Level,Message)
-  local record = odc.msSinceEpochToDateTime(Time).." || "..LoggerName.." || "..odc.log.level.ToString(Level).." || "..Message;
-  if Level >= threshold then
+function checkLevel(LvL,Rec)
+  if LvL >= threshold then
     local n = pos;
     local skip = before - not_printed;
     local first=true;
@@ -31,7 +43,7 @@ function LogSink(Time,LoggerName,Level,Message)
       n = n+1;
       if n > before then n = 1 end
     end
-    file:write(record.."\n");
+    file:write(Rec.."\n");
     not_printed = 0;
     gap_printed = false;
   elseif not_printed < before then
@@ -40,9 +52,8 @@ function LogSink(Time,LoggerName,Level,Message)
     file:write("...\n");
     gap_printed = true;
   end
-  buffer[pos] = record;
+  buffer[pos] = Rec;
   pos = pos+1;
   if pos > before then pos = 1 end
 end
-
 

@@ -49,7 +49,7 @@ public:
 private:
 	//IUI functionality
 	const std::string Name;
-	const std::string LoggerName = "LuaIUCommander";
+	const std::string LoggerName = "LuaUICommander";
 	std::map<std::string,CmdFunc_t> mCmds;
 	std::map<std::string,std::string> mDescriptions;
 
