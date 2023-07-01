@@ -125,6 +125,13 @@ void DataConcentrator::RefreshIUIResponders()
 		if(ResponderPair.second && RespondersMasterCopy.count(ResponderPair.first) == 0)
 			RespondersMasterCopy.insert(ResponderPair);
 	}
+	for(auto& plugin : Interfaces)
+	{
+		auto ResponderPair = plugin.second->GetUIResponder();
+		//if it's a different, valid responder pair, store it
+		if(ResponderPair.second && RespondersMasterCopy.count(ResponderPair.first) == 0)
+			RespondersMasterCopy.insert(ResponderPair);
+	}
 }
 
 void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)

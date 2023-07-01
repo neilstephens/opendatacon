@@ -26,24 +26,30 @@
 
 using namespace odc;
 
+std::string column_wrap(std::string input, const size_t target_width = 80, const size_t col_offset = 26)
+{
+	int width = 0;
+	for(size_t i=0; i < input.size(); i++)
+	{
+		if(++width > target_width)
+		{
+			while(input[i] != ' ')
+				i--;
+			input.insert(i,"\n"+std::string(col_offset-2,' '));
+			i+=col_offset;
+			width = 0;
+		}
+	}
+	return input;
+}
+
 ConsoleUI::ConsoleUI():
 	tinyConsole("odc> "),
-	context(""),
-	mute_scripts(false),
-	ScriptRunner([this](const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss) -> Json::Value
-		{
-			return ScriptCommandHandler(responder_name,cmd,args_iss);
-		},
-		[this](const std::string& ID, const std::string& msg)
-		{
-			if(!mute_scripts)
-				std::cout<<"[Lua] "<<ID<<": "<<msg<<std::endl;
-		},
-		"ConsoleUI")
+	context("")
 {
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
 		  "the first argument is taken as a regex to match which items in the collection the "
-		  "command will run for. The remainer of the arguments should be parameter Name/Value pairs."
+		  "command will run for. The remainer of the arguments will be passed through to each element."
 		  "Eg. Collection Dosomething \".*OnlyAFewMatch.*\" arg_to_dosomething ...");
 	AddCommand("help",[this](std::stringstream& LineStream) -> Json::Value
 		{
@@ -54,33 +60,31 @@ ConsoleUI::ConsoleUI():
 			      if(!mDescriptions.count(arg) && !Responders.count(arg))
 					std::cout<<"No such command or context: '"<<arg<<"'"<<std::endl;
 			      else if(mDescriptions.count(arg))
-					std::cout<<std::setw(25)<<std::left<<arg+":"<<mDescriptions[arg]<<std::endl<<std::endl;
+					std::cout<<std::setw(25)<<std::left<<arg+":"<<column_wrap(mDescriptions[arg])<<std::endl<<std::endl;
 			      else if(Responders.count(arg))
 			      {
 			            std::cout<<std::setw(25)<<std::left<<arg+":"<<
 			            "Access contextual subcommands:"<<std::endl<<std::endl;
-			/* list sub commands */
 			            auto commands = Responders[arg]->GetCommandList();
-			            for (const auto& command : commands)
+			            for (const auto& command : commands) //list sub commands
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[arg]->GetCommandDescription(cmd);
-			                  std::cout<<std::setw(25)<<std::left<<"\t"+cmd+":"<<desc<<std::endl<<std::endl;
+			                  std::cout<<std::setw(25)<<std::left<<"  "+cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
 					}
 				}
 			}
 			else
 			{
 			      std::cout<<help_intro<<std::endl<<std::endl;
-			//print root commands with descriptions
+			      std::cout<<"============ Root Commands ============"<<std::endl<<std::endl;
 			      for(const auto& desc: mDescriptions)
 			      {
-			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
+			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<column_wrap(desc.second)<<std::endl<<std::endl;
 				}
-			//if there is no context, print Responders
-			      if (this->context.empty())
+			      if (this->context.empty()) //if there is no context, print Responders
 			      {
-			//check if command matches a Responder - if so, arg is our partial sub command
+			            std::cout<<"============ Command Contexts ============"<<std::endl<<std::endl;
 			            for(const auto& name_n_responder : Responders)
 			            {
 			                  std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
@@ -89,13 +93,13 @@ ConsoleUI::ConsoleUI():
 				}
 			      else //we have context - list sub commands
 			      {
-			            /* list commands available to current responder */
+			            std::cout<<"============ Context Specific Commands ============"<<std::endl<<std::endl;
 			            auto commands = Responders[this->context]->GetCommandList();
 			            for (const auto& command : commands)
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[this->context]->GetCommandDescription(cmd);
-			                  std::cout<<std::setw(25)<<std::left<<cmd+":"<<desc<<std::endl<<std::endl;
+			                  std::cout<<std::setw(25)<<std::left<<cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
 					}
 			            std::cout<<std::setw(25)<<std::left<<"exit:"<<
 			            "Leave '"+context+"' context."<<std::endl<<std::endl;
@@ -104,71 +108,6 @@ ConsoleUI::ConsoleUI():
 			std::cout<<std::endl;
 			return IUIResponder::GenerateResult("Success");
 		},"Get help on commands. Optional argument of specific command.");
-
-	AddCommand("run_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
-		{
-			std::string filename,ID;
-			if(LineStream>>filename && LineStream>>ID)
-			{
-			      std::ifstream fin(filename);
-			      if(fin.is_open())
-			      {
-			            std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
-			            auto started = ScriptRunner.Execute(lua_code,ID,LineStream);
-			            auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
-			            return IUIResponder::GenerateResult(msg);
-				}
-			      return IUIResponder::GenerateResult("Failed to open file.");
-			}
-			std::cout<<"Usage: 'run_cmd_script <lua_filename> <ID> [script args]'"<<std::endl;
-			return IUIResponder::GenerateResult("Bad parameter");
-		},"Load a Lua script to automate sending UI commands. Usage: 'run_cmd_script <lua_filename> <ID> [script args]'. ID is a arbitrary user-specified ID that can be used with 'stat_cmd_script'");
-
-	AddCommand("base64_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
-		{
-			std::string Base64,ID;
-			if(LineStream>>Base64 && LineStream>>ID)
-			{
-			      std::string lua_code = b64decode(Base64);
-			      if(auto log = odc::spdlog_get("ConsoleUI"))
-					log->trace("Decoded base64 as:\n{}",lua_code);
-			      auto started = ScriptRunner.Execute(lua_code,ID,LineStream);
-			      auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
-			      return IUIResponder::GenerateResult(msg);
-			}
-			std::cout<<"Usage: 'base64_cmd_script <base64_encoded_script> <ID> [script args]'"<<std::endl;
-			return IUIResponder::GenerateResult("Bad parameter");
-		},"Similar to 'run_cmd_script', but instead of loading the lua code from file, decodes it directly from base64 entered at the console");
-
-	AddCommand("stat_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
-		{
-			std::string ID;
-			if(LineStream>>ID)
-			{
-			      auto msg = "Script "+ID+(ScriptRunner.Completed(ID) ? " completed" : " running");
-			      return IUIResponder::GenerateResult(msg);
-			}
-			std::cout<<"Usage: 'stat_cmd_script <ID>'"<<std::endl;
-			return IUIResponder::GenerateResult("Bad parameter");
-		},"Check the execution status of a command script started by 'run_cmd_script'. Usage: 'stat_cmd_script <ID>'");
-
-	AddCommand("cancel_cmd_script",[this](std::stringstream& LineStream) -> Json::Value
-		{
-			std::string ID;
-			if(LineStream>>ID)
-			{
-			      ScriptRunner.Cancel(ID);
-			      return IUIResponder::GenerateResult("Success");
-			}
-			std::cout<<"Usage: 'cancel_cmd_script <ID>'"<<std::endl;
-			return IUIResponder::GenerateResult("Bad parameter");
-		},"Cancel the execution of a command script started by 'run_cmd_script' the next time it returns or yeilds. Usage: 'cancel_cmd_script <ID>'");
-
-	AddCommand("toggle_script_mute",[this](std::stringstream& LineStream) -> Json::Value
-		{
-			mute_scripts = !mute_scripts;
-			return mute_scripts ? IUIResponder::GenerateResult("Muted") : IUIResponder::GenerateResult("Unmuted");
-		},"Toggle whether messages from command scripts will be printed to the console.");
 }
 
 ConsoleUI::~ConsoleUI(void)
@@ -180,19 +119,6 @@ void ConsoleUI::AddCommand(const std::string& name, CmdFunc_t callback, const st
 {
 	mCmds[name] = callback;
 	mDescriptions[name] = desc;
-
-	int width = 0;
-	for(size_t i=0; i < mDescriptions[name].size(); i++)
-	{
-		if(++width > 80)
-		{
-			while(mDescriptions[name][i] != ' ')
-				i--;
-			mDescriptions[name].insert(i,"\n                        ");
-			i+=26;
-			width = 0;
-		}
-	}
 }
 void ConsoleUI::AddHelp(std::string help)
 {
@@ -289,56 +215,6 @@ int ConsoleUI::hotkeys(char c)
 		return 1;
 	}
 	return 0;
-}
-
-Json::Value ConsoleUI::ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss)
-{
-	auto root_cmd_it = mCmds.find(cmd);
-	if(responder_name == "" && root_cmd_it != mCmds.end())
-		return mCmds.at(cmd)(args_iss);
-
-	auto it = Responders.find(responder_name);
-	if(it != Responders.end())
-		return ExecuteCommand(it->second, cmd, args_iss);
-
-	return IUIResponder::GenerateResult("Bad command");
-}
-
-Json::Value ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
-{
-	ParamCollection params;
-
-	//Define first arg as Target regex
-	std::string T_regex_str;
-	extract_delimited_string("\"'`",args,T_regex_str);
-
-	//turn any regex it into a list of targets
-	Json::Value target_list;
-	if(!T_regex_str.empty())
-	{
-		params["Target"] = T_regex_str;
-		if(command != "List") //Use List to handle the regex for the other commands
-			target_list = pResponder->ExecuteCommand("List", params)["Items"];
-	}
-
-	int arg_num = 0;
-	std::string Val;
-	while(extract_delimited_string("\"'`",args,Val))
-		params[std::to_string(arg_num++)] = Val;
-
-	Json::Value results;
-	if(target_list.size() > 0) //there was a list resolved
-	{
-		for(auto& target : target_list)
-		{
-			params["Target"] = target.asString();
-			results[target.asString()] = pResponder->ExecuteCommand(command, params);
-		}
-	}
-	else //There was no list - execute anyway
-		results = pResponder->ExecuteCommand(command, params);
-
-	return results;
 }
 
 void ConsoleUI::AddRootCommands(const std::string& cmd, std::vector<std::string>& matches)

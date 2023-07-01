@@ -266,37 +266,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 
 void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb)
 {
-	//Define first arg as Target regex
-	std::string T_regex_str;
-	odc::extract_delimited_string("\"'`",args,T_regex_str);
-
-	//turn any regex it into a list of targets
-	Json::Value target_list;
-	if(!T_regex_str.empty() && command != "List") //List is a special case - handles it's own regex
-	{
-		params["Target"] = T_regex_str;
-		target_list = pResponder->ExecuteCommand("List", params)["Items"];
-	}
-
-	int arg_num = 0;
-	std::string Val;
-	while(odc::extract_delimited_string("\"'`",args,Val))
-		params[std::to_string(arg_num++)] = Val;
-
-	Json::Value results;
-	if(target_list.size() > 0) //there was a list resolved
-	{
-		for(auto& target : target_list)
-		{
-			params["Target"] = target.asString();
-			results[target.asString()] = pResponder->ExecuteCommand(command, params);
-		}
-	}
-	else
-	{
-		//There was no list - execute anyway
-		results = pResponder->ExecuteCommand(command, params);
-	}
+	auto results = IUI::ExecuteCommand(pResponder,command,args,&params);
 
 	if (command == "List")
 	{
