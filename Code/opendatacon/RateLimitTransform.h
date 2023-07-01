@@ -80,7 +80,7 @@ public:
 	}
 
 private:
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		switch(event->GetEventType())
 		{
@@ -93,7 +93,7 @@ private:
 			case EventType::AnalogOutputStatus:
 				break;
 			default:
-				return true;
+				return (*pAllow)(event);
 		}
 		// check if rollover of update count period
 		auto eventTime = msSinceEpoch();
@@ -120,12 +120,12 @@ private:
 		if (rateStats->outputRate < rateStats->outputRateLimit * rateStats->updatePeriodMultiplier)
 		{
 			++rateStats->outputRate;
-			return true;
+			return (*pAllow)(event);
 		}
 		else
 		{
 			++rateStats->droppedUpdates;
-			return false;
+			return (*pAllow)(nullptr); //drop
 		}
 	}
 

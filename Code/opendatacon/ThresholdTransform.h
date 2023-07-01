@@ -54,13 +54,13 @@ public:
 		}
 	}
 
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		if(event->GetEventType() != EventType::Analog)
-			return true;
+			return (*pAllow)(event);
 
 		if(!params["points"].isArray())
-			return true;
+			return (*pAllow)(event);
 
 		if(event->GetIndex() == threshold_point_index)
 		{
@@ -73,11 +73,11 @@ public:
 			for(Json::ArrayIndex n = 0; n < params["points"].size(); ++n)
 			{
 				if(event->GetIndex() == params["points"][n].asUInt())
-					return false;
+					return (*pAllow)(nullptr); //drop
 			}
 		}
 
-		return true;
+		return (*pAllow)(event);
 	}
 
 	bool pass_on;

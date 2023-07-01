@@ -257,39 +257,44 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 	//Do we have a connection for this sender?
 	if(connection_count > 0)
 	{
-		//TODO: if Transform::Event() was refactored to take a callback instead of returning bool
-		//	this block of code could potentially become asynchronous.
-		//	The callback of each Transform::Event() could call the next.
-		//	The last Transform::Event() callback could call the DataPort::Event()s
-		auto new_event_obj = std::make_shared<EventInfo>(*event);
-		if(SenderTransforms.count(SenderName))
-		{
-			for(auto& Transform : SenderTransforms[SenderName])
+		EvtHandler_ptr ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
 			{
-				if(!Transform->Event(new_event_obj))
+				if(!evt)
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} Payload {} Event {} => Transform Block", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name);
-					(*pStatusCallback)(CommandStatus::UNDEFINED);
-					return;
+				      if(auto log = odc::spdlog_get("opendatacon"))
+						log->trace("{} {} Payload {} Event {} => Transform Block", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+				      (*pStatusCallback)(CommandStatus::UNDEFINED);
+				      return;
 				}
-				else
-				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} Payload {} Event {} => Transform Pass", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name);
-				}
-			}
-		}
 
-		auto multi_callback = SyncMultiCallback(connection_count,pStatusCallback);
-		auto bounds = SenderConnections.equal_range(SenderName);
-		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+				auto multi_callback = SyncMultiCallback(connection_count,pStatusCallback);
+				auto bounds = SenderConnections.equal_range(SenderName);
+				for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+				{
+				      if(auto log = odc::spdlog_get("opendatacon"))
+						log->trace("{} {} Payload {} Event {} => {}", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), Name, aMatch_it->second.second->GetName());
+
+				      aMatch_it->second.second->Event(evt, this->Name, multi_callback);
+				}
+			});
+		//create a chain of callbacks to the destination
+		auto Tx_it = SenderTransforms[SenderName].rbegin();
+		const auto rend = SenderTransforms[SenderName].rend();
+		while(Tx_it != rend)
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->trace("{} {} Payload {} Event {} => {}", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name, aMatch_it->second.second->GetName());
-
-			aMatch_it->second.second->Event(new_event_obj, this->Name, multi_callback);
+			ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
+				{
+					if(evt)
+					{
+					      if(auto log = odc::spdlog_get("opendatacon"))
+							log->trace("{} {} Payload {} Event {} => Transform Pass", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), Name);
+					}
+					(*Tx_it)->Event(evt,ToDestination);
+				});
+			Tx_it++;
 		}
+		auto new_event_obj = std::make_shared<EventInfo>(*event);
+		(*ToDestination)(new_event_obj);
 		return;
 	}
 	//no connection for sender if we get here

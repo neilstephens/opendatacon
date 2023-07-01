@@ -34,7 +34,7 @@
 
 namespace odc
 {
-
+using EvtHandler_ptr = std::shared_ptr<std::function<void (std::shared_ptr<EventInfo> event)>>;
 class Transform
 {
 public:
@@ -44,7 +44,7 @@ public:
 	{}
 	virtual ~Transform(){}
 
-	virtual bool Event(std::shared_ptr<EventInfo> event) = 0;
+	virtual void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) = 0;
 
 protected:
 	std::string Name;

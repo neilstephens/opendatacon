@@ -39,28 +39,12 @@ public:
 	LuaTransform(const std::string& Name, const Json::Value& params);
 	~LuaTransform();
 
-	//TODO:
-	//It isn't great that this is sychronous:
-	//Makes handing off to the Lua strand awkward because we have to wait for the result.
-	//See DataConnector.cpp for notes on making it async.
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
-		//shouldn't be possible for strand to be running in this thread
-		//but check anyway - just in case things change in the future etc
-		if(!pLuaSyncStrand->running_in_this_thread())
-		{
-			std::atomic_bool executed = false;
-			bool result;
-			pLuaSyncStrand->post([this,event,&executed,&result,h{handler_tracker}]()
-				{
-					result = Event_(event);
-					executed = true;
-				});
-			while(!executed)
-				pIOS->poll_one();
-			return result;
-		}
-		return Event_(event);
+		pLuaSyncStrand->post([this,event,pAllow,h{handler_tracker}]()
+			{
+				Event_(event,pAllow);
+			});
 	}
 
 private:
@@ -70,7 +54,7 @@ private:
 	std::shared_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();
 
 	//synchronised versions of pubilic counterpart above
-	bool Event_(std::shared_ptr<EventInfo> event);
+	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
 
 	lua_State* LuaState = luaL_newstate();
 };

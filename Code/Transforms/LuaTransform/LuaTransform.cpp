@@ -70,7 +70,7 @@ LuaTransform::~LuaTransform()
 }
 
 //only called on Lua sync strand
-bool LuaTransform::Event_(std::shared_ptr<EventInfo> event)
+void LuaTransform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow)
 {
 	//Get ready to call the lua function
 	lua_getglobal(LuaState, "Event");
@@ -78,8 +78,25 @@ bool LuaTransform::Event_(std::shared_ptr<EventInfo> event)
 	//first arg
 	PushEventInfo(LuaState,event);
 
+	//second arg - closure with callback and Name as upvalues
+	auto p = lua_newuserdatauv(LuaState,sizeof(std::shared_ptr<void>),0);
+	new(p) std::shared_ptr<void>(pAllow);
+	luaL_getmetatable(LuaState, "std_shared_ptr_void");
+	lua_setmetatable(LuaState, -2);
+	lua_pushstring(LuaState,Name.c_str());
+	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
+		{
+			auto cb_void = static_cast<std::shared_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+			auto pAllow = std::static_pointer_cast<EvtHandler_ptr::element_type>(*cb_void);
+			std::string Name = lua_tostring(L,lua_upvalueindex(2));
+
+			auto event = EventInfoFromLua(L,Name,"LuaTransform",1);
+			(*pAllow)(event);
+			return 0; //number of lua ret vals pushed onto the stack
+		}, 2);
+
 	//now call lua Event()
-	const int argc = 1; const int retc = 1;
+	const int argc = 2; const int retc = 0;
 	auto ret = lua_pcall(LuaState,argc,retc,0);
 	if(ret != LUA_OK)
 	{
@@ -87,24 +104,5 @@ bool LuaTransform::Event_(std::shared_ptr<EventInfo> event)
 		if(auto log = odc::spdlog_get("LuaTransform"))
 			log->error("{}: Lua Event() call error: {}",Name,err);
 		lua_pop(LuaState,1);
-		return false;
 	}
-	if(!lua_istable(LuaState,-1))
-	{
-		lua_pop(LuaState,1);
-		return false;
-	}
-	if(auto transformed = EventInfoFromLua(LuaState,Name,"LuaTransform",-1))
-	{
-		//FIXME: this is UB until C++20 because EventInfo has a const member
-		//	Making Transform::Event async instead of returning bool will avoid the need for it
-		//	See DataConnector.cpp for notes on making it async.
-		std::destroy_at(event.get());
-		new(event.get()) EventInfo(*transformed.get());
-
-		lua_pop(LuaState,1);
-		return true;
-	}
-	lua_pop(LuaState,1);
-	return false;
 }
