@@ -26,7 +26,6 @@
 
 #include "DataConcentrator.h"
 #include "NullPort.h"
-#include "LuaLogSink.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/asio_syslog_spdlog_sink.h>
 #include <opendatacon/spdlog.h>
@@ -509,7 +508,15 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 
 			try
 			{
-				auto lualog_sink = std::make_shared<LuaLogSink>("lualog",JSONRoot["LuaLog"]["LuaFile"].asString());
+				std::string libfilename(GetLibFileName("LuaLogSink"));
+				auto LuaLogLib = LoadModule(libfilename);
+				if(!LuaLogLib)
+					throw std::runtime_error("Failed to load Lua library.");
+
+				auto new_lua_sink = reinterpret_cast<spdlog::sinks::sink*(*)(const std::string& Name, const std::string& LuaFile)>(LoadSymbol(LuaLogLib, "new_LuaLogSink"));
+				auto del_lua_sink = reinterpret_cast<void (*)(spdlog::sinks::sink* pLuaLogSink)>(LoadSymbol(LuaLogLib, "delete_LuaLogSink"));
+
+				auto lualog_sink = std::shared_ptr<spdlog::sinks::sink>(new_lua_sink("lualog",JSONRoot["LuaLog"]["LuaFile"].asString()),[=](spdlog::sinks::sink* pLuaLogSink){del_lua_sink(pLuaLogSink);});
 				lualog_sink->set_level(lualog_level);
 				LogSinks["lualog"] = lualog_sink;
 			}

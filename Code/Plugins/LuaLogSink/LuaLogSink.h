@@ -26,13 +26,12 @@
 #ifndef LUALOGSINK_H
 #define LUALOGSINK_H
 
+#include <Lua/CLua.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/Platform.h>
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/details/null_mutex.h>
 #include <string>
-
-struct lua_State;
 
 class LuaLogSink: public spdlog::sinks::base_sink<spdlog::details::null_mutex>
 {
@@ -42,9 +41,8 @@ public:
 	void sink_it_(const spdlog::details::log_msg &msg) final;
 	void flush_() final;
 private:
-	std::string Name;
-	module_ptr LuaLib;
-	lua_State* L;
+	const std::string Name;
+	lua_State* L = luaL_newstate();
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 	std::shared_ptr<asio::io_service::strand> pStrand = pIOS->make_strand();
 	//copy this to posted handlers so we can manage lifetime
