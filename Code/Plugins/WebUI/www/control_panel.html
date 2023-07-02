@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OpenDataCon</title>
+    <title>Opendatacon</title>
 
     <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
 
@@ -103,11 +103,11 @@
 
       function execute_opendatacon_command(cmd) {
           if (cmd == null) {
-              document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+              document.getElementById("short_text_modal_title").innerHTML="Opendatacon Commands"
               document.getElementById("short_text_modal_data").innerHTML="Please select from the opendatacon commands to execute";
               $('#short_text_modal').modal('show');
           } else if (cmd == "shutdown") {
-              document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+              document.getElementById("short_text_modal_title").innerHTML="Shutdown"
               document.getElementById("short_text_modal_data").innerHTML="System is going to shutdown";
               $('#short_text_modal').modal('show');
 
@@ -116,15 +116,12 @@
                   .done(function(data) {
                   });
           } else if (cmd == "version") {
-              const url = "/OpenDataCon " + cmd;
+              const url = "/RootCommand " + cmd;
               $.post(url, {})
                   .done(function(data) {
-                      var result = '';
-                      for (const [key, value] of Object.entries(data)) {
-                          result += key + ' : ' + value + '<br>';
-                      }
+                      var result = JSON.stringify(Object.entries(data), null, 4);
 
-                      document.getElementById("short_text_modal_title").innerHTML="OpenDataCon Commands"
+                      document.getElementById("short_text_modal_title").innerHTML="Version"
                       document.getElementById("short_text_modal_data").innerHTML=result;
                       $('#short_text_modal').modal('show');
                   });

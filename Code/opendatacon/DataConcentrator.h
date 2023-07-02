@@ -48,7 +48,7 @@ void AddLogger(const std::string& name, const std::unordered_map<std::string, sp
 void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks, size_t flush_period_s = 0);
 
 class TestHook;
-class DataConcentrator: public ConfigParser, public IUIResponder
+class DataConcentrator: public ConfigParser
 {
 	friend class TestHook;
 public:

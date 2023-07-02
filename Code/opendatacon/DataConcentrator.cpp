@@ -90,15 +90,6 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 	// Enable loading of libraries
 	InitLibaryLoading();
 
-	//Version
-	this->AddCommand("version", [](const ParamCollection &params) //"Print version information"
-		{
-			Json::Value result;
-			result["version"] = odc::version_string();
-			result["config version"] = odc::GetConfigVersion();
-			return result;
-		},"Return the version information of opendatacon.");
-
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
 
@@ -114,7 +105,6 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 void DataConcentrator::RefreshIUIResponders()
 {
 	RespondersMasterCopy.clear();
-	RespondersMasterCopy["OpenDataCon"] = this;
 	RespondersMasterCopy["DataPorts"] = &DataPorts;
 	RespondersMasterCopy["DataConnectors"] = &DataConnectors;
 	RespondersMasterCopy["Plugins"] = &Interfaces;
