@@ -40,7 +40,7 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 	Name(Name),
 	mute_scripts(true)
 {
-	IUIResponder::AddCommand("run_cmd_script", [this](const ParamCollection &params) -> const Json::Value
+	IUIResponder::AddCommand("ExecuteFile", [this](const ParamCollection &params) -> const Json::Value
 		{
 			auto LineStream = ParamsToSStream(params);
 			std::string filename,ID;
@@ -56,11 +56,11 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 				}
 			      return IUIResponder::GenerateResult("Failed to open file.");
 			}
-			return IUIResponder::GenerateResult("Usage: 'run_cmd_script <lua_filename> <ID> [script args]'");
+			return IUIResponder::GenerateResult("Usage: 'ExecuteFile <lua_filename> <ID> [script args]'");
 
-		},"Load a Lua script to automate sending UI commands. Usage: 'run_cmd_script <lua_filename> <ID> [script args]'. ID is a arbitrary user-specified ID that can be used with 'stat_cmd_script'");
+		},"Load a Lua script to automate sending UI commands. Usage: 'ExecuteFile <lua_filename> <ID> [script args]'. ID is a arbitrary user-specified ID that can be used with 'StatExecution'");
 
-	IUIResponder::AddCommand("base64_cmd_script", [this](const ParamCollection &params) -> const Json::Value
+	IUIResponder::AddCommand("Base64Execute", [this](const ParamCollection &params) -> const Json::Value
 		{
 			auto LineStream = ParamsToSStream(params);
 			std::string Base64,ID;
@@ -73,11 +73,11 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			      auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
 			      return IUIResponder::GenerateResult(msg);
 			}
-			std::cout<<"Usage: 'base64_cmd_script <base64_encoded_script> <ID> [script args]'"<<std::endl;
+			std::cout<<"Usage: 'Base64Execute <base64_encoded_script> <ID> [script args]'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
-		},"Similar to 'run_cmd_script', but instead of loading the lua code from file, decodes it directly from base64 entered at the console");
+		},"Similar to 'ExecuteFile', but instead of loading the lua code from file, decodes it directly from base64 entered at the console");
 
-	IUIResponder::AddCommand("stat_cmd_script", [this](const ParamCollection &params) -> const Json::Value
+	IUIResponder::AddCommand("StatExecution", [this](const ParamCollection &params) -> const Json::Value
 		{
 			auto LineStream = ParamsToSStream(params);
 			std::string ID;
@@ -86,11 +86,11 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			      auto msg = "Script "+ID+(Completed(ID) ? " completed" : " running");
 			      return IUIResponder::GenerateResult(msg);
 			}
-			std::cout<<"Usage: 'stat_cmd_script <ID>'"<<std::endl;
+			std::cout<<"Usage: 'StatExecution <ID>'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
-		},"Check the execution status of a command script started by 'run_cmd_script'. Usage: 'stat_cmd_script <ID>'");
+		},"Check the execution status of a command script started by 'ExecuteFile'. Usage: 'StatExecution <ID>'");
 
-	IUIResponder::AddCommand("cancel_cmd_script", [this](const ParamCollection &params) -> const Json::Value
+	IUIResponder::AddCommand("CancelExecution", [this](const ParamCollection &params) -> const Json::Value
 		{
 			auto LineStream = ParamsToSStream(params);
 			std::string ID;
@@ -99,11 +99,11 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			      Cancel(ID);
 			      return IUIResponder::GenerateResult("Success");
 			}
-			std::cout<<"Usage: 'cancel_cmd_script <ID>'"<<std::endl;
+			std::cout<<"Usage: 'CancelExecution <ID>'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
-		},"Cancel the execution of a command script started by 'run_cmd_script' the next time it returns or yeilds. Usage: 'cancel_cmd_script <ID>'");
+		},"Cancel the execution of a command script started by 'ExecuteFile' the next time it returns or yeilds. Usage: 'CancelExecution <ID>'");
 
-	IUIResponder::AddCommand("toggle_script_mute", [this](const ParamCollection &) -> const Json::Value
+	IUIResponder::AddCommand("ToggleMuteExecution", [this](const ParamCollection &) -> const Json::Value
 		{
 			mute_scripts = !mute_scripts;
 			return mute_scripts ? IUIResponder::GenerateResult("Muted") : IUIResponder::GenerateResult("Unmuted");

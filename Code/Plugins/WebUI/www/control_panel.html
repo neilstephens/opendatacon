@@ -49,6 +49,13 @@
     <br>
 
     <div class="container">
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="go_to_lua_control()">Lua UI Commander</button>
+      </div>
+    </div>
+    <br>
+
+    <div class="container">
       <div class="row">
         <div class="alert alert-info clearfix">
             <div class="btn-group">
@@ -153,6 +160,16 @@
           $('#command_control_modal').modal('show');
 
           $("#command_control_modal").on("hidden.bs.modal", function () {
+              location.reload();
+          });
+      }
+
+      function go_to_lua_control() {
+          document.getElementById("lua_control_src").src = "lua_control.html";
+          document.getElementById("lua_control_modal_title").innerHTML="Lua Control";
+          $('#lua_control_modal').modal('show');
+
+          $("#lua_control_modal").on("hidden.bs.modal", function () {
               location.reload();
           });
       }

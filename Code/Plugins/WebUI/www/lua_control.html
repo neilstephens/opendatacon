@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+  <body>
+    <head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Opendatacon</title>
+
+      <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+      <link rel="stylesheet" href="/node_modules/bootstrap_select/dist/css/bootstrap-select.css">
+
+      <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+      <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
+      <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+      <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+      <script src="/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
+
+      <style>
+        .modal.simcontrol .modal-dialog {
+            width:1240px;
+            /* For responsive */
+            max-width:100%;
+            max-height:100%;
+        }
+
+        <span style="white-space: pre-line">@Model.CommentText</span>
+      </style>
+
+      <script>
+        $(function() {
+            $("#common_content").load("common.html");
+        });
+      </script>
+    </head>
+    <div class="container">
+
+        <br>
+        <br>
+        <div class="row">
+
+            <div class="col-sm-3">
+                <label for="lua_file">Select a file:</label>
+                <input type="file" id="lua_file" name="lua_file">
+            </div>
+
+            <div class="col-sm-2">
+                <label for="file_id">ID:</label>
+                <input type="text" class="form-control" id="file_id">
+            </div>
+            
+            <div class="col-sm-6">
+                <label for="file_args">Arguments:</label>
+                <input type="text" class="form-control" id="file_args">
+            </div>
+        
+        </div>
+
+      <br>
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-block" onclick="file_execute()">Execute</button>
+      </div>
+
+      <label for="script_text_box">Or Write Script:</label>
+      <textarea id="script_text_box" name="script_text_box" rows="12" cols="100"></textarea>
+      <br>
+      <div class="row">
+          
+          <div class="col-sm-2">
+              <label for="text_id">ID:</label>
+              <input type="text" class="form-control" id="text_id">
+          </div>
+          
+          <div class="col-sm-6">
+              <label for="text_args">Arguments:</label>
+              <input type="text" class="form-control" id="text_args">
+          </div>
+      
+      </div>
+      <br>
+      <div class="alert alert-info clearfix">
+        <button type="button" class="btn btn-primary btn-block" onclick="text_execute()">Execute</button>
+      </div>
+
+      <div class="alert alert-success" id="alert_command">
+        <strong>
+          <div id="alert_message"></div>
+        </strong>
+      </div>
+
+    </div>
+
+    <script>
+      
+      $(document).ready(function() {
+          $("#alert_command").hide();
+          const url = "/LuaUICommander StatExecution x";
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      });
+
+      function text_execute() {
+          const luaCode = document.getElementById("script_text_box").value;
+          const luaID = document.getElementById("text_id").value;
+          const luaArgs = document.getElementById("text_args").value;
+          const url = "/LuaUICommander Base64Execute "+btoa(luaCode)+" "+luaID+" "+luaArgs;
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
+
+      function file_execute(){
+          var fileToLoad = document.getElementById("lua_file").files[0];
+          
+          var fileReader = new FileReader();
+          fileReader.onload = function(fileLoadedEvent){
+              var textFromFileLoaded = fileLoadedEvent.target.result;
+              const luaID = document.getElementById("file_id").value;
+              const luaArgs = document.getElementById("file_args").value;
+              const url = "/LuaUICommander Base64Execute "+btoa(textFromFileLoaded)+" "+luaID+" "+luaArgs;
+              $.post(url, {})
+                  .done(function(data) {
+                      var message = '';
+                      for (const [key, value] of Object.entries(data))
+                          message += key + " : " + value;
+                      display_alert_message(message);
+                  });
+          };
+          fileReader.readAsText(fileToLoad, "UTF-8");
+      }
+
+      function display_alert_message(message) {
+          document.getElementById("alert_message").innerHTML = message;
+          $("#alert_command").show();
+          $("#alert_command").fadeTo(3000, 500).slideUp(500, function() {
+              $("#alert_command").slideUp(500);
+          });
+      }
+
+    </script>
+  </body>
+</html>
