@@ -66,6 +66,27 @@ public:
 	}
 };
 
+class AnalogCheckPort: public NullPort
+{
+public:
+	AnalogCheckPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, const double check):
+		NullPort(aName, aConfFilename, aConfOverrides),
+		check(check)
+	{}
+	void Event(std::shared_ptr<const EventInfo> event, const std::string&, SharedStatusCallback_t pStatusCallback) override
+	{
+		if(event->GetEventType() == EventType::Analog && event->GetPayload<EventType::Analog>() == check)
+		{
+			(*pStatusCallback)(CommandStatus::SUCCESS);
+			return;
+		}
+
+		(*pStatusCallback)(CommandStatus::FORMAT_ERROR);
+	}
+private:
+	const double check;
+};
+
 }
 
 #endif /* TESTPORTS_H_ */

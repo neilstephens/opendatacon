@@ -262,7 +262,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 				if(!evt)
 				{
 				      if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} Payload {} Event {} => Transform Block", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+						log->trace("{} {} Payload {} Event {} => Dropped by transform", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
 				      (*pStatusCallback)(CommandStatus::UNDEFINED);
 				      return;
 				}
@@ -284,10 +284,11 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 		{
 			ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
 				{
+					auto src = (Tx_it+1 == rend) ? Name : (*(Tx_it+1))->Name;
 					if(evt)
 					{
 					      if(auto log = odc::spdlog_get("opendatacon"))
-							log->trace("{} {} Payload {} Event {} => Transform Pass", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), Name);
+							log->trace("{} {} Payload {} Event {} => {}", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), src, (*Tx_it)->Name);
 					}
 					(*Tx_it)->Event(evt,ToDestination);
 				});

@@ -46,8 +46,9 @@ public:
 
 	virtual void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) = 0;
 
+	const std::string Name;
+
 protected:
-	std::string Name;
 	Json::Value params;
 };
 
