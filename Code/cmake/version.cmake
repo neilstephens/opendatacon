@@ -19,6 +19,10 @@
  #
 
 message("Updating version info")
+
+set(LUA_VERSION "5.4.6")
+set(LUA_HASH "SHA256=7d5ea1b9cb6aa0b59ca3dde1c6adcb57ef83a1ba8e5432c0ecd06bf439b3ad88")
+
 find_package(Git)
 if(GIT_FOUND)
 	execute_process(
@@ -48,9 +52,10 @@ if(GIT_FOUND)
 		OUTPUT_VARIABLE GIT_DESCRIBE_SUBS
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
-	STRING(REGEX REPLACE "Entering 'Code/submodules/" "" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
-	STRING(REGEX REPLACE "'\r?\n" ": " GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
-	STRING(REGEX REPLACE "\r?\n" "\\\\n\\\\t" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
+	STRING(REGEX REPLACE "Entering 'Code/submodules/" "\"" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
+	STRING(REGEX REPLACE "'\r?\n" "\": \"" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
+	STRING(REGEX REPLACE "\r?\n" "\",\n\t" GIT_DESCRIBE_SUBS "${GIT_DESCRIBE_SUBS}")
+	set(GIT_DESCRIBE_SUBS "{\n\t${GIT_DESCRIBE_SUBS}\",\n\t\"Lua\" : \"${LUA_VERSION} ${LUA_HASH}\"\n}")
 	#message("submodule versions: \n${GIT_DESCRIBE_SUBS}")
 
 	if(CURRENT_CONFIG) #true at build-time

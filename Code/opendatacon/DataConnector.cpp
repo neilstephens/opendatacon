@@ -99,47 +99,48 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 						log->error("Invalid Transform config: need at least Type and Sender: \n'{}\n' : ignoring", Transforms[n].toStyledString());
 					continue;
 				}
+				std::string txname = Transforms[n].isMember("Name") ? Transforms[n]["Name"].asString() : Name+" Transform "+std::to_string(n);
 
 				auto normal_delete = [] (Transform* pTx){delete pTx;};
 
 				if(Transforms[n]["Type"].asString() == "IndexOffset")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexOffsetTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexOffsetTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "IndexMap")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexMapTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexMapTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "Threshold")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new ThresholdTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new ThresholdTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "Rand")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RandTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RandTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "RateLimit")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RateLimitTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RateLimitTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if(Transforms[n]["Type"].asString() == "LogicInv")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new LogicInvTransform    (Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new LogicInvTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if (Transforms[n]["Type"].asString() == "BlackHole")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new BlackHoleTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new BlackHoleTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 				if (Transforms[n]["Type"].asString() == "AnalogScaling")
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new AnalogScalingTransform(Transforms[n]["Parameters"]), normal_delete));
+					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new AnalogScalingTransform(txname,Transforms[n]["Parameters"]), normal_delete));
 					continue;
 				}
 
@@ -149,10 +150,10 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				{
 					libname = Transforms[n]["Library"].asString();
 				}
-				//Otherwise use the naming convention lib<Type>Port.so to find the default lib that implements a type of port
+				//Otherwise use the naming convention lib<Type>Transform.so to find the default lib that implements a type of transform
 				else
 				{
-					libname = Transforms[n]["Type"].asString();
+					libname = Transforms[n]["Type"].asString()+"Transform";
 				}
 				auto libfilename = GetLibFileName(libname);
 
@@ -175,7 +176,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
 				//it should return a pointer to a heap allocated instance of a descendant of Transform
 				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-				auto new_tx_func = reinterpret_cast<Transform*(*)(const Json::Value&)>(LoadSymbol(txlib, new_funcname));
+				auto new_tx_func = reinterpret_cast<Transform*(*)(const std::string&,const Json::Value&)>(LoadSymbol(txlib, new_funcname));
 				std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
 				auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
 
@@ -211,12 +212,12 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 							};
 
 				//call the creation function and wrap the returned pointer
-				SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new_tx_func(Transforms[n]["Params"].asString()),tx_cleanup));
+				SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new_tx_func(txname,Transforms[n]["Parameters"]),tx_cleanup));
 			}
 			catch (std::exception& e)
 			{
 				if(auto log = odc::spdlog_get("Connectors"))
-					log->error("Exception raised when creating Transform from config: \n'{}\n' : ignoring", Transforms[n].toStyledString());
+					log->error("Exception raised when creating Transform from config: \n'{}\n' Error: '{}' - skipping transform", Transforms[n].toStyledString(), e.what());
 			}
 		}
 	}
@@ -256,35 +257,45 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 	//Do we have a connection for this sender?
 	if(connection_count > 0)
 	{
-		auto new_event_obj = std::make_shared<EventInfo>(*event);
-		if(SenderTransforms.count(SenderName))
-		{
-			for(auto& Transform : SenderTransforms[SenderName])
+		EvtHandler_ptr ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
 			{
-				if(!Transform->Event(new_event_obj))
+				if(!evt)
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} Payload {} Event {} => Transform Block", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name);
-					(*pStatusCallback)(CommandStatus::UNDEFINED);
-					return;
+				      if(auto log = odc::spdlog_get("opendatacon"))
+						log->trace("{} {} Payload {} Event {} => Dropped by transform", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+				      (*pStatusCallback)(CommandStatus::UNDEFINED);
+				      return;
 				}
-				else
-				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} Payload {} Event {} => Transform Pass", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name);
-				}
-			}
-		}
 
-		auto multi_callback = SyncMultiCallback(connection_count,pStatusCallback);
-		auto bounds = SenderConnections.equal_range(SenderName);
-		for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+				auto multi_callback = SyncMultiCallback(connection_count,pStatusCallback);
+				auto bounds = SenderConnections.equal_range(SenderName);
+				for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
+				{
+				      if(auto log = odc::spdlog_get("opendatacon"))
+						log->trace("{} {} Payload {} Event {} => {}", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), Name, aMatch_it->second.second->GetName());
+
+				      aMatch_it->second.second->Event(evt, this->Name, multi_callback);
+				}
+			});
+		//create a chain of callbacks to the destination
+		auto Tx_it = SenderTransforms[SenderName].rbegin();
+		const auto rend = SenderTransforms[SenderName].rend();
+		while(Tx_it != rend)
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->trace("{} {} Payload {} Event {} => {}", ToString(new_event_obj->GetEventType()),new_event_obj->GetIndex(), new_event_obj->GetPayloadString(), Name, aMatch_it->second.second->GetName());
-
-			aMatch_it->second.second->Event(new_event_obj, this->Name, multi_callback);
+			ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
+				{
+					auto src = (Tx_it+1 == rend) ? Name : (*(Tx_it+1))->Name;
+					if(evt)
+					{
+					      if(auto log = odc::spdlog_get("opendatacon"))
+							log->trace("{} {} Payload {} Event {} => {}", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), src, (*Tx_it)->Name);
+					}
+					(*Tx_it)->Event(evt,ToDestination);
+				});
+			Tx_it++;
 		}
+		auto new_event_obj = std::make_shared<EventInfo>(*event);
+		(*ToDestination)(new_event_obj);
 		return;
 	}
 	//no connection for sender if we get here

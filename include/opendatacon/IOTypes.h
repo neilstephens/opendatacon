@@ -277,6 +277,22 @@ inline std::string ToString(const QualityFlags q)
 	if(s == "|") return "|NONE|";
 	return s;
 }
+#define SINGLEFLAGSTRING(E,X) if(q == E::X) return #X;
+inline std::string SingleFlagString(const QualityFlags q)
+{
+	SINGLEFLAGSTRING(QualityFlags,NONE          )
+	SINGLEFLAGSTRING(QualityFlags,ONLINE        )
+	SINGLEFLAGSTRING(QualityFlags,RESTART       )
+	SINGLEFLAGSTRING(QualityFlags,COMM_LOST     )
+	SINGLEFLAGSTRING(QualityFlags,REMOTE_FORCED )
+	SINGLEFLAGSTRING(QualityFlags,LOCAL_FORCED  )
+	SINGLEFLAGSTRING(QualityFlags,OVERRANGE     )
+	SINGLEFLAGSTRING(QualityFlags,REFERENCE_ERR )
+	SINGLEFLAGSTRING(QualityFlags,ROLLOVER      )
+	SINGLEFLAGSTRING(QualityFlags,DISCONTINUITY )
+	SINGLEFLAGSTRING(QualityFlags,CHATTER_FILTER)
+	return "MULTIPLE_FLAGS";
+}
 
 struct ControlRelayOutputBlock
 {

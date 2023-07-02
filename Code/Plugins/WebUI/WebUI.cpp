@@ -40,7 +40,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& web
 	log_q_size(log_q_size)
 {}
 
-void WebUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
+void WebUI::AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc)
 {
 	RootCommands[name] = callback;
 }
@@ -249,8 +249,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 		if (RootCommands.find(command) == RootCommands.end())
 			value["Result"] = "Command " + command + " not found !!!";
 		else
-			RootCommands[command](iss);
-		value["Result"] = "Success";
+			value = RootCommands[command](iss);
 		result_cb(std::move(value));
 	}
 	else if(Responders.find(responder) != Responders.end())
@@ -267,37 +266,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 
 void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb)
 {
-	//Define first arg as Target regex
-	std::string T_regex_str;
-	odc::extract_delimited_string("\"'`",args,T_regex_str);
-
-	//turn any regex it into a list of targets
-	Json::Value target_list;
-	if(!T_regex_str.empty() && command != "List") //List is a special case - handles it's own regex
-	{
-		params["Target"] = T_regex_str;
-		target_list = pResponder->ExecuteCommand("List", params)["Items"];
-	}
-
-	int arg_num = 0;
-	std::string Val;
-	while(odc::extract_delimited_string("\"'`",args,Val))
-		params[std::to_string(arg_num++)] = Val;
-
-	Json::Value results;
-	if(target_list.size() > 0) //there was a list resolved
-	{
-		for(auto& target : target_list)
-		{
-			params["Target"] = target.asString();
-			results[target.asString()] = pResponder->ExecuteCommand(command, params);
-		}
-	}
-	else
-	{
-		//There was no list - execute anyway
-		results = pResponder->ExecuteCommand(command, params);
-	}
+	auto results = IUI::ExecuteCommand(pResponder,command,args,&params);
 
 	if (command == "List")
 	{

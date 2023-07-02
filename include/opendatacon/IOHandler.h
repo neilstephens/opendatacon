@@ -100,7 +100,7 @@ protected:
 		PublishEvent(event);
 	}
 
-	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}))
+	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){})) const
 	{
 		if(pIOS == nullptr)
 			throw std::runtime_error("Uninitialised io_service on enabled IOHandler");
@@ -131,7 +131,7 @@ protected:
 		}
 	}
 
-	SharedStatusCallback_t SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback);
+	SharedStatusCallback_t SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback) const;
 
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;

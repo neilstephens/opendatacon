@@ -36,18 +36,17 @@ using namespace odc;
 class RandTransform: public Transform
 {
 public:
-	RandTransform(const Json::Value& params):
-		Transform(params)
+	RandTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{}
 
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
 		uint16_t random_number = std::uniform_int_distribution<unsigned int>(0, 100)(RandNumGenerator);
 		if(event->GetEventType() != EventType::Analog)
-			return true;
+			return (*pAllow)(event);
 		event->SetPayload<EventType::Analog>(std::move(random_number));
-		return true;
+		return (*pAllow)(event);
 	}
 };
 

@@ -43,6 +43,10 @@ if(FILETRANSFERPORT)
 add_subdirectory(FileTransferPort_tests)
 endif()
 
+if(LUAPORT)
+add_subdirectory(LuaPort_tests)
+endif()
+
 if(FULL)
 add_subdirectory(Integration_tests)
 endif()

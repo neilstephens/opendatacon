@@ -34,15 +34,21 @@
 
 namespace odc
 {
-
+using EvtHandler_ptr = std::shared_ptr<std::function<void (std::shared_ptr<EventInfo> event)>>;
 class Transform
 {
 public:
-	Transform(const Json::Value& params): params(params){}
+	Transform(const std::string& Name, const Json::Value& params):
+		Name(Name),
+		params(params)
+	{}
 	virtual ~Transform(){}
 
-	virtual bool Event(std::shared_ptr<EventInfo> event) = 0;
+	virtual void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) = 0;
 
+	const std::string Name;
+
+protected:
 	Json::Value params;
 };
 

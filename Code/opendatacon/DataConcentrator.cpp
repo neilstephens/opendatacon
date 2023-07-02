@@ -125,16 +125,24 @@ void DataConcentrator::RefreshIUIResponders()
 		if(ResponderPair.second && RespondersMasterCopy.count(ResponderPair.first) == 0)
 			RespondersMasterCopy.insert(ResponderPair);
 	}
+	for(auto& plugin : Interfaces)
+	{
+		auto ResponderPair = plugin.second->GetUIResponder();
+		//if it's a different, valid responder pair, store it
+		if(ResponderPair.second && RespondersMasterCopy.count(ResponderPair.first) == 0)
+			RespondersMasterCopy.insert(ResponderPair);
+	}
 }
 
 void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 {
-	interface->AddCommand("shutdown",[this](std::stringstream& ss)
+	interface->AddCommand("shutdown",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::thread([this](){this->Shutdown();}).detach();
+			return IUIResponder::GenerateResult("Success");
 		}
 		,"Shutdown opendatacon");
-	interface->AddCommand("reload_config",[this](std::stringstream& ss)
+	interface->AddCommand("reload_config",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::string filename;
 			if(!(ss >> filename))
@@ -151,35 +159,46 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 					else
 						this->ReloadConfig(filename);
 				}).detach();
+			return IUIResponder::GenerateResult("Initiated");
 		}
 		,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename> <optional_delay_override>]");
-	interface->AddCommand("version",[] (std::stringstream& ss)
+	interface->AddCommand("version",[] (std::stringstream& ss) -> Json::Value
 		{
-			std::cout<<"Release " << odc::version_string() <<std::endl
-			         <<"Submodules:"<<std::endl
-			         <<"\t"<<odc::submodules_version_string()<<std::endl
-			         <<"Running config: "<<odc::GetConfigVersion()<<std::endl;
+			std::istringstream ss_submodules(odc::submodules_version_string());
+			Json::CharReaderBuilder JSONReader;
+			Json::Value json_submodules;
+			Json::parseFromStream(JSONReader,ss_submodules, &json_submodules, nullptr);
+
+			Json::Value res;
+			res["Release"] = odc::version_string();
+			res["Submodules"] = json_submodules;
+			res["Running config"] = odc::GetConfigVersion();
+
+			return res;
 
 		},"Print version information");
-	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss)
+	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->SetLogLevel(ss);
+			return this->SetLogLevel(ss);
 		},"Set the threshold for logging");
-	interface->AddCommand("flush_logs",[] (std::stringstream& ss)
+	interface->AddCommand("flush_logs",[] (std::stringstream& ss) -> Json::Value
 		{
 			odc::spdlog_flush_all();
+			return IUIResponder::GenerateResult("Success");
 		},"Flush all registered loggers and sinks");
-	interface->AddCommand("add_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("add_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->AddLogSink(ss);
+			return this->AddLogSink(ss);
 		},"Add a log sink. WARNING: May cause missed log messages momentarily");
-	interface->AddCommand("del_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("del_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->DeleteLogSink(ss);
+			return this->DeleteLogSink(ss);
 		},"Delete a log sink. WARNING: May cause missed log messages momentarily");
-	interface->AddCommand("ls_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("ls_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->ListLogSinks();
+			Json::Value res;
+			this->ListLogSinks(res);
+			return res;
 		},"List the names of all the log sinks");
 
 	interface->SetResponders(RespondersMasterCopy);
@@ -228,24 +247,25 @@ DataConcentrator::~DataConcentrator()
 			;
 }
 
-//FIXME: the following command functions shouldn't really print to the console,
-//	they should return values to be compatible with non-cosole UIs
-inline void DataConcentrator::ListLogSinks()
+inline void DataConcentrator::ListLogSinks(Json::Value& out)
 {
-	std::cout << "Sinks:" << std::endl;
+	out["Sinks"] = Json::Value(Json::arrayValue);
+	Json::ArrayIndex n = 0;
 	for (auto it = LogSinks.begin(); it != LogSinks.end(); ++it)
-		std::cout << "\t" << it->first << std::endl;
+		out["Sinks"][n++] = it->first;
 }
-inline void DataConcentrator::ListLogLevels()
+inline void DataConcentrator::ListLogLevels(Json::Value& out)
 {
-	std::cout << "Levels:" << std::endl;
+	out["Levels"] = Json::Value(Json::arrayValue);
+	Json::ArrayIndex n = 0;
 	for(uint8_t i = 0; i < 7; i++)
-		std::cout << "\t" << spdlog::level::level_string_views[i].data() << std::endl;
+		out["Levels"][n++] = spdlog::level::level_string_views[i].data();
 }
 
 
-void DataConcentrator::SetLogLevel(std::stringstream& ss)
+Json::Value DataConcentrator::SetLogLevel(std::stringstream& ss)
 {
+	Json::Value result;
 	std::string sinkname;
 	std::string level_str;
 	if(ss>>sinkname && ss>>level_str)
@@ -260,28 +280,33 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 		if (!valid_name)
 		{
 			fail = true;
-			std::cout << "Log sink not found." << std::endl;
-			ListLogSinks();
+			result = IUIResponder::GenerateResult("Log sink not found.");
+			ListLogSinks(result);
 		}
 		auto new_level = spdlog::level::from_str(level_str);
 		if(new_level == spdlog::level::off && level_str != "off")
 		{
 			fail = true;
-			std::cout << "Invalid log level." << std::endl;
-			ListLogLevels();
+			result = IUIResponder::GenerateResult("Invalid log level.");
+			ListLogLevels(result);
 		}
 
 		if(!fail)
+		{
 			LogSinks[sinkname]->set_level(new_level);
-
-		return;
+			result = IUIResponder::GenerateResult("Success");
+		}
 	}
-	std::cout << "Usage: set_loglevel <sinkname> <level>" << std::endl;
-	ListLogSinks();
-	ListLogLevels();
+	else
+	{
+		result = IUIResponder::GenerateResult("Usage: set_loglevel <sinkname> <level>");
+		ListLogSinks(result);
+		ListLogLevels(result);
+	}
+	return result;
 }
 
-void DataConcentrator::AddLogSink(std::stringstream& ss)
+Json::Value DataConcentrator::AddLogSink(std::stringstream& ss)
 {
 	std::string sinkname;
 	std::string sinklevel;
@@ -317,7 +342,7 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 				}
 				else
 				{
-					std::cout << "Usage: add_logsink <sinkname> <level> SYSLOG <host> [ <port> [ <localhost> [ <appname> [ <category> ]]]]" << std::endl;
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> SYSLOG <host> [ <port> [ <localhost> [ <appname> [ <category> ]]]]");
 				}
 			}
 			else if(sinktype == "TCP")
@@ -339,37 +364,37 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 				}
 				else
 				{
-					std::cout << "Usage: add_logsink <sinkname> <level> TCP <host> <port> <client / server>" << std::endl;
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> TCP <host> <port> <client / server>");
 				}
 			}
 			else if(sinktype == "FILE")
 			{
 				//TODO: implement
-				std::cout << "Not implemented." << std::endl;
+				return IUIResponder::GenerateResult("Not implemented.");
 			}
 			else
 			{
-				std::cout << "Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
-				return;
+				return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ...");
 			}
 			SetLogLevel(level_params);
 		}
 		else
 		{
-			std::cout << "Error: [" << sinkname << "] Log sink name already taken." << std::endl;
-			ListLogSinks();
-			return;
+			auto res = IUIResponder::GenerateResult("Error: ["+sinkname+"] Log sink name already taken.");
+			ListLogSinks(res);
+			return res;
 		}
 	}
 	else
 	{
-		std::cout << "Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
+		return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ...");
 	}
 
 	ReloadLogSinks(LogSinks,log_flush_period);
+	return IUIResponder::GenerateResult("Success");
 }
 
-void DataConcentrator::DeleteLogSink(std::stringstream& ss)
+Json::Value DataConcentrator::DeleteLogSink(std::stringstream& ss)
 {
 	std::string sinkname;
 	if(ss>>sinkname)
@@ -380,17 +405,18 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 		}
 		else
 		{
-			std::cout << "Log sink name doesn't exist." << std::endl;
-			ListLogSinks();
-			return;
+			auto res = IUIResponder::GenerateResult("Log sink name doesn't exist.");
+			ListLogSinks(res);
+			return res;
 		}
 	}
 	else
 	{
-		std::cout << "Usage: del_logsink <sinkname>" << std::endl;
+		return IUIResponder::GenerateResult("Usage: del_logsink <sinkname>");
 	}
 
 	ReloadLogSinks(LogSinks,log_flush_period);
+	return IUIResponder::GenerateResult("Success");
 }
 
 std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator::ConfigureLogSinks(const Json::Value& JSONRoot)
@@ -398,6 +424,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	//delete old ones in case this is a re-load
 	LogSinks.erase("tcp");
 	LogSinks.erase("syslog");
+	LogSinks.erase("lualog");
 	LogSinks.erase("file");
 	LogSinks.erase("console");
 	ReloadLogSinks(LogSinks);
@@ -464,6 +491,46 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 				*pIOS,host,port,1,local_host,app,category);
 			syslog_sink->set_level(syslog_level);
 			LogSinks["syslog"] = syslog_sink;
+		}
+	}
+
+	//TODO: document these config options
+	if(JSONRoot.isMember("LuaLog"))
+	{
+		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+		auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
+
+		if(!JSONRoot["LuaLog"].isMember("LuaFile"))
+		{
+			temp_logger->error("LuaLog needs a 'LuaFile' field. Ignoring: ", JSONRoot["LuaLog"].toStyledString());
+		}
+		else
+		{
+			auto lualog_level_name = JSONRoot["LuaLog"].isMember("LogLevel") ? JSONRoot["LuaLog"]["LogLevel"].asString() : "";
+
+			auto lualog_level = spdlog::level::from_str(lualog_level_name);
+			//check for no match and set defaults
+			if(lualog_level == spdlog::level::off && lualog_level_name != "off")
+				lualog_level = log_level;
+
+			try
+			{
+				std::string libfilename(GetLibFileName("LuaLogSink"));
+				auto LuaLogLib = LoadModule(libfilename);
+				if(!LuaLogLib)
+					throw std::runtime_error("Failed to load Lua library.");
+
+				auto new_lua_sink = reinterpret_cast<spdlog::sinks::sink*(*)(const std::string& Name, const std::string& LuaFile)>(LoadSymbol(LuaLogLib, "new_LuaLogSink"));
+				auto del_lua_sink = reinterpret_cast<void (*)(spdlog::sinks::sink* pLuaLogSink)>(LoadSymbol(LuaLogLib, "delete_LuaLogSink"));
+
+				auto lualog_sink = std::shared_ptr<spdlog::sinks::sink>(new_lua_sink("lualog",JSONRoot["LuaLog"]["LuaFile"].asString()),[=](spdlog::sinks::sink* pLuaLogSink){del_lua_sink(pLuaLogSink);});
+				lualog_sink->set_level(lualog_level);
+				LogSinks["lualog"] = lualog_sink;
+			}
+			catch(const std::exception& e)
+			{
+				temp_logger->error("{}",e.what());
+			}
 		}
 	}
 

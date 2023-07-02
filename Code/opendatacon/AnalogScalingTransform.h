@@ -34,7 +34,7 @@ using namespace odc;
 class AnalogScalingTransform: public Transform
 {
 public:
-	AnalogScalingTransform(const Json::Value& params): Transform(params)
+	AnalogScalingTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
 		if(!params.isMember("Indexes") || !params["Indexes"].isArray())
 		{
@@ -74,10 +74,10 @@ public:
 		}
 	}
 
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		if(event->GetEventType() != EventType::Analog)
-			return true;
+			return (*pAllow)(event);
 
 		auto scale_it = ScaleFactors.find(event->GetIndex());
 		if(scale_it != ScaleFactors.end())
@@ -87,7 +87,7 @@ public:
 		if(offset_it != Offsets.end())
 			event->SetPayload<EventType::Analog>(event->GetPayload<EventType::Analog>() + offset_it->second);
 
-		return true;
+		return (*pAllow)(event);
 	}
 
 	std::unordered_map<uint16_t,double> ScaleFactors;
