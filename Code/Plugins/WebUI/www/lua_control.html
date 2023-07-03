@@ -36,7 +36,21 @@
     </head>
     <div class="container">
 
-      <!-- Lua file selector, ID and Arguments inputs -->
+      <!-- Overall Options -->
+      <div class="row">
+        <div class="col-sm-2">
+            <label for="max_q">Message Q Size:</label>
+            <input type="number" class="form-control" id="max_q" min="0" max="1000000" value="500">
+        </div>
+        <div class="col-sm-2">
+          <br>
+          <button type="button" onclick="set_q_size()">Apply</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" onclick="cancel_clear()">Cancel and clear all scripts</button>
+      <br>
+
+      <!-- Lua file selector, and Arguments inputs -->
       <br>
       <div class="row">
           <div class="col-sm-3">
@@ -49,12 +63,11 @@
               <input type="text" class="form-control" id="editor_args">
           </div>
       </div>
-      <br>
 
       <!-- Syntax highlighted code editor - Powered by Ace (Ajax.org Cloud9 Editor) -->
       <!-- https://github.com/ajaxorg/ace/wiki/Embedding-API                        -->
 
-      <label for="script_text_box">Edit in place:</label>
+      <label for="script_text_box">Edit</label>
       <div id="editor" style="height: 500px; width: 950px">src</div>
           
       <script src="node_modules/ace/src-min-noconflict-luaonly/ace.js" type="text/javascript" charset="utf-8"></script>
@@ -112,6 +125,29 @@
                   editor.gotoLine(1);
               });
       });
+      
+      function cancel_clear() {
+          const url = "/LuaUICommander ClearAll";
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
+      
+      function set_q_size() {
+          const sz = document.getElementById("max_q").value;
+          const url = "/LuaUICommander MessageQueueSize "+sz;
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
 
       function editor_execute() {
           const luaCode = editor.getValue();
