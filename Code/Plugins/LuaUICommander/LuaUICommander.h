@@ -32,6 +32,7 @@
 #include <string>
 #include <shared_mutex>
 #include <unordered_map>
+#include <deque>
 
 class LuaUICommander: public IUI, public IUIResponder
 {
@@ -56,12 +57,18 @@ private:
 	//Lua functionality
 	std::unordered_map<std::string,LuaInst> Scripts;
 	std::shared_mutex ScriptsMtx;
+	std::unordered_map<std::string,std::deque<std::string>> Messages;
+	std::shared_mutex MessagesMtx;
 	std::atomic_bool mute_scripts;
+	std::atomic_size_t maxQ;
 
 	Json::Value ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss);
+	void ScriptMessageHandler(const std::string& ID, const std::string& msg);
 	bool Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args);
 	void Cancel(const std::string& ID);
+	void ClearAll();
 	bool Completed(const std::string& ID);
+	Json::Value Status(const std::string& ID);
 
 	CommandHandler CmdHandler = [this](const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss) -> Json::Value
 					    {
@@ -69,8 +76,7 @@ private:
 					    };
 	MessageHandler MsgHandler = [this](const std::string& ID, const std::string& msg)
 					    {
-						    if(!mute_scripts)
-							    std::cout<<"[Lua] "<<ID<<": "<<msg<<std::endl;
+						    ScriptMessageHandler(ID,msg);
 					    };
 };
 

@@ -25,6 +25,7 @@
         }
 
         <span style="white-space: pre-line">@Model.CommentText</span>
+
       </style>
 
       <script>
@@ -35,57 +36,67 @@
     </head>
     <div class="container">
 
-        <br>
-        <br>
-        <div class="row">
-
-            <div class="col-sm-3">
-                <label for="lua_file">Select a file:</label>
-                <input type="file" id="lua_file" name="lua_file">
-            </div>
-
-            <div class="col-sm-2">
-                <label for="file_id">ID:</label>
-                <input type="text" class="form-control" id="file_id">
-            </div>
-            
-            <div class="col-sm-6">
-                <label for="file_args">Arguments:</label>
-                <input type="text" class="form-control" id="file_args">
-            </div>
-        
-        </div>
-
-      <br>
-      <div class="alert alert-info clearfix">
-        <button type="button" class="btn btn-primary btn-block" onclick="file_execute()">Execute</button>
-      </div>
-
-      <label for="script_text_box">Or Write Script:</label>
-      <textarea id="script_text_box" name="script_text_box" rows="12" cols="100"></textarea>
+      <!-- Lua file selector, ID and Arguments inputs -->
       <br>
       <div class="row">
-          
-          <div class="col-sm-2">
-              <label for="text_id">ID:</label>
-              <input type="text" class="form-control" id="text_id">
+          <div class="col-sm-3">
+              <label for="lua_file">Select a file:</label>
+              <input type="file" id="lua_file" name="lua_file" accept="text/plain,.lua">
+              <button type="button" onclick="file_load()">Load</button>
           </div>
-          
-          <div class="col-sm-6">
-              <label for="text_args">Arguments:</label>
-              <input type="text" class="form-control" id="text_args">
+          <div class="col-sm-9">
+              <label for="editor_args">Arguments:</label>
+              <input type="text" class="form-control" id="editor_args">
           </div>
-      
       </div>
       <br>
-      <div class="alert alert-info clearfix">
-        <button type="button" class="btn btn-primary btn-block" onclick="text_execute()">Execute</button>
+
+      <!-- Syntax highlighted code editor - Powered by Ace (Ajax.org Cloud9 Editor) -->
+      <!-- https://github.com/ajaxorg/ace/wiki/Embedding-API                        -->
+
+      <label for="script_text_box">Edit in place:</label>
+      <div id="editor" style="height: 500px; width: 950px">src</div>
+          
+      <script src="node_modules/ace/src-min-noconflict-luaonly/ace.js" type="text/javascript" charset="utf-8"></script>
+      <script>
+        var editor = ace.edit("editor");
+        editor.setTheme("ace/theme/cloud9_night");
+        editor.session.setMode("ace/mode/lua");
+        editor.setFontSize(16);
+      </script>
+
+      <!-- Controls Area - Execute, Stat, Cancel-->
+
+      <div class="row">
+          <div class="col-sm-2">
+              <label for="editor_id">ID:</label>
+              <input type="text" class="form-control" id="editor_id" value="MyID">
+          </div>
+          <div class="col-sm-3">
+            <br>
+            <button type="button" class="btn btn-primary btn-block" onclick="editor_execute()">Execute</button>
+          </div>
+          <div class="col-sm-3">
+            <br>
+            <button type="button" class="btn btn-primary btn-block" onclick="stat_execution()">Status</button>
+          </div>
+          <div class="col-sm-3">
+            <br>
+            <button type="button" class="btn btn-primary btn-block" onclick="cancel_execution()">Cancel</button>
+          </div>
       </div>
+
+
+      <!-- Area where status messages pop up and fade out -->
 
       <div class="alert alert-success" id="alert_command">
         <strong>
           <div id="alert_message"></div>
         </strong>
+      </div>
+
+      <div>
+        <span style="white-space: pre;" id="script_status_area"></span>
       </div>
 
     </div>
@@ -94,20 +105,18 @@
       
       $(document).ready(function() {
           $("#alert_command").hide();
-          const url = "/LuaUICommander StatExecution x";
+          const url = "/eg.lua";
           $.post(url, {})
               .done(function(data) {
-                  var message = '';
-                  for (const [key, value] of Object.entries(data))
-                      message += key + " : " + value;
-                  display_alert_message(message);
+                  editor.setValue(data);
+                  editor.gotoLine(1);
               });
       });
 
-      function text_execute() {
-          const luaCode = document.getElementById("script_text_box").value;
-          const luaID = document.getElementById("text_id").value;
-          const luaArgs = document.getElementById("text_args").value;
+      function editor_execute() {
+          const luaCode = editor.getValue();
+          const luaID = document.getElementById("editor_id").value;
+          const luaArgs = document.getElementById("editor_args").value;
           const url = "/LuaUICommander Base64Execute "+btoa(luaCode)+" "+luaID+" "+luaArgs;
           $.post(url, {})
               .done(function(data) {
@@ -118,30 +127,44 @@
               });
       }
 
-      function file_execute(){
+      function stat_execution() {
+          const luaID = document.getElementById("editor_id").value;
+          const url = "/LuaUICommander StatExecution "+luaID;
+          $.post(url, {})
+              .done(function(data) {
+                var result = JSON.stringify(data, null, 4);
+                document.getElementById("script_status_area").innerHTML=result;
+              });
+      }
+
+      function cancel_execution() {
+          const luaID = document.getElementById("editor_id").value;
+          const url = "/LuaUICommander CancelExecution "+luaID;
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
+
+      function file_load(){
           var fileToLoad = document.getElementById("lua_file").files[0];
           
           var fileReader = new FileReader();
           fileReader.onload = function(fileLoadedEvent){
               var textFromFileLoaded = fileLoadedEvent.target.result;
-              const luaID = document.getElementById("file_id").value;
-              const luaArgs = document.getElementById("file_args").value;
-              const url = "/LuaUICommander Base64Execute "+btoa(textFromFileLoaded)+" "+luaID+" "+luaArgs;
-              $.post(url, {})
-                  .done(function(data) {
-                      var message = '';
-                      for (const [key, value] of Object.entries(data))
-                          message += key + " : " + value;
-                      display_alert_message(message);
-                  });
+              editor.setValue(textFromFileLoaded);
           };
+
           fileReader.readAsText(fileToLoad, "UTF-8");
       }
 
-      function display_alert_message(message) {
+      function display_alert_message(message,time=3000) {
           document.getElementById("alert_message").innerHTML = message;
           $("#alert_command").show();
-          $("#alert_command").fadeTo(3000, 500).slideUp(500, function() {
+          $("#alert_command").fadeTo(time, 500).slideUp(500, function() {
               $("#alert_command").slideUp(500);
           });
       }

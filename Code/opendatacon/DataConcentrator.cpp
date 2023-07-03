@@ -362,9 +362,14 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss)
 				//TODO: implement
 				return IUIResponder::GenerateResult("Not implemented.");
 			}
+			else if(sinktype == "LUA")
+			{
+				//TODO: implement
+				return IUIResponder::GenerateResult("Not implemented.");
+			}
 			else
 			{
-				return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ...");
+				return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG|LUA> ...");
 			}
 			SetLogLevel(level_params);
 		}
@@ -377,7 +382,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss)
 	}
 	else
 	{
-		return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ...");
+		return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG|LUA> ...");
 	}
 
 	ReloadLogSinks(LogSinks,log_flush_period);

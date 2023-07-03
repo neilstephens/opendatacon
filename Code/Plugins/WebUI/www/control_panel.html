@@ -126,7 +126,7 @@
               const url = "/RootCommand " + cmd;
               $.post(url, {})
                   .done(function(data) {
-                      var result = JSON.stringify(Object.entries(data), null, 4);
+                      var result = JSON.stringify(data, null, 4);
 
                       document.getElementById("short_text_modal_title").innerHTML="Version"
                       document.getElementById("short_text_modal_data").innerHTML=result;

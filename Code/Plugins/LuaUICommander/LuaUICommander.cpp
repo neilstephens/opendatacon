@@ -38,7 +38,8 @@ inline std::stringstream ParamsToSStream(const ParamCollection &params)
 
 LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	Name(Name),
-	mute_scripts(true)
+	mute_scripts(true),
+	maxQ(500)
 {
 	IUIResponder::AddCommand("ExecuteFile", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -56,9 +57,10 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 				}
 			      return IUIResponder::GenerateResult("Failed to open file.");
 			}
-			return IUIResponder::GenerateResult("Usage: 'ExecuteFile <lua_filename> <ID> [script args]'");
+			return IUIResponder::GenerateResult("Bad parameter");
 
-		},"Load a Lua script to automate sending UI commands. Usage: 'ExecuteFile <lua_filename> <ID> [script args]'. ID is a arbitrary user-specified ID that can be used with 'StatExecution'");
+		},"Load a Lua script to automate sending UI commands. Usage: 'ExecuteFile <lua_filename> <ID> [script args]'. "
+		  "ID is a arbitrary user-specified ID that can be used with 'StatExecution'");
 
 	IUIResponder::AddCommand("Base64Execute", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -73,9 +75,9 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			      auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
 			      return IUIResponder::GenerateResult(msg);
 			}
-			std::cout<<"Usage: 'Base64Execute <base64_encoded_script> <ID> [script args]'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
-		},"Similar to 'ExecuteFile', but instead of loading the lua code from file, decodes it directly from base64 entered at the console");
+		},"Similar to 'ExecuteFile', but instead of loading the lua code from file, decodes it directly from base64 entered at the console. "
+		  "Usage: 'Base64Execute <base64_encoded_script> <ID> [script args]'");
 
 	IUIResponder::AddCommand("StatExecution", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -83,12 +85,10 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			std::string ID;
 			if(LineStream>>ID)
 			{
-			      auto msg = "Script "+ID+(Completed(ID) ? " completed" : " running");
-			      return IUIResponder::GenerateResult(msg);
+			      return Status(ID);
 			}
-			std::cout<<"Usage: 'StatExecution <ID>'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
-		},"Check the execution status of a command script started by 'ExecuteFile'. Usage: 'StatExecution <ID>'");
+		},"Check the execution status of a command script started by 'ExecuteFile/Base64Execute'. Usage: 'StatExecution <ID>'");
 
 	IUIResponder::AddCommand("CancelExecution", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -99,15 +99,32 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			      Cancel(ID);
 			      return IUIResponder::GenerateResult("Success");
 			}
-			std::cout<<"Usage: 'CancelExecution <ID>'"<<std::endl;
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Cancel the execution of a command script started by 'ExecuteFile' the next time it returns or yeilds. Usage: 'CancelExecution <ID>'");
+
+	IUIResponder::AddCommand("ClearAll", [this](const ParamCollection &params) -> const Json::Value
+		{
+			ClearAll();
+			return IUIResponder::GenerateResult("Success");
+		},"Cancel execution of all scripts and clear all status info.");
 
 	IUIResponder::AddCommand("ToggleMuteExecution", [this](const ParamCollection &) -> const Json::Value
 		{
 			mute_scripts = !mute_scripts;
 			return mute_scripts ? IUIResponder::GenerateResult("Muted") : IUIResponder::GenerateResult("Unmuted");
 		},"Toggle whether messages from command scripts will be printed to the console.");
+
+	IUIResponder::AddCommand("MessageQueueSize", [this](const ParamCollection &params) -> const Json::Value
+		{
+			auto LineStream = ParamsToSStream(params);
+			size_t sz;
+			if(LineStream>>sz)
+			{
+			      maxQ = sz;
+			      return IUIResponder::GenerateResult("Success");
+			}
+			return IUIResponder::GenerateResult("Bad parameter");
+		},"Set the maximum number of messages that will be retained for each script (default 500). Usage: 'MessageQueueSize <integer>'");
 }
 
 LuaUICommander::~LuaUICommander()
@@ -135,11 +152,22 @@ Json::Value LuaUICommander::ScriptCommandHandler(const std::string& responder_na
 	return IUIResponder::GenerateResult("Bad command");
 }
 
+void LuaUICommander::ScriptMessageHandler(const std::string& ID, const std::string& msg)
+{
+	if(!mute_scripts)
+		std::cout<<"[Lua] "<<ID<<": "<<msg<<std::endl;
+
+	std::unique_lock<std::shared_mutex> lck(MessagesMtx);
+	Messages[ID].push_back(msg);
+	while(Messages.at(ID).size() > maxQ)
+		Messages.at(ID).pop_front();
+}
+
 bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args)
 {
 	try
 	{
-		std::unique_lock<std::shared_mutex> lck(ScriptsMtx);
+		std::unique_lock<std::shared_mutex> lckS(ScriptsMtx);
 
 		//first clear complete scripts
 		std::vector<std::string> rem;
@@ -149,12 +177,15 @@ bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID,
 		for(auto& id : rem)
 			Scripts.erase(id);
 
+		std::unique_lock<std::shared_mutex> lckM(MessagesMtx);
 		auto [itr,was_inserted] = Scripts.try_emplace(ID,lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
 		if(!was_inserted)
 		{
 			if(auto log = odc::spdlog_get(LoggerName))
 				log->warn("There is already a running script with ID '{}'",ID);
+			return was_inserted;
 		}
+		Messages.erase(ID);
 		return was_inserted;
 	}
 	catch(const std::exception& e)
@@ -171,6 +202,14 @@ void LuaUICommander::Cancel(const std::string& ID)
 	Scripts.erase(ID);
 }
 
+void LuaUICommander::ClearAll()
+{
+	std::unique_lock<std::shared_mutex> lckS(ScriptsMtx);
+	std::unique_lock<std::shared_mutex> lckM(MessagesMtx);
+	Scripts.clear();
+	Messages.clear();
+}
+
 bool LuaUICommander::Completed(const std::string& ID)
 {
 	std::shared_lock<std::shared_mutex> lck(ScriptsMtx);
@@ -178,4 +217,21 @@ bool LuaUICommander::Completed(const std::string& ID)
 	if(script_it != Scripts.end())
 		return script_it->second.Completed();
 	return true;
+}
+
+Json::Value LuaUICommander::Status(const std::string& ID)
+{
+	auto ret = Json::Value(Json::objectValue);
+	ret["Execution status"] = Completed(ID) ? "Not running" : "Running";
+
+	std::shared_lock<std::shared_mutex> lck(MessagesMtx);
+	auto messages_it = Messages.find(ID);
+	if(messages_it != Messages.end())
+	{
+		ret["Messages"] = Json::Value(Json::arrayValue);
+		Json::ArrayIndex n=0;
+		for(const auto& msg : messages_it->second)
+			ret["Messages"][n++]=msg;
+	}
+	return ret;
 }
