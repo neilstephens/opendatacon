@@ -29,13 +29,16 @@
 #include <opendatacon/util.h>
 #include <string>
 
-LuaLogSink::LuaLogSink(const std::string& Name, const std::string& LuaFile):
+LuaLogSink::LuaLogSink(const std::string& Name, const std::string& LuaFile, const Json::Value& Config):
 	Name(Name)
 {
 
 	lua_newtable(L);
 	{
-		//TODO: export Config
+		lua_pushstring(L,Name.c_str());
+		lua_setfield(L,-2,"Name");
+		PushJSON(L,Config);
+		lua_setfield(L,-2,"Config");
 	}
 	lua_setglobal(L,"odc");
 	ExportMetaTables(L);
@@ -85,7 +88,7 @@ void LuaLogSink::sink_it_(const spdlog::details::log_msg &msg)
 		});
 }
 
-void LuaLogSink::flush_(){};
+void LuaLogSink::flush_(){}
 
 LuaLogSink::~LuaLogSink()
 {

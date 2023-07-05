@@ -19,10 +19,11 @@
  */
 
 #include "LuaLogSink.h"
+#include <json/json.h>
 
-extern "C" LuaLogSink* new_LuaLogSink(const std::string& Name, const std::string& LuaFile)
+extern "C" LuaLogSink* new_LuaLogSink(const std::string& Name, const std::string& LuaFile, const Json::Value& Config)
 {
-	return new LuaLogSink(Name,LuaFile);
+	return new LuaLogSink(Name,LuaFile,Config);
 }
 
 extern "C" void delete_LuaLogSink(LuaLogSink* pLuaLogSink)

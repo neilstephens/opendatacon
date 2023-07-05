@@ -29,6 +29,7 @@
 #include <Lua/CLua.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/Platform.h>
+#include <json/json.h>
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/details/null_mutex.h>
 #include <string>
@@ -36,7 +37,7 @@
 class LuaLogSink: public spdlog::sinks::base_sink<spdlog::details::null_mutex>
 {
 public:
-	LuaLogSink(const std::string& Name, const std::string& LuaFile);
+	LuaLogSink(const std::string& Name, const std::string& LuaFile, const Json::Value& Config);
 	~LuaLogSink();
 	void sink_it_(const spdlog::details::log_msg &msg) final;
 	void flush_() final;
