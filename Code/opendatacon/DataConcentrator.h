@@ -93,11 +93,14 @@ private:
 	std::unordered_map<std::string, TCPstringbuf> TCPbufs;
 	std::unordered_map<std::string, std::unique_ptr<std::ostream>> pTCPostreams;
 
+	std::vector<std::string> ConfigLogSinkNames;
 	std::unordered_map<std::string, spdlog::sink_ptr> LogSinks;
 	inline void ListLogSinks(Json::Value& out);
 	inline void ListLogLevels(Json::Value& out);
 	Json::Value SetLogLevel(std::stringstream& ss);
-	Json::Value AddLogSink(std::stringstream& ss);
+	Json::Value SetLogFilter(std::stringstream& ss, bool isWhite);
+	Json::Value RemoveLogFilter(std::stringstream& ss);
+	Json::Value AddLogSink(std::stringstream& ss, bool doReload = true);
 	Json::Value DeleteLogSink(std::stringstream& ss);
 	size_t log_flush_period = 0;
 

@@ -50,7 +50,7 @@ public:
 		//use formatter pattern to do everything except <8*Facility+Severity>
 		std::string pattern = "1 %Y-%m-%dT%T.%e%z " + local_host + " " + app + " %P " + category +
 		                      " [%n] [%l] %v";
-		set_pattern(pattern);
+		spdlog::sinks::base_sink<Mutex>::set_pattern(pattern);
 
 		severities[static_cast<size_t>(spdlog::level::trace)] = 7;
 		severities[static_cast<size_t>(spdlog::level::debug)] = 7;
@@ -69,7 +69,7 @@ public:
 		msg_ss << "<" << facility_*8+severities[static_cast<size_t>(msg.level)] << ">";
 
 		spdlog::memory_buf_t formatted;
-		formatter_->format(msg, formatted);
+		spdlog::sinks::base_sink<Mutex>::formatter_->format(msg, formatted);
 		msg_ss.write(formatted.data(), static_cast<std::streamsize>(formatted.size()));
 
 		socket->send_to(asio::buffer(msg_ss.str().c_str(),msg_ss.str().size()), endpoint);
@@ -78,8 +78,6 @@ public:
 	void flush_() final {};
 
 private:
-	using spdlog::sinks::base_sink<Mutex>::set_pattern;
-	using spdlog::sinks::base_sink<Mutex>::formatter_;
 	std::unique_ptr<asio::ip::udp::resolver> resolver;
 	asio::ip::udp::resolver::query query;
 	asio::ip::udp::endpoint endpoint;

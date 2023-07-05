@@ -16,7 +16,11 @@ end
 -- it prints the unprinted portion of the buffer to file.
 -- Also prints "..." to indicate if there were unprinted messages
 
-local file = io.open("context.log","w");
+local filename = "context.log";
+if type(odc.Config["OutputFile"]) == "string" then
+  filename = odc.Config["OutputFile"];
+end
+local file = io.open(filename,"w");
 
 local threshold = odc.log.level.error;
 local buffer = {};
