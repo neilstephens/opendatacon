@@ -100,6 +100,7 @@ private:
 	Json::Value SetLogLevel(std::stringstream& ss);
 	Json::Value SetLogFilter(std::stringstream& ss, bool isWhite);
 	Json::Value RemoveLogFilter(std::stringstream& ss);
+	Json::Value ListLogFilters();
 	Json::Value AddLogSink(std::stringstream& ss, bool doReload = true);
 	Json::Value DeleteLogSink(std::stringstream& ss);
 	size_t log_flush_period = 0;

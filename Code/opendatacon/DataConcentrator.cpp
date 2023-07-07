@@ -190,6 +190,10 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 		{
 			return this->RemoveLogFilter(ss);
 		},"Remove a regex filter from a log sink.");
+	interface->AddCommand("ls_logfilters",[this] (std::stringstream& ss) -> Json::Value
+		{
+			return this->ListLogFilters();
+		},"List log sink filters");
 	interface->AddCommand("flush_logs",[] (std::stringstream& ss) -> Json::Value
 		{
 			odc::spdlog_flush_all();
@@ -417,6 +421,23 @@ Json::Value DataConcentrator::RemoveLogFilter(std::stringstream& ss)
 	{
 		result = IUIResponder::GenerateResult("Usage: <white|black>list_logfilter <sinkname> <regex>");
 		ListLogSinks(result);
+	}
+	return result;
+}
+
+Json::Value DataConcentrator::ListLogFilters()
+{
+	auto result = Json::Value(Json::objectValue);
+	for(const auto& [sinkName,pSink] : LogSinks)
+	{
+		result[sinkName] = Json::Value(Json::objectValue);
+		auto pFilterSink = std::dynamic_pointer_cast<odc::filter_sink>(pSink);
+		if(pFilterSink)
+		{
+			for(const auto white : {true,false})
+				for(const auto& filt : pFilterSink->GetFilters(white))
+					result[sinkName][white ? "WhiteList" : "BlackList"].append(filt);
+		}
 	}
 	return result;
 }

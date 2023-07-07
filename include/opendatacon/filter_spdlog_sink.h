@@ -30,6 +30,7 @@
 #include <regex>
 #include <string>
 #include <map>
+#include <vector>
 
 namespace odc
 {
@@ -38,6 +39,7 @@ struct filter_sink
 {
 	virtual void AddFilter(const std::string& regx_str, bool whitelist = false) = 0;
 	virtual size_t RemoveFilter(const std::string& regx_str) = 0;
+	virtual std::vector<std::string> GetFilters(bool whitelist = false) = 0;
 };
 
 template <class T, typename Mutex>
@@ -63,6 +65,15 @@ public:
 		removed += WhiteList.erase(regx_str);
 		removed += BlackList.erase(regx_str);
 		return removed;
+	}
+	std::vector<std::string> GetFilters(bool whitelist) override
+	{
+		std::vector<std::string> result;
+		std::lock_guard<Mutex> lock(spdlog::sinks::base_sink<Mutex>::mutex_);
+		const auto& List = whitelist ? WhiteList : BlackList;
+		for(auto& [filt,reg] : List)
+			result.push_back(filt);
+		return result;
 	}
 protected:
 	void sink_it_(const spdlog::details::log_msg &msg) override
