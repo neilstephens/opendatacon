@@ -26,6 +26,7 @@
 
 #include "DataConcentrator.h"
 #include "NullPort.h"
+#include <opendatacon/IOTypesJSON.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/asio_syslog_spdlog_sink.h>
 #include <opendatacon/filter_spdlog_sink.h>
@@ -208,6 +209,13 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 			this->ListLogSinks(res);
 			return res;
 		},"List the names of all the log sinks");
+	interface->AddCommand("spoof_event",[this] (std::stringstream& ss) -> Json::Value
+		{
+			return SpoofEvent(ss);
+		},"Usage: spoof_event <sender IOHandler> <receiver IOHandler> <EventInfo JSON>. "
+		  R"(Example EventInfo: {"EventType":"ControlRelayOutputBlock","Index":1234,"SourcePort":"Fake","Payload":{"ControlCode":"LATCH_OFF"}} )"
+		  R"(Another: '{"EventType":"Analog","Index":34,"Timestamp":"2050-12-12 01:02:33.444","Payload":666}' )"
+		  R"(And Another: {"EventType":"Analog","Index":1,"QualityFlags":"COMM_LOST|LOCAL_FORCED"} ...Etc)");
 
 	interface->SetResponders(RespondersMasterCopy);
 }
@@ -1825,4 +1833,29 @@ bool DataConcentrator::isShuttingDown()
 bool DataConcentrator::isShutDown()
 {
 	return shut_down;
+}
+
+Json::Value DataConcentrator::SpoofEvent(std::stringstream& ss, SharedStatusCallback_t callback)
+{
+	Json::Value result(Json::objectValue);
+	std::string snd_name,rcv_name,event_json_str;
+	if(ss>>snd_name && ss>>rcv_name && extract_delimited_string("'`/",ss,event_json_str))
+	{
+		auto rcv_it = IOHandler::GetIOHandlers().find(rcv_name);
+		auto end = IOHandler::GetIOHandlers().end();
+		if(rcv_it == end)
+			return IUIResponder::GenerateResult("Failed to find receiver IOHandler.");
+		try
+		{
+			auto event = EventInfoFromJson(event_json_str);
+			rcv_it->second->Event(event,snd_name,callback);
+		}
+		catch(const std::exception& e)
+		{
+			return IUIResponder::GenerateResult(e.what());
+		}
+		return IUIResponder::GenerateResult("Success");
+	}
+	else
+		return IUIResponder::GenerateResult("Usage: spoof_event <sender IOHandler> <receiver IOHandler> <EventInfo JSON>");
 }

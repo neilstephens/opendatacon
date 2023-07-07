@@ -28,16 +28,22 @@ using namespace odc;
 
 std::string column_wrap(std::string input, const size_t target_width = 80, const size_t col_offset = 26)
 {
-	int width = 0;
+	size_t width = 0;
+	bool passed_space = false;
 	for(size_t i=0; i < input.size(); i++)
 	{
+		passed_space = passed_space | (input[i] == ' ');
 		if(++width > target_width)
 		{
-			while(input[i] != ' ')
+			while(input[i] != ' ' && passed_space)
 				i--;
-			input.insert(i,"\n"+std::string(col_offset-2,' '));
-			i+=col_offset;
-			width = 0;
+			if(input[i] == ' ')
+			{
+				input.insert(i,"\n"+std::string(col_offset-2,' '));
+				i+=col_offset;
+				width = 0;
+				passed_space = false;
+			}
 		}
 	}
 	return input;

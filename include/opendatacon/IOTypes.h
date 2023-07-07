@@ -339,6 +339,33 @@ inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 	return QualityResult;
 }
 
+inline CommandStatus CommandStatusFromString(const std::string& StrCommandStatus)
+{
+#define CHECKCSSTRING(C,X) if (StrCommandStatus == #X) return C::X
+	CHECKCSSTRING(CommandStatus,SUCCESS);
+	CHECKCSSTRING(CommandStatus,TIMEOUT);
+	CHECKCSSTRING(CommandStatus,NO_SELECT);
+	CHECKCSSTRING(CommandStatus,FORMAT_ERROR);
+	CHECKCSSTRING(CommandStatus,NOT_SUPPORTED);
+	CHECKCSSTRING(CommandStatus,ALREADY_ACTIVE);
+	CHECKCSSTRING(CommandStatus,HARDWARE_ERROR);
+	CHECKCSSTRING(CommandStatus,LOCAL);
+	CHECKCSSTRING(CommandStatus,TOO_MANY_OPS);
+	CHECKCSSTRING(CommandStatus,NOT_AUTHORIZED);
+	CHECKCSSTRING(CommandStatus,AUTOMATION_INHIBIT);
+	CHECKCSSTRING(CommandStatus,PROCESSING_LIMITED);
+	CHECKCSSTRING(CommandStatus,OUT_OF_RANGE);
+	CHECKCSSTRING(CommandStatus,DOWNSTREAM_LOCAL);
+	CHECKCSSTRING(CommandStatus,ALREADY_COMPLETE);
+	CHECKCSSTRING(CommandStatus,BLOCKED);
+	CHECKCSSTRING(CommandStatus,CANCELLED);
+	CHECKCSSTRING(CommandStatus,BLOCKED_OTHER_MASTER);
+	CHECKCSSTRING(CommandStatus,DOWNSTREAM_FAIL);
+	CHECKCSSTRING(CommandStatus,NON_PARTICIPATING);
+	CHECKCSSTRING(CommandStatus,UNDEFINED);
+	return CommandStatus::UNDEFINED;
+}
+
 //FIXME: this is an anti-pattern. Should be
 // EventTypeFromString(), returning an EventType, After/BeforeRange if not found
 inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult)

@@ -109,6 +109,8 @@ private:
 	std::atomic_bool parking = false;
 	std::atomic<size_t> num_parked_threads = 0;
 	std::vector<std::thread> threads;
+
+	Json::Value SpoofEvent(std::stringstream& ss, SharedStatusCallback_t callback = std::make_shared<SharedStatusCallback_t::element_type>([](CommandStatus){}));
 };
 
 #endif /* DATACONCENTRATOR_H_ */

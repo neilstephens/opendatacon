@@ -300,7 +300,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 	}
 	//no connection for sender if we get here
 	if(auto log = odc::spdlog_get("Connectors"))
-		log->warn("{}: discarding event from '", Name+SenderName+"' (No connection defined)");
+		log->warn("{}: discarding event from '{}' (No connection defined)", Name, SenderName);
 
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }
