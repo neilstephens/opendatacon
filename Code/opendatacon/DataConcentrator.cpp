@@ -442,6 +442,25 @@ Json::Value DataConcentrator::ListLogFilters()
 	return result;
 }
 
+inline std::shared_ptr<spdlog::sinks::sink> MakeLuaLogSink(const std::string& Name, const std::string& LuaFile, const Json::Value& Config)
+{
+	std::string libfilename(GetLibFileName("LuaLogSink"));
+	auto LuaLogLib = LoadModule(libfilename);
+	if(!LuaLogLib)
+		throw std::runtime_error("Failed to load Lua library.");
+
+	auto new_lua_sink = reinterpret_cast<spdlog::sinks::sink*(*)(const std::string& Name, const std::string& LuaFile, const Json::Value& Config)>(LoadSymbol(LuaLogLib, "new_LuaLogSink"));
+	auto del_lua_sink = reinterpret_cast<void (*)(spdlog::sinks::sink* pLuaLogSink)>(LoadSymbol(LuaLogLib, "delete_LuaLogSink"));
+
+	auto cleanup = [=](spdlog::sinks::sink* pLuaSink)
+			   {
+				   del_lua_sink(pLuaSink);
+				   UnLoadModule(LuaLogLib);
+			   };
+
+	return std::shared_ptr<spdlog::sinks::sink>(new_lua_sink(Name, LuaFile, Config),[=](spdlog::sinks::sink* pLuaLogSink){cleanup(pLuaLogSink);});
+}
+
 Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 {
 	std::string sinkname;
@@ -505,13 +524,48 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 			}
 			else if(sinktype == "FILE")
 			{
-				//TODO: implement
-				return IUIResponder::GenerateResult("Not implemented.");
+				std::string filename;
+				if(ss>>filename)
+				{
+					size_t filesize_kb, filenum = 2;
+					if(ss>>filesize_kb)
+					{
+						if(!ss>>filenum)
+							filenum = 2;
+					}
+					else
+						filesize_kb = 5*1024;
+
+					auto file_sink = std::make_shared<filter_file_sink>(filename,filesize_kb*1024,filenum);
+
+					file_sink->set_level(spdlog::level::off);
+					LogSinks[sinkname] = file_sink;
+				}
+				else
+				{
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> FILE <base_filename> [ <filesize_kb:default=5*1024> [ <num_files_to_rotate:default=2> ]]");
+				}
 			}
 			else if(sinktype == "LUA")
 			{
-				//TODO: implement
-				return IUIResponder::GenerateResult("Not implemented.");
+				std::string filename;
+				if(ss>>filename)
+				{
+					try
+					{
+						auto lualog_sink = MakeLuaLogSink(sinkname, filename, Json::Value(Json::objectValue));
+						lualog_sink->set_level(spdlog::level::off);
+						LogSinks[sinkname] = lualog_sink;
+					}
+					catch(const std::exception& e)
+					{
+						return IUIResponder::GenerateResult("Failed to create Lua log sink: "+std::string(e.what()));
+					}
+				}
+				else
+				{
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> LUA <script_filename>");
+				}
 			}
 			else
 			{
@@ -665,15 +719,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 
 			try
 			{
-				std::string libfilename(GetLibFileName("LuaLogSink"));
-				auto LuaLogLib = LoadModule(libfilename);
-				if(!LuaLogLib)
-					throw std::runtime_error("Failed to load Lua library.");
-
-				auto new_lua_sink = reinterpret_cast<spdlog::sinks::sink*(*)(const std::string& Name, const std::string& LuaFile, const Json::Value& Config)>(LoadSymbol(LuaLogLib, "new_LuaLogSink"));
-				auto del_lua_sink = reinterpret_cast<void (*)(spdlog::sinks::sink* pLuaLogSink)>(LoadSymbol(LuaLogLib, "delete_LuaLogSink"));
-
-				auto lualog_sink = std::shared_ptr<spdlog::sinks::sink>(new_lua_sink("lualog",JSONRoot["LuaLog"]["LuaFile"].asString(),JSONRoot["LuaLog"]),[=](spdlog::sinks::sink* pLuaLogSink){del_lua_sink(pLuaLogSink);});
+				auto lualog_sink = MakeLuaLogSink("lualog", JSONRoot["LuaLog"]["LuaFile"].asString(), JSONRoot["LuaLog"]);
 				lualog_sink->set_level(lualog_level);
 				LogSinks["lualog"] = lualog_sink;
 				ConfigLogSinkNames.push_back("lualog");
