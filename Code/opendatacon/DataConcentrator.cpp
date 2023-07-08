@@ -225,47 +225,7 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 }
 
 DataConcentrator::~DataConcentrator()
-{
-	/*
-	  If there's a TCP sink, we need to destroy it
-	  because ostream will be destroyed
-	  Same for the syslog, because asio::io_service will be destroyed
-	  so let's destroy all except main console sink and file sink
-
-	  flush doesn't wait for the async Qs: '(
-	  it will only flushes the sinks
-	  only thing to do is give some time for the Qs to empty
-	 */
-
-	if (auto log = odc::spdlog_get("opendatacon"))
-	{
-		log->info("Destroying user log sinks");
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		log->flush();
-	}
-
-	//For detecting when erased sinks are destroyed
-	std::vector<std::weak_ptr<spdlog::sinks::sink>> weak_sinks;
-
-	std::vector<std::string> sink_names;
-	for (auto it = LogSinks.cbegin(); it != LogSinks.cend(); ++it)
-		sink_names.push_back(it->first);
-	for (const std::string& sink_name : sink_names)
-	{
-		if (!(sink_name == "file" || sink_name == "console"))
-		{
-			weak_sinks.push_back(LogSinks[sink_name]);
-			LogSinks.erase(sink_name);
-		}
-	}
-
-	ReloadLogSinks(LogSinks,0);
-
-	// Wait for all the sinks to be destroyed
-	for (auto weak_sink : weak_sinks)
-		while (!weak_sink.expired())
-			;
-}
+{}
 
 inline void DataConcentrator::ListLogSinks(Json::Value& out)
 {
@@ -1868,19 +1828,42 @@ void DataConcentrator::Shutdown()
 			            Name_n_Port.second->Disable();
 				}
 
-			      if(auto log = odc::spdlog_get("opendatacon"))
+			      if (auto log = odc::spdlog_get("opendatacon"))
 			      {
-			            log->info("Finishing asynchronous tasks...");
-			            log->flush(); //for the benefit of tcp logger shutdown
+			            log->info("Destroying user log sinks");
+			//wait for async logging, so the sinks get the message before they're destroyed
+			            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			            log->flush();
 				}
 
-			      //shutdown tcp logger so it doesn't keep the io_service going
-			      for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+			      auto user_sinks = LogSinks;
+			      user_sinks.erase("file");
+			      user_sinks.erase("console");
+			      for (const auto& [sink_name,sink_ptr] : user_sinks)
+					LogSinks.erase(sink_name);
+			      ReloadLogSinks(LogSinks,0);
+
+			// Wait for spdlog to finish with the user sinks
+			// and make sure they're well flushed
+			      size_t max_refs;
+			      do
 			      {
-			            it->second.DeInit();
-			            if(LogSinks.find(it->first) != LogSinks.end())
-						LogSinks[it->first]->set_level(spdlog::level::off);
-				}
+			            max_refs = 0;
+			            for(const auto& [sink_name,sink_ptr] : user_sinks)
+			            {
+			                  size_t refs = sink_ptr.use_count();
+			                  max_refs = refs > max_refs ? refs : max_refs;
+			                  sink_ptr->flush();
+					}
+				} while(max_refs > 1);
+			      user_sinks.clear();
+
+			      if(auto log = odc::spdlog_get("opendatacon"))
+					log->info("Finishing asynchronous tasks...");
+
+			//shutdown tcp stream bufs so they don't keep the io_service going
+			      for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+					it->second.DeInit();
 
 			      ios_working.reset();
 			}
