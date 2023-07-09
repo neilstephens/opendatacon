@@ -27,6 +27,7 @@
 #ifndef LuaTransform_H_
 #define LuaTransform_H_
 
+#include <Lua/DynamicSymbols.h>
 #include <Lua/CLua.h>
 #include <opendatacon/Transform.h>
 #include <opendatacon/asio.h>
@@ -48,6 +49,7 @@ public:
 	}
 
 private:
+	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();

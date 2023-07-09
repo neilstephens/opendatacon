@@ -43,7 +43,7 @@ static const char* DYNLIBEXT = ".dll";
 #endif
 
 typedef HMODULE module_ptr;
-inline HMODULE LoadModule(const std::string& a)
+inline HMODULE LoadModule(const std::string& a, bool global = false)
 {
 	//LoadLibrary is ref counted so you can call FreeLibrary the same number of times to unload
 	return LoadLibraryExA(a.c_str(), 0, DWORD(0));
@@ -120,10 +120,11 @@ static const char* DYNLIBEXT = ".so";
 #endif
 
 typedef void* module_ptr;
-inline void* LoadModule(const std::string& a)
+inline void* LoadModule(const std::string& a, bool global = false)
 {
+	auto flags = global ? RTLD_LAZY|RTLD_GLOBAL : RTLD_LAZY|RTLD_LOCAL;
 	//dlopen is ref counted, so you can call dlclose for every time you call dlopen
-	return dlopen(a.c_str(), RTLD_LAZY|RTLD_LOCAL);
+	return dlopen(a.c_str(), flags);
 }
 inline int UnLoadModule(void* handle)
 {

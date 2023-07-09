@@ -26,6 +26,7 @@
 #ifndef LUAINST_H
 #define LUAINST_H
 
+#include <Lua/DynamicSymbols.h>
 #include <Lua/CLua.h>
 #include <opendatacon/asio.h>
 #include <json/json.h>
@@ -51,6 +52,8 @@ public:
 private:
 	//only call Runner() on strand
 	void Runner(const std::string& args = "");
+
+	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 
 	std::atomic_bool cancelled = false;
 	std::atomic_bool completed = false;

@@ -39,10 +39,6 @@ file(GLOB ${PROJECT_NAME}_SRC_C ${LUA_SRC}/*.c ${LUA_SRC}/*.h)
 list(REMOVE_ITEM ${PROJECT_NAME}_SRC_C ${LUA_SRC}/lua.c ${LUA_SRC}/luac.c)
 file(GLOB ${PROJECT_NAME}_SRC_CXX *.cpp *.h include/Lua/*.h)
 
-if(UNIX)
-	set(LUA_DEFS "${LUA_DEFS} LUA_USE_POSIX")
-endif()
-
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC_C} ${${PROJECT_NAME}_SRC_CXX})
 
 foreach(SRC_FILENAME ${${PROJECT_NAME}_SRC_C})
@@ -59,7 +55,19 @@ foreach(SRC_FILENAME ${${PROJECT_NAME}_SRC_CXX})
 	endif()
 endforeach()
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${LUA_DEFS})
+if(UNIX)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE LUA_USE_LINUX)
+endif()
+
+if(WIN32)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE LUA_USE_WINDOWS)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE LUA_BUILD_AS_DLL)
+endif()
+
+if(APPLE)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE LUA_USE_MACOSX)
+endif()
+
 target_include_directories(${PROJECT_NAME} PUBLIC ${LUA_SRC} include)
 target_link_libraries(${PROJECT_NAME} ODC)
 

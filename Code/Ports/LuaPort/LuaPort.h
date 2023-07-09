@@ -27,6 +27,7 @@
 #ifndef LuaPort_H_
 #define LuaPort_H_
 
+#include <Lua/DynamicSymbols.h>
 #include <Lua/CLua.h>
 #include <opendatacon/DataPort.h>
 
@@ -58,6 +59,8 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 private:
+	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
+
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	std::shared_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();

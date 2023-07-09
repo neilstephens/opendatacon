@@ -26,6 +26,7 @@
 #ifndef LUALOGSINK_H
 #define LUALOGSINK_H
 
+#include <Lua/DynamicSymbols.h>
 #include <Lua/CLua.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/Platform.h>
@@ -42,6 +43,7 @@ public:
 	void sink_it_(const spdlog::details::log_msg &msg) final;
 	void flush_() final;
 private:
+	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 	const std::string Name;
 	lua_State* L = luaL_newstate();
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
