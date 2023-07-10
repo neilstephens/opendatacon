@@ -36,6 +36,7 @@ extern spdlog::level::level_enum log_level;
 
 inline void TestSetup()
 {
+	InitLibaryLoading();
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 	auto pLibLogger = std::make_shared<spdlog::logger>("opendatacon", console_sink);
 	pLibLogger->set_level(log_level);
@@ -50,9 +51,14 @@ TEST_CASE("LuaLoading")
 {
 	TestSetup();
 
-	//TODO: load test plugin
-	//	call into plugin
+	auto plugin_name = GetLibFileName("LuaTestPlugin");
+	auto handle = LoadModule(plugin_name);
+	REQUIRE(handle);
 
+	auto func = reinterpret_cast<bool (*)(void)>(LoadSymbol(handle,"test_func"));
 
+	CHECK(func());
+
+	UnLoadModule(handle);
 	TestTearDown();
 }

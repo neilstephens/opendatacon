@@ -55,6 +55,10 @@ extern "C" int luaopen_libTestLuaModule(lua_State* L)
 
 extern "C" int luaopen_TestLuaModule(lua_State* L)
 {
-	luaL_newlib(L, funcs);
-	return 1;
+	return luaopen_libTestLuaModule(L);
+}
+
+extern "C" int luaopen_TestLuaModuled(lua_State* L)
+{
+	return luaopen_libTestLuaModule(L);
 }
