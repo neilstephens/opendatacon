@@ -18,7 +18,9 @@
  #	limitations under the License.
  # 
 project(Lua LANGUAGES C CXX)
+cmake_minimum_required(VERSION 3.14)
 
+set(DOWNLOAD_EXTRACT_TIMESTAMP true)
 include(FetchContent)
 
 #see Code/cmake/version.cmake for where LUA_VERSION is declared
@@ -62,6 +64,19 @@ endif()
 if(WIN32)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE LUA_USE_WINDOWS)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE LUA_BUILD_AS_DLL)
+	#FIXME: throw an error if LUA_VERSION not 5.4.x so the below links can be updated or make the '54' dynamic
+	#copy Lua.dll -> lua54.dll
+	add_custom_target(lua_symlink_target ALL
+		COMMAND ${CMAKE_COMMAND} -E create_symlink "Lua.dll" "lua54.dll"
+		COMMAND ${CMAKE_COMMAND} -E create_symlink "Lua.lib" "lua54.lib"
+	)
+	add_dependencies(lua_symlink_target ${PROJECT_NAME})
+	#import lua54.dll as a global import library target (test lua module links against it)
+	add_library(lua_proxy_target SHARED IMPORTED GLOBAL)
+	set_property(TARGET lua_proxy_target PROPERTY IMPORTED_LOCATION "lua54.dll")
+	set_property(TARGET lua_proxy_target PROPERTY IMPORTED_IMPLIB "lua54.lib")
+	add_dependencies(lua_proxy_target lua_symlink_target)
+	install(FILES "lua54.dll" DESTINATION ${INSTALLDIR_SHARED})
 endif()
 
 if(APPLE)

@@ -32,10 +32,17 @@ install(TARGETS LuaTestPlugin LIBRARY DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(LuaTestPlugin PROPERTIES FOLDER tests)
 
 get_target_property(LUA_INCLUDES Lua INCLUDE_DIRECTORIES)
-string (REGEX REPLACE "-Wl,--no-undefined" "" CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS})
+if(APPLE)
+	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-undefined,dynamic_lookup")
+else()
+	string (REGEX REPLACE "-Wl,--no-undefined" "" CMAKE_MODULE_LINKER_FLAGS ${CMAKE_MODULE_LINKER_FLAGS})
+endif()
 
 add_library(TestLuaModule MODULE LuaModule.cpp)
 install(TARGETS TestLuaModule LIBRARY DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(TestLuaModule PROPERTIES FOLDER tests)
 target_include_directories(TestLuaModule PRIVATE ${LUA_INCLUDES})
+if(WIN32)
+	target_link_libraries(TestLuaModule lua_proxy_target)
+endif()
 
