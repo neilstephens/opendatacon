@@ -19,8 +19,11 @@
  # 
 project(Lua LANGUAGES C CXX)
 cmake_minimum_required(VERSION 3.14)
+# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+	cmake_policy(SET CMP0135 NEW)
+endif()
 
-set(DOWNLOAD_EXTRACT_TIMESTAMP true)
 include(FetchContent)
 
 #see Code/cmake/version.cmake for where LUA_VERSION is declared
@@ -73,8 +76,8 @@ if(WIN32)
 	add_dependencies(lua_symlink_target ${PROJECT_NAME})
 	#import lua54.dll as a global import library target (test lua module links against it)
 	add_library(lua_proxy_target SHARED IMPORTED GLOBAL)
-	set_property(TARGET lua_proxy_target PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/lua54.dll")
-	set_property(TARGET lua_proxy_target PROPERTY IMPORTED_IMPLIB "${CMAKE_CURRENT_SOURCE_DIR}/lua54.lib")
+	set_property(TARGET lua_proxy_target PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/lua54.dll")
+	set_property(TARGET lua_proxy_target PROPERTY IMPORTED_IMPLIB "${CMAKE_CURRENT_BINARY_DIR}/lua54.lib")
 	add_dependencies(lua_proxy_target lua_symlink_target)
 	install(FILES "lua54.dll" DESTINATION ${INSTALLDIR_SHARED})
 endif()
