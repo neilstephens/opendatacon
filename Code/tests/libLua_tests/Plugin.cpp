@@ -34,6 +34,7 @@
 
 #include <opendatacon/Platform.h>
 #include <opendatacon/util.h>
+#include <whereami++.h>
 
 #include <iostream>
 
@@ -43,17 +44,19 @@ extern "C" bool test_func()
 	auto ext_pos = LuaModuleName.find(".");
 	auto libext = LuaModuleName.substr(ext_pos);
 	LuaModuleName = LuaModuleName.substr(0,ext_pos);
-
+	std::string path = whereami::getExecutablePath().dirname();
+	auto paths = path+"/?"+libext+";"+path+"/lib/?"+libext+";";
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Lua module name: {}", LuaModuleName);
 
 	Lua::DynamicSymbols syms;
 
-	auto LuaCode = "    package.cpath = \"lib/?"+libext+";\" .. package.cpath;       \n"
-			   "    local mo = require(\""+LuaModuleName+"\");                   \n"
-			   "    mo.echo(\"Message from Lua module\");                        \n"
-			   "    odc.log.info(\"Message from Lua\");                          \n";
+	auto LuaCode =
+	"    package.cpath = \""+paths+"\" .. package.cpath;       \n"
+	"    local mo = require(\""+LuaModuleName+"\");            \n"
+	"    mo.echo(\"Message from Lua module\");                 \n"
+	"    odc.log.info(\"Message from Lua\");                   \n";
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Lua code:\n{}", LuaCode);

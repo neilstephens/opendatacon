@@ -38,9 +38,8 @@ class DynamicSymbols
 public:
 	DynamicSymbols()
 	{
-		auto libname = GetLibFileName("LuaWrappers");
 		constexpr bool global = true;
-		p = LoadModule(libname,global);
+		p = LoadModule("@lua_lib_filename@",global);
 	}
 	~DynamicSymbols()
 	{
