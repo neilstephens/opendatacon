@@ -46,6 +46,7 @@ set(LUA_SRC ${lua_SOURCE_DIR}/src)
 file(GLOB ${LUA_LIBNAME}_SRC ${LUA_SRC}/*.c ${LUA_SRC}/*.h)
 list(REMOVE_ITEM ${LUA_LIBNAME}_SRC ${LUA_SRC}/lua.c ${LUA_SRC}/luac.c)
 
+set(CMAKE_DEBUG_POSTFIX "")
 add_library(${LUA_LIBNAME} SHARED ${${LUA_LIBNAME}_SRC})
 
 if(UNIX)
@@ -55,7 +56,6 @@ endif()
 if(WIN32)
 	target_compile_definitions(${LUA_LIBNAME} PRIVATE LUA_USE_WINDOWS)
 	target_compile_definitions(${LUA_LIBNAME} PRIVATE LUA_BUILD_AS_DLL)
-	set(CMAKE_DEBUG_POSTFIX "")
 endif()
 
 if(APPLE)
