@@ -44,8 +44,10 @@ extern "C" bool test_func()
 	auto LuaModuleFileName = std::filesystem::path(GetLibFileName("TestLuaModule"));
 	auto ext = LuaModuleFileName.extension().string();
 	auto name = LuaModuleFileName.stem().string();
-	auto path = std::filesystem::relative(whereami::getExecutablePath().dirname()).generic_string();
-	auto paths = path+"/?"+ext+";"+path+"/lib/?"+ext+";";
+	auto path_base = std::filesystem::path(whereami::getExecutablePath().dirname());
+	auto path1 = (path_base/("?"+ext)).string();
+	auto path2 = (path_base/"lib"/("?"+ext)).string();
+	auto paths = path1+";"+path2+";";
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Lua module name: {}", name);
@@ -53,7 +55,7 @@ extern "C" bool test_func()
 	Lua::DynamicSymbols syms;
 
 	auto LuaCode =
-	"    package.cpath = \""+paths+"\" .. package.cpath;       \n"
+	"    package.cpath = [=["+paths+"]=] .. package.cpath;     \n"
 	"    local mo = require(\""+name+"\");                     \n"
 	"    mo.echo(\"Message from Lua module\");                 \n"
 	"    odc.log.info(\"Message from Lua\");                   \n";
