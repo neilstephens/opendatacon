@@ -19,10 +19,9 @@
  # 
 project(LuaWrappers LANGUAGES CXX)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h include/Lua/*.h include/Lua/DynamicSymbols.h.in)
-
 set(lua_lib_filename ${CMAKE_SHARED_LIBRARY_PREFIX}${LUA_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX})
-configure_file(include/Lua/DynamicSymbols.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/Lua/DynamicSymbols.h)
+configure_file(DynamicSymbols.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/DynamicSymbols.cpp)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h include/Lua/*.h DynamicSymbols.cpp.in)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
 

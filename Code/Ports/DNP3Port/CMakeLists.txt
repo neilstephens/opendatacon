@@ -69,14 +69,15 @@ if(USE_DNP3_SUBMODULE)
 	else()
 		set(PLATFORM_OPT "")
 	endif()
-	message("${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} ${DNP3_SOURCE}")
+	message("${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} -S ${DNP3_SOURCE}")
 	execute_process(
-		COMMAND ${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} ${DNP3_SOURCE}
+		COMMAND ${CMAKE_COMMAND} ${DNP3_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} -S ${DNP3_SOURCE}
 		WORKING_DIRECTORY "${DNP3_BUILD}"
+		OUTPUT_FILE opendnp3-cmake-output.txt
 		RESULT_VARIABLE EXEC_RESULT
 	)
 	if(EXEC_RESULT)
-		message( FATAL_ERROR "Failed to run cmake for DNP3 submodule, exiting")
+		message( FATAL_ERROR "Failed to run cmake for DNP3 submodule. See opendnp3-cmake-output.txt. Exiting")
 	endif()
 	set(CONFIGS "${CMAKE_BUILD_TYPE}")
 	if("${CMAKE_CONFIGURATION_TYPES}" MATCHES ".*Rel.*")
@@ -90,10 +91,11 @@ if(USE_DNP3_SUBMODULE)
 		execute_process(
 			COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config ${CONF} --parallel 8 --target install
 			WORKING_DIRECTORY "${DNP3_BUILD}"
+			OUTPUT_FILE opendnp3-build-output.txt
 			RESULT_VARIABLE EXEC_RESULT
 		)
 		if(EXEC_RESULT)
-			message( FATAL_ERROR "Failed to build DNP3 submodule, exiting")
+			message( FATAL_ERROR "Failed to build DNP3 submodule. See opendnp3-cmake-output.txt. Exiting")
 		endif()
 	endforeach()
 	add_custom_target( build_dnp3

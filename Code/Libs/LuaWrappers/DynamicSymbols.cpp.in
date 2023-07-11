@@ -18,37 +18,31 @@
  *	limitations under the License.
  */
 /*
- * DynamicSymbols.h
+ * DynamicSymbols.cpp
  *
- *  Created on: 9/7/2023
+ *  Created on: 11/7/2023
  *      Author: Neil Stephens
  */
-#ifndef DYNAMICSYMBOLS_H
-#define DYNAMICSYMBOLS_H
 
-#include <opendatacon/Platform.h>
+#include "include/Lua/DynamicSymbols.h"
 
 namespace Lua
 {
-//class to ensure the lua symbols are dynamically loaded and added to the global symbol table
-//	The lua plugins in opendatacon need this, even though they're linked to the lua shared lib:
-//		to enable Lua C modules, that are 'required', to access the symbols
-class DynamicSymbols
+
+DynamicSymbols::DynamicSymbols()
 {
-public:
-	DynamicSymbols()
+	constexpr bool global = true;
+	p = LoadModule("@lua_lib_filename@",global);
+	if(!p)
 	{
-		constexpr bool global = true;
-		p = LoadModule("@lua_lib_filename@",global);
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("Unable to load @lua_lib_filename@ to publish lua symbols.");
 	}
-	~DynamicSymbols()
-	{
+}
+DynamicSymbols::~DynamicSymbols()
+{
+	if(p)
 		UnLoadModule(p);
-	}
-private:
-	module_ptr p;
-};
+}
 
 } //namespace Lua
-
-#endif // DYNAMICSYMBOLS_H

@@ -37,24 +37,24 @@
 #include <whereami++.h>
 
 #include <iostream>
+#include <filesystem>
 
 extern "C" bool test_func()
 {
-	auto LuaModuleName = GetLibFileName("TestLuaModule");
-	auto ext_pos = LuaModuleName.find(".");
-	auto libext = LuaModuleName.substr(ext_pos);
-	LuaModuleName = LuaModuleName.substr(0,ext_pos);
-	std::string path = whereami::getExecutablePath().dirname();
-	auto paths = path+"/?"+libext+";"+path+"/lib/?"+libext+";";
+	auto LuaModuleFileName = std::filesystem::path(GetLibFileName("TestLuaModule"));
+	auto ext = LuaModuleFileName.extension().string();
+	auto name = LuaModuleFileName.stem().string();
+	auto path = std::filesystem::relative(whereami::getExecutablePath().dirname()).generic_string();
+	auto paths = path+"/?"+ext+";"+path+"/lib/?"+ext+";";
 
 	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Lua module name: {}", LuaModuleName);
+		log->info("Lua module name: {}", name);
 
 	Lua::DynamicSymbols syms;
 
 	auto LuaCode =
 	"    package.cpath = \""+paths+"\" .. package.cpath;       \n"
-	"    local mo = require(\""+LuaModuleName+"\");            \n"
+	"    local mo = require(\""+name+"\");                     \n"
 	"    mo.echo(\"Message from Lua module\");                 \n"
 	"    odc.log.info(\"Message from Lua\");                   \n";
 
