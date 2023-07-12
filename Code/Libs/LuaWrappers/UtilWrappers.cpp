@@ -307,7 +307,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 		lua_pushcfunction(L, [](lua_State* const L) -> int
 			{
 				auto result = std::filesystem::canonical(std::filesystem::current_path())/path_from_args(L);
-				lua_pushstring(L, result.c_str());
+				lua_pushstring(L, result.string().c_str());
 				return 1;
 			});
 		lua_setfield(L,-2,"WorkingDir");
@@ -316,7 +316,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 		lua_pushcfunction(L, [](lua_State* const L) -> int
 			{
 				auto result = std::filesystem::canonical(whereami::getModulePath().dirname())/path_from_args(L);
-				lua_pushstring(L, result.c_str());
+				lua_pushstring(L, result.string().c_str());
 				return 1;
 			});
 		lua_setfield(L,-2,"LibraryDir");
@@ -325,7 +325,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 		lua_pushcfunction(L, [](lua_State* const L) -> int
 			{
 				auto result = std::filesystem::canonical(whereami::getExecutablePath().dirname())/path_from_args(L);
-				lua_pushstring(L, result.c_str());
+				lua_pushstring(L, result.string().c_str());
 				return 1;
 			});
 		lua_setfield(L,-2,"ExecutableDir");
@@ -348,7 +348,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 				      {
 
 				            auto result = std::filesystem::canonical(std::string(ar.source).substr(1)).parent_path()/path_from_args(L);
-				            lua_pushstring(L, result.c_str());
+				            lua_pushstring(L, result.string().c_str());
 				            return 1;
 					}
 				      catch(const std::exception& e)
