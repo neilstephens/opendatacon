@@ -1,6 +1,6 @@
-# opendatacon version 1.9.0-RC3
+# opendatacon version 1.9.0-RC4
 
-## 1.9.0-RC3
+## 1.9.0-RC4
   * New plugins with embedded Lua!
     * Write your own LuaPort, LuaTransform, LuaLog sink, or Lua powered UI script
     * Access all the IOTypes, and a bunch of helper function from within your Lua code
