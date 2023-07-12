@@ -23,6 +23,7 @@
  *  Created on: 18/06/2023
  *      Author: Neil Stephens
  */
+#include <whereami++.h>
 #include <Lua/CLua.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
@@ -290,6 +291,83 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 			return 1; //number of lua ret vals pushed onto the stack
 		},2);
 	lua_setfield(L,-2,"msSinceEpochToDateTime");
+
+	//GetPath
+	static auto path_from_args = [](lua_State* const L) -> auto
+					     {
+						     int idx = 1;
+						     std::filesystem::path result;
+						     while(lua_isstring(L,idx))
+							     result /= std::filesystem::path(lua_tostring(L,idx++));
+						     return result;
+					     };
+	lua_newtable(L);
+	{
+		//WorkingDir
+		lua_pushcfunction(L, [](lua_State* const L) -> int
+			{
+				auto result = std::filesystem::canonical(std::filesystem::current_path())/path_from_args(L);
+				lua_pushstring(L, result.c_str());
+				return 1;
+			});
+		lua_setfield(L,-2,"WorkingDir");
+
+		//LibraryDir
+		lua_pushcfunction(L, [](lua_State* const L) -> int
+			{
+				auto result = std::filesystem::canonical(whereami::getModulePath().dirname())/path_from_args(L);
+				lua_pushstring(L, result.c_str());
+				return 1;
+			});
+		lua_setfield(L,-2,"LibraryDir");
+
+		//ExecutableDir
+		lua_pushcfunction(L, [](lua_State* const L) -> int
+			{
+				auto result = std::filesystem::canonical(whereami::getExecutablePath().dirname())/path_from_args(L);
+				lua_pushstring(L, result.c_str());
+				return 1;
+			});
+		lua_setfield(L,-2,"ExecutableDir");
+
+		//ScriptDir
+		lua_pushstring(L,Name.c_str());
+		lua_pushstring(L,LogName.c_str());
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				std::string name(lua_tostring(L, lua_upvalueindex(1)));
+				std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+
+				//populate info for the stack-frame 1 down (our caller)
+				lua_Debug ar;
+				lua_getstack(L,1,&ar);
+				lua_getinfo(L,"S",&ar);
+				if(ar.source[0] == '@')
+				{
+				      try
+				      {
+
+				            auto result = std::filesystem::canonical(std::string(ar.source).substr(1)).parent_path()/path_from_args(L);
+				            lua_pushstring(L, result.c_str());
+				            return 1;
+					}
+				      catch(const std::exception& e)
+				      {
+				            if(auto log = odc::spdlog_get(logname))
+							log->error("{}: GetPath.ScriptDir() called from lua; Exception '{}'.",name,e.what());
+					}
+				}
+				else
+				{
+				      if(auto log = odc::spdlog_get(logname))
+						log->error("{}: GetPath.ScriptDir() called from lua without source file.",name);
+				}
+				lua_pushnil(L);
+				return 1;
+			},2);
+		lua_setfield(L,-2,"ScriptDir");
+	}
+	lua_setfield(L,-2,"GetPath");
 
 	//String2Hex
 	lua_pushcfunction(L, [](lua_State* const L) -> int

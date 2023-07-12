@@ -126,6 +126,20 @@ function do_example_stuff()
   odc.log.info("Payload constructed: "..odc.EncodeJSON(MyControlEvent.Payload));
   odc.PublishEvent(MyControlEvent);
   
+  --help to find yourself in the world
+  odc.log.info("ScriptDir path: "..odc.GetPath.ScriptDir());
+  odc.log.info("WorkingDir path: "..odc.GetPath.WorkingDir());
+  odc.log.info("ExecutableDir path: "..odc.GetPath.ExecutableDir());
+  odc.log.info("LibraryDir path: "..odc.GetPath.LibraryDir());
+  
+  -- recommend using absolute paths for lua dependencies
+  -- the helpers return absolute paths with native separators
+  --, and you can build onto the path with args
+  local my_absolute_module_dir = odc.GetPath.ScriptDir("my_modules","?.lua");
+  package.path = my_absolute_module_dir .. ";" .. package.path;
+  local my_hello_module = require("hello");
+  my_hello_module.go();
+  
   odc.log.info("Here's everything under 'odc' for good measure: "..odc.EncodeJSON(odc));
   odc.log.info("...Plus all the default payloads from odc.MakePayload(): "..dump_default_payloads_json());
 
