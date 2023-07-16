@@ -464,11 +464,15 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 							   }
 						   }));
 					   //return a cancel function
-					   lua_pushlightuserdata(L,new decltype(pTimer)(pTimer));
+					   auto p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
+					   new(p) std::weak_ptr<void>(pTimer);
+					   luaL_getmetatable(L, "std_weak_ptr_void");
+					   lua_setmetatable(L, -2);
 					   lua_pushcclosure(L, [](lua_State* const L) -> int
 						   {
-							   auto ppTimer = static_cast<std::shared_ptr<asio::steady_timer>*>(lua_touserdata(L, lua_upvalueindex(1)));
-							   (*ppTimer)->cancel();
+							   auto ppTimer = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+							   auto pTimer = std::static_pointer_cast<asio::steady_timer>(ppTimer->lock());
+							   if(pTimer) pTimer->cancel();
 							   return 0;
 						   },1);
 					   return 1;
