@@ -55,7 +55,7 @@ private:
 	std::map<std::string,std::string> mDescriptions;
 
 	//Lua functionality
-	std::unordered_map<std::string,LuaInst> Scripts;
+	std::unordered_map<std::string,std::shared_ptr<LuaInst>> Scripts;
 	std::shared_mutex ScriptsMtx;
 	std::unordered_map<std::string,std::deque<std::string>> Messages;
 	std::shared_mutex MessagesMtx;

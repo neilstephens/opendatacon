@@ -129,8 +129,12 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 
 LuaUICommander::~LuaUICommander()
 {
-	std::unique_lock<std::shared_mutex> lck(ScriptsMtx);
-	Scripts.clear();
+	decltype(Scripts) destroy_outside_lock_scope;
+	{
+		std::unique_lock<std::shared_mutex> lck(ScriptsMtx);
+		destroy_outside_lock_scope = Scripts;
+		Scripts.clear();
+	}
 }
 
 void LuaUICommander::AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc)
@@ -165,28 +169,28 @@ void LuaUICommander::ScriptMessageHandler(const std::string& ID, const std::stri
 
 bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args)
 {
+	decltype(Scripts) destroy_outside_lock_scope;
 	try
 	{
 		std::unique_lock<std::shared_mutex> lckS(ScriptsMtx);
 
 		//first clear complete scripts
-		std::vector<std::string> rem;
-		for(auto&[id,script] : Scripts)
-			if(script.Completed())
-				rem.push_back(id);
-		for(auto& id : rem)
+		for(auto&[id,pScript] : Scripts)
+			if(pScript->Completed())
+				destroy_outside_lock_scope[id] = pScript;
+		for(auto&[id,pScript] : destroy_outside_lock_scope)
 			Scripts.erase(id);
 
 		std::unique_lock<std::shared_mutex> lckM(MessagesMtx);
-		auto [itr,was_inserted] = Scripts.try_emplace(ID,lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
-		if(!was_inserted)
+		auto& pScript = Scripts[ID];
+		if(pScript)
 		{
 			if(auto log = odc::spdlog_get(LoggerName))
 				log->warn("There is already a running script with ID '{}'",ID);
-			return was_inserted;
+			return false;
 		}
+		pScript = std::make_shared<LuaInst>(lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
 		Messages.erase(ID);
-		return was_inserted;
 	}
 	catch(const std::exception& e)
 	{
@@ -194,20 +198,28 @@ bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID,
 			log->error("Failed loading Lua command script. Error: '{}'",e.what());
 		return false;
 	}
+	return true;
 }
 
 void LuaUICommander::Cancel(const std::string& ID)
 {
-	std::unique_lock<std::shared_mutex> lck(ScriptsMtx);
-	Scripts.erase(ID);
+	decltype(Scripts)::node_type destroy_outside_lock_scope;
+	{
+		std::unique_lock<std::shared_mutex> lck(ScriptsMtx);
+		destroy_outside_lock_scope = Scripts.extract(ID);
+	}
 }
 
 void LuaUICommander::ClearAll()
 {
-	std::unique_lock<std::shared_mutex> lckS(ScriptsMtx);
-	std::unique_lock<std::shared_mutex> lckM(MessagesMtx);
-	Scripts.clear();
-	Messages.clear();
+	decltype(Scripts) destroy_outside_lock_scope;
+	{
+		std::unique_lock<std::shared_mutex> lckS(ScriptsMtx);
+		std::unique_lock<std::shared_mutex> lckM(MessagesMtx);
+		destroy_outside_lock_scope = Scripts;
+		Scripts.clear();
+		Messages.clear();
+	}
 }
 
 bool LuaUICommander::Completed(const std::string& ID)
@@ -215,7 +227,7 @@ bool LuaUICommander::Completed(const std::string& ID)
 	std::shared_lock<std::shared_mutex> lck(ScriptsMtx);
 	auto script_it = Scripts.find(ID);
 	if(script_it != Scripts.end())
-		return script_it->second.Completed();
+		return script_it->second->Completed();
 	return true;
 }
 
