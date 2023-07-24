@@ -172,13 +172,24 @@ void LuaInst::Runner(const std::string& args)
 		pSleepTimer->async_wait(pStrand->wrap([this,h{handler_tracker}](asio::error_code err)
 			{
 				if(err)
-				{
-				      completed = true;
-				      return;
-				}
+					cancelled = true;
 				Runner();
 			}));
 		return;
+	}
+	lua_getglobal(L, "Cancel");
+	if(lua_isfunction(L, -1)) //Providing a 'Cancel()' Fn is optional
+	{
+		constexpr int argc = 0;
+		constexpr int retc = 0;
+		auto ret = lua_pcall(L,argc,retc,0);
+		if(ret != LUA_OK)
+		{
+			std::string err = lua_tostring(L, -1);
+			if(auto log = odc::spdlog_get(LoggerName))
+				log->error("{}: Lua Cancel() call error: {}",ID,err);
+			lua_pop(L,1);
+		}
 	}
 	completed = true;
 }
