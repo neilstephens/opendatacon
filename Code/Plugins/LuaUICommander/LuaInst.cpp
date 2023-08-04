@@ -104,7 +104,7 @@ LuaInst::LuaInst(const std::string& lua_code,
 	if(ret != LUA_OK)
 	{
 		std::string err = lua_tostring(L, -1);
-		throw std::runtime_error(ID+": Failed to load code. Error: "+err);
+		throw std::runtime_error(ID+": Failed to load code: "+err);
 	}
 
 	lua_getglobal(L, "SendCommands");
@@ -149,9 +149,10 @@ void LuaInst::Runner(const std::string& args)
 		auto ret = lua_pcall(L,argc,retc,0);
 		if(ret != LUA_OK)
 		{
-			std::string err = lua_tostring(L, -1);
+			std::string err = ID+": Lua SendCommands() call error: "+lua_tostring(L, -1);
+			MsgHandler(ID,err);
 			if(auto log = odc::spdlog_get(LoggerName))
-				log->error("{}: Lua SendCommands() call error: {}",ID,err);
+				log->error(err);
 			lua_pop(L,1);
 			completed = true;
 			return;

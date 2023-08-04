@@ -182,20 +182,22 @@ bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID,
 			Scripts.erase(id);
 
 		std::unique_lock<std::shared_mutex> lckM(MessagesMtx);
-		auto& pScript = Scripts[ID];
-		if(pScript)
-		{
-			if(auto log = odc::spdlog_get(LoggerName))
-				log->warn("There is already a running script with ID '{}'",ID);
-			return false;
-		}
-		pScript = std::make_shared<LuaInst>(lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
+
+		auto script_it = Scripts.find(ID);
+		if(script_it != Scripts.end())
+			throw std::runtime_error(ID+": Attempt to execute a script with the same ID as a running script.");
+
+		Scripts[ID] = std::make_shared<LuaInst>(lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
+
+		//clear messages from any previous execution with this ID
 		Messages.erase(ID);
 	}
 	catch(const std::exception& e)
 	{
+		const auto msg = ID+": Failed loading Lua command script: '"+e.what()+"'";
+		ScriptMessageHandler(ID,msg);
 		if(auto log = odc::spdlog_get(LoggerName))
-			log->error("Failed loading Lua command script. Error: '{}'",e.what());
+			log->error(msg);
 		return false;
 	}
 	return true;
