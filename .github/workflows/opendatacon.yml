@@ -65,12 +65,12 @@ jobs:
       name: Setup QEMU
       uses: docker/setup-qemu-action@v1
     
-    - if: matrix.bits == 32 && contains(matrix.os,'windows')
+    - if: matrix.bits == 32 && contains(matrix.os,'windows') #FIXME: openssl version pinned to 1.1.1 because 3.x choco doesn't support 32bit
       name: Set 32-bit env
       run: |
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
         echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
-        choco install openssl --x86
+        choco install openssl --version=1.1.1.2100 --x86
         Remove-Item 'C:\hostedtoolcache\windows\Python\3.7.9\x64' -Recurse
         echo "C:\hostedtoolcache\windows\Python\3.7.9\x86" >> $env:GITHUB_PATH
         Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x86/python37_d.dll -Destination C:\Windows\sysWOW64\
