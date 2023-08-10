@@ -13,8 +13,8 @@
 * [Basic components](#basic-components)
     * [Ports](#ports)
     * [Connectors](#connectors)
-    * [Connections](#connections)
-    * [Transforms](#transforms)
+        * [Connections](#connections)
+        * [Transforms](#transforms)
     * [Plugins](#plugins)
     * [Extensibility](#extensibility)
 * [Internal data structure](#internal-data-structure)
@@ -244,7 +244,7 @@ Transforms filter and transform data on entry to a Connector (ie. they're uni-di
 
 Custom Transforms can be implemented in Lua (see example configs in the repo)
 
-#### Plugins
+### Plugins
 
 Plugins don't form a component of the data/event processing path. They're separate modules that use the user interface API to control the other components.
 
