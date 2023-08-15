@@ -220,7 +220,6 @@ public:
 	*/
 	std::string CurrentState(odc::EventType type, std::vector<std::size_t>& indexes);
 
-	void Timer(const std::string& name, ptimer_t ptr);
 	ptimer_t Timer(const std::string& name);
 	void CancelTimers();
 

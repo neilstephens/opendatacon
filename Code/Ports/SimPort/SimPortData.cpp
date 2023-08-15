@@ -157,11 +157,6 @@ std::string SimPortData::CurrentState(odc::EventType type, std::vector<std::size
 	return m_ppoint_data->CurrentState(type, indexes);
 }
 
-void SimPortData::Timer(const std::string& name, ptimer_t ptr)
-{
-	m_ppoint_data->Timer(name, ptr);
-}
-
 ptimer_t SimPortData::Timer(const std::string& name) const
 {
 	return m_ppoint_data->Timer(name);
