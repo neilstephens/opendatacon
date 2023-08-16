@@ -259,7 +259,7 @@ ptimer_t SimPortPointData::Timer(const std::string& name)
 	std::shared_lock<std::shared_timed_mutex> lck(timer_mutex);
 	auto pTimer = m_timers[name];
 	if(!pTimer)
-		m_timers[name] = odc::asio_service::Get()->make_steady_timer();
+		m_timers[name] = pTimer = odc::asio_service::Get()->make_steady_timer();
 	return pTimer;
 }
 
