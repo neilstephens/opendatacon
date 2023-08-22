@@ -1,12 +1,12 @@
-/home/knarl/qtc_projects/opendatacon/Code/scripts/gprof2dot.py linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/Code/Ports/SimPort/sqlite3/* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/Code/Plugins/WebUI/www/node_modules/* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/Code/Plugins/WebUI/www/DataTables-1.10.20/* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/Code/Plugins/WebUI/www/common_modules/* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/Code/Libs/JSON/json/* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/Code/Libs/JSON/jsoncpp.cpp linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/Code/Libs/ODC/whereami* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/include/catch* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/include/whereami* linguist-vendored=true
-/home/knarl/qtc_projects/opendatacon/include/tromp* linguist-vendored=true
+Code/scripts/gprof2dot.py linguist-vendored
+Code/Ports/SimPort/sqlite3/* linguist-vendored
+Code/Plugins/WebUI/www/node_modules/* linguist-vendored
+Code/Plugins/WebUI/www/DataTables-1.10.20/* linguist-vendored
+Code/Plugins/WebUI/www/common_modules/* linguist-vendored
+Code/Libs/JSON/json/* linguist-vendored
+Code/Libs/JSON/jsoncpp.cpp linguist-vendored
+Code/Libs/ODC/whereami* linguist-vendored
+include/catch* linguist-vendored
+include/whereami* linguist-vendored
+include/tromp* linguist-vendored
 

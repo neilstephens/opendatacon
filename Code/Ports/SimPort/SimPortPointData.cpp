@@ -254,16 +254,13 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 	return result;
 }
 
-void SimPortPointData::Timer(const std::string& name, ptimer_t ptr)
-{
-	std::unique_lock<std::shared_timed_mutex> lck(timer_mutex);
-	m_timers[name] = ptr;
-}
-
 ptimer_t SimPortPointData::Timer(const std::string& name)
 {
 	std::shared_lock<std::shared_timed_mutex> lck(timer_mutex);
-	return m_timers.at(name);
+	auto pTimer = m_timers[name];
+	if(!pTimer)
+		m_timers[name] = pTimer = odc::asio_service::Get()->make_steady_timer();
+	return pTimer;
 }
 
 void SimPortPointData::CancelTimers()
@@ -306,9 +303,9 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortPointData::BinaryFeedbacks(s
 
 void SimPortPointData::CreateBinaryControl(std::size_t index,
 	const std::string& port_source,
-	odc::FeedbackType type,
+	FeedbackType type,
 	const std::vector<std::size_t>& indexes,
-	const std::vector<odc::PositionAction>& action,
+	const std::vector<PositionAction>& action,
 	std::size_t lower_limit, std::size_t raise_limit,
 	double tap_step)
 {

@@ -38,7 +38,7 @@ int main( int argc, char* argv[] )
 		log_level = spdlog::level::from_str(level_str);
 		if (log_level == spdlog::level::off && level_str != "off")
 		{
-			std::cout << "DNP3Port: optional log level as first arg. Choose from:" << std::endl;
+			std::cout << "libODC_tests: optional log level as first arg. Choose from:" << std::endl;
 			for (uint8_t i = 0; i < 7; i++)
 				std::cout << spdlog::level::level_string_views[i].data() << std::endl;
 		}

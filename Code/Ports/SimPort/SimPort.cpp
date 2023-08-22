@@ -204,9 +204,15 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 
 bool SimPort::UILoad(EventType type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
 {
-	if (auto log = odc::spdlog_get("SimPort"))
-	{
+	auto log = odc::spdlog_get("SimPort");
+	if(log)
 		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
+
+	if(!enabled)
+	{
+		if (log)
+			log->error("{} : UILoad() when disabled.", Name);
+		return false;
 	}
 
 	double val = 0.0f;
@@ -267,6 +273,10 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 
 bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, const std::string& period)
 {
+	auto log = odc::spdlog_get("SimPort");
+	if(log)
+		log->debug("{} : UISetUpdateInterval : {}, {}, {}", Name, ToString(type), index, period);
+
 	unsigned int delta = 0;
 	try
 	{
@@ -286,25 +296,28 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 		for (std::size_t index : indexes)
 		{
 			pSimConf->UpdateInterval(type, index, delta);
-			auto ptimer = pSimConf->Timer(ToString(type) + std::to_string(index));
-			if (!delta)
+			if(enabled)
 			{
-				ptimer->cancel();
-			}
-			else
-			{
-				auto random_interval = std::uniform_int_distribution<unsigned int>(0, delta << 1)(RandNumGenerator);
-				ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				ptimer->async_wait([=](asio::error_code err_code)
-					{
-						if(enabled && !err_code)
+				auto ptimer = pSimConf->Timer(ToString(type) + std::to_string(index));
+				if (!delta)
+				{
+					ptimer->cancel();
+				}
+				else
+				{
+					auto random_interval = std::uniform_int_distribution<unsigned int>(0, delta << 1)(RandNumGenerator);
+					ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
+					ptimer->async_wait([=](asio::error_code err_code)
 						{
-						      if (type == EventType::Binary)
-								StartBinaryEvents(index);
-						      if (type == EventType::Analog)
-								StartAnalogEvents(index);
-						}
-					});
+							if(enabled && !err_code)
+							{
+							      if (type == EventType::Binary)
+									StartBinaryEvents(index);
+							      if (type == EventType::Analog)
+									StartAnalogEvents(index);
+							}
+						});
+				}
 			}
 		}
 	}
@@ -373,8 +386,7 @@ void SimPort::PortUp()
 		std::vector<std::size_t> indexes = pSimConf->Indexes(type);
 		for(auto index : indexes)
 		{
-			ptimer_t ptimer = pIOS->make_steady_timer();
-			pSimConf->Timer(ToString(type)+std::to_string(index), ptimer);
+			ptimer_t ptimer = pSimConf->Timer(ToString(type)+std::to_string(index));
 
 			if(TryStartEventsFromDB(type,index,now,ptimer))
 				continue;
@@ -956,11 +968,11 @@ CommandStatus SimPort::HandlePositionFeedback(const std::shared_ptr<PositionFeed
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	message = "This binary position point is not supported";
-	if (binary_position->type == odc::FeedbackType::ANALOG)
+	if (binary_position->type == FeedbackType::ANALOG)
 		status = HandlePositionFeedbackForAnalog(binary_position, command, message);
-	else if (binary_position->type == odc::FeedbackType::BINARY)
+	else if (binary_position->type == FeedbackType::BINARY)
 		status = HandlePositionFeedbackForBinary(binary_position, command, message);
-	else if (binary_position->type == odc::FeedbackType::BCD)
+	else if (binary_position->type == FeedbackType::BCD)
 		status = HandlePositionFeedbackForBCD(binary_position, command, message);
 	return status;
 }
@@ -974,12 +986,12 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 	{
 		if (!pSimConf->ForcedState(odc::EventType::Analog, index))
 		{
-			odc::PositionAction action = binary_position->action[ON];
+			PositionAction action = binary_position->action[ON];
 			if (IsOffCommand(command.functionCode))
 				action = binary_position->action[OFF];
 			auto event = pSimConf->Event(odc::EventType::Analog, index);
 			double payload = event->GetPayload<odc::EventType::Analog>();
-			if (action == odc::PositionAction::RAISE)
+			if (action == PositionAction::RAISE)
 			{
 				if (payload + binary_position->tap_step <= binary_position->raise_limit)
 				{
@@ -996,7 +1008,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 					status = CommandStatus::OUT_OF_RANGE;
 				}
 			}
-			else if (action == odc::PositionAction::LOWER)
+			else if (action == PositionAction::LOWER)
 			{
 				if (payload - binary_position->tap_step >= binary_position->lower_limit)
 				{
@@ -1043,10 +1055,10 @@ CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<Pos
 	}
 
 	std::size_t payload = odc::to_decimal(binary);
-	odc::PositionAction action = binary_position->action[ON];
+	PositionAction action = binary_position->action[ON];
 	if (IsOffCommand(command.functionCode))
 		action = binary_position->action[OFF];
-	if (action == odc::PositionAction::RAISE)
+	if (action == PositionAction::RAISE)
 	{
 		if (payload + binary_position->tap_step <= binary_position->raise_limit)
 		{
@@ -1062,7 +1074,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBinary(const std::shared_ptr<Pos
 			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
-	else if (action == odc::PositionAction::LOWER)
+	else if (action == PositionAction::LOWER)
 	{
 		if (payload - binary_position->tap_step >= binary_position->lower_limit)
 		{
@@ -1099,10 +1111,10 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 	}
 
 	std::size_t payload = bcd_encoded_to_decimal(bcd_binary);
-	odc::PositionAction action = binary_position->action[ON];
+	PositionAction action = binary_position->action[ON];
 	if (IsOffCommand(command.functionCode))
 		action = binary_position->action[OFF];
-	if (action == odc::PositionAction::RAISE)
+	if (action == PositionAction::RAISE)
 	{
 		if (payload + binary_position->tap_step <= binary_position->raise_limit)
 		{
@@ -1118,7 +1130,7 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 			status = CommandStatus::OUT_OF_RANGE;
 		}
 	}
-	else if (action == odc::PositionAction::LOWER)
+	else if (action == PositionAction::LOWER)
 	{
 		if (payload - binary_position->tap_step >= binary_position->lower_limit)
 		{

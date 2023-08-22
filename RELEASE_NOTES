@@ -1,4 +1,15 @@
-# opendatacon version 1.8.0
+# opendatacon version 1.9.0
+
+## 1.9.0
+  * New plugins with embedded Lua!
+    * Write your own LuaPort, LuaTransform, LuaLog sink, or Lua powered UI script
+    * Access all the IOTypes, and a bunch of helper function from within your Lua code
+    * Develop and execute UI Lua scripts directly in the out-of-the-box WebUI.
+      * With syntax highlighting and checking 
+  * Regex log sink filters
+  * Unlimited log sinks and filters from the config or UI
+  * Spoof events from/to arbitrary Ports and/or Connectors through a UI (or a UI script)
+  * Misc Bugfixes
 
 ## 1.8.0
   * New Port type added: FileTransferPort - for transferring files via OctetString data type

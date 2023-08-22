@@ -179,11 +179,6 @@ std::string SimPortConf::CurrentState(odc::EventType type, std::vector<std::size
 	return m_pport_data->CurrentState(type, indexes);
 }
 
-void SimPortConf::Timer(const std::string& name, ptimer_t ptr)
-{
-	m_pport_data->Timer(name, ptr);
-}
-
 ptimer_t SimPortConf::Timer(const std::string& name) const
 {
 	return m_pport_data->Timer(name);
@@ -531,8 +526,8 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 */
 void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position, std::size_t index)
 {
-	odc::FeedbackType type = odc::FeedbackType::UNDEFINED;
-	std::vector<odc::PositionAction> actions(2, odc::PositionAction::UNDEFINED);
+	FeedbackType type = FeedbackType::UNDEFINED;
+	std::vector<PositionAction> actions(2, PositionAction::UNDEFINED);
 	std::vector<std::size_t> indexes;
 
 	//FIXME: should allow negative limits

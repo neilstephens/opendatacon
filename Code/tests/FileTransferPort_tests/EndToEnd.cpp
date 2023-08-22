@@ -21,6 +21,7 @@
  */
 #include "Helpers.h"
 #include "../PortLoader.h"
+#include "../ThreadPool.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
@@ -39,10 +40,6 @@ TEST_CASE(SUITE("DirectBack2Back"))
 	auto portlib = LoadModule(GetLibFileName("FileTransferPort"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
@@ -65,6 +62,8 @@ TEST_CASE(SUITE("DirectBack2Back"))
 		//get them to build themselves using their configs
 		RX->Build();
 		TX->Build();
+
+		ThreadPool thread_pool(1);
 
 		//turn them on
 		RX->Enable();
@@ -111,11 +110,6 @@ TEST_CASE(SUITE("DirectBack2Back"))
 		//turn them off
 		RX->Disable();
 		TX->Disable();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);
@@ -132,10 +126,6 @@ TEST_CASE(SUITE("CorruptConnector"))
 	auto portlib = LoadModule(GetLibFileName("FileTransferPort"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
@@ -170,6 +160,8 @@ TEST_CASE(SUITE("CorruptConnector"))
 		RX->Build();
 		TX->Build();
 
+		ThreadPool thread_pool(1);
+
 		//turn them on
 		RX->Enable();
 		TX->Enable();
@@ -215,11 +207,6 @@ TEST_CASE(SUITE("CorruptConnector"))
 		//turn them off
 		RX->Disable();
 		TX->Disable();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);
@@ -236,10 +223,6 @@ TEST_CASE(SUITE("SequenceReset"))
 	auto portlib = LoadModule(GetLibFileName("FileTransferPort"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
@@ -277,6 +260,8 @@ TEST_CASE(SUITE("SequenceReset"))
 		//get them to build themselves using their configs
 		RX->Build();
 		TX->Build();
+
+		ThreadPool thread_pool(1);
 
 		//turn them on
 		RX->Enable();
@@ -355,11 +340,6 @@ TEST_CASE(SUITE("SequenceReset"))
 		//turn them off
 		RX->Disable();
 		TX->Disable();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);

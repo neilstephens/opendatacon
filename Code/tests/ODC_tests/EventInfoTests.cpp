@@ -125,4 +125,11 @@ TEST_CASE(SUITE("PayloadTransport"))
 	TestTearDown();
 }
 
+//TODO: add tests for EventInfoFromJson()
+/*
+R"(   {"EventType":"ControlRelayOutputBlock","Index":1234,"SourcePort":"Fake","Payload":{"ControlCode":"LATCH_OFF"}}    )"
+      {"EventType":"Analog","Index":34,"Timestamp":"2050-12-12 01:02:33.444","Payload":666}
+      {"EventType":"Analog","Index":1,"QualityFlags":"COMM_LOST|LOCAL_FORCED"}
+      Etc.
+*/
 

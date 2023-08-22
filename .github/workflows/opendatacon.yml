@@ -54,7 +54,7 @@ jobs:
       name: Set log level
       shell: bash
       run: |
-        [ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
+        ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
 
     - uses: actions/checkout@v2
       with:
@@ -65,12 +65,12 @@ jobs:
       name: Setup QEMU
       uses: docker/setup-qemu-action@v1
     
-    - if: matrix.bits == 32 && contains(matrix.os,'windows')
+    - if: matrix.bits == 32 && contains(matrix.os,'windows') #FIXME: openssl version pinned to 1.1.1 because 3.x choco doesn't support 32bit
       name: Set 32-bit env
       run: |
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
         echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
-        choco install openssl --x86
+        choco install openssl --version=1.1.1.2100 --x86
         Remove-Item 'C:\hostedtoolcache\windows\Python\3.7.9\x64' -Recurse
         echo "C:\hostedtoolcache\windows\Python\3.7.9\x86" >> $env:GITHUB_PATH
         Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x86/python37_d.dll -Destination C:\Windows\sysWOW64\
@@ -163,6 +163,9 @@ jobs:
     - name: ODC_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
+    - name: libLua_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}libLua_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
@@ -181,6 +184,9 @@ jobs:
     - name: FileTransferPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
+    - name: LuaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
@@ -228,7 +234,7 @@ jobs:
       name: Set log level
       shell: bash
       run: |
-        [ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error' >> $GITHUB_ENV
+        ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
         
     - name: Start run wrapper
       run: echo '#!/bin/bash' >> $HOME/run.sh
@@ -239,16 +245,11 @@ jobs:
       run: |
         yum install -y oracle-softwarecollection-release-el7
         /usr/bin/ol_yum_configure.sh
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat psmisc make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static
+        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat psmisc make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static libmodbus libmodbus-devel
         ln -s /usr/bin/cmake3 /bin/cmake
         mkdir -p /opt/openssl-root
         ln -s /usr/include/openssl11 /opt/openssl-root/include
         ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
-        #Extras that aren-t yum-able
-        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-devel-3.0.8-1.el7.x86_64.rpm
-        curl -O https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/l/libmodbus-3.0.8-1.el7.x86_64.rpm
-        rpm -i libmodbus-3.0.8-1.el7.x86_64.rpm
-        rpm -i libmodbus-devel-3.0.8-1.el7.x86_64.rpm    
         # To get Python3.6 we need scl-util-build tools
         curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
         rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
@@ -302,6 +303,9 @@ jobs:
     - name: ODC_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
+    - name: libLua_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: /github/workspace/build/install/${{env.BINDIR}}libLua_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
@@ -320,6 +324,9 @@ jobs:
     - name: FileTransferPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
+    - name: LuaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: /github/workspace/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes

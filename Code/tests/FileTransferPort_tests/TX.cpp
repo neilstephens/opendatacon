@@ -23,6 +23,7 @@
  */
 #include "Helpers.h"
 #include "../PortLoader.h"
+#include "../ThreadPool.h"
 #include "../../../opendatacon/NullPort.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
@@ -39,10 +40,6 @@ TEST_CASE(SUITE("Triggers"))
 	auto portlib = LoadModule(GetLibFileName("FileTransferPort"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		newptr newPort = GetPortCreator(portlib, "FileTransfer");
 		REQUIRE(newPort);
 		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
@@ -58,6 +55,9 @@ TEST_CASE(SUITE("Triggers"))
 		PUT->Build();
 		Null.Build();
 		ClearFiles();
+
+		ThreadPool thread_pool(1);
+
 		PUT->Enable();
 		Null.Enable();
 		MakeFiles();
@@ -132,11 +132,6 @@ TEST_CASE(SUITE("Triggers"))
 		PUT->Disable();
 		Null.Disable();
 		ClearFiles();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	TestTearDown();
 	UnLoadModule(portlib);

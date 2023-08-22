@@ -400,9 +400,10 @@ TEST_CASE("TestForcedPoint")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
@@ -441,9 +442,10 @@ TEST_CASE("TestReleasePoint")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
@@ -479,9 +481,10 @@ TEST_CASE("TestAnalogEventToAll")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
@@ -521,9 +524,10 @@ TEST_CASE("TestBinaryEventToAll")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
@@ -563,9 +567,10 @@ TEST_CASE("TestBinaryEventQuality")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
@@ -605,9 +610,10 @@ TEST_CASE("TestAnalogEventQuality")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
@@ -647,9 +653,10 @@ TEST_CASE("TestBinaryEventTimestamp")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;
@@ -705,9 +712,10 @@ TEST_CASE("TestAnalogEventTimestamp")
 		REQUIRE(delete_sim);
 
 		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", GetTestConfigJSON()), delete_sim);
+		sim_port->Build();
+
 		ThreadPool thread_pool(1);
 
-		sim_port->Build();
 		sim_port->Enable();
 		while(!sim_port->Enabled())
 			;

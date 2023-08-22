@@ -32,11 +32,12 @@
 #include <unordered_map>
 #include <opendatacon/util.h>
 
+using namespace odc;
+
 class RateLimitTransform: public Transform
 {
 public:
-	RateLimitTransform(const Json::Value& params):
-		Transform(params)
+	RateLimitTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
 		std::string name = "DEFAULT";
 		if (params.isMember("Name") && params["Name"].isString())
@@ -79,7 +80,7 @@ public:
 	}
 
 private:
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		switch(event->GetEventType())
 		{
@@ -92,7 +93,7 @@ private:
 			case EventType::AnalogOutputStatus:
 				break;
 			default:
-				return true;
+				return (*pAllow)(event);
 		}
 		// check if rollover of update count period
 		auto eventTime = msSinceEpoch();
@@ -119,12 +120,12 @@ private:
 		if (rateStats->outputRate < rateStats->outputRateLimit * rateStats->updatePeriodMultiplier)
 		{
 			++rateStats->outputRate;
-			return true;
+			return (*pAllow)(event);
 		}
 		else
 		{
 			++rateStats->droppedUpdates;
-			return false;
+			return (*pAllow)(nullptr); //drop
 		}
 	}
 

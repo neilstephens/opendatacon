@@ -26,8 +26,10 @@
 
 #include "DataConcentrator.h"
 #include "NullPort.h"
+#include <opendatacon/IOTypesJSON.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/asio_syslog_spdlog_sink.h>
+#include <opendatacon/filter_spdlog_sink.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 #include <opendatacon/version.h>
@@ -40,6 +42,11 @@
 #include <set>
 
 size_t DataConcentrator::reload_disable_delay_s = 5;
+
+using filter_file_sink = odc::filter_spdlog_sink_mt<spdlog::sinks::rotating_file_sink_mt>;
+using filter_console_sink = odc::filter_spdlog_sink_mt<spdlog::sinks::stdout_color_sink_mt>;
+using filter_syslog_sink = odc::filter_spdlog_sink_mt<odc::asio_syslog_spdlog_sink_mt>;
+using filter_tcp_sink = odc::filter_spdlog_sink_mt<spdlog::sinks::ostream_sink_mt>;
 
 /*
    Whenever needed we will ask for all the Sinks present,
@@ -90,15 +97,6 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 	// Enable loading of libraries
 	InitLibaryLoading();
 
-	//Version
-	this->AddCommand("version", [](const ParamCollection &params) //"Print version information"
-		{
-			Json::Value result;
-			result["version"] = odc::version_string();
-			result["config version"] = odc::GetConfigVersion();
-			return result;
-		},"Return the version information of opendatacon.");
-
 	//Parse the configs and create all user interfaces, ports and connections
 	ProcessFile();
 
@@ -114,7 +112,6 @@ DataConcentrator::DataConcentrator(const std::string& FileName):
 void DataConcentrator::RefreshIUIResponders()
 {
 	RespondersMasterCopy.clear();
-	RespondersMasterCopy["OpenDataCon"] = this;
 	RespondersMasterCopy["DataPorts"] = &DataPorts;
 	RespondersMasterCopy["DataConnectors"] = &DataConnectors;
 	RespondersMasterCopy["Plugins"] = &Interfaces;
@@ -125,16 +122,24 @@ void DataConcentrator::RefreshIUIResponders()
 		if(ResponderPair.second && RespondersMasterCopy.count(ResponderPair.first) == 0)
 			RespondersMasterCopy.insert(ResponderPair);
 	}
+	for(auto& plugin : Interfaces)
+	{
+		auto ResponderPair = plugin.second->GetUIResponder();
+		//if it's a different, valid responder pair, store it
+		if(ResponderPair.second && RespondersMasterCopy.count(ResponderPair.first) == 0)
+			RespondersMasterCopy.insert(ResponderPair);
+	}
 }
 
 void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 {
-	interface->AddCommand("shutdown",[this](std::stringstream& ss)
+	interface->AddCommand("shutdown",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::thread([this](){this->Shutdown();}).detach();
+			return IUIResponder::GenerateResult("Success");
 		}
 		,"Shutdown opendatacon");
-	interface->AddCommand("reload_config",[this](std::stringstream& ss)
+	interface->AddCommand("reload_config",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::string filename;
 			if(!(ss >> filename))
@@ -151,101 +156,96 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 					else
 						this->ReloadConfig(filename);
 				}).detach();
+			return IUIResponder::GenerateResult("Initiated");
 		}
 		,"Reload config file(s). Detects changed or new Ports, Connectors and log levels. Usage: reload_config [<optional_filename> <optional_delay_override>]");
-	interface->AddCommand("version",[] (std::stringstream& ss)
+	interface->AddCommand("version",[] (std::stringstream& ss) -> Json::Value
 		{
-			std::cout<<"Release " << odc::version_string() <<std::endl
-			         <<"Submodules:"<<std::endl
-			         <<"\t"<<odc::submodules_version_string()<<std::endl
-			         <<"Running config: "<<odc::GetConfigVersion()<<std::endl;
+			std::istringstream ss_submodules(odc::submodules_version_string());
+			Json::CharReaderBuilder JSONReader;
+			Json::Value json_submodules;
+			Json::parseFromStream(JSONReader,ss_submodules, &json_submodules, nullptr);
+
+			Json::Value res;
+			res["Release"] = odc::version_string();
+			res["Submodules"] = json_submodules;
+			res["Running config"] = odc::GetConfigVersion();
+
+			return res;
 
 		},"Print version information");
-	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss)
+	interface->AddCommand("set_loglevel",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->SetLogLevel(ss);
+			return this->SetLogLevel(ss);
 		},"Set the threshold for logging");
-	interface->AddCommand("flush_logs",[] (std::stringstream& ss)
+	interface->AddCommand("whitelist_logfilter",[this] (std::stringstream& ss) -> Json::Value
+		{
+			return this->SetLogFilter(ss,true);
+		},"Set a regex filter to whitelist log messages. These act as exceptions to the blacklist filters (ie. whitelist is higher precedence)");
+	interface->AddCommand("blacklist_logfilter",[this] (std::stringstream& ss) -> Json::Value
+		{
+			return this->SetLogFilter(ss,false);
+		},"Set a regex filter to blacklist log messages. Useful for supressing annoying log messages when you're interested in messages at the same or lower level");
+	interface->AddCommand("remove_logfilter",[this] (std::stringstream& ss) -> Json::Value
+		{
+			return this->RemoveLogFilter(ss);
+		},"Remove a regex filter from a log sink.");
+	interface->AddCommand("ls_logfilters",[this] (std::stringstream& ss) -> Json::Value
+		{
+			return this->ListLogFilters();
+		},"List log sink filters");
+	interface->AddCommand("flush_logs",[] (std::stringstream& ss) -> Json::Value
 		{
 			odc::spdlog_flush_all();
+			return IUIResponder::GenerateResult("Success");
 		},"Flush all registered loggers and sinks");
-	interface->AddCommand("add_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("add_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->AddLogSink(ss);
+			return this->AddLogSink(ss);
 		},"Add a log sink. WARNING: May cause missed log messages momentarily");
-	interface->AddCommand("del_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("del_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->DeleteLogSink(ss);
+			return this->DeleteLogSink(ss);
 		},"Delete a log sink. WARNING: May cause missed log messages momentarily");
-	interface->AddCommand("ls_logsink",[this] (std::stringstream& ss)
+	interface->AddCommand("ls_logsink",[this] (std::stringstream& ss) -> Json::Value
 		{
-			this->ListLogSinks();
+			Json::Value res;
+			this->ListLogSinks(res);
+			return res;
 		},"List the names of all the log sinks");
+	interface->AddCommand("spoof_event",[this] (std::stringstream& ss) -> Json::Value
+		{
+			return SpoofEvent(ss);
+		},"Usage: spoof_event <sender IOHandler> <receiver IOHandler> <EventInfo JSON>. "
+		  R"(Example EventInfo: {"EventType":"ControlRelayOutputBlock","Index":1234,"SourcePort":"Fake","Payload":{"ControlCode":"LATCH_OFF"}} )"
+		  R"(Another: '{"EventType":"Analog","Index":34,"Timestamp":"2050-12-12 01:02:33.444","Payload":666}' )"
+		  R"(And Another: {"EventType":"Analog","Index":1,"QualityFlags":"COMM_LOST|LOCAL_FORCED"} ...Etc)");
 
 	interface->SetResponders(RespondersMasterCopy);
 }
 
 DataConcentrator::~DataConcentrator()
+{}
+
+inline void DataConcentrator::ListLogSinks(Json::Value& out)
 {
-	/*
-	  If there's a TCP sink, we need to destroy it
-	  because ostream will be destroyed
-	  Same for the syslog, because asio::io_service will be destroyed
-	  so let's destroy all except main console sink and file sink
-
-	  flush doesn't wait for the async Qs: '(
-	  it will only flushes the sinks
-	  only thing to do is give some time for the Qs to empty
-	 */
-
-	if (auto log = odc::spdlog_get("opendatacon"))
-	{
-		log->info("Destroying user log sinks");
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		log->flush();
-	}
-
-	//For detecting when erased sinks are destroyed
-	std::vector<std::weak_ptr<spdlog::sinks::sink>> weak_sinks;
-
-	std::vector<std::string> sink_names;
-	for (auto it = LogSinks.cbegin(); it != LogSinks.cend(); ++it)
-		sink_names.push_back(it->first);
-	for (const std::string& sink_name : sink_names)
-	{
-		if (!(sink_name == "file" || sink_name == "console"))
-		{
-			weak_sinks.push_back(LogSinks[sink_name]);
-			LogSinks.erase(sink_name);
-		}
-	}
-
-	ReloadLogSinks(LogSinks,0);
-
-	// Wait for all the sinks to be destroyed
-	for (auto weak_sink : weak_sinks)
-		while (!weak_sink.expired())
-			;
-}
-
-//FIXME: the following command functions shouldn't really print to the console,
-//	they should return values to be compatible with non-cosole UIs
-inline void DataConcentrator::ListLogSinks()
-{
-	std::cout << "Sinks:" << std::endl;
+	out["Sinks"] = Json::Value(Json::arrayValue);
+	Json::ArrayIndex n = 0;
 	for (auto it = LogSinks.begin(); it != LogSinks.end(); ++it)
-		std::cout << "\t" << it->first << std::endl;
+		out["Sinks"][n++] = it->first;
 }
-inline void DataConcentrator::ListLogLevels()
+inline void DataConcentrator::ListLogLevels(Json::Value& out)
 {
-	std::cout << "Levels:" << std::endl;
+	out["Levels"] = Json::Value(Json::arrayValue);
+	Json::ArrayIndex n = 0;
 	for(uint8_t i = 0; i < 7; i++)
-		std::cout << "\t" << spdlog::level::level_string_views[i].data() << std::endl;
+		out["Levels"][n++] = spdlog::level::level_string_views[i].data();
 }
 
 
-void DataConcentrator::SetLogLevel(std::stringstream& ss)
+Json::Value DataConcentrator::SetLogLevel(std::stringstream& ss)
 {
+	Json::Value result;
 	std::string sinkname;
 	std::string level_str;
 	if(ss>>sinkname && ss>>level_str)
@@ -260,28 +260,168 @@ void DataConcentrator::SetLogLevel(std::stringstream& ss)
 		if (!valid_name)
 		{
 			fail = true;
-			std::cout << "Log sink not found." << std::endl;
-			ListLogSinks();
+			result = IUIResponder::GenerateResult("Log sink not found.");
+			ListLogSinks(result);
 		}
 		auto new_level = spdlog::level::from_str(level_str);
 		if(new_level == spdlog::level::off && level_str != "off")
 		{
 			fail = true;
-			std::cout << "Invalid log level." << std::endl;
-			ListLogLevels();
+			result = IUIResponder::GenerateResult("Invalid log level.");
+			ListLogLevels(result);
 		}
 
 		if(!fail)
+		{
 			LogSinks[sinkname]->set_level(new_level);
-
-		return;
+			result = IUIResponder::GenerateResult("Success");
+		}
 	}
-	std::cout << "Usage: set_loglevel <sinkname> <level>" << std::endl;
-	ListLogSinks();
-	ListLogLevels();
+	else
+	{
+		result = IUIResponder::GenerateResult("Usage: set_loglevel <sinkname> <level>");
+		ListLogSinks(result);
+		ListLogLevels(result);
+	}
+	return result;
 }
 
-void DataConcentrator::AddLogSink(std::stringstream& ss)
+Json::Value DataConcentrator::SetLogFilter(std::stringstream& ss, bool isWhite)
+{
+	Json::Value result;
+	std::string sinkname;
+	std::string regx_str;
+	if(ss>>sinkname && ss>>regx_str)
+	{
+		bool valid_name = false;
+		for(const auto& sink : LogSinks)
+			if(sink.first == sinkname)
+				valid_name = true;
+
+		bool fail = false;
+
+		if (!valid_name)
+		{
+			fail = true;
+			result = IUIResponder::GenerateResult("Log sink not found.");
+			ListLogSinks(result);
+		}
+		else
+		{
+			auto filter_sink = std::dynamic_pointer_cast<odc::filter_sink>(LogSinks[sinkname]);
+			if(!filter_sink)
+			{
+				fail = true;
+				result = IUIResponder::GenerateResult("Chosen log sink doesn't support native filters");
+			}
+			else
+			{
+				try
+				{
+					filter_sink->AddFilter(regx_str,isWhite);
+				}
+				catch (const std::exception& e)
+				{
+					fail = true;
+					result = IUIResponder::GenerateResult(e.what());
+				}
+			}
+		}
+
+		if(!fail)
+			result = IUIResponder::GenerateResult("Success");
+	}
+	else
+	{
+		result = IUIResponder::GenerateResult("Usage: <white|black>list_logfilter <sinkname> <regex>");
+		ListLogSinks(result);
+	}
+	return result;
+}
+
+Json::Value DataConcentrator::RemoveLogFilter(std::stringstream& ss)
+{
+	Json::Value result;
+	std::string sinkname;
+	std::string regx_str;
+	if(ss>>sinkname && ss>>regx_str)
+	{
+		bool valid_name = false;
+		for(const auto& sink : LogSinks)
+			if(sink.first == sinkname)
+				valid_name = true;
+
+		bool fail = false;
+
+		if (!valid_name)
+		{
+			fail = true;
+			result = IUIResponder::GenerateResult("Log sink not found.");
+			ListLogSinks(result);
+		}
+		else
+		{
+			auto filter_sink = std::dynamic_pointer_cast<odc::filter_sink>(LogSinks[sinkname]);
+			if(!filter_sink)
+			{
+				fail = true;
+				result = IUIResponder::GenerateResult("Chosen log sink doesn't support native filters");
+			}
+			else if(filter_sink->RemoveFilter(regx_str) == 0)
+			{
+				fail = true;
+				result = IUIResponder::GenerateResult("Zero filters removed.");
+			}
+		}
+
+		if(!fail)
+			result = IUIResponder::GenerateResult("Success");
+	}
+	else
+	{
+		result = IUIResponder::GenerateResult("Usage: <white|black>list_logfilter <sinkname> <regex>");
+		ListLogSinks(result);
+	}
+	return result;
+}
+
+Json::Value DataConcentrator::ListLogFilters()
+{
+	auto result = Json::Value(Json::objectValue);
+	for(const auto& [sinkName,pSink] : LogSinks)
+	{
+		result[sinkName] = Json::Value(Json::objectValue);
+		auto pFilterSink = std::dynamic_pointer_cast<odc::filter_sink>(pSink);
+		if(pFilterSink)
+		{
+			for(const auto white : {true,false})
+				for(const auto& filt : pFilterSink->GetFilters(white))
+					result[sinkName][white ? "WhiteList" : "BlackList"].append(filt);
+		}
+	}
+	return result;
+}
+
+inline std::shared_ptr<spdlog::sinks::sink> MakeLuaLogSink(const std::string& Name, const std::string& LuaFile, const Json::Value& Config)
+{
+	std::string libfilename(GetLibFileName("LuaLogSink"));
+	auto LuaLogLib = LoadModule(libfilename);
+	if(!LuaLogLib)
+		throw std::runtime_error("Failed to load Lua library.");
+
+	auto new_lua_sink = reinterpret_cast<spdlog::sinks::sink*(*)(const std::string& Name, const std::string& LuaFile, const Json::Value& Config)>(LoadSymbol(LuaLogLib, "new_LuaLogSink"));
+	auto del_lua_sink = reinterpret_cast<void (*)(spdlog::sinks::sink* pLuaLogSink)>(LoadSymbol(LuaLogLib, "delete_LuaLogSink"));
+
+	auto cleanup = [=](spdlog::sinks::sink* pLuaSink)
+			   {
+				   del_lua_sink(pLuaSink);
+				   UnLoadModule(LuaLogLib);
+			   };
+
+	return std::shared_ptr<spdlog::sinks::sink>(new_lua_sink(Name, LuaFile, Config),[=](spdlog::sinks::sink* pLuaLogSink){cleanup(pLuaLogSink);});
+}
+
+Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 {
 	std::string sinkname;
 	std::string sinklevel;
@@ -310,14 +450,14 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 							if(ss>>app)
 								ss>>category;
 
-					auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink_mt>(
+					auto syslog_sink = std::make_shared<filter_syslog_sink>(
 						*pIOS,host,port,1,local_host,app,category);
 					syslog_sink->set_level(spdlog::level::off);
 					LogSinks[sinkname] = syslog_sink;
 				}
 				else
 				{
-					std::cout << "Usage: add_logsink <sinkname> <level> SYSLOG <host> [ <port> [ <localhost> [ <appname> [ <category> ]]]]" << std::endl;
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> SYSLOG <host> [ <port> [ <localhost> [ <appname> [ <category> ]]]]");
 				}
 			}
 			else if(sinktype == "TCP")
@@ -332,44 +472,86 @@ void DataConcentrator::AddLogSink(std::stringstream& ss)
 
 					if(pTCPostreams[sinkname])
 					{
-						auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams[sinkname], true);
+						auto tcp = std::make_shared<filter_tcp_sink>(*pTCPostreams[sinkname], true);
 						tcp->set_level(spdlog::level::off);
 						LogSinks[sinkname] = tcp;
 					}
 				}
 				else
 				{
-					std::cout << "Usage: add_logsink <sinkname> <level> TCP <host> <port> <client / server>" << std::endl;
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> TCP <host> <port> <client / server>");
 				}
 			}
 			else if(sinktype == "FILE")
 			{
-				//TODO: implement
-				std::cout << "Not implemented." << std::endl;
+				std::string filename;
+				if(ss>>filename)
+				{
+					size_t filesize_kb, filenum = 2;
+					if(ss>>filesize_kb)
+					{
+						if(!ss>>filenum)
+							filenum = 2;
+					}
+					else
+						filesize_kb = 5*1024;
+
+					auto file_sink = std::make_shared<filter_file_sink>(filename,filesize_kb*1024,filenum);
+
+					file_sink->set_level(spdlog::level::off);
+					LogSinks[sinkname] = file_sink;
+				}
+				else
+				{
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> FILE <base_filename> [ <filesize_kb:default=5*1024> [ <num_files_to_rotate:default=2> ]]");
+				}
+			}
+			else if(sinktype == "LUA")
+			{
+				std::string filename;
+				if(ss>>filename)
+				{
+					try
+					{
+						auto lualog_sink = MakeLuaLogSink(sinkname, filename, Json::Value(Json::objectValue));
+						lualog_sink->set_level(spdlog::level::off);
+						LogSinks[sinkname] = lualog_sink;
+					}
+					catch(const std::exception& e)
+					{
+						return IUIResponder::GenerateResult("Failed to create Lua log sink: "+std::string(e.what()));
+					}
+				}
+				else
+				{
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> LUA <script_filename>");
+				}
 			}
 			else
 			{
-				std::cout << "Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
-				return;
+				return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG|LUA> ...");
 			}
 			SetLogLevel(level_params);
 		}
 		else
 		{
-			std::cout << "Error: [" << sinkname << "] Log sink name already taken." << std::endl;
-			ListLogSinks();
-			return;
+			auto res = IUIResponder::GenerateResult("Error: ["+sinkname+"] Log sink name already taken.");
+			ListLogSinks(res);
+			return res;
 		}
 	}
 	else
 	{
-		std::cout << "Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG> ..." << std::endl;
+		return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> <TCP|FILE|SYSLOG|LUA> ...");
 	}
 
-	ReloadLogSinks(LogSinks,log_flush_period);
+	if(doReload)
+		ReloadLogSinks(LogSinks,log_flush_period);
+
+	return IUIResponder::GenerateResult("Success");
 }
 
-void DataConcentrator::DeleteLogSink(std::stringstream& ss)
+Json::Value DataConcentrator::DeleteLogSink(std::stringstream& ss)
 {
 	std::string sinkname;
 	if(ss>>sinkname)
@@ -380,32 +562,38 @@ void DataConcentrator::DeleteLogSink(std::stringstream& ss)
 		}
 		else
 		{
-			std::cout << "Log sink name doesn't exist." << std::endl;
-			ListLogSinks();
-			return;
+			auto res = IUIResponder::GenerateResult("Log sink name doesn't exist.");
+			ListLogSinks(res);
+			return res;
 		}
 	}
 	else
 	{
-		std::cout << "Usage: del_logsink <sinkname>" << std::endl;
+		return IUIResponder::GenerateResult("Usage: del_logsink <sinkname>");
 	}
 
 	ReloadLogSinks(LogSinks,log_flush_period);
+	return IUIResponder::GenerateResult("Success");
 }
 
 std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator::ConfigureLogSinks(const Json::Value& JSONRoot)
 {
 	//delete old ones in case this is a re-load
-	LogSinks.erase("tcp");
-	LogSinks.erase("syslog");
-	LogSinks.erase("file");
-	LogSinks.erase("console");
+	for(const auto& sinkname : ConfigLogSinkNames)
+		LogSinks.erase(sinkname);
+
+	//reload now to release holds on underlying objects for TCP sinks
 	ReloadLogSinks(LogSinks);
-	auto tcp_buf_it = TCPbufs.find("tcp");
-	if(tcp_buf_it != TCPbufs.end())
-		tcp_buf_it->second.DeInit();
-	pTCPostreams.erase("tcp");
-	TCPbufs.erase("tcp");
+	//now remove underlying TCP objects
+	for(const auto& sinkname : ConfigLogSinkNames)
+	{
+		auto tcp_buf_it = TCPbufs.find(sinkname);
+		if(tcp_buf_it != TCPbufs.end())
+			tcp_buf_it->second.DeInit();
+		pTCPostreams.erase(sinkname);
+		TCPbufs.erase(sinkname);
+	}
+	ConfigLogSinkNames.clear();
 
 	//setup log sinks
 	auto log_size_kb = JSONRoot.isMember("LogFileSizekB") ? JSONRoot["LogFileSizekB"].asUInt() : 5*1024;
@@ -426,14 +614,16 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	if(console_level == spdlog::level::off && console_level_name != "off")
 		console_level = spdlog::level::err;
 
-	auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_name, log_size_kb*1024, log_num);
-	auto console = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+	auto file = std::make_shared<filter_file_sink>(log_name, log_size_kb*1024, log_num);
+	auto console = std::make_shared<filter_console_sink>();
 
 	file->set_level(log_level);
 	console->set_level(console_level);
 
 	LogSinks["file"] = file;
 	LogSinks["console"] = console;
+	ConfigLogSinkNames.push_back("file");
+	ConfigLogSinkNames.push_back("console");
 
 	//TODO: document these config options
 	if(JSONRoot.isMember("SyslogLog"))
@@ -460,10 +650,44 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 			if(syslog_level == spdlog::level::off && syslog_level_name != "off")
 				syslog_level = log_level;
 
-			auto syslog_sink = std::make_shared<odc::asio_syslog_spdlog_sink_mt>(
+			auto syslog_sink = std::make_shared<filter_syslog_sink>(
 				*pIOS,host,port,1,local_host,app,category);
 			syslog_sink->set_level(syslog_level);
 			LogSinks["syslog"] = syslog_sink;
+			ConfigLogSinkNames.push_back("syslog");
+		}
+	}
+
+	//TODO: document these config options
+	if(JSONRoot.isMember("LuaLog"))
+	{
+		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+		auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
+
+		if(!JSONRoot["LuaLog"].isMember("LuaFile"))
+		{
+			temp_logger->error("LuaLog needs a 'LuaFile' field. Ignoring: ", JSONRoot["LuaLog"].toStyledString());
+		}
+		else
+		{
+			auto lualog_level_name = JSONRoot["LuaLog"].isMember("LogLevel") ? JSONRoot["LuaLog"]["LogLevel"].asString() : "";
+
+			auto lualog_level = spdlog::level::from_str(lualog_level_name);
+			//check for no match and set defaults
+			if(lualog_level == spdlog::level::off && lualog_level_name != "off")
+				lualog_level = log_level;
+
+			try
+			{
+				auto lualog_sink = MakeLuaLogSink("lualog", JSONRoot["LuaLog"]["LuaFile"].asString(), JSONRoot["LuaLog"]);
+				lualog_sink->set_level(lualog_level);
+				LogSinks["lualog"] = lualog_sink;
+				ConfigLogSinkNames.push_back("lualog");
+			}
+			catch(const std::exception& e)
+			{
+				temp_logger->error("{}",e.what());
+			}
 		}
 	}
 
@@ -501,9 +725,53 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 		if(tcp_level == spdlog::level::off && tcp_level_name != "off")
 			tcp_level = log_level;
 
-		auto tcp = std::make_shared<spdlog::sinks::ostream_sink_mt>(*pTCPostreams["tcp"], true);
+		auto tcp = std::make_shared<filter_tcp_sink>(*pTCPostreams["tcp"], true);
 		tcp->set_level(tcp_level);
 		LogSinks["tcp"] = tcp;
+		ConfigLogSinkNames.push_back("tcp");
+	}
+
+	if(JSONRoot.isMember("LogSinkAdditions"))
+	{
+		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
+		auto temp_logger = std::make_shared<spdlog::logger>("init", begin(sink_vec), end(sink_vec));
+
+		if(JSONRoot["LogSinkAdditions"].isArray())
+		{
+			for(const auto& sink_json : JSONRoot["LogSinkAdditions"])
+			{
+				if(!sink_json.isString())
+				{
+					temp_logger->error("LogSinkAdditions member not string: ", sink_json.toStyledString());
+					continue;
+				}
+				std::stringstream ss(sink_json.asString());
+				std::string cmd = ""; ss>>cmd;
+				auto pos = ss.tellg();
+				Json::Value result = Json::Value::nullSingleton();
+				if(cmd == "add_logsink")
+					result = AddLogSink(ss,false);
+				else if(cmd == "blacklist_logfilter")
+					result = SetLogFilter(ss,false);
+				else if(cmd == "whitelist_logfilter")
+					result = SetLogFilter(ss,true);
+				else
+					temp_logger->error("LogSinkAdditions member must begin with 'add_logsink', 'blacklist_logfilter', or 'whitelist_logfilter': ", result.toStyledString());
+				if(result == IUIResponder::GenerateResult("Success"))
+				{
+					std::string sinkname;
+					ss.seekg(pos);
+					ss>>sinkname;
+					ConfigLogSinkNames.push_back(sinkname);
+				}
+				else
+					temp_logger->error("LogSinkAdditions error adding sink: ", result.toStyledString());
+			}
+		}
+		else
+		{
+			temp_logger->error("LogSinkAdditions should be an array.", JSONRoot["LogSinkAdditions"].toStyledString());
+		}
 	}
 
 	if(JSONRoot.isMember("PeriodicLogFlushSecs"))
@@ -1560,19 +1828,42 @@ void DataConcentrator::Shutdown()
 			            Name_n_Port.second->Disable();
 				}
 
-			      if(auto log = odc::spdlog_get("opendatacon"))
+			      if (auto log = odc::spdlog_get("opendatacon"))
 			      {
-			            log->info("Finishing asynchronous tasks...");
-			            log->flush(); //for the benefit of tcp logger shutdown
+			            log->info("Destroying user log sinks");
+			//wait for async logging, so the sinks get the message before they're destroyed
+			            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			            log->flush();
 				}
 
-			      //shutdown tcp logger so it doesn't keep the io_service going
-			      for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+			      auto user_sinks = LogSinks;
+			      user_sinks.erase("file");
+			      user_sinks.erase("console");
+			      for (const auto& [sink_name,sink_ptr] : user_sinks)
+					LogSinks.erase(sink_name);
+			      ReloadLogSinks(LogSinks,0);
+
+			// Wait for spdlog to finish with the user sinks
+			// and make sure they're well flushed
+			      size_t max_refs;
+			      do
 			      {
-			            it->second.DeInit();
-			            if(LogSinks.find(it->first) != LogSinks.end())
-						LogSinks[it->first]->set_level(spdlog::level::off);
-				}
+			            max_refs = 0;
+			            for(const auto& [sink_name,sink_ptr] : user_sinks)
+			            {
+			                  size_t refs = sink_ptr.use_count();
+			                  max_refs = refs > max_refs ? refs : max_refs;
+			                  sink_ptr->flush();
+					}
+				} while(max_refs > 1);
+			      user_sinks.clear();
+
+			      if(auto log = odc::spdlog_get("opendatacon"))
+					log->info("Finishing asynchronous tasks...");
+
+			//shutdown tcp stream bufs so they don't keep the io_service going
+			      for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+					it->second.DeInit();
 
 			      ios_working.reset();
 			}
@@ -1592,4 +1883,29 @@ bool DataConcentrator::isShuttingDown()
 bool DataConcentrator::isShutDown()
 {
 	return shut_down;
+}
+
+Json::Value DataConcentrator::SpoofEvent(std::stringstream& ss, SharedStatusCallback_t callback)
+{
+	Json::Value result(Json::objectValue);
+	std::string snd_name,rcv_name,event_json_str;
+	if(ss>>snd_name && ss>>rcv_name && extract_delimited_string("'`/",ss,event_json_str))
+	{
+		auto rcv_it = IOHandler::GetIOHandlers().find(rcv_name);
+		auto end = IOHandler::GetIOHandlers().end();
+		if(rcv_it == end)
+			return IUIResponder::GenerateResult("Failed to find receiver IOHandler.");
+		try
+		{
+			auto event = EventInfoFromJson(event_json_str);
+			rcv_it->second->Event(event,snd_name,callback);
+		}
+		catch(const std::exception& e)
+		{
+			return IUIResponder::GenerateResult(e.what());
+		}
+		return IUIResponder::GenerateResult("Success");
+	}
+	else
+		return IUIResponder::GenerateResult("Usage: spoof_event <sender IOHandler> <receiver IOHandler> <EventInfo JSON>");
 }

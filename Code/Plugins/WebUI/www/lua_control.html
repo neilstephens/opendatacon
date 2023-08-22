@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+  <body>
+    <head>
+      <meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Opendatacon</title>
+
+      <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css">
+      <link rel="stylesheet" href="/node_modules/bootstrap_select/dist/css/bootstrap-select.css">
+
+      <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+      <script src="/node_modules/popper/dist/umd/popper.min.js"></script>
+      <script src="/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+      <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+      <script src="/node_modules/bootstrap_select/dist/js/bootstrap-select.min.js"></script>
+
+      <style>
+        .modal.simcontrol .modal-dialog {
+            width:1240px;
+            /* For responsive */
+            max-width:100%;
+            max-height:100%;
+        }
+
+        <span style="white-space: pre-line">@Model.CommentText</span>
+
+      </style>
+
+      <script>
+        $(function() {
+            $("#common_content").load("common.html");
+        });
+      </script>
+    </head>
+    <div class="container">
+
+      <!-- Overall Options -->
+      <div class="row">
+        <div class="col-sm-2">
+            <label for="max_q">Message Q Size:</label>
+            <input type="number" class="form-control" id="max_q" min="0" max="1000000" value="500">
+        </div>
+        <div class="col-sm-2">
+          <br>
+          <button type="button" onclick="set_q_size()">Apply</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" onclick="cancel_clear()">Cancel and clear all scripts</button>
+      <br>
+
+      <!-- Lua file selector, and Arguments inputs -->
+      <br>
+      <div class="row">
+          <div class="col-sm-3">
+              <label for="lua_file">Select a file:</label>
+              <input type="file" id="lua_file" name="lua_file" accept="text/plain,.lua">
+              <button type="button" onclick="file_load()">Load</button>
+          </div>
+          <div class="col-sm-9">
+              <label for="editor_args">Arguments:</label>
+              <input type="text" class="form-control" id="editor_args">
+          </div>
+      </div>
+
+      <!-- Syntax highlighted code editor - Powered by Ace (Ajax.org Cloud9 Editor) -->
+      <!-- https://github.com/ajaxorg/ace/wiki/Embedding-API                        -->
+
+      <label for="script_text_box">Edit</label>
+      <div id="editor" style="height: 500px; width: 950px">src</div>
+          
+      <script src="node_modules/ace/src-min-noconflict-luaonly/ace.js" type="text/javascript" charset="utf-8"></script>
+      <script>
+        var editor = ace.edit("editor");
+        editor.setTheme("ace/theme/cloud9_night");
+        editor.session.setMode("ace/mode/lua");
+        editor.setFontSize(16);
+      </script>
+
+      <!-- Controls Area - Execute, Stat, Cancel-->
+
+      <div class="row">
+          <div class="col-sm-2">
+              <label for="editor_id">ID:</label>
+              <input type="text" class="form-control" id="editor_id" value="MyID">
+          </div>
+          <div class="col-sm-3">
+            <br>
+            <button type="button" class="btn btn-primary btn-block" onclick="editor_execute()">Execute</button>
+          </div>
+          <div class="col-sm-3">
+            <br>
+            <button type="button" class="btn btn-primary btn-block" onclick="stat_execution()">Status</button>
+          </div>
+          <div class="col-sm-3">
+            <br>
+            <button type="button" class="btn btn-primary btn-block" onclick="cancel_execution()">Cancel</button>
+          </div>
+      </div>
+
+
+      <!-- Area where status messages pop up and fade out -->
+
+      <div class="alert alert-success" id="alert_command">
+        <strong>
+          <div id="alert_message"></div>
+        </strong>
+      </div>
+
+      <div>
+        <span style="white-space: pre;" id="script_status_area"></span>
+      </div>
+
+    </div>
+
+    <script>
+      
+      $(document).ready(function() {
+          $("#alert_command").hide();
+          const url = "/eg.lua";
+          $.post(url, {})
+              .done(function(data) {
+                  editor.setValue(data);
+                  editor.gotoLine(1);
+              });
+      });
+      
+      function cancel_clear() {
+          const url = "/LuaUICommander ClearAll";
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
+      
+      function set_q_size() {
+          const sz = document.getElementById("max_q").value;
+          const url = "/LuaUICommander MessageQueueSize "+sz;
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
+
+      function editor_execute() {
+          const luaCode = editor.getValue();
+          const luaID = document.getElementById("editor_id").value;
+          const luaArgs = document.getElementById("editor_args").value;
+          const url = "/LuaUICommander Base64Execute "+btoa(luaCode)+" "+luaID+" "+luaArgs;
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
+
+      function stat_execution() {
+          const luaID = document.getElementById("editor_id").value;
+          const url = "/LuaUICommander StatExecution "+luaID;
+          $.post(url, {})
+              .done(function(data) {
+                var result = JSON.stringify(data, null, 4);
+                document.getElementById("script_status_area").innerHTML=result;
+              });
+      }
+
+      function cancel_execution() {
+          const luaID = document.getElementById("editor_id").value;
+          const url = "/LuaUICommander CancelExecution "+luaID;
+          $.post(url, {})
+              .done(function(data) {
+                  var message = '';
+                  for (const [key, value] of Object.entries(data))
+                      message += key + " : " + value;
+                  display_alert_message(message);
+              });
+      }
+
+      function file_load(){
+          var fileToLoad = document.getElementById("lua_file").files[0];
+          
+          var fileReader = new FileReader();
+          fileReader.onload = function(fileLoadedEvent){
+              var textFromFileLoaded = fileLoadedEvent.target.result;
+              editor.setValue(textFromFileLoaded);
+          };
+
+          fileReader.readAsText(fileToLoad, "UTF-8");
+      }
+
+      function display_alert_message(message,time=3000) {
+          document.getElementById("alert_message").innerHTML = message;
+          $("#alert_command").show();
+          $("#alert_command").fadeTo(time, 500).slideUp(500, function() {
+              $("#alert_command").slideUp(500);
+          });
+      }
+
+    </script>
+  </body>
+</html>

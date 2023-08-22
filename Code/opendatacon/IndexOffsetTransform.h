@@ -35,7 +35,7 @@ using namespace odc;
 class IndexOffsetTransform: public Transform
 {
 public:
-	IndexOffsetTransform(const Json::Value& params): Transform(params)
+	IndexOffsetTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
 		if(params.isMember("Offset") && params["Offset"].isInt())
 			offset = params["Offset"].asInt();
@@ -45,14 +45,14 @@ public:
 			offset = 0;
 	}
 
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		if((event->GetIndex()+offset < UINT16_MAX) && (event->GetIndex()+offset > 0))
 		{
 			event->SetIndex(event->GetIndex()+offset);
-			return true;
+			return (*pAllow)(event);
 		}
-		return false;
+		return (*pAllow)(nullptr); //drop
 	}
 
 	int offset;

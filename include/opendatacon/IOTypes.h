@@ -150,21 +150,6 @@ enum class ControlCode : uint8_t
 	UNDEFINED = 15
 };
 
-enum class FeedbackType : uint8_t
-{
-	ANALOG = 1,
-	BINARY = 2,
-	BCD = 3,
-	UNDEFINED = 4
-};
-
-enum class PositionAction : uint8_t
-{
-	RAISE = 1,
-	LOWER = 2,
-	UNDEFINED = 3
-};
-
 //TODO: make these ToString functions faster
 //	use hash map cache
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
@@ -257,15 +242,6 @@ inline std::string ToString(const EventType et)
 	return "<no_string_representation>";
 }
 
-inline std::string ToString(const FeedbackType type)
-{
-	ENUMSTRING(type, FeedbackType, ANALOG            )
-	ENUMSTRING(type, FeedbackType, BINARY            )
-	ENUMSTRING(type, FeedbackType, BCD               )
-	ENUMSTRING(type, FeedbackType, UNDEFINED         )
-	return "<no_string_representation>";
-}
-
 //Quatilty flags that can be used for any EventType
 //Start with a superset of all the dnp3 type qualities
 enum class QualityFlags: uint16_t
@@ -300,6 +276,22 @@ inline std::string ToString(const QualityFlags q)
 	FLAGSTRING(QualityFlags,CHATTER_FILTER)
 	if(s == "|") return "|NONE|";
 	return s;
+}
+#define SINGLEFLAGSTRING(E,X) if(q == E::X) return #X;
+inline std::string SingleFlagString(const QualityFlags q)
+{
+	SINGLEFLAGSTRING(QualityFlags,NONE          )
+	SINGLEFLAGSTRING(QualityFlags,ONLINE        )
+	SINGLEFLAGSTRING(QualityFlags,RESTART       )
+	SINGLEFLAGSTRING(QualityFlags,COMM_LOST     )
+	SINGLEFLAGSTRING(QualityFlags,REMOTE_FORCED )
+	SINGLEFLAGSTRING(QualityFlags,LOCAL_FORCED  )
+	SINGLEFLAGSTRING(QualityFlags,OVERRANGE     )
+	SINGLEFLAGSTRING(QualityFlags,REFERENCE_ERR )
+	SINGLEFLAGSTRING(QualityFlags,ROLLOVER      )
+	SINGLEFLAGSTRING(QualityFlags,DISCONTINUITY )
+	SINGLEFLAGSTRING(QualityFlags,CHATTER_FILTER)
+	return "MULTIPLE_FLAGS";
 }
 
 struct ControlRelayOutputBlock
@@ -345,6 +337,33 @@ inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 	CHECKFLAGSTRING(CHATTER_FILTER);
 
 	return QualityResult;
+}
+
+inline CommandStatus CommandStatusFromString(const std::string& StrCommandStatus)
+{
+#define CHECKCSSTRING(C,X) if (StrCommandStatus == #X) return C::X
+	CHECKCSSTRING(CommandStatus,SUCCESS);
+	CHECKCSSTRING(CommandStatus,TIMEOUT);
+	CHECKCSSTRING(CommandStatus,NO_SELECT);
+	CHECKCSSTRING(CommandStatus,FORMAT_ERROR);
+	CHECKCSSTRING(CommandStatus,NOT_SUPPORTED);
+	CHECKCSSTRING(CommandStatus,ALREADY_ACTIVE);
+	CHECKCSSTRING(CommandStatus,HARDWARE_ERROR);
+	CHECKCSSTRING(CommandStatus,LOCAL);
+	CHECKCSSTRING(CommandStatus,TOO_MANY_OPS);
+	CHECKCSSTRING(CommandStatus,NOT_AUTHORIZED);
+	CHECKCSSTRING(CommandStatus,AUTOMATION_INHIBIT);
+	CHECKCSSTRING(CommandStatus,PROCESSING_LIMITED);
+	CHECKCSSTRING(CommandStatus,OUT_OF_RANGE);
+	CHECKCSSTRING(CommandStatus,DOWNSTREAM_LOCAL);
+	CHECKCSSTRING(CommandStatus,ALREADY_COMPLETE);
+	CHECKCSSTRING(CommandStatus,BLOCKED);
+	CHECKCSSTRING(CommandStatus,CANCELLED);
+	CHECKCSSTRING(CommandStatus,BLOCKED_OTHER_MASTER);
+	CHECKCSSTRING(CommandStatus,DOWNSTREAM_FAIL);
+	CHECKCSSTRING(CommandStatus,NON_PARTICIPATING);
+	CHECKCSSTRING(CommandStatus,UNDEFINED);
+	return CommandStatus::UNDEFINED;
 }
 
 //FIXME: this is an anti-pattern. Should be
@@ -420,30 +439,6 @@ inline EventType ToEventType(const std::string& str_type)
 	else if (to_lower(str_type) == "analog")
 		type = EventType::Analog;
 	return type;
-}
-
-inline FeedbackType ToFeedbackType(const std::string& str_type)
-{
-	FeedbackType type = FeedbackType::UNDEFINED;
-	if (to_lower(str_type) == "analog")
-		type = FeedbackType::ANALOG;
-	else if (to_lower(str_type) == "binary")
-		type = FeedbackType::BINARY;
-	else if (to_lower(str_type) == "bcd")
-		type = FeedbackType::BCD;
-	return type;
-}
-
-inline PositionAction ToPositionAction(const std::string& str_action)
-{
-	PositionAction action = PositionAction::UNDEFINED;
-	if (to_lower(str_action) == "raise")
-		action = PositionAction::RAISE;
-	else if (to_lower(str_action) == "lower")
-		action = PositionAction::LOWER;
-	else if (auto log = odc::spdlog_get("SimPort"))
-		log->error("Invalid action for Postion feedback (use 'RAISE' or 'LOWER') : '{}'", str_action);
-	return action;
 }
 
 //Map EventTypes to payload types

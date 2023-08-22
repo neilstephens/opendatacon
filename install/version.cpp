@@ -30,6 +30,6 @@ int main(int argc, char* argv[])
 {
 	std::cout<<"Release " << ODC_VERSION_STRING <<std::endl
 	         <<"Submodules:"<<std::endl
-	         <<"\t"<<ODC_VERSION_SUBMODULES<<std::endl;
+	         <<ODC_VERSION_SUBMODULES<<std::endl;
 	return 0;
 }

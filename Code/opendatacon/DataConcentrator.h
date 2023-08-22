@@ -48,7 +48,7 @@ void AddLogger(const std::string& name, const std::unordered_map<std::string, sp
 void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_ptr>& sinks, size_t flush_period_s = 0);
 
 class TestHook;
-class DataConcentrator: public ConfigParser, public IUIResponder
+class DataConcentrator: public ConfigParser
 {
 	friend class TestHook;
 public:
@@ -93,12 +93,16 @@ private:
 	std::unordered_map<std::string, TCPstringbuf> TCPbufs;
 	std::unordered_map<std::string, std::unique_ptr<std::ostream>> pTCPostreams;
 
+	std::vector<std::string> ConfigLogSinkNames;
 	std::unordered_map<std::string, spdlog::sink_ptr> LogSinks;
-	inline void ListLogSinks();
-	inline void ListLogLevels();
-	void SetLogLevel(std::stringstream& ss);
-	void AddLogSink(std::stringstream& ss);
-	void DeleteLogSink(std::stringstream& ss);
+	inline void ListLogSinks(Json::Value& out);
+	inline void ListLogLevels(Json::Value& out);
+	Json::Value SetLogLevel(std::stringstream& ss);
+	Json::Value SetLogFilter(std::stringstream& ss, bool isWhite);
+	Json::Value RemoveLogFilter(std::stringstream& ss);
+	Json::Value ListLogFilters();
+	Json::Value AddLogSink(std::stringstream& ss, bool doReload = true);
+	Json::Value DeleteLogSink(std::stringstream& ss);
 	size_t log_flush_period = 0;
 
 	void ParkThread();
@@ -106,6 +110,8 @@ private:
 	std::atomic_bool parking = false;
 	std::atomic<size_t> num_parked_threads = 0;
 	std::vector<std::thread> threads;
+
+	Json::Value SpoofEvent(std::stringstream& ss, SharedStatusCallback_t callback = std::make_shared<SharedStatusCallback_t::element_type>([](CommandStatus){}));
 };
 
 #endif /* DATACONCENTRATOR_H_ */

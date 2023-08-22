@@ -48,7 +48,7 @@ public:
 	int hotkeys(char c) override;
 
 	/* Implement IUI interface */
-	void AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc = "No description available\n") override final;
+	void AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc = "No description available\n") override final;
 	void Build() override;
 	void Enable() override;
 	void Disable() override final;
@@ -59,12 +59,9 @@ private:
 	std::unique_ptr<asio::thread> uithread;
 
 	/* tinyConsole functions */
-	std::map<std::string,std::function<void (std::stringstream&)> > mCmds;
+	std::map<std::string,CmdFunc_t> mCmds;
 	std::map<std::string,std::string> mDescriptions;
 	std::string help_intro;
-
-	/* Internal functions */
-	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args);
 
 	/* Internal functions for auto completion and console prompt handling */
 	void AddRootCommands(const std::string& cmd, std::vector<std::string>& matches);

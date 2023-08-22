@@ -1,6 +1,8 @@
 ExampleConfig/*
 Code/tests/Integration_tests/ConfStrings.cpp
+Code/tests/LuaPort_tests/ConfStrings.cpp
 Code/Libs/VersionStrings/version.h
+Code/Libs/LuaWrappers/DynamicSymbols.cpp
 _site/*
 .directory
 CMakeLists.txt.user

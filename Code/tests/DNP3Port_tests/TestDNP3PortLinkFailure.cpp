@@ -22,6 +22,7 @@
 
 #include "TestDNP3Helpers.h"
 #include "../PortLoader.h"
+#include "../ThreadPool.h"
 #include "../ManInTheMiddle.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
@@ -251,11 +252,6 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		INFO("Asio lifetime")
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
 		//This is to test the datacon/gateway situation where
 		//we want the link status of a master to be presented on the
 		//corresponding outstation as bad quality points and a comms point
@@ -278,6 +274,9 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 			//cross subscribe the two pairs for ODC events - usually a connector would be used, but we can go direct
 			downstream_pair.second->Subscribe(upstream_pair.first.get(),"UpstreamOS");
 			upstream_pair.first->Subscribe(downstream_pair.second.get(),"DownstreamMS");
+
+			INFO("Asio lifetime")
+			ThreadPool thread_pool(1);
 
 			downstream_pair.first->Enable();
 			upstream_pair.first->Enable();
@@ -375,11 +374,6 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 			upstream_pair.first->Disable();
 			downstream_pair.first->Disable();
 		} //lifetime of all test ojects
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);

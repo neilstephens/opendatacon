@@ -1,5 +1,5 @@
 [Unit]
-Description=OpenDataCon Service
+Description=Opendatacon Service
 Requires=network.target
 # Make sure the networkstack is up before we startup
 After=network.target

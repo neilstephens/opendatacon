@@ -95,7 +95,7 @@ void IOHandler::Event(ConnectState state, const std::string& SenderName)
 	MuxConnectionEvents(state, SenderName);
 }
 
-SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback)
+SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, SharedStatusCallback_t pStatusCallback) const
 {
 	if(pIOS == nullptr)
 	{

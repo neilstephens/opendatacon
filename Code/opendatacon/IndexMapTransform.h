@@ -34,7 +34,7 @@ using namespace odc;
 class IndexMapTransform: public Transform
 {
 public:
-	IndexMapTransform(const Json::Value& params): Transform(params)
+	IndexMapTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
 		auto load_map = [&params](const std::string& map_name, std::unordered_map<uint16_t,uint16_t>& map)
 				    {
@@ -53,7 +53,7 @@ public:
 		load_map("OctetStringMap",OctetStringMap);
 	}
 
-	bool Event(std::shared_ptr<EventInfo> event) override
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		auto map = &AnalogMap;
 		switch(event->GetEventType())
@@ -70,14 +70,14 @@ public:
 				map = &OctetStringMap;
 				break;
 			default:
-				return true;
+				return (*pAllow)(event);
 		}
 		if(map->count(event->GetIndex()))
 		{
 			event->SetIndex(map->at(event->GetIndex()));
-			return true;
+			return (*pAllow)(event);
 		}
-		return false;
+		return (*pAllow)(nullptr); //drop
 	}
 
 	std::unordered_map<uint16_t,uint16_t> AnalogMap;

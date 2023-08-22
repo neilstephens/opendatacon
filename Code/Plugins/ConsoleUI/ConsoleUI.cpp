@@ -26,15 +26,38 @@
 
 using namespace odc;
 
+std::string column_wrap(std::string input, const size_t target_width = 80, const size_t col_offset = 26)
+{
+	size_t width = 0;
+	bool passed_space = false;
+	for(size_t i=0; i < input.size(); i++)
+	{
+		passed_space = passed_space | (input[i] == ' ');
+		if(++width > target_width)
+		{
+			while(input[i] != ' ' && passed_space)
+				i--;
+			if(input[i] == ' ')
+			{
+				input.insert(i,"\n"+std::string(col_offset-2,' '));
+				i+=col_offset;
+				width = 0;
+				passed_space = false;
+			}
+		}
+	}
+	return input;
+}
+
 ConsoleUI::ConsoleUI():
 	tinyConsole("odc> "),
 	context("")
 {
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
 		  "the first argument is taken as a regex to match which items in the collection the "
-		  "command will run for. The remainer of the arguments should be parameter Name/Value pairs."
+		  "command will run for. The remainer of the arguments will be passed through to each element."
 		  "Eg. Collection Dosomething \".*OnlyAFewMatch.*\" arg_to_dosomething ...");
-	AddCommand("help",[this](std::stringstream& LineStream)
+	AddCommand("help",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string arg;
 			std::cout<<std::endl;
@@ -43,33 +66,31 @@ ConsoleUI::ConsoleUI():
 			      if(!mDescriptions.count(arg) && !Responders.count(arg))
 					std::cout<<"No such command or context: '"<<arg<<"'"<<std::endl;
 			      else if(mDescriptions.count(arg))
-					std::cout<<std::setw(25)<<std::left<<arg+":"<<mDescriptions[arg]<<std::endl<<std::endl;
+					std::cout<<std::setw(25)<<std::left<<arg+":"<<column_wrap(mDescriptions[arg])<<std::endl<<std::endl;
 			      else if(Responders.count(arg))
 			      {
 			            std::cout<<std::setw(25)<<std::left<<arg+":"<<
 			            "Access contextual subcommands:"<<std::endl<<std::endl;
-			/* list sub commands */
 			            auto commands = Responders[arg]->GetCommandList();
-			            for (const auto& command : commands)
+			            for (const auto& command : commands) //list sub commands
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[arg]->GetCommandDescription(cmd);
-			                  std::cout<<std::setw(25)<<std::left<<"\t"+cmd+":"<<desc<<std::endl<<std::endl;
+			                  std::cout<<std::setw(25)<<std::left<<"  "+cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
 					}
 				}
 			}
 			else
 			{
 			      std::cout<<help_intro<<std::endl<<std::endl;
-			//print root commands with descriptions
+			      std::cout<<"============ Root Commands ============"<<std::endl<<std::endl;
 			      for(const auto& desc: mDescriptions)
 			      {
-			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<desc.second<<std::endl<<std::endl;
+			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<column_wrap(desc.second)<<std::endl<<std::endl;
 				}
-			//if there is no context, print Responders
-			      if (this->context.empty())
+			      if (this->context.empty()) //if there is no context, print Responders
 			      {
-			//check if command matches a Responder - if so, arg is our partial sub command
+			            std::cout<<"============ Command Contexts ============"<<std::endl<<std::endl;
 			            for(const auto& name_n_responder : Responders)
 			            {
 			                  std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
@@ -78,19 +99,20 @@ ConsoleUI::ConsoleUI():
 				}
 			      else //we have context - list sub commands
 			      {
-			            /* list commands available to current responder */
+			            std::cout<<"============ Context Specific Commands ============"<<std::endl<<std::endl;
 			            auto commands = Responders[this->context]->GetCommandList();
 			            for (const auto& command : commands)
 			            {
 			                  auto cmd = command.asString();
 			                  auto desc = Responders[this->context]->GetCommandDescription(cmd);
-			                  std::cout<<std::setw(25)<<std::left<<cmd+":"<<desc<<std::endl<<std::endl;
+			                  std::cout<<std::setw(25)<<std::left<<cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
 					}
 			            std::cout<<std::setw(25)<<std::left<<"exit:"<<
 			            "Leave '"+context+"' context."<<std::endl<<std::endl;
 				}
 			}
 			std::cout<<std::endl;
+			return IUIResponder::GenerateResult("Success");
 		},"Get help on commands. Optional argument of specific command.");
 }
 
@@ -99,23 +121,10 @@ ConsoleUI::~ConsoleUI(void)
 	Disable();
 }
 
-void ConsoleUI::AddCommand(const std::string& name, std::function<void (std::stringstream&)> callback, const std::string& desc)
+void ConsoleUI::AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc)
 {
 	mCmds[name] = callback;
 	mDescriptions[name] = desc;
-
-	int width = 0;
-	for(size_t i=0; i < mDescriptions[name].size(); i++)
-	{
-		if(++width > 80)
-		{
-			while(mDescriptions[name][i] != ' ')
-				i--;
-			mDescriptions[name].insert(i,"\n                        ");
-			i+=26;
-			width = 0;
-		}
-	}
 }
 void ConsoleUI::AddHelp(std::string help)
 {
@@ -153,7 +162,7 @@ int ConsoleUI::trigger (const std::string& s)
 		}
 		else
 		{
-			ExecuteCommand(Responders[cmd],rcmd,LineStream);
+			std::cout<<ExecuteCommand(Responders[cmd],rcmd,LineStream).toStyledString()<<std::endl;
 		}
 	}
 	else if(!this->context.empty() && cmd == "exit")
@@ -167,19 +176,18 @@ int ConsoleUI::trigger (const std::string& s)
 		if(mCmds.count(cmd))
 		{
 			/* regular command */
-			mCmds[cmd](LineStream);
+			std::cout<<mCmds[cmd](LineStream).toStyledString()<<std::endl;
 		}
 		else
 		{
 			//contextual command
-			ExecuteCommand(Responders[this->context],cmd,LineStream);
+			std::cout<<ExecuteCommand(Responders[this->context],cmd,LineStream).toStyledString()<<std::endl;
 		}
 	}
 	else if(mCmds.count(cmd))
 	{
 		/* regular command */
-
-		mCmds[cmd](LineStream);
+		std::cout<<mCmds[cmd](LineStream).toStyledString()<<std::endl;
 	}
 	else
 	{
@@ -213,44 +221,6 @@ int ConsoleUI::hotkeys(char c)
 		return 1;
 	}
 	return 0;
-}
-
-void ConsoleUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args)
-{
-	ParamCollection params;
-
-	//Define first arg as Target regex
-	std::string T_regex_str;
-	extract_delimited_string("\"'`",args,T_regex_str);
-
-	//turn any regex it into a list of targets
-	Json::Value target_list;
-	if(!T_regex_str.empty())
-	{
-		params["Target"] = T_regex_str;
-		if(command != "List") //Use List to handle the regex for the other commands
-			target_list = pResponder->ExecuteCommand("List", params)["Items"];
-	}
-
-	int arg_num = 0;
-	std::string Val;
-	while(extract_delimited_string("\"'`",args,Val))
-		params[std::to_string(arg_num++)] = Val;
-
-	if(target_list.size() > 0) //there was a list resolved
-	{
-		for(auto& target : target_list)
-		{
-			params["Target"] = target.asString();
-			auto result = pResponder->ExecuteCommand(command, params);
-			std::cout<<target.asString()+":\n"<<result.toStyledString()<<std::endl;
-		}
-	}
-	else //There was no list - execute anyway
-	{
-		auto result = pResponder->ExecuteCommand(command, params);
-		std::cout<<result.toStyledString()<<std::endl;
-	}
 }
 
 void ConsoleUI::AddRootCommands(const std::string& cmd, std::vector<std::string>& matches)

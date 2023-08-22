@@ -157,11 +157,6 @@ std::string SimPortData::CurrentState(odc::EventType type, std::vector<std::size
 	return m_ppoint_data->CurrentState(type, indexes);
 }
 
-void SimPortData::Timer(const std::string& name, ptimer_t ptr)
-{
-	m_ppoint_data->Timer(name, ptr);
-}
-
 ptimer_t SimPortData::Timer(const std::string& name) const
 {
 	return m_ppoint_data->Timer(name);
@@ -194,9 +189,9 @@ std::vector<std::shared_ptr<BinaryFeedback>> SimPortData::BinaryFeedbacks(std::s
 
 void SimPortData::CreateBinaryControl(std::size_t index,
 	const std::string& port_source,
-	odc::FeedbackType type,
+	FeedbackType type,
 	const std::vector<std::size_t>& indexes,
-	const std::vector<odc::PositionAction>& action,
+	const std::vector<PositionAction>& action,
 	std::size_t lower_limit, std::size_t raise_limit,
 	double tap_step)
 {
