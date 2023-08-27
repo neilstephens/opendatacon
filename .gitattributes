@@ -1,12 +1,13 @@
 Code/scripts/gprof2dot.py linguist-vendored
 Code/Ports/SimPort/sqlite3/* linguist-vendored
 Code/Plugins/WebUI/www/node_modules/* linguist-vendored
-Code/Plugins/WebUI/www/DataTables-1.10.20/* linguist-vendored
-Code/Plugins/WebUI/www/common_modules/* linguist-vendored
+Code/Plugins/WebUI/www/DataTables-1.10.20/** linguist-vendored
+Code/Plugins/WebUI/www/common_modules/** linguist-vendored
+Code/Plugins/WebUI/www/node_modules/** linguist-vendored
 Code/Libs/JSON/json/* linguist-vendored
 Code/Libs/JSON/jsoncpp.cpp linguist-vendored
 Code/Libs/ODC/whereami* linguist-vendored
 include/catch* linguist-vendored
 include/whereami* linguist-vendored
 include/tromp* linguist-vendored
-
+Code/scripts/gprof2dot.py linguist-vendored
