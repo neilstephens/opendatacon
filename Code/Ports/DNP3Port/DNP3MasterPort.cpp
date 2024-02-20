@@ -95,8 +95,7 @@ void DNP3MasterPort::Disable()
 
 	if(stack_enabled)
 	{
-		stack_enabled = false;
-		pMaster->Disable(); //this will trigger comms down
+		DisableStack(); //this will trigger comms down
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: DNP3 stack disabled", Name);
 	}
@@ -411,7 +410,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
 			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time.value == 0)))
 			{
-			      event->SetTimestamp();
+				event->SetTimestamp();
 			}
 			PublishEvent(event);
 			pDB->Set(event);

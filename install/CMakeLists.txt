@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project (opendatacon_installer)
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.5)
  
 set(CPACK_PACKAGE_NAME "opendatacon")
 set(CPACK_PACKAGE_VENDOR "opendatacon.net")
