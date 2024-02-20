@@ -112,6 +112,8 @@ protected:
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
+	// Called when a valid link frame resets the keep alive timer
+	void OnKeepAliveReset() override;
 	// Called every application header receipt
 	void OnReceiveIIN(const opendnp3::IINField& iin) override;
 

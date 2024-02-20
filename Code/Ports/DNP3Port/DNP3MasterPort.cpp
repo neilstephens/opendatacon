@@ -288,6 +288,12 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 		log->debug("{}: KeepAliveSuccess() called.", Name);
 	pChanH->LinkUp();
 }
+// Called by OpenDNP3 Thread Pool
+// Called when a valid response resets the keep alive timer
+void DNP3MasterPort::OnKeepAliveReset()
+{
+	pChanH->LinkUp();
+}
 void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
