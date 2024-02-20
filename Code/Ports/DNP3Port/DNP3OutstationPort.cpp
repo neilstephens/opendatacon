@@ -41,7 +41,7 @@
 #include <limits>
 
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-	DNP3Port(aName, aConfFilename, aConfOverrides),
+	DNP3Port(aName, aConfFilename, aConfOverrides, false),
 	pOutstation(nullptr),
 	stack_enabled(false),
 	master_time_offset(0),
