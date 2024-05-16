@@ -5,7 +5,7 @@ Code/Libs/VersionStrings/version.h
 Code/Libs/LuaWrappers/DynamicSymbols.cpp
 _site/*
 .directory
-CMakeLists.txt.user
+CMakeLists.txt.user*
 .vscode*
 GPATH
 GRTAGS
