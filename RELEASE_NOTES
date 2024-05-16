@@ -1,4 +1,12 @@
-# opendatacon version 1.9.0
+# opendatacon version 1.9.1
+
+## 1.9.1
+  * Improved some UI commands to accept delimited strings
+  * DNP3Port:
+    * opendnp3 fixes:
+	  * Fixed the link layer keep-alive callbacks to allow proper state machine
+	  * Fixed link layer keep-alive timing
+	* Added ONDEMAND ServerType for DNP3Outstation
 
 ## 1.9.0
   * New plugins with embedded Lua!
