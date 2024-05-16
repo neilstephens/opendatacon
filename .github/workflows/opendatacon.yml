@@ -100,7 +100,7 @@ jobs:
       name: Setup MacOS Environment
       run: |
         brew install libmodbus socat openssl python
-        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt' >> $GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt' >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
 
     - if: contains(matrix.os,'ubuntu') && matrix.cross == 'none'
