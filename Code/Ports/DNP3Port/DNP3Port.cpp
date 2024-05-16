@@ -32,7 +32,7 @@
 #include <opendnp3/gen/Parity.h>
 #include <opendnp3/logging/LogLevels.h>
 
-DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
+DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool isMaster):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pChanH(std::make_unique<ChannelHandler>(this))
 {
@@ -59,7 +59,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	}
 
 	//the creation of a new DNP3PortConf will get the point details
-	pConf = std::make_unique<DNP3PortConf>(ConfFilename, ConfOverrides);
+	pConf = std::make_unique<DNP3PortConf>(ConfFilename, ConfOverrides, isMaster);
 
 	//We still may need to process the file (or overrides) to get Addr details:
 	ProcessFile();

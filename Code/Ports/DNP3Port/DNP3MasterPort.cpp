@@ -95,8 +95,7 @@ void DNP3MasterPort::Disable()
 
 	if(stack_enabled)
 	{
-		stack_enabled = false;
-		pMaster->Disable(); //this will trigger comms down
+		DisableStack(); //this will trigger comms down
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: DNP3 stack disabled", Name);
 	}
@@ -288,6 +287,12 @@ void DNP3MasterPort::OnKeepAliveSuccess()
 		log->debug("{}: KeepAliveSuccess() called.", Name);
 	pChanH->LinkUp();
 }
+// Called by OpenDNP3 Thread Pool
+// Called when a valid response resets the keep alive timer
+void DNP3MasterPort::OnKeepAliveReset()
+{
+	pChanH->LinkUp();
+}
 void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
@@ -405,7 +410,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
 			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time.value == 0)))
 			{
-			      event->SetTimestamp();
+				event->SetTimestamp();
 			}
 			PublishEvent(event);
 			pDB->Set(event);

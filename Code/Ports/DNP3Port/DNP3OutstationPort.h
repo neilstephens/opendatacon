@@ -53,7 +53,6 @@ protected:
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
 	void ChannelWatchdogTrigger(bool on) override;
-	std::atomic<msSinceEpoch_t> last_link_down_time = msSinceEpoch();
 
 	std::pair<std::string,const IUIResponder*> GetUIResponder() final;
 
@@ -67,6 +66,8 @@ protected:
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
+	// Called when a valid link frame resets the keep alive timer
+	void OnKeepAliveReset() override;
 	// Support for master setting time reference for events
 	inline bool SupportsWriteAbsoluteTime() override
 	{
@@ -74,9 +75,6 @@ protected:
 	}
 	bool WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp) override;
 	opendnp3::ApplicationIIN GetApplicationIIN() const override;
-
-	void LinkUpCheck();
-	std::shared_ptr<asio::steady_timer> pLinkUpCheckTimer = pIOS->make_steady_timer();
 
 	/// Implement opendnp3::ICommandHandler
 	void Begin() override {}
@@ -98,6 +96,7 @@ protected:
 
 private:
 	std::shared_ptr<opendnp3::IOutstation> pOutstation;
+	std::atomic_bool stack_enabled;
 	std::atomic<int64_t> master_time_offset;
 	mutable std::atomic<AppIINFlags> IINFlags;
 	std::atomic<msSinceEpoch_t> last_time_sync;
@@ -107,6 +106,17 @@ private:
 	void UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual);
 	template<typename T> void EventT(T meas, uint16_t index);
 	template<typename T> void EventT(T qual, uint16_t index, opendnp3::FlagsType FT);
+	void Event(odc::ConnectState state);
+	inline void EnableStack()
+	{
+		pOutstation->Enable();
+		stack_enabled = true;
+	}
+	inline void DisableStack()
+	{
+		stack_enabled = false;
+		pOutstation->Disable();
+	}
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);

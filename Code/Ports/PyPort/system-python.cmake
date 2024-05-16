@@ -66,13 +66,14 @@ if(NOT USE_PYTHON_SUBMODULE)
 		set(PYTHON_DEBUG_POSTFIX "_d")
 	endif()
 
+	#TODO: surely there's a cmake special "find_package" for Python these days...?
+
 	#import the python lib
 	find_library(PYTHON_LIBRARY_RELEASE
 		NAMES ${PYTHON_VER}m
 			${PYTHON_VER}
 			lib${PYTHON_VER}m
 			lib${PYTHON_VER}
-			libpython${PYTHON_NUM}
 			python${PYTHON_NUM}
 		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/libs ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
 		PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}
@@ -87,7 +88,6 @@ if(NOT USE_PYTHON_SUBMODULE)
 			${PYTHON_VER}${PYTHON_DEBUG_POSTFIX}
 			lib${PYTHON_VER}m${PYTHON_DEBUG_POSTFIX}
 			lib${PYTHON_VER}${PYTHON_DEBUG_POSTFIX}
-			libpython${PYTHON_NUM}${PYTHON_DEBUG_POSTFIX}
 			python${PYTHON_NUM}${PYTHON_DEBUG_POSTFIX}
 		PATHS ${PYTHON_HOME}/lib ${PYTHON_HOME}/libs ${PYTHON_HOME}/local/lib ${PYTHON_HOME}/lib64 ${PYTHON_HOME}/local/lib64
 		PATH_SUFFIXES ${CMAKE_LIBRARY_ARCHITECTURE}

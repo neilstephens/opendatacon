@@ -142,7 +142,7 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 	interface->AddCommand("reload_config",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::string filename;
-			if(!(ss >> filename))
+			if(!extract_delimited_string("'`/",ss,filename))
 				filename = "";
 			size_t reload_delay;
 			bool delay = false;
@@ -291,7 +291,7 @@ Json::Value DataConcentrator::SetLogFilter(std::stringstream& ss, bool isWhite)
 	Json::Value result;
 	std::string sinkname;
 	std::string regx_str;
-	if(ss>>sinkname && ss>>regx_str)
+	if(ss>>sinkname && extract_delimited_string("'`/",ss,regx_str))
 	{
 		bool valid_name = false;
 		for(const auto& sink : LogSinks)
@@ -344,7 +344,7 @@ Json::Value DataConcentrator::RemoveLogFilter(std::stringstream& ss)
 	Json::Value result;
 	std::string sinkname;
 	std::string regx_str;
-	if(ss>>sinkname && ss>>regx_str)
+	if(ss>>sinkname && extract_delimited_string("'`/",ss,regx_str))
 	{
 		bool valid_name = false;
 		for(const auto& sink : LogSinks)
@@ -485,7 +485,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 			else if(sinktype == "FILE")
 			{
 				std::string filename;
-				if(ss>>filename)
+				if(extract_delimited_string("'`/",ss,filename))
 				{
 					size_t filesize_kb, filenum = 2;
 					if(ss>>filesize_kb)
@@ -509,7 +509,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 			else if(sinktype == "LUA")
 			{
 				std::string filename;
-				if(ss>>filename)
+				if(extract_delimited_string("'`/",ss,filename))
 				{
 					try
 					{
@@ -1889,7 +1889,9 @@ Json::Value DataConcentrator::SpoofEvent(std::stringstream& ss, SharedStatusCall
 {
 	Json::Value result(Json::objectValue);
 	std::string snd_name,rcv_name,event_json_str;
-	if(ss>>snd_name && ss>>rcv_name && extract_delimited_string("'`/",ss,event_json_str))
+	if(extract_delimited_string("'`/",ss,snd_name)
+	   && extract_delimited_string("'`/",ss,rcv_name)
+	   && extract_delimited_string("'`/",ss,event_json_str))
 	{
 		auto rcv_it = IOHandler::GetIOHandlers().find(rcv_name);
 		auto end = IOHandler::GetIOHandlers().end();

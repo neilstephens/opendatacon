@@ -27,6 +27,7 @@
 #ifndef APPIINFLAGS_H
 #define APPIINFLAGS_H
 
+#include <cstdint>
 #include <opendatacon/EnumClassFlags.h>
 #include <string>
 

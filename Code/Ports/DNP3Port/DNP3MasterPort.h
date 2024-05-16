@@ -38,7 +38,7 @@ class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public open
 {
 public:
 	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
-		DNP3Port(aName, aConfFilename, aConfOverrides),
+		DNP3Port(aName, aConfFilename, aConfOverrides,true),
 		pMaster(nullptr),
 		stack_enabled(false),
 		assign_class_sent(false),
@@ -112,6 +112,8 @@ protected:
 	void OnKeepAliveFailure() override;
 	// Called when a keep alive message receives a valid response
 	void OnKeepAliveSuccess() override;
+	// Called when a valid link frame resets the keep alive timer
+	void OnKeepAliveReset() override;
 	// Called every application header receipt
 	void OnReceiveIIN(const opendnp3::IINField& iin) override;
 

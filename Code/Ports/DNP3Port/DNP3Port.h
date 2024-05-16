@@ -40,12 +40,12 @@ class DNP3Port: public DataPort
 	friend class ChannelHandler;
 	friend class ChannelLinksWatchdog;
 public:
-	DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
+	DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool isMaster);
 	~DNP3Port() override;
 
-	void Enable() override =0;
-	void Disable() override =0;
-	void Build() override =0;
+	void Enable() override = 0;
+	void Disable() override = 0;
+	void Build() override = 0;
 
 	//Override DataPort for UI
 	const Json::Value GetCurrentState() const override;
