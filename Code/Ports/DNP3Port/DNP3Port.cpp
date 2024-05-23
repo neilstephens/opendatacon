@@ -297,11 +297,11 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 				   && JSONRoot["TLSFiles"].isMember("PrivateKey"))
 				{
 					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::TLS;
-					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PeerCertFile =
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.PeerCertFile =
 						JSONRoot["TLSFiles"]["PeerCert"].asString();
-					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.LocalCertFile =
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.LocalCertFile =
 						JSONRoot["TLSFiles"]["LocalCert"].asString();
-					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSFiles.PrivateKeyFile =
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.PrivateKeyFile =
 						JSONRoot["TLSFiles"]["PrivateKey"].asString();
 				}
 				else
@@ -314,6 +314,54 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 						Eg["TLSFiles"]["PrivateKey"] = "/path/to/file";
 						log->warn("Reverting to TCP: TLS IPTransport requires TLSFiles config, Eg '{}'", Eg.asString());
 					}
+				}
+				if(JSONRoot.isMember("TLSAllowedVersions"))
+				{
+					if(JSONRoot["TLSAllowedVersions"].isArray())
+					{
+						static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv10 = false;
+						static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv11 = false;
+						static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv12 = false;
+						static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv13 = false;
+						for(Json::ArrayIndex n = 0; n < JSONRoot["TLSAllowedVersions"].size(); ++n)
+						{
+							bool invalidVer = false;
+							if(JSONRoot["TLSAllowedVersions"][n].isUInt())
+							{
+								auto Ver = JSONRoot["TLSAllowedVersions"][n].asUInt();
+								if(Ver == 10)
+									static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv10 = true;
+								else if (Ver == 11)
+									static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv11 = true;
+								else if (Ver == 12)
+									static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv12 = true;
+								else if (Ver == 13)
+									static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.allowTLSv13 = true;
+								else
+									invalidVer = true;
+							}
+							else
+								invalidVer = true;
+
+							if(invalidVer)
+							{
+								if(auto log = odc::spdlog_get("DNP3Port"))
+									log->error("Invalid entry in TLSAllowedVersions: Valid versions are 10,11,12,13.");
+							}
+						}
+					}
+					else
+					{
+						if(auto log = odc::spdlog_get("DNP3Port"))
+							log->error("TLSAllowedVersions should be a JSON array.");
+					}
+				}
+				if(JSONRoot.isMember("TLSCiphers"))
+				{
+					if(JSONRoot["TLSCiphers"].isString())
+						static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.cipherList = JSONRoot["TLSCiphers"].asString();
+					else if(auto log = odc::spdlog_get("DNP3Port"))
+						log->error("TLSCiphers should be a string.");
 				}
 			}
 			else if(JSONRoot["IPTransport"].asString() != "TCP")
