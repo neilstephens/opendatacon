@@ -92,6 +92,7 @@ struct DNP3AddrConf
 	uint16_t MasterAddr;
 	server_type_t ServerType;
 	WatchdogBark ChannelLinksWatchdogBark;
+	uint16_t ConnectionStabilityTimems; //How long the datalink layer has to stay up to publish 'connected'
 
 	DNP3AddrConf(bool isMaster):
 		SerialSettings(),
@@ -103,7 +104,8 @@ struct DNP3AddrConf
 		OutstationAddr(1),
 		MasterAddr(0),
 		ServerType(isMaster ? server_type_t::ONDEMAND : server_type_t::PERSISTENT),
-		ChannelLinksWatchdogBark(WatchdogBark::DEFAULT)
+		ChannelLinksWatchdogBark(WatchdogBark::DEFAULT),
+		ConnectionStabilityTimems(0)
 	{}
 };
 

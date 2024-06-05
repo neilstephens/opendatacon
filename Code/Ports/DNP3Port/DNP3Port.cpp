@@ -34,7 +34,8 @@
 
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool isMaster):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	pChanH(std::make_unique<ChannelHandler>(this))
+	pChanH(std::make_unique<ChannelHandler>(this)),
+	pConnectionStabilityTimer(pIOS->make_steady_timer())
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
@@ -428,5 +429,7 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 				log->warn("Invalid DNP3 Port ChannelLinksWatchdogBark: '{}'.", bark);
 		}
 	}
+	if(JSONRoot.isMember("ConnectionStabilityTimems"))
+		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ConnectionStabilityTimems = JSONRoot["ConnectionStabilityTimems"].asUInt();
 }
 

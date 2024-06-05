@@ -62,6 +62,7 @@ protected:
 		return weak_from_this();
 	}
 	std::unique_ptr<ChannelHandler> pChanH;
+	std::shared_ptr<asio::steady_timer> pConnectionStabilityTimer;
 	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 
 	virtual void ExtendCurrentState(Json::Value& state) const {}

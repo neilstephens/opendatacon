@@ -163,7 +163,7 @@ void DNP3MasterPort::SetCommsFailed()
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Setting {}, clearing {}, point quality.", Name, pConf->pPointConf->FlagsToSetOnLinkStatus, pConf->pPointConf->FlagsToClearOnLinkStatus);
+			log->debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
 
 		for (auto index : pConf->pPointConf->BinaryIndexes)
 		{
@@ -233,7 +233,18 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		PortUp();
 
 		// Notify subscribers that a connect event has occured
-		PublishEvent(ConnectState::CONNECTED);
+		if(pConf->mAddrConf.ConnectionStabilityTimems)
+		{
+			pConnectionStabilityTimer->expires_from_now(std::chrono::milliseconds(pConf->mAddrConf.ConnectionStabilityTimems));
+			pConnectionStabilityTimer->async_wait([this](asio::error_code err_code)
+				{
+					if(err_code)
+						return;
+					PublishEvent(ConnectState::CONNECTED);
+				});
+		}
+		else
+			PublishEvent(ConnectState::CONNECTED);
 
 		return;
 	}
@@ -245,7 +256,8 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
-		PublishEvent(ConnectState::DISCONNECTED);
+		if(!pConnectionStabilityTimer->cancel())
+			PublishEvent(ConnectState::DISCONNECTED);
 
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{
