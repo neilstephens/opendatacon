@@ -47,12 +47,12 @@ using Demands_t = std::map<std::string,bool>;
 class DemandMap
 {
 public:
-	bool InDemand(const std::string& ReceiverName);
+	bool InDemand(const std::string& ReceiverName) const;
 	bool MuxConnectionEvents(ConnectState state, const std::string& SenderName, const std::string& ReceiverName);
 	std::map<std::string,Demands_t> GetDemands();
 private:
 	std::map<std::string,Demands_t> connection_demands;
-	std::mutex mtx;
+	mutable std::mutex mtx;
 	//TODO: do it using asio
 	//asio::io_service::strand sync;
 };
@@ -89,7 +89,7 @@ protected:
 	const std::shared_ptr<odc::asio_service> pIOS;
 	std::atomic_bool enabled;
 
-	inline bool InDemand(){ return mDemandMap.InDemand(""); }
+	inline bool InDemand() const { return mDemandMap.InDemand(""); }
 	inline bool MuxConnectionEvents(ConnectState state, const std::string& SenderName, const std::string& ReceiverName = "")
 	{ return mDemandMap.MuxConnectionEvents(state, SenderName, ReceiverName); }
 

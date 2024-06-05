@@ -77,6 +77,7 @@ void LuaPort::Build()
 
 	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaPort");
 	ExportLuaPublishEvent();
+	ExportLuaInDemand();
 	luaL_openlibs(LuaState);
 
 	//load the lua code
@@ -169,8 +170,8 @@ void LuaPort::ExportLuaPublishEvent()
 			auto event = EventInfoFromLua(L,self->Name,"LuaPort",1);
 			if(!event)
 			{
-			      lua_pushboolean(L, false);
-			      return 1;
+				lua_pushboolean(L, false);
+				return 1;
 			}
 			if(event->GetSourcePort()=="")
 				event->SetSource(self->Name);
@@ -178,9 +179,9 @@ void LuaPort::ExportLuaPublishEvent()
 			//optional second arg is command status callback
 			if(lua_isfunction(L,2))
 			{
-			      lua_pushvalue(L,2);                             //push a copy, because luaL_ref pops
-			      auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
-			      auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self,h{self->handler_tracker}](CommandStatus status)
+				lua_pushvalue(L,2);                             //push a copy, because luaL_ref pops
+				auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
+				auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self,h{self->handler_tracker}](CommandStatus status)
 					{
 						auto lua_status = static_cast< std::underlying_type_t<odc::CommandStatus> >(status);
 						//get callback from the registry back on stack
@@ -193,15 +194,15 @@ void LuaPort::ExportLuaPublishEvent()
 						auto ret = lua_pcall(L,argc,retc,0);
 						if(ret != LUA_OK)
 						{
-						      std::string err = lua_tostring(L, -1);
-						      if(auto log = odc::spdlog_get("LuaPort"))
+							std::string err = lua_tostring(L, -1);
+							if(auto log = odc::spdlog_get("LuaPort"))
 								log->error("{}: Lua PublishEvent() callback error: {}",self->Name,err);
-						      lua_pop(L,1);
+							lua_pop(L,1);
 						}
 						//release the reference to the callback
 						luaL_unref(L, LUA_REGISTRYINDEX, LuaCBref);
 					}));
-			      self->PublishEvent(event, cb);
+				self->PublishEvent(event, cb);
 			}
 			else
 				self->PublishEvent(event);
@@ -210,6 +211,23 @@ void LuaPort::ExportLuaPublishEvent()
 			return 1; //number of lua ret vals pushed onto the stack
 		}, 1);
 	lua_setfield(LuaState,-2,"PublishEvent");
+}
+
+//This is only called from Build(), so no sync required.
+void LuaPort::ExportLuaInDemand()
+{
+	lua_getglobal(LuaState,"odc");
+	//push closure with one upvalue (to capture 'this')
+	lua_pushlightuserdata(LuaState, this);
+	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
+		{
+			//retrieve 'this'
+			auto self = static_cast<const LuaPort*>(lua_topointer(L, lua_upvalueindex(1)));
+			auto in_demand = self->InDemand();
+			lua_pushboolean(L, in_demand);
+			return 1;
+		}, 1);
+	lua_setfield(LuaState,-2,"InDemand");
 }
 
 //Must only be called from the the LuaState sync strand

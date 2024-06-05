@@ -55,10 +55,12 @@ void IOHandler::UnSubscribe(const std::string& aName)
 	this->Subscribers.erase(aName);
 }
 
-bool DemandMap::InDemand(const std::string& ReceiverName)
+bool DemandMap::InDemand(const std::string& ReceiverName) const
 {
 	std::lock_guard<std::mutex> lck (mtx);
-	for(const auto& demand : connection_demands[ReceiverName])
+	if(connection_demands.find(ReceiverName) == connection_demands.end())
+		return false;
+	for(const auto& demand : connection_demands.at(ReceiverName))
 		if(demand.second)
 			return true;
 	return false;
