@@ -150,6 +150,10 @@ enum BinaryPointType { DIG, MCA, MCB, MCC, BINCONTROL }; // Inputs and outputs
 enum AnalogCounterPointType { ANA, ANA6, ACC12, ACC24, ANACONTROL };
 enum PollGroupType { Scan, TimeSetCommand, SOEScan, SystemFlagScan };
 
+//FIXME: format properly using specialisation https://fmt.dev/latest/api.html#udt
+inline auto format_as(BinaryPointType bpt) { return fmt::underlying(bpt); }
+inline auto format_as(PollGroupType pgt) { return fmt::underlying(pgt); }
+
 #define MISSINGVALUE 0 // If we have a missing point or have no data, substitute this. MD3 it was 0x8000
 
 // Need to hold the packet position for each point. a number 1 to 16 and one of the enum options.
