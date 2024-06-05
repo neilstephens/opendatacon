@@ -52,18 +52,17 @@ endif()
 
 option(USE_OPENSSL "" SIMPLEWEB_SSL)
 option(USE_STANDALONE_ASIO "" ON)
-set(ASIO_PATH "${ASIO_HOME}/asio/include" CACHE PATH "")
+add_library(asio::asio ALIAS ODC)
 add_subdirectory(${SIMPLEWEB_HOME} Simple-Web-Server)
 #hide third party cmake options as advanced
 mark_as_advanced(FORCE Boost_INCLUDE_DIR)
 mark_as_advanced(FORCE BUILD_FUZZING)
 mark_as_advanced(FORCE BUILD_TESTING)
-mark_as_advanced(FORCE ASIO_PATH)
 mark_as_advanced(FORCE USE_OPENSSL)
 mark_as_advanced(FORCE USE_STANDALONE_ASIO)
 
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC simple-web-server)
+target_link_libraries(${PROJECT_NAME} simple-web-server)
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER plugins)
