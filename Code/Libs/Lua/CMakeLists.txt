@@ -18,10 +18,6 @@
  #	limitations under the License.
  # 
 project(Lua C)
-# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
-if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
-	cmake_policy(SET CMP0135 NEW)
-endif()
 
 include(FetchContent)
 
@@ -31,6 +27,7 @@ FetchContent_Declare(
 	lua
 	URL https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz
 	URL_HASH ${LUA_HASH}
+	DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 FetchContent_GetProperties(lua)
