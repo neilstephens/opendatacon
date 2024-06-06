@@ -19,6 +19,11 @@
  #
 cmake_minimum_required(VERSION 3.10)
 
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+	#Stop cmake warning about DOWNLOAD_EXTRACT_TIMESTAMP for FetchContent/ExternalProject
+	cmake_policy(SET CMP0135 NEW)
+endif()
+
 if(NOT WIN32)
 	set(BUILD_TYPE_INSTRUCTIONS "Choose the type of build, default Release, other options: Debug RelWithDebInfo MinSizeRel.")
 	if(CMAKE_BUILD_TYPE)

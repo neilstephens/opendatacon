@@ -27,7 +27,6 @@ FetchContent_Declare(
 	lua
 	URL https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz
 	URL_HASH ${LUA_HASH}
-	DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 FetchContent_GetProperties(lua)
