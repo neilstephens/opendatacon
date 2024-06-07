@@ -850,13 +850,13 @@ void MD3OutstationPort::Fn11AddTimeTaggedDataToResponseWords(uint8_t MaxEventCou
 		// The time date is seconds, the data block contains a msec entry.
 		// The time is accumulated from each event in the queue. If we have greater than 255 msec between events,
 		// add a time packet to bridge the gap.
-		
+
 		// Handle buffer overflow timetagged events - Point that is all zeros pt = MD3BinaryPoint(0, 0, 0, 0, BinaryPointType::TIMETAGGEDINPUT, 0, 0, 0);
 
 		if (CurrentPoint.IsOverFlowMarkerPoint())
 		{
 			ResponseWords.push_back(0);
-			ResponseWords.push_back(1);		// Time Tagged Buffer Overflow Flag Value. 2 is time sync failure, 3 is time sync resotation.
+			ResponseWords.push_back(1); // Time Tagged Buffer Overflow Flag Value. 2 is time sync failure, 3 is time sync resotation.
 		}
 		else
 		{
@@ -959,11 +959,11 @@ uint8_t MD3OutstationPort::CountBinaryBlocksWithChanges()
 		{
 			if (pt.GetChangedFlag())
 			{
-			// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
-			      if (lastblock != pt.GetModuleAddress())
-			      {
-			            lastblock = pt.GetModuleAddress();
-			            changedblocks++;
+				// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
+				if (lastblock != pt.GetModuleAddress())
+				{
+					lastblock = pt.GetModuleAddress();
+					changedblocks++;
 				}
 			}
 		});
@@ -1037,9 +1037,9 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(uint8_t StartModul
 
 			if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != ModuleAddress))
 			{
-			// We should save the module address so we have a list of modules that have changed
-			      ModuleList.push_back(ModuleAddress);
-			      LastModuleAddress = ModuleAddress;
+				// We should save the module address so we have a list of modules that have changed
+				ModuleList.push_back(ModuleAddress);
+				LastModuleAddress = ModuleAddress;
 			}
 		});
 
@@ -1055,9 +1055,9 @@ void MD3OutstationPort::BuildListOfModuleAddressesWithChanges(uint8_t StartModul
 
 				if (WeAreScanning && Point.GetChangedFlag() && (LastModuleAddress != ModuleAddress))
 				{
-				// We should save the module address so we have a list of modules that have changed
-				      ModuleList.push_back(ModuleAddress);
-				      LastModuleAddress = ModuleAddress;
+					// We should save the module address so we have a list of modules that have changed
+					ModuleList.push_back(ModuleAddress);
+					LastModuleAddress = ModuleAddress;
 				}
 			});
 	}
@@ -1208,7 +1208,6 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 	}
 
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
-	bool success = true;
 
 	// POM is only a single bit, so easy to do...
 	// For AUSGRID Systems, POM modules are always PULSE_ON, and what you pulse determines what happens (can be a trip or close)
@@ -1225,17 +1224,10 @@ void MD3OutstationPort::DoPOMControl(MD3BlockFn17MtoS &Header, MD3Message_t &Com
 
 	auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
 	event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
-
-	success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
-
-	if (success)
-	{
-		SendControlOK(Header);
-	}
-	else
-	{
-		SendControlOrScanRejected(Header);
-	}
+	Perform(event, waitforresult, std::make_shared<std::function<void(CommandStatus status)>>([this,Header](CommandStatus status)
+		{
+			status == CommandStatus::SUCCESS ? SendControlOK(Header) : SendControlOrScanRejected(Header);
+		}));
 }
 
 // DOM stands for DIGITAL.
@@ -1288,7 +1280,15 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 		return;
 	}
 
-	bool success = true;
+	auto pSuccess = std::make_shared<std::atomic_bool>(true);
+	auto pExecCount = std::make_shared<std::atomic_int8_t>(0);
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([this,Header,pSuccess,pExecCount](CommandStatus status)
+		{
+			if(status != CommandStatus::SUCCESS)
+				(*pSuccess) = false;
+			if(++(*pExecCount) == 16)
+				(*pSuccess) ? SendControlOK(Header) : SendControlOrScanRejected(Header);
+		});
 
 	// Send each of the DigitalOutputs
 	for (uint8_t i = 0; i < 16; i++)
@@ -1301,20 +1301,9 @@ void MD3OutstationPort::DoDOMControl(MD3BlockFn19MtoS &Header, MD3Message_t &Com
 			auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
 			event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
 
-			if (CommandStatus::SUCCESS != Perform(event, waitforresult)) // If no subscribers will return quickly.
-			{
-				success = false;
-			}
+			Perform(event, waitforresult, pStatusCallback);
 		}
-	}
-
-	if (success)
-	{
-		SendControlOK(Header);
-	}
-	else
-	{
-		SendControlOrScanRejected(Header);
+		(*pStatusCallback)(CommandStatus::SUCCESS);
 	}
 }
 
@@ -1398,7 +1387,10 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 	}
 
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
-	bool success = true;
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([this,Header](CommandStatus status)
+		{
+			status == CommandStatus::SUCCESS ? SendControlOK(Header) : SendControlOrScanRejected(Header);
+		});
 
 	if (CompleteMD3Message.size() == 3)
 	{
@@ -1409,7 +1401,7 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 
 			auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
 			event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
-			success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+			Perform(event, waitforresult, pStatusCallback);
 		}
 		else
 		{
@@ -1423,7 +1415,7 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 			val.offTimeMS = Header.GetControlSelection(); // Should be 9 for our case
 			auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
 			event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
-			success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
+			Perform(event, waitforresult, pStatusCallback);
 		}
 	}
 	else
@@ -1452,16 +1444,7 @@ void MD3OutstationPort::DoInputPointControl(MD3BlockFn20MtoS& Header, MD3Message
 
 		auto event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name);
 		event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(val));
-		success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
-	}
-
-	if (success )
-	{
-		SendControlOK(Header);
-	}
-	else
-	{
-		SendControlOrScanRejected(Header);
+		Perform(event, waitforresult, pStatusCallback);
 	}
 }
 
@@ -1499,6 +1482,12 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &Com
 	size_t ODCIndex = 0;
 	failed = MyPointConf->PointTable.GetAnalogControlODCIndexUsingMD3Index(Header.GetModuleAddress(), Header.GetChannel(), ODCIndex) ? failed : true;
 
+	if(failed)
+	{
+		SendControlOrScanRejected(Header);
+		return;
+	}
+
 	uint16_t output = Header.GetOutputFromSecondBlock(CompleteMD3Message[1]);
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
@@ -1507,15 +1496,10 @@ void MD3OutstationPort::DoAOMControl(MD3BlockFn23MtoS &Header, MD3Message_t &Com
 
 	auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name);
 	event->SetPayload<EventType::AnalogOutputInt16>(std::move(val));
-
-	if (!failed && (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS))
-	{
-		SendControlOK(Header);
-	}
-	else
-	{
-		SendControlOrScanRejected(Header);
-	}
+	Perform(event, waitforresult, std::make_shared<std::function<void(CommandStatus status)>>([this,Header](CommandStatus status)
+		{
+			status == CommandStatus::SUCCESS ? SendControlOK(Header) : SendControlOrScanRejected(Header);
+		}));
 }
 
 #ifdef _MSC_VER
@@ -1682,7 +1666,7 @@ void MD3OutstationPort::DoSystemFlagScan(MD3BlockFn52MtoS &Header, MD3Message_t 
 }
 
 // Function 15 Output
-void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
+void MD3OutstationPort::SendControlOK(const MD3BlockFormatted &Header)
 {
 	// The Control OK block seems to return the originating message first block, but with the function code changed to 15
 	MD3Message_t ResponseMD3Message;
@@ -1693,7 +1677,7 @@ void MD3OutstationPort::SendControlOK(MD3BlockFormatted &Header)
 	SendMD3Message(ResponseMD3Message);
 }
 // Function 30 Output
-void MD3OutstationPort::SendControlOrScanRejected(MD3BlockFormatted &Header)
+void MD3OutstationPort::SendControlOrScanRejected(const MD3BlockFormatted &Header)
 {
 	// The Control rejected block seems to return the originating message first block, but with the function code changed to 30
 	MD3Message_t ResponseMD3Message;

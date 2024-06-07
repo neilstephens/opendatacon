@@ -221,40 +221,19 @@ MD3Message_t MD3OutstationPort::CorruptMD3Message(const MD3Message_t& CompleteMD
 // If there is a master on that connector it will then send the command on down to the "real" outstation.
 // This method will be called in response to data appearing on our TCP connection.
 // Remember there can be multiple responders!
-//
-//TODO: This is the blocking code that Neil has talked about rewriting to use an async callback, so we dont get stuck here.
-
-CommandStatus MD3OutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult)
+void MD3OutstationPort::Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
-		return CommandStatus::UNDEFINED;
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
 
 	// The ODC calls will ALWAYS return (at some point) with success or failure. Time outs are done by the ports on the TCP communications that they do.
 	if (!waitforresult)
 	{
 		PublishEvent(event); // Could have a callback, but we are not waiting, so don't give it one!
-		return CommandStatus::SUCCESS;
+		(*pStatusCallback)(CommandStatus::SUCCESS);
 	}
 
-	//NEIL: enquire about the possibility of the opendnp3 API having a callback for the result that would avoid the below polling loop
-	std::atomic_bool cb_executed(false);
-	CommandStatus cb_status;
-	auto StatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([&cb_status,&cb_executed](CommandStatus status)
-		{
-			cb_status = status;
-			cb_executed = true;
-		});
-
-	PublishEvent(event, StatusCallback);
-
-	while (!cb_executed)
-	{
-		//This loop pegs a core and blocks the outstation strand,
-		//	but there's no other way to wait for the result.
-		//	We can maybe do some work while we wait.
-		pIOS->poll_one();
-	}
-	return cb_status;
+	PublishEvent(event, pStatusCallback);
 }
 
 #ifdef _MSC_VER

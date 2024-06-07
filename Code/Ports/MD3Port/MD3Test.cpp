@@ -3307,19 +3307,16 @@ TEST_CASE("Master - DOM and POM Tests")
 		MAResponse = "Not Set";
 		ms_response_ready = false;
 
-		IOS->post([MD3OSPort,&OSoutput,&OSwrite_buffer]()
-			{
-				MD3BlockFn19MtoS commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
-				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
+		MD3BlockFn19MtoS commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
+		MD3BlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
 
-				OSoutput << commandblock.ToBinaryString();
-				OSoutput << datablock.ToBinaryString();
+		OSoutput << commandblock.ToBinaryString();
+		OSoutput << datablock.ToBinaryString();
 
-				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
-			});
+		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer);
 
-		while(!ms_response_ready) //don't poll_one() here, or we might get stuck on the blocked job above
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		while(!ms_response_ready)
+			IOS->poll_one();
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
 		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == ("7c1321de0300" "80008003c300")); // Should be 1 DOM command.
@@ -3349,19 +3346,16 @@ TEST_CASE("Master - DOM and POM Tests")
 		MAResponse = "Not Set";
 		ms_response_ready = false;
 
-		IOS->post([MD3OSPort,&OSoutput,&OSwrite_buffer]()
-			{
-				MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
-				MD3BlockData datablock = commandblock.GenerateSecondBlock();
+		MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
+		MD3BlockData datablock = commandblock.GenerateSecondBlock();
 
-				OSoutput << commandblock.ToBinaryString();
-				OSoutput << datablock.ToBinaryString();
+		OSoutput << commandblock.ToBinaryString();
+		OSoutput << datablock.ToBinaryString();
 
-				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
-			});
+		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer);
 
-		while(!ms_response_ready) //don't poll_one() here, or we might get stuck on the blocked job above
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		while(!ms_response_ready)
+			IOS->poll_one();
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
 		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == ("7c1126003b00" "03d98000cc00")); // Should be 1 POM command.
