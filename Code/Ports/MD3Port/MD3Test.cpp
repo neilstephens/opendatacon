@@ -289,40 +289,40 @@ void Wait(odc::asio_service &IOS, const size_t seconds)
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
-	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = odc::asio_service::Get()
+	  TestSetup(Catch::getResultCapture().getCurrentTestName());\
+	  auto IOS = odc::asio_service::Get()
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
-	TestSetup(Catch::getResultCapture().getCurrentTestName())
+	  TestSetup(Catch::getResultCapture().getCurrentTestName())
 
 #define START_IOS(ThreadCount) \
-	LOGINFO("Starting ASIO Threads"); \
-	auto work = IOS->make_work(); /* To keep run - running!*/\
-	std::vector<std::thread> threads; \
-	for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
+	  LOGINFO("Starting ASIO Threads"); \
+	  auto work = IOS->make_work(); /* To keep run - running!*/\
+	  std::vector<std::thread> threads; \
+	  for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
-	LOGINFO("Shutting Down ASIO Threads");    \
-	work.reset();     \
-	IOS->run();       \
-	for (auto& t : threads) t.join()
+	  LOGINFO("Shutting Down ASIO Threads");    \
+	  work.reset();     \
+	  IOS->run();       \
+	  for (auto& t : threads) t.join()
 
 #define TEST_MD3MAPort(overridejson)\
-	auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
-	MD3MAPort->Build()
+	  auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
+	  MD3MAPort->Build()
 
 #define TEST_MD3MAPort2(overridejson)\
-	auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
-	MD3MAPort2->Build()
+	  auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
+	  MD3MAPort2->Build()
 
 #define TEST_MD3OSPort(overridejson)      \
-	auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
-	MD3OSPort->Build()
+	  auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
+	  MD3OSPort->Build()
 
 #define TEST_MD3OSPort2(overridejson)     \
-	auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
-	MD3OSPort2->Build()
+	  auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
+	  MD3OSPort2->Build()
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -3175,7 +3175,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
-	START_IOS(1);
+	START_IOS(3);
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
@@ -3318,8 +3318,8 @@ TEST_CASE("Master - DOM and POM Tests")
 				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
 			});
 
-		while(!ms_response_ready)
-			IOS->poll_one();
+		while(!ms_response_ready) //don't poll_one() here, or we might get stuck on the blocked job above
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
 		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == ("7c1321de0300" "80008003c300")); // Should be 1 DOM command.
@@ -3335,9 +3335,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		while(!os_response_ready)
 			IOS->poll_one();
 
-		//FIXME: Scott, Help! It doesn't pass anymore.
-		//	"fc1e215e6f00" == "fc0f21de6000"
-		//REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f21de6000"); // OK Command
+		REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f21de6000"); // OK Command
 	}
 
 
@@ -3362,8 +3360,8 @@ TEST_CASE("Master - DOM and POM Tests")
 				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
 			});
 
-		while(!ms_response_ready)
-			IOS->poll_one();
+		while(!ms_response_ready) //don't poll_one() here, or we might get stuck on the blocked job above
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 		// So the command we started above, will eventually result in an OK packet. But have to do the Master simulated TCP first...
 		REQUIRE(BuildASCIIHexStringfromBinaryString(MAResponse) == ("7c1126003b00" "03d98000cc00")); // Should be 1 POM command.
@@ -3380,9 +3378,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		while(!os_response_ready)
 			IOS->poll_one();
 
-		//FIXME: Scott, Help! It doesn't pass anymore.
-		//	"fc1e26507e00" == "fc0f26006000"
-		//REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f26006000"); // OK Command
+		REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f26006000"); // OK Command
 	}
 
 	MD3OSPort->Disable();
