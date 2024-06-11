@@ -233,18 +233,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		PortUp();
 
 		// Notify subscribers that a connect event has occured
-		if(pConf->mAddrConf.ConnectionStabilityTimems)
-		{
-			pConnectionStabilityTimer->expires_from_now(std::chrono::milliseconds(pConf->mAddrConf.ConnectionStabilityTimems));
-			pConnectionStabilityTimer->async_wait([this](asio::error_code err_code)
-				{
-					if(err_code)
-						return;
-					PublishEvent(ConnectState::CONNECTED);
-				});
-		}
-		else
-			PublishEvent(ConnectState::CONNECTED);
+		NotifyOfConnection();
 
 		return;
 	}
@@ -256,8 +245,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
-		if(!pConnectionStabilityTimer->cancel())
-			PublishEvent(ConnectState::DISCONNECTED);
+		NotifyOfDisconnection();
 
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{

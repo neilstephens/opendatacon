@@ -141,7 +141,7 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link up.", Name);
-		PublishEvent(ConnectState::CONNECTED);
+		NotifyOfConnection();
 	}
 
 	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
@@ -150,7 +150,7 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link down.", Name);
 
-		PublishEvent(ConnectState::DISCONNECTED);
+		NotifyOfDisconnection();
 
 		if(pConf->mAddrConf.ServerType == server_type_t::MANUAL
 		   ||(pConf->mAddrConf.ServerType == server_type_t::ONDEMAND && !InDemand()))

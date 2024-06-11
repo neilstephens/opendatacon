@@ -57,6 +57,8 @@ public:
 
 protected:
 	void InitEventDB();
+	void NotifyOfConnection();
+	void NotifyOfDisconnection();
 	inline std::weak_ptr<DataPort> ptr()
 	{
 		return weak_from_this();

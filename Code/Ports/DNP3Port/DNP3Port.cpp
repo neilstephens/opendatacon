@@ -99,6 +99,28 @@ void DNP3Port::InitEventDB()
 	pDB = std::make_unique<EventDB>(init_events);
 }
 
+void DNP3Port::NotifyOfConnection()
+{
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->mAddrConf.ConnectionStabilityTimems)
+	{
+		pConnectionStabilityTimer->expires_from_now(std::chrono::milliseconds(pConf->mAddrConf.ConnectionStabilityTimems));
+		pConnectionStabilityTimer->async_wait([this](asio::error_code err_code)
+			{
+				if(err_code)
+					return;
+				PublishEvent(ConnectState::CONNECTED);
+			});
+	}
+	else
+		PublishEvent(ConnectState::CONNECTED);
+}
+void DNP3Port::NotifyOfDisconnection()
+{
+	if(!pConnectionStabilityTimer->cancel())
+		PublishEvent(ConnectState::DISCONNECTED);
+}
+
 //DataPort function for UI
 const Json::Value DNP3Port::GetCurrentState() const
 {
