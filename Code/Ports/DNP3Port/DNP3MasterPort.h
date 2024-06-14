@@ -127,6 +127,7 @@ private:
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
 	void UpdateCommsPoint(bool isFailed);
+	void RePublishEvents();
 	void SetCommsGood();
 	void SetCommsFailed();
 	void CommsHeartBeat(bool isFailed);

@@ -712,6 +712,7 @@ public:
 	const msSinceEpoch_t& GetTimestamp() const { return Timestamp; }
 	const QualityFlags& GetQuality() const { return Quality; }
 	const std::string& GetSourcePort() const { return SourcePort; }
+	bool HasPayload() const { return pPayload; }
 
 	template<EventType t>
 	const typename EventTypePayload<t>::type& GetPayload() const

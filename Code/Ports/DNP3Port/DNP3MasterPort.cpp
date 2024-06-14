@@ -141,6 +141,37 @@ void DNP3MasterPort::UpdateCommsPoint(bool isFailed)
 	}
 }
 
+void DNP3MasterPort::RePublishEvents()
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: Re-publishing events.", Name);
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	for (auto index : pConf->pPointConf->BinaryIndexes)
+	{
+		auto ev = pDB->Get(EventType::Binary,index);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
+	for (auto index : pConf->pPointConf->AnalogIndexes)
+	{
+		auto ev = pDB->Get(EventType::Analog,index);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
+	for (auto index : pConf->pPointConf->OctetStringIndexes)
+	{
+		auto ev = pDB->Get(EventType::OctetString,index);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
+	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
+	{
+		auto ev = pDB->Get(EventType::Binary,pConf->pPointConf->mCommsPoint.second);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
+}
+
 void DNP3MasterPort::SetCommsGood()
 {
 	UpdateCommsPoint(false);
@@ -471,13 +502,8 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		if(state == ConnectState::PORT_UP)
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Upstream port enabled, re-publishing events.", Name);
-			for (auto index : pConf->pPointConf->BinaryIndexes)
-				PublishEvent(pDB->Get(EventType::Binary,index));
-			for (auto index : pConf->pPointConf->AnalogIndexes)
-				PublishEvent(pDB->Get(EventType::Analog,index));
-			if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
-				PublishEvent(pDB->Get(EventType::Binary,pConf->pPointConf->mCommsPoint.second));
+				log->info("{}: Upstream port enabled.", Name);
+			RePublishEvents();
 		}
 
 		// If an upstream port is connected, attempt a connection (if on demand)

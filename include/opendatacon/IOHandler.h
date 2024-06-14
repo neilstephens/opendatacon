@@ -122,6 +122,7 @@ protected:
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(const auto& IOHandler_pair: Subscribers)
 		{
+			//TODO: investigate log macro that won't evaluate args if it's not going to log
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->trace("{} {} Payload {} Event {} => {}", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);
 			if(shouldPost)
