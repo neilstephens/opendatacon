@@ -240,8 +240,6 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 
 	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
 	{
-		channel_stayed_up = (to == LinkDeadness::LinkDownChannelUp);
-
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
@@ -260,10 +258,6 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		}
 		return;
 	}
-
-	//if we get here, it's not link up or down, it's a channel up or down
-	if(to == LinkDeadness::LinkDownChannelDown)
-		channel_stayed_up = false;
 }
 
 void DNP3MasterPort::ChannelWatchdogTrigger(bool on)

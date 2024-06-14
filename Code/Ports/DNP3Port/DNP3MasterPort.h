@@ -60,7 +60,6 @@ protected:
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
 	void ChannelWatchdogTrigger(bool on) override;
-	bool channel_stayed_up = false; //keep track of the case where the link goes down and back up without the channel going down
 
 	void BeginFragment(const opendnp3::ResponseInfo& info) override {}
 	void EndFragment(const opendnp3::ResponseInfo& info) override {}
