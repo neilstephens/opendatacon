@@ -166,7 +166,7 @@ void DNP3OutstationPort::ChannelWatchdogTrigger(bool on)
 {
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
-	if(enabled)
+	if(stack_enabled)
 	{
 		if(on)
 			pOutstation->Disable();
