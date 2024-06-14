@@ -100,7 +100,7 @@ protected:
 		PublishEvent(event);
 	}
 
-	inline void PublishEvent(std::shared_ptr<EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){})) const
+	inline void PublishEvent(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){})) const
 	{
 		if(pIOS == nullptr)
 			throw std::runtime_error("Uninitialised io_service on enabled IOHandler");

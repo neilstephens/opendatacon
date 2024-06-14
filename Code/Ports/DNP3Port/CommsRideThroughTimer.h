@@ -37,10 +37,9 @@ public:
 		const uint32_t aTimeoutms,
 		std::function<void()>&& aCommsGoodCB,
 		std::function<void()>&& aCommsBadCB,
-		std::function<void(bool CommsIsBad)>&& aHeartBeatCB = [](bool){},
+		std::function<void(bool CommsIsBad)>&& aHeartBeatCB = [] (bool){},
 		const uint32_t aHeartBeatTimems = 0);
 	~CommsRideThroughTimer();
-	void ReassertCommsState();
 	void Trigger();
 	void FastForward();
 	void Cancel();

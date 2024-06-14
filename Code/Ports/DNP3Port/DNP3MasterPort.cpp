@@ -146,7 +146,7 @@ void DNP3MasterPort::SetCommsGood()
 	UpdateCommsPoint(false);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->pPointConf->SetQualityOnLinkStatus)
+	if(pConf->pPointConf->SetQualityOnLinkStatus && pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
 	{
 		// Trigger integrity scan to get point quality
 		// Only way to get true state upstream
@@ -233,6 +233,13 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Update the comms state point
 		PortUp();
 
+		if(IntegrityOnNextLinkUp || pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
+		{
+			IntegrityOnNextLinkUp = false;
+			if(IntegrityScan)
+				IntegrityScan->Demand();
+		}
+
 		// Notify subscribers that a connect event has occured
 		NotifyOfConnection();
 
@@ -270,7 +277,7 @@ void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
 		if(on)                    //don't mark the stack as disabled, because this is just a restart
 			pMaster->Disable(); //it will be enabled again shortly when the trigger is off
 		else
-			pMaster->Enable();
+			EnableStack();
 	}
 }
 
@@ -464,13 +471,13 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		if(state == ConnectState::PORT_UP)
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Upstream port enabled, reasserting comms state.", Name);
-			pCommsRideThroughTimer->ReassertCommsState();
-
-			//Reasserting comms state only does integrity scan if SetQualityOnLinkStatus is true
-			//So do an integrity scan here if needed
-			if (pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp && IntegrityScan && !pConf->pPointConf->SetQualityOnLinkStatus)
-				IntegrityScan->Demand();
+				log->info("{}: Upstream port enabled, re-publishing events.", Name);
+			for (auto index : pConf->pPointConf->BinaryIndexes)
+				PublishEvent(pDB->Get(EventType::Binary,index));
+			for (auto index : pConf->pPointConf->AnalogIndexes)
+				PublishEvent(pDB->Get(EventType::Analog,index));
+			if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
+				PublishEvent(pDB->Get(EventType::Binary,pConf->pPointConf->mCommsPoint.second));
 		}
 
 		// If an upstream port is connected, attempt a connection (if on demand)

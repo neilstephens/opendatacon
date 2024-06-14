@@ -81,6 +81,9 @@ public:
 	bool StartupIntegrityClass1;
 	bool StartupIntegrityClass2;
 	bool StartupIntegrityClass3;
+	/// When will the startup integrity scan be triggered
+	enum class LinkUpIntegrityTrigger_t { NEVER, ON_FIRST, ON_EVERY };
+	LinkUpIntegrityTrigger_t LinkUpIntegrityTrigger;
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	bool IntegrityOnEventOverflowIIN;
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
