@@ -1,6 +1,6 @@
-# opendatacon version 1.9.2
+# opendatacon version 1.9.3
 
-## 1.9.2
+## 1.9.3
   * DNP3Port
     * TLS version and ciphers settable in config
     * opendnp3 bugfixes/workarounds
@@ -8,6 +8,9 @@
       * TCP server would listen before any stations added or enabled
     * ConnectionStabilityTimems option to avoid ONDEMAND connections for short lived upstream connections
   * Updated dependencies
+
+## 1.9.2
+  * Broken release
 
 ## 1.9.1
   * Improved some UI commands to accept delimited strings
@@ -297,7 +300,7 @@ And now config file "Inherits" are supported.
   * Empty config filenames allowed, to allow entire config in overrides
   * Bugfixes 
 
-0.3.0
+## 0.3.0
   * Updated DNP3Port to use opendnp3 2.0.1*RC2
   * Creation of interface to create UI plug*ins
   * WebUI plug*in with SVG mimics (unstable)
