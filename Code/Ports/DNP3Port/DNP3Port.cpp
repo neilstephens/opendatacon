@@ -95,6 +95,8 @@ void DNP3Port::InitEventDB()
 		auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
 		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART, 0));
 	}
+	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART,0));
 
 	pDB = std::make_unique<EventDB>(init_events);
 }
@@ -202,6 +204,21 @@ const Json::Value DNP3Port::GetCurrentState() const
 			state["Value"] = event->GetPayloadString();
 		}
 		catch (std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = time_correction(event);
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
+	{
+		auto event = pDB->Get(EventType::Binary,pConf->pPointConf->mCommsPoint.second);
+		auto& state = ret[time_str]["Binaries"].append(Json::Value());
+		state["Index"] =  Json::UInt(event->GetIndex());
+		try
+		{
+			state["Value"] = event->GetPayload<EventType::Binary>();
+		}
+		catch(std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
 		state["Timestamp"] = time_correction(event);
