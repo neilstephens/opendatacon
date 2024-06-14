@@ -1,4 +1,13 @@
-# opendatacon version 1.9.1
+# opendatacon version 1.9.2
+
+## 1.9.2
+  * DNP3Port
+    * TLS version and ciphers settable in config
+    * opendnp3 bugfixes/workarounds
+      * DEVICE_RESTART and EVENT_BUFFER_OVERFLOW IINs weren't triggering an integrity scan
+      * TCP server would listen before any stations added or enabled
+    * ConnectionStabilityTimems option to avoid ONDEMAND connections for short lived upstream connections
+  * Updated dependencies
 
 ## 1.9.1
   * Improved some UI commands to accept delimited strings
