@@ -222,12 +222,12 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 			uint8_t ch = pt.GetChannel();
 			if (pt.GetPointType() == ANA6)
 			{
-			      uint16_t value = (63 - pt.GetAnalog()) & 0x03f; // ANA6 Are Inverted, 6 bit result only
+				uint16_t value = (63 - pt.GetAnalog()) & 0x03f; // ANA6 Are Inverted, 6 bit result only
 
-			      // Shift only if ch == 1 (it is in the top bits!)
-			      if (ch == 1)
+				// Shift only if ch == 1 (it is in the top bits!)
+				if (ch == 1)
 					Payload |= ShiftLeftResult16Bits(value, 6);
-			      else
+				else
 					Payload |= value;
 			}
 			else
@@ -253,49 +253,49 @@ uint16_t CBOutstationPort::GetPayload(uint8_t &Group, PayloadLocationType &paylo
 				uint8_t ch = pt.GetChannel();
 				if (pt.GetPointType() == DIG)
 				{
-				      if (pt.GetBinary() == 1)
-				      {
-				            if (MyPointConf->IsBakerDevice)
+					if (pt.GetBinary() == 1)
+					{
+						if (MyPointConf->IsBakerDevice)
 							Payload |= ShiftLeftResult16Bits(1, ch - 1); // ch 12 TO 1,
-				            else
+						else
 							Payload |= ShiftLeftResult16Bits(1, 12 - ch); // ch 1 TO 12, Just have to OR, we know it was zero initially.
 					}
 				}
 				else if ((pt.GetPointType() == MCA) || (pt.GetPointType() == MCB) || (pt.GetPointType() == MCC))
 				{
-				// Up to 6 x 2 bit blocks, channels 1 to 6.
-				// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
-				// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
-				// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
-				// We dont think about open or closed, we will just be getting a value of 1 or 0 from the real outstation, or a simulator. So we dont do inversion or anything like that.
-				// We do need to track the types of transision, and the point has a special field to do this.
+					// Up to 6 x 2 bit blocks, channels 1 to 6.
+					// MCA - The change bit is set when the input changes from open to closed (1-->0). The status bit is 0 when the contact is CLOSED.
+					// MCB - The change bit is set when the input changes from closed to open (0-->1). The status bit is 0 when the contact is OPEN.
+					// MCC - The change bit is set when the input has gone through more than one change of state. The status bit is 0 when the contact is OPEN.
+					// We dont think about open or closed, we will just be getting a value of 1 or 0 from the real outstation, or a simulator. So we dont do inversion or anything like that.
+					// We do need to track the types of transision, and the point has a special field to do this.
 
-				      // Set our bit and MC changed flag in the output. Data bit is first (low) then change bit (higher) So bit 11 = changea, bit 10 = data in 12 bit word - 11 highest bit.
-				      uint8_t result;
-				      bool MCS;
-				      pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
+					// Set our bit and MC changed flag in the output. Data bit is first (low) then change bit (higher) So bit 11 = changea, bit 10 = data in 12 bit word - 11 highest bit.
+					uint8_t result;
+					bool MCS;
+					pt.GetBinaryAndMCFlagWithFlagReset(result, MCS);
 
-				      if (pt.GetPointType() == MCA)
+					if (pt.GetPointType() == MCA)
 						result = !result; // MCA point on the wire is inverted. Closed == 0
 
-				      if (result == 1) // Status
-				      {
-				            if (MyPointConf->IsBakerDevice)
+					if (result == 1) // Status
+					{
+						if (MyPointConf->IsBakerDevice)
 							Payload |= ShiftLeftResult16Bits(1, 1 + (ch - 1) * 2); // ch 1 value is Bit 1
-				            else
+						else
 							Payload |= ShiftLeftResult16Bits(1, 10 - (ch - 1) * 2); // ch 1 value is bit 10
 					}
-				      if (MCS) // Change Flag
-				      {
-				            if (MyPointConf->IsBakerDevice)
+					if (MCS) // Change Flag
+					{
+						if (MyPointConf->IsBakerDevice)
 							Payload |= ShiftLeftResult16Bits(1, (ch - 1) * 2); // ch 1 status is Bit 0
-				            else
+						else
 							Payload |= ShiftLeftResult16Bits(1, 11 - (ch - 1) * 2); // ch 1 status is bit 11
 					}
 				}
 				else
 				{
-				      LOGERROR("{} Unhandled Binary Point type {} - no valid value returned",Name, pt.GetPointType());
+					LOGERROR("{} Unhandled Binary Point type {} - no valid value returned",Name, pt.GetPointType());
 				}
 				FoundMatch = true;
 			});
@@ -431,53 +431,64 @@ void CBOutstationPort::FuncSetAB(CBBlockData &Header, PendingCommandType::Comman
 
 void CBOutstationPort::ExecuteCommand(CBBlockData &Header)
 {
+	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus status)>>([this,Header](CommandStatus status)
+		{
+			// Don't respond if we failed.
+			if(status == CommandStatus::SUCCESS)
+			{
+				auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
+				CBMessage_t ResponseCBMessage;
+				ResponseCBMessage.push_back(firstblock);
+				SendCBMessage(ResponseCBMessage);
+			}
+			else
+			{
+				LOGDEBUG("{} We failed ({}) in the execute command, but have no way to send back this error ", Name, ToString(status));
+			}
+		});
+
 	// Now if there is a command to be executed - do so
-	bool success = true;
 	if (MyPointConf->IsBakerDevice && (Header.GetGroup() == 0))
 	{
 		LOGDEBUG("{} ExecuteCommand - Fn1 - Doing Baker Global Execute",Name);
 		// Baker (well DNMS) seems to use group 0 to execute any Command regardless of the group.
 		for (uint8_t i = 0; i < 16; i++)
 		{
-			if (!ExecuteCommandOnGroup(PendingCommands[i], i, false))
-				success = false;
+			ExecuteCommandOnGroup(PendingCommands[i], i, false, pStatusCallback);
 			PendingCommands[i].Command = PendingCommandType::CommandType::None;
 		}
 	}
 	else
 	{
 		LOGDEBUG("{} ExecuteCommand - Fn1, Group {}", Name, Header.GetGroup());
-		success = ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true);
+		ExecuteCommandOnGroup(PendingCommands[Header.GetGroup()], Header.GetGroup(), true, pStatusCallback);
 		PendingCommands[Header.GetGroup()].Command = PendingCommandType::CommandType::None;
 	}
-
-	if (!success)
-		return;
-
-	// Don't respond if we failed.
-	auto firstblock = CBBlockData(Header.GetStationAddress(), Header.GetGroup(), Header.GetFunctionCode(), 0, true);
-	CBMessage_t ResponseCBMessage;
-	ResponseCBMessage.push_back(firstblock);
-	SendCBMessage(ResponseCBMessage);
 }
 
-bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCommand, uint8_t Group, bool singlecommand)
+void CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCommand, uint8_t Group, bool singlecommand, SharedStatusCallback_t pStatusCallback)
 {
-	bool success = true;
-
 	if ((CBNowUTC() > PendingCommand.ExpiryTime) && (PendingCommand.Command != PendingCommandType::CommandType::None))
 	{
 		CBTime TimeDelta = CBNowUTC() - PendingCommand.ExpiryTime;
 		LOGDEBUG("{} Received an Execute Command, but the current command had expired - time delta {} msec", Name, TimeDelta);
-		return false;
+		(*pStatusCallback)(CommandStatus::TIMEOUT);
+		return;
 	}
 
 	switch (PendingCommand.Command)
 	{
 		case PendingCommandType::CommandType::None:
+		{
 			if (singlecommand)
+			{
 				LOGDEBUG("{} Received an Execute Command, but there is no current command",Name);
-			break;
+				(*pStatusCallback)(CommandStatus::NO_SELECT);
+			}
+			else
+				(*pStatusCallback)(CommandStatus::UNDEFINED);
+		}
+		break;
 
 		case PendingCommandType::CommandType::Trip:
 		{
@@ -490,7 +501,7 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 				Channel = 13 - Channel; // 1 to 12, Baker reverse control bit order
 
 			bool point_on = false; // Trip is OFF - causes OPEN = 0
-			success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(Channel), point_on);
+			ExecuteBinaryControl(Group, numeric_cast<uint8_t>(Channel), point_on, pStatusCallback);
 		}
 		break;
 
@@ -505,39 +516,35 @@ bool CBOutstationPort::ExecuteCommandOnGroup(const PendingCommandType& PendingCo
 				Channel = 13 - Channel; // 1 to 12, Baker reverse control bit order
 
 			bool point_on = true; // CLOSE is ON, causes CLOSED = 1
-			success = ExecuteBinaryControl(Group, numeric_cast<uint8_t>(Channel), point_on);
+			ExecuteBinaryControl(Group, numeric_cast<uint8_t>(Channel), point_on, pStatusCallback);
 		}
 		break;
 
 		case PendingCommandType::CommandType::SetA:
 		{
 			LOGDEBUG("{} Received an Execute Command, SetA",Name);
-			success = ExecuteAnalogControl(Group, 1, PendingCommand.Data);
+			ExecuteAnalogControl(Group, 1, PendingCommand.Data, pStatusCallback);
 		}
 		break;
 		case PendingCommandType::CommandType::SetB:
 		{
 			LOGDEBUG("{} Received an Execute Command, SetB",Name);
-			success = ExecuteAnalogControl(Group, 2, PendingCommand.Data);
+			ExecuteAnalogControl(Group, 2, PendingCommand.Data, pStatusCallback);
 		}
 		break;
 	}
-
-	//There is no way to respond using the bool success to indicate sucess or failure
-	if (!success)
-		LOGDEBUG("{} We failed in the execute command, but have no way to send back this error ",Name);
-	return success;
 }
 
 // Called when we get a Conitel Execute Command on an already setup trip/close command.
-bool CBOutstationPort::ExecuteBinaryControl(uint8_t group, uint8_t channel, bool point_on)
+void CBOutstationPort::ExecuteBinaryControl(uint8_t group, uint8_t channel, bool point_on, SharedStatusCallback_t pStatusCallback)
 {
 	size_t ODCIndex = 0;
 
 	if (!MyPointConf->PointTable.GetBinaryControlODCIndexUsingCBIndex(group, channel, ODCIndex))
 	{
 		LOGDEBUG("{} Could not find an ODC BinaryControl to match Group {}, channel {}", Name, group, channel);
-		return false;
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	// Set our output value. Only really used for testing
@@ -551,10 +558,9 @@ bool CBOutstationPort::ExecuteBinaryControl(uint8_t group, uint8_t channel, bool
 
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
-	bool success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
-	return success;
+	Perform(event, waitforresult, pStatusCallback);
 }
-bool CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint16_t data)
+void CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint16_t data, SharedStatusCallback_t pStatusCallback)
 {
 	// The Setbit+1 == channel
 	size_t ODCIndex = 0;
@@ -562,7 +568,8 @@ bool CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint
 	if (!MyPointConf->PointTable.GetAnalogControlODCIndexUsingCBIndex(group, channel, ODCIndex))
 	{
 		LOGDEBUG("{} Could not find an ODC AnalogControl to match Group {}, channel {}", Name, group, channel);
-		return false;
+		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 
 	// Set our output value. Only really used for testing
@@ -576,8 +583,7 @@ bool CBOutstationPort::ExecuteAnalogControl(uint8_t group, uint8_t channel, uint
 
 	bool waitforresult = !MyPointConf->StandAloneOutstation;
 
-	bool success = (Perform(event, waitforresult) == odc::CommandStatus::SUCCESS); // If no subscribers will return quickly.
-	return success;
+	Perform(event, waitforresult, pStatusCallback);
 }
 void CBOutstationPort::FuncMasterStationRequest(CBBlockData & Header, CBMessage_t & CompleteCBMessage)
 {
@@ -805,7 +811,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		PackedEvent.ValueBit = CurrentPoint.GetBinary() ? true : false;
 		if (CurrentPoint.GetPointType() == MCA)
 			PackedEvent.ValueBit = !PackedEvent.ValueBit; // MCA point on the wire is inverted. Closed == 0
-		
+
 		PackedEvent.QualityBit = false;
 
 		CBTime ChangedCorrectedTime = CurrentPoint.GetChangedTime() + (int64_t)((int64_t)SOETimeOffsetMinutes * 60 * 1000) + (int64_t)(SystemClockOffsetMilliSeconds);
@@ -813,7 +819,7 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 		bool FirstEvent = (LastPointTime == 0);
 
 		bool SendHoursAndMinutes = HoursMinutesHaveChanged(LastPointTime, ChangedCorrectedTime) || FirstEvent;
-		
+
 		LastPointTime = ChangedCorrectedTime;
 
 		// The time we send gets reduced to H:M:S.msec
@@ -937,11 +943,11 @@ uint8_t CBOutstationPort::CountBinaryBlocksWithChanges()
 		{
 			if (pt.GetChangedFlag())
 			{
-			// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
-			      if (lastblock != pt.GetGroup())
-			      {
-			            lastblock = pt.GetGroup();
-			            changedblocks++;
+				// Multiple bits can be changed in the block, but only the first one is required to trigger a send of the block.
+				if (lastblock != pt.GetGroup())
+				{
+					lastblock = pt.GetGroup();
+					changedblocks++;
 				}
 			}
 		});
@@ -1043,8 +1049,7 @@ bool CBOutstationPort::UIAdjustTimeOffsetMilliSeconds(const std::string& millise
 		return true;
 	}
 	catch (...)
-	{
-	}
+	{}
 	return false;
 }
 

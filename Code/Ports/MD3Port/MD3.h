@@ -134,6 +134,9 @@ enum PointType { Binary, Analog, Counter, BinaryControl, AnalogControl };
 enum BinaryPointType { BASICINPUT, TIMETAGGEDINPUT, DOMOUTPUT, POMOUTPUT, DIMOUTPUT };
 enum PollGroupType { BinaryPoints, AnalogPoints, CounterPoints, TimeSetCommand, NewTimeSetCommand, SystemFlagScan };
 
+//FIXME: format properly using specialisation https://fmt.dev/latest/api.html#udt
+inline auto format_as(PollGroupType pgt) { return fmt::underlying(pgt); }
+
 enum DIMControlSelectionType : uint8_t
 {
 	RESERVED_0 = 0,

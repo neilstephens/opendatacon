@@ -103,7 +103,7 @@ public:
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
+	void Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult, SharedStatusCallback_t pStatusCallback);
 
 	void SendMD3Message(const MD3Message_t & CompleteMD3Message) override;
 	MD3Message_t CorruptMD3Message(const MD3Message_t& CompleteMD3Message);
@@ -149,8 +149,8 @@ public:
 	void DoSetDateTimeNew(MD3BlockFn44MtoS & Header, MD3Message_t & CompleteMD3Message);
 	void DoSystemFlagScan(MD3BlockFn52MtoS & Header, MD3Message_t & CompleteMD3Message); // Fn 52
 
-	void SendControlOK(MD3BlockFormatted & Header);             // Fn 15
-	void SendControlOrScanRejected(MD3BlockFormatted & Header); // Fn 30
+	void SendControlOK(const MD3BlockFormatted &Header);              // Fn 15
+	void SendControlOrScanRejected(const MD3BlockFormatted & Header); // Fn 30
 
 	// UI Interactions
 	std::pair<std::string, const IUIResponder*> GetUIResponder() final;
@@ -159,7 +159,7 @@ public:
 	bool UISetSystemTimeIncorrectFlag(const std::string& active);
 	// Shift the control response channel from the correct set channel to an alternative channel.
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
-	bool UIRandomReponseDrop(const std::string& probability); // Zero probability = does not happen. 1 = every response is dropped
+	bool UIRandomReponseDrop(const std::string& probability);     // Zero probability = does not happen. 1 = every response is dropped
 
 	// Testing use only
 	MD3PointTableAccess *GetPointTable() { return &(MyPointConf->PointTable); }

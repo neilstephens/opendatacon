@@ -154,7 +154,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 						pChannel = pPort->IOMgr->AddTLSServer(ChannelID, pConf->LOG_LEVEL,
 							pConf->pPointConf->ServerAcceptMode,
 							opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
-							opendnp3::TLSConfig(pConf->mAddrConf.TLSFiles.PeerCertFile,pConf->mAddrConf.TLSFiles.LocalCertFile,pConf->mAddrConf.TLSFiles.PrivateKeyFile),
+							opendnp3::TLSConfig(pConf->mAddrConf.TLSConf.PeerCertFile,pConf->mAddrConf.TLSConf.LocalCertFile,pConf->mAddrConf.TLSConf.PrivateKeyFile),
 							listener);
 					}
 					else
@@ -177,7 +177,9 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms),
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms)),
 							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),"0.0.0.0",
-							opendnp3::TLSConfig(pConf->mAddrConf.TLSFiles.PeerCertFile,pConf->mAddrConf.TLSFiles.LocalCertFile,pConf->mAddrConf.TLSFiles.PrivateKeyFile),
+							opendnp3::TLSConfig(pConf->mAddrConf.TLSConf.PeerCertFile,pConf->mAddrConf.TLSConf.LocalCertFile,pConf->mAddrConf.TLSConf.PrivateKeyFile,
+								pConf->mAddrConf.TLSConf.allowTLSv10,pConf->mAddrConf.TLSConf.allowTLSv11,pConf->mAddrConf.TLSConf.allowTLSv12,
+								pConf->mAddrConf.TLSConf.allowTLSv13,pConf->mAddrConf.TLSConf.cipherList),
 							listener);
 					}
 					else

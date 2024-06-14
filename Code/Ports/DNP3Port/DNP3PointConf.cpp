@@ -61,8 +61,11 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	StartupIntegrityClass1(true),
 	StartupIntegrityClass2(true),
 	StartupIntegrityClass3(true),
+	LinkUpIntegrityTrigger(LinkUpIntegrityTrigger_t::ON_FIRST),
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	IntegrityOnEventOverflowIIN(true),
+	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
+	IgnoreRestartIIN(false),
 	/// Time delay beforce retrying a failed task
 	TaskRetryPeriodms(5000),
 	// Master Station scanning configuration
@@ -221,10 +224,27 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		StartupIntegrityClass2 = JSONRoot["StartupIntegrityClass2"].asBool();
 	if (JSONRoot.isMember("StartupIntegrityClass3"))
 		StartupIntegrityClass3 = JSONRoot["StartupIntegrityClass3"].asBool();
-
+	if (JSONRoot.isMember("LinkUpIntegrityTrigger"))
+	{
+		auto trig_str = JSONRoot["LinkUpIntegrityTrigger"].asString();
+		if(trig_str == "NEVER")
+			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::NEVER;
+		else if(trig_str == "ON_FIRST")
+			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::ON_FIRST;
+		else if(trig_str == "ON_EVERY")
+			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::ON_EVERY;
+		else
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->error("Invalid LinkUpIntegrityTrigger: {}, should be NEVER, ON_FIRST, or ON_EVERY - defaulting to ON_FIRST", trig_str);
+		}
+	}
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	if (JSONRoot.isMember("IntegrityOnEventOverflowIIN"))
 		IntegrityOnEventOverflowIIN = JSONRoot["IntegrityOnEventOverflowIIN"].asBool();
+	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
+	if (JSONRoot.isMember("IgnoreRestartIIN"))
+		IgnoreRestartIIN = JSONRoot["IgnoreRestartIIN"].asBool();
 	/// Time delay beforce retrying a failed task
 	if (JSONRoot.isMember("TaskRetryPeriodms"))
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();

@@ -544,7 +544,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						log->error("Error decoding AnalogControl value for index {}", point_pair.first);
 					return;
 				}
-				event->SetPayload<EventType::AnalogOutputInt16>(move(analogpayload));
+				event->SetPayload<EventType::AnalogOutputInt16>(std::move(analogpayload));
 
 				auto pStatusCallback =
 					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)

@@ -463,7 +463,9 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 		PyDateTime_IMPORT;
 
 		// Initialize threads and release GIL (saving it as well):
+		#ifndef PYTHON_36_ORLESS
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
+		#endif
 		if (!PyGILState_Check())
 			LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 

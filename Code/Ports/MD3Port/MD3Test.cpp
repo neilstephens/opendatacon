@@ -289,40 +289,40 @@ void Wait(odc::asio_service &IOS, const size_t seconds)
 
 // Don't like using macros, but we use the same test set up almost every time.
 #define STANDARD_TEST_SETUP()\
-	TestSetup(Catch::getResultCapture().getCurrentTestName());\
-	auto IOS = odc::asio_service::Get()
+	  TestSetup(Catch::getResultCapture().getCurrentTestName());\
+	  auto IOS = odc::asio_service::Get()
 
 // Used for tests that dont need IOS
 #define SIMPLE_TEST_SETUP()\
-	TestSetup(Catch::getResultCapture().getCurrentTestName())
+	  TestSetup(Catch::getResultCapture().getCurrentTestName())
 
 #define START_IOS(ThreadCount) \
-	LOGINFO("Starting ASIO Threads"); \
-	auto work = IOS->make_work(); /* To keep run - running!*/\
-	std::vector<std::thread> threads; \
-	for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
+	  LOGINFO("Starting ASIO Threads"); \
+	  auto work = IOS->make_work(); /* To keep run - running!*/\
+	  std::vector<std::thread> threads; \
+	  for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
-	LOGINFO("Shutting Down ASIO Threads");    \
-	work.reset();     \
-	IOS->run();       \
-	for (auto& t : threads) t.join()
+	  LOGINFO("Shutting Down ASIO Threads");    \
+	  work.reset();     \
+	  IOS->run();       \
+	  for (auto& t : threads) t.join()
 
 #define TEST_MD3MAPort(overridejson)\
-	auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
-	MD3MAPort->Build()
+	  auto MD3MAPort = std::make_shared<MD3MasterPort>("TestMaster", conffilename1, overridejson); \
+	  MD3MAPort->Build()
 
 #define TEST_MD3MAPort2(overridejson)\
-	auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
-	MD3MAPort2->Build()
+	  auto MD3MAPort2 = std::make_shared<MD3MasterPort>("TestMaster2", conffilename2, overridejson); \
+	  MD3MAPort2->Build()
 
 #define TEST_MD3OSPort(overridejson)      \
-	auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
-	MD3OSPort->Build()
+	  auto MD3OSPort = std::make_shared<MD3OutstationPort>("TestOutStation", conffilename1, overridejson);   \
+	  MD3OSPort->Build()
 
 #define TEST_MD3OSPort2(overridejson)     \
-	auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
-	MD3OSPort2->Build()
+	  auto MD3OSPort2 = std::make_shared<MD3OutstationPort>("TestOutStation2", conffilename2, overridejson); \
+	  MD3OSPort2->Build()
 
 #ifdef _MSC_VER
 #pragma endregion TEST_HELPERS
@@ -3175,7 +3175,7 @@ TEST_CASE("Master - DOM and POM Tests")
 	OSportoverride["StandAloneOutstation"] = false;
 	TEST_MD3OSPort(OSportoverride);
 
-	START_IOS(1);
+	START_IOS(3);
 
 	// The subscriber is just another port. MD3OSPort is registering to get MD3Port messages.
 	// Usually is a cross subscription, where each subscribes to the other.
@@ -3307,16 +3307,13 @@ TEST_CASE("Master - DOM and POM Tests")
 		MAResponse = "Not Set";
 		ms_response_ready = false;
 
-		IOS->post([MD3OSPort,&OSoutput,&OSwrite_buffer]()
-			{
-				MD3BlockFn19MtoS commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
-				MD3BlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
+		MD3BlockFn19MtoS commandblock(0x7C, 33);                           // DOM Module is 33 - only 1 point defined, so should only have one DOM command generated.
+		MD3BlockData datablock = commandblock.GenerateSecondBlock(0x8000); // Bit 0 ON? Top byte ON, bottom byte OFF
 
-				OSoutput << commandblock.ToBinaryString();
-				OSoutput << datablock.ToBinaryString();
+		OSoutput << commandblock.ToBinaryString();
+		OSoutput << datablock.ToBinaryString();
 
-				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
-			});
+		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer);
 
 		while(!ms_response_ready)
 			IOS->poll_one();
@@ -3335,9 +3332,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		while(!os_response_ready)
 			IOS->poll_one();
 
-		//FIXME: Scott, Help! It doesn't pass anymore.
-		//	"fc1e215e6f00" == "fc0f21de6000"
-		//REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f21de6000"); // OK Command
+		REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f21de6000"); // OK Command
 	}
 
 
@@ -3351,16 +3346,13 @@ TEST_CASE("Master - DOM and POM Tests")
 		MAResponse = "Not Set";
 		ms_response_ready = false;
 
-		IOS->post([MD3OSPort,&OSoutput,&OSwrite_buffer]()
-			{
-				MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
-				MD3BlockData datablock = commandblock.GenerateSecondBlock();
+		MD3BlockFn17MtoS commandblock(0x7C, 38, 0); // POM Module is 38, 116 to 123 Idx
+		MD3BlockData datablock = commandblock.GenerateSecondBlock();
 
-				OSoutput << commandblock.ToBinaryString();
-				OSoutput << datablock.ToBinaryString();
+		OSoutput << commandblock.ToBinaryString();
+		OSoutput << datablock.ToBinaryString();
 
-				MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer); // This one waits, but we need the code below executed..
-			});
+		MD3OSPort->InjectSimulatedTCPMessage(OSwrite_buffer);
 
 		while(!ms_response_ready)
 			IOS->poll_one();
@@ -3380,9 +3372,7 @@ TEST_CASE("Master - DOM and POM Tests")
 		while(!os_response_ready)
 			IOS->poll_one();
 
-		//FIXME: Scott, Help! It doesn't pass anymore.
-		//	"fc1e26507e00" == "fc0f26006000"
-		//REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f26006000"); // OK Command
+		REQUIRE(BuildASCIIHexStringfromBinaryString(OSResponse) == "fc0f26006000"); // OK Command
 	}
 
 	MD3OSPort->Disable();

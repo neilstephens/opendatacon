@@ -71,6 +71,7 @@ private:
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	void ExportLuaPublishEvent();
+	void ExportLuaInDemand();
 	void CallLuaGlobalVoidVoidFunc(const std::string& FnName);
 
 	lua_State* LuaState = luaL_newstate();

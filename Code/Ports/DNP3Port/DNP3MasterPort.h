@@ -43,6 +43,7 @@ public:
 		stack_enabled(false),
 		assign_class_sent(false),
 		IntegrityScan(nullptr),
+		IntegrityOnNextLinkUp(false),
 		pCommsRideThroughTimer(nullptr)
 	{}
 	~DNP3MasterPort() override;
@@ -60,7 +61,6 @@ protected:
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
 	void ChannelWatchdogTrigger(bool on) override;
-	bool channel_stayed_up = false; //keep track of the case where the link goes down and back up without the channel going down
 
 	void BeginFragment(const opendnp3::ResponseInfo& info) override {}
 	void EndFragment(const opendnp3::ResponseInfo& info) override {}
@@ -123,6 +123,7 @@ private:
 	std::atomic_bool stack_enabled;
 	bool assign_class_sent;
 	std::shared_ptr<opendnp3::IMasterScan> IntegrityScan;
+	bool IntegrityOnNextLinkUp;
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
 	void UpdateCommsPoint(bool isFailed);
@@ -136,16 +137,12 @@ private:
 	void PortDown();
 	inline void EnableStack()
 	{
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		if(pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
+			IntegrityOnNextLinkUp = true;
+
 		pMaster->Enable();
 		stack_enabled = true;
-
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-		//An integrity scan will happen on link up, unless quality doesn't need refreshing
-		//in which case, make sure it happens on start
-		if(pConf->pPointConf->SetQualityOnLinkStatus == false && IntegrityScan)
-		{
-			IntegrityScan->Demand();
-		}
 	}
 	inline void DisableStack()
 	{

@@ -1053,7 +1053,7 @@ public:
 class MD3BlockFn30StoM: public MD3BlockFormatted
 {
 public:
-	MD3BlockFn30StoM(MD3BlockData& parent, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
+	MD3BlockFn30StoM(const MD3BlockData& parent, bool APL = false, bool RSF = false, bool HRP = false, bool DCP = false)
 	{
 		// This Blockformat is a copy of the originating block header data, with the function code changed.
 		// We change the function code, change the direction bit, mark as last block and recalc the checksum.

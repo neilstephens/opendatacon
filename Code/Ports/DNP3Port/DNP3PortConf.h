@@ -59,11 +59,16 @@ inline std::string to_string(const IPTransport IPT)
 	}
 	return "UNKNOWN";
 }
-struct TLSFilesConf
+struct TLSConfig
 {
 	std::string PeerCertFile;
 	std::string LocalCertFile;
 	std::string PrivateKeyFile;
+	bool allowTLSv10 = false;
+	bool allowTLSv11 = false;
+	bool allowTLSv12 = true;
+	bool allowTLSv13 = true;
+	std::string cipherList = "";
 };
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 enum class WatchdogBark {ONFIRST,ONFINAL,NEVER,DEFAULT};
@@ -80,13 +85,14 @@ struct DNP3AddrConf
 	IPTransport Transport;
 
 	//TLS
-	TLSFilesConf TLSFiles;
+	TLSConfig TLSConf;
 
 	//Common
 	uint16_t OutstationAddr;
 	uint16_t MasterAddr;
 	server_type_t ServerType;
 	WatchdogBark ChannelLinksWatchdogBark;
+	uint16_t ConnectionStabilityTimems; //How long the datalink layer has to stay up to publish 'connected'
 
 	DNP3AddrConf(bool isMaster):
 		SerialSettings(),
@@ -98,7 +104,8 @@ struct DNP3AddrConf
 		OutstationAddr(1),
 		MasterAddr(0),
 		ServerType(isMaster ? server_type_t::ONDEMAND : server_type_t::PERSISTENT),
-		ChannelLinksWatchdogBark(WatchdogBark::DEFAULT)
+		ChannelLinksWatchdogBark(WatchdogBark::DEFAULT),
+		ConnectionStabilityTimems(0)
 	{}
 };
 

@@ -59,21 +59,6 @@ void CommsRideThroughTimer::HeartBeat()
 		}));
 }
 
-void CommsRideThroughTimer::ReassertCommsState()
-{
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
-	pTimerAccessStrand->post([weak_self]()
-		{
-			auto self = weak_self.lock();
-			if(!self)
-				return;
-			if(self->CommsIsBad)
-				self->CommsBadCB();
-			else
-				self->CommsGoodCB();
-		});
-}
-
 void CommsRideThroughTimer::Trigger()
 {
 	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
@@ -95,8 +80,8 @@ void CommsRideThroughTimer::Trigger()
 						return;
 					if(self->RideThroughInProgress)
 					{
-					      self->CommsBadCB();
-					      self->CommsIsBad = true;
+						self->CommsBadCB();
+						self->CommsIsBad = true;
 					}
 					self->RideThroughInProgress = false;
 				}));
@@ -126,13 +111,13 @@ void CommsRideThroughTimer::Cancel()
 				return;
 			if(self->RideThroughInProgress)
 			{
-			      self->RideThroughInProgress = false;
-			      self->pCommsRideThroughTimer->cancel();
+				self->RideThroughInProgress = false;
+				self->pCommsRideThroughTimer->cancel();
 			}
 			else
 			{
-			      self->CommsGoodCB();
-			      self->CommsIsBad = false;
+				self->CommsGoodCB();
+				self->CommsIsBad = false;
 			}
 		});
 }

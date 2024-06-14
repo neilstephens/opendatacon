@@ -73,7 +73,7 @@ public:
 		// 10 - SOE Overflow
 		// 11 - SOE Data Available
 		// We only implement 4, 5, 10, 11 as hard coded points. The rest can be defined as RST points which will be treated like digitals (so you can set their values in the Simulator)
-				// So we have some RST bits defined, we will now clear and then OR those bits with the "system maintained" bits.
+		// So we have some RST bits defined, we will now clear and then OR those bits with the "system maintained" bits.
 		Payload &= ~((0x1 << (11-11)) | (0x1 << (11-10)) | (0x1 << (11-5)) | (0x1 << (11-4))); // Clear (just in case someone defined an RST bit that clashes)
 
 		if (ControlIsolate)
@@ -146,7 +146,7 @@ public:
 	void Build() override;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
-	CommandStatus Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult);
+	void Perform(const std::shared_ptr<EventInfo>& event, bool waitforresult, SharedStatusCallback_t pStatusCallback);
 
 	void SendCBMessage(const CBMessage_t & CompleteCBMessage) override;
 	CBMessage_t CorruptCBMessage(const CBMessage_t& CompleteCBMessage);
@@ -161,9 +161,9 @@ public:
 	void FuncTripClose(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void FuncSetAB(CBBlockData & Header, PendingCommandType::CommandType pCommand);
 	void ExecuteCommand(CBBlockData & Header);
-	bool ExecuteCommandOnGroup(const PendingCommandType &PendingCommand, uint8_t Group, bool singlecommand);
-	bool ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on);
-	bool ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data);
+	void ExecuteCommandOnGroup(const PendingCommandType &PendingCommand, uint8_t Group, bool singlecommand, SharedStatusCallback_t pStatusCallback);
+	void ExecuteBinaryControl(uint8_t group, uint8_t Channel, bool point_on, SharedStatusCallback_t pStatusCallback);
+	void ExecuteAnalogControl(uint8_t group, uint8_t Channel, uint16_t data, SharedStatusCallback_t pStatusCallback);
 	void FuncMasterStationRequest(CBBlockData &Header, CBMessage_t &CompleteCBMessage);
 	void RemoteStatusWordResponse(CBBlockData& Header);
 	void FuncReSendSOEResponse(CBBlockData & Header);
@@ -190,8 +190,8 @@ public:
 	bool UIRandomReponseBitFlips(const std::string& probability); // Zero probability = does not happen. 1 = there is a bit flip in every response packet.
 	bool UIRandomReponseDrops(const std::string& probability);    // Zero probability = does not happen. 1 = there is a drop every response packet.
 	bool UIAdjustTimeOffsetMilliSeconds(const std::string& millisecondoffset);
-	bool UISetRTUReStartFlag(const std::string& active);		  // Set the Watchdog Timer bit in the RSW
-	bool UISetRTUControlIsolateFlag(const std::string& active);	  // Set the Control Isolate bit in the RSW
+	bool UISetRTUReStartFlag(const std::string& active);        // Set the Watchdog Timer bit in the RSW
+	bool UISetRTUControlIsolateFlag(const std::string& active); // Set the Control Isolate bit in the RSW
 
 
 	// Testing use only

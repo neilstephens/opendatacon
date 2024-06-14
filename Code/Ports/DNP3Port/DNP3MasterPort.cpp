@@ -35,6 +35,7 @@
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
+#include <opendnp3/app/IINField.h>
 
 
 DNP3MasterPort::~DNP3MasterPort()
@@ -145,7 +146,7 @@ void DNP3MasterPort::SetCommsGood()
 	UpdateCommsPoint(false);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->pPointConf->SetQualityOnLinkStatus)
+	if(pConf->pPointConf->SetQualityOnLinkStatus && pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
 	{
 		// Trigger integrity scan to get point quality
 		// Only way to get true state upstream
@@ -163,7 +164,7 @@ void DNP3MasterPort::SetCommsFailed()
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Setting {}, clearing {}, point quality.", Name, pConf->pPointConf->FlagsToSetOnLinkStatus, pConf->pPointConf->FlagsToClearOnLinkStatus);
+			log->debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
 
 		for (auto index : pConf->pPointConf->BinaryIndexes)
 		{
@@ -232,20 +233,25 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Update the comms state point
 		PortUp();
 
+		if(IntegrityOnNextLinkUp || pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
+		{
+			IntegrityOnNextLinkUp = false;
+			if(IntegrityScan)
+				IntegrityScan->Demand();
+		}
+
 		// Notify subscribers that a connect event has occured
-		PublishEvent(ConnectState::CONNECTED);
+		NotifyOfConnection();
 
 		return;
 	}
 
 	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
 	{
-		channel_stayed_up = (to == LinkDeadness::LinkDownChannelUp);
-
 		PortDown();
 
 		// Notify subscribers that a disconnect event has occured
-		PublishEvent(ConnectState::DISCONNECTED);
+		NotifyOfDisconnection();
 
 		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
 		{
@@ -260,10 +266,6 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		}
 		return;
 	}
-
-	//if we get here, it's not link up or down, it's a channel up or down
-	if(to == LinkDeadness::LinkDownChannelDown)
-		channel_stayed_up = false;
 }
 
 void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
@@ -275,7 +277,7 @@ void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
 		if(on)                    //don't mark the stack as disabled, because this is just a restart
 			pMaster->Disable(); //it will be enabled again shortly when the trigger is off
 		else
-			pMaster->Enable();
+			EnableStack();
 	}
 }
 
@@ -298,6 +300,18 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
 	pChanH->LinkUp();
+
+	//Work-around for the fact DEVICE_RESTART and EVENT_BUFFER_OVERFLOW don't trigger
+	//	an integrity scan in opendnp3 unless a startup integrity scan is configured.
+	//We don't configure a startup integ because opendnp3 does that on EVERY LowerLayerUp call!
+	//So we'll do it here until I get around to fixing opendnp3
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if((iin.IsSet(opendnp3::IINBit::EVENT_BUFFER_OVERFLOW) && pConf->pPointConf->IntegrityOnEventOverflowIIN) ||
+	   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
+	{
+		if(IntegrityScan)
+			IntegrityScan->Demand();
+	}
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
@@ -352,6 +366,8 @@ void DNP3MasterPort::Build()
 	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
 
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
+	StackConfig.master.ignoreRestartIIN = pConf->pPointConf->IgnoreRestartIIN;
+
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	//FIXME?: hack to create a toothless shared_ptr
@@ -455,13 +471,13 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		if(state == ConnectState::PORT_UP)
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Upstream port enabled, reasserting comms state.", Name);
-			pCommsRideThroughTimer->ReassertCommsState();
-
-			//Reasserting comms state only does integrity scan if SetQualityOnLinkStatus is true
-			//So do an integrity scan here if needed
-			if (pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp && IntegrityScan && !pConf->pPointConf->SetQualityOnLinkStatus)
-				IntegrityScan->Demand();
+				log->info("{}: Upstream port enabled, re-publishing events.", Name);
+			for (auto index : pConf->pPointConf->BinaryIndexes)
+				PublishEvent(pDB->Get(EventType::Binary,index));
+			for (auto index : pConf->pPointConf->AnalogIndexes)
+				PublishEvent(pDB->Get(EventType::Analog,index));
+			if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
+				PublishEvent(pDB->Get(EventType::Binary,pConf->pPointConf->mCommsPoint.second));
 		}
 
 		// If an upstream port is connected, attempt a connection (if on demand)
