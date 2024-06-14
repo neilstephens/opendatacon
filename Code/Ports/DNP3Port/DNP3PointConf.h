@@ -83,6 +83,8 @@ public:
 	bool StartupIntegrityClass3;
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	bool IntegrityOnEventOverflowIIN;
+	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
+	bool IgnoreRestartIIN;
 	/// Time delay beforce retrying a failed task
 	uint32_t TaskRetryPeriodms;
 

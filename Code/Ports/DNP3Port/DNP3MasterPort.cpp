@@ -35,6 +35,7 @@
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
 #include <opendnp3/app/MeasurementTypes.h>
+#include <opendnp3/app/IINField.h>
 
 
 DNP3MasterPort::~DNP3MasterPort()
@@ -292,6 +293,18 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
 	pChanH->LinkUp();
+
+	//Work-around for the fact DEVICE_RESTART and EVENT_BUFFER_OVERFLOW don't trigger
+	//	an integrity scan in opendnp3 unless a startup integrity scan is configured.
+	//We don't configure a startup integ because opendnp3 does that on EVERY LowerLayerUp call!
+	//So we'll do it here until I get around to fixing opendnp3
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if((iin.IsSet(opendnp3::IINBit::EVENT_BUFFER_OVERFLOW) && pConf->pPointConf->IntegrityOnEventOverflowIIN) ||
+	   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
+	{
+		if(IntegrityScan)
+			IntegrityScan->Demand();
+	}
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
@@ -346,6 +359,8 @@ void DNP3MasterPort::Build()
 	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
 
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
+	StackConfig.master.ignoreRestartIIN = pConf->pPointConf->IgnoreRestartIIN;
+
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	//FIXME?: hack to create a toothless shared_ptr
