@@ -80,21 +80,21 @@ TEST_CASE(SUITE("Thread Safety"))
 	auto pDB = GetTestEventDB();
 	//Access the element concurrently
 	std::vector<std::thread> threads;
-	for(int i = 0; i<10; i++)
+	for(int i = 0; i<std::thread::hardware_concurrency()/2+1; i++)
 	{
 		threads.emplace_back([pDB]()
 			{
 				for(int j = 0; j<10000000; j++)
 				{
-				//replace a random element
-				      auto new_evt = std::make_shared<EventInfo>(EventType::OctetString, rand()%100, "EventDBTestSuite");
-				      new_evt->SetPayload<EventType::OctetString>(std::to_string(j));
-				      auto old_evt = pDB->Swap(new_evt);
+					//replace a random element
+					auto new_evt = std::make_shared<EventInfo>(EventType::OctetString, rand()%100, "EventDBTestSuite");
+					new_evt->SetPayload<EventType::OctetString>(std::to_string(j));
+					auto old_evt = pDB->Swap(new_evt);
 
-				      REQUIRE(old_evt);
+					REQUIRE(old_evt);
 
-				//access the data - randomly print
-				      if(std::stoi(ToString(old_evt->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw))%10000 == 0 && old_evt->GetIndex() == 5)
+					//access the data - randomly print
+					if(std::stoi(ToString(old_evt->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw))%10000 == 0 && old_evt->GetIndex() == 5)
 						odc::spdlog_get("opendatacon")->info("Replaced {} with {}",
 							old_evt->GetPayloadString(),
 							new_evt->GetPayloadString());
