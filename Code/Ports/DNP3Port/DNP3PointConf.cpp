@@ -56,12 +56,17 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
 	CommsPointHeartBeatTimems(0),
-	/// Which classes should be requested in a startup integrity scan
+	/// Which classes should be requested in a startup integrity scans
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
 	StartupIntegrityClass2(true),
 	StartupIntegrityClass3(true),
 	LinkUpIntegrityTrigger(LinkUpIntegrityTrigger_t::ON_FIRST),
+	/// Which classes should be requested for forced integrity scans
+	ForcedIntegrityClass0(true),
+	ForcedIntegrityClass1(true),
+	ForcedIntegrityClass2(true),
+	ForcedIntegrityClass3(true),
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	IntegrityOnEventOverflowIIN(true),
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
@@ -112,6 +117,12 @@ opendnp3::ClassField DNP3PointConf::GetStartupIntegrityClassMask()
 {
 	return opendnp3::ClassField(StartupIntegrityClass0,StartupIntegrityClass1,
 		StartupIntegrityClass2,StartupIntegrityClass3);
+}
+
+opendnp3::ClassField DNP3PointConf::GetForcedIntegrityClassMask()
+{
+	return opendnp3::ClassField(ForcedIntegrityClass0,ForcedIntegrityClass1,
+		ForcedIntegrityClass2,ForcedIntegrityClass3);
 }
 
 opendnp3::PointClass GetClass(Json::Value JPoint)
@@ -239,6 +250,15 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				log->error("Invalid LinkUpIntegrityTrigger: {}, should be NEVER, ON_FIRST, or ON_EVERY - defaulting to ON_FIRST", trig_str);
 		}
 	}
+	/// Which classes should be requested for forced integrity scans
+	if (JSONRoot.isMember("ForcedIntegrityClass0"))
+		ForcedIntegrityClass0 = JSONRoot["ForcedIntegrityClass0"].asBool();
+	if (JSONRoot.isMember("ForcedIntegrityClass1"))
+		ForcedIntegrityClass1 = JSONRoot["ForcedIntegrityClass1"].asBool();
+	if (JSONRoot.isMember("ForcedIntegrityClass2"))
+		ForcedIntegrityClass2 = JSONRoot["ForcedIntegrityClass2"].asBool();
+	if (JSONRoot.isMember("ForcedIntegrityClass3"))
+		ForcedIntegrityClass3 = JSONRoot["ForcedIntegrityClass3"].asBool();
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	if (JSONRoot.isMember("IntegrityOnEventOverflowIIN"))
 		IntegrityOnEventOverflowIIN = JSONRoot["IntegrityOnEventOverflowIIN"].asBool();

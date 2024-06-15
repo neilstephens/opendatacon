@@ -41,9 +41,8 @@ public:
 		DNP3Port(aName, aConfFilename, aConfOverrides,true),
 		pMaster(nullptr),
 		stack_enabled(false),
-		assign_class_sent(false),
-		IntegrityScan(nullptr),
-		IntegrityOnNextLinkUp(false),
+		IntegrityScanNeeded(false),
+		IntegrityScanDone(false),
 		pCommsRideThroughTimer(nullptr)
 	{}
 	~DNP3MasterPort() override;
@@ -118,12 +117,16 @@ protected:
 	void OnReceiveIIN(const opendnp3::IINField& iin) override;
 
 private:
+	std::shared_ptr<opendnp3::ISOEHandler> ISOEHandle;
+	std::shared_ptr<opendnp3::IMasterApplication> MasterApp;
 	std::shared_ptr<opendnp3::IMaster> pMaster;
-
 	std::atomic_bool stack_enabled;
-	bool assign_class_sent;
-	std::shared_ptr<opendnp3::IMasterScan> IntegrityScan;
-	bool IntegrityOnNextLinkUp;
+
+	//Integrity scans are sync'd with the stack by posting on the channel handler strand
+	//Don't access these outside that strand
+	bool IntegrityScanNeeded;
+	bool IntegrityScanDone;
+
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
 	void UpdateCommsPoint(bool isFailed);
@@ -138,9 +141,17 @@ private:
 	void PortDown();
 	inline void EnableStack()
 	{
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-		if(pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
-			IntegrityOnNextLinkUp = true;
+		pChanH->Post([this]()
+			{
+				auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+				if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp &&
+				   pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: Setting IntegrityScanNeeded for EnableStack.",Name);
+					IntegrityScanNeeded = true;
+				}
+			});
 
 		pMaster->Enable();
 		stack_enabled = true;

@@ -40,8 +40,6 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
-	if(IntegrityScan)
-		IntegrityScan.reset();
 	if(pMaster)
 	{
 		pMaster->Shutdown();
@@ -177,13 +175,20 @@ void DNP3MasterPort::SetCommsGood()
 	UpdateCommsPoint(false);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->pPointConf->SetQualityOnLinkStatus && pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
+	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
 		// Trigger integrity scan to get point quality
 		// Only way to get true state upstream
 		// Can't just reset quality, because it would make new events for old values
-		if(IntegrityScan)
-			IntegrityScan->Demand();
+		pChanH->Post([this]()
+			{
+				if(!IntegrityScanDone && pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp)
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
+					IntegrityScanNeeded = true;
+				}
+			});
 	}
 }
 
@@ -264,11 +269,11 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Update the comms state point
 		PortUp();
 
-		if(IntegrityOnNextLinkUp || pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
+		if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
 		{
-			IntegrityOnNextLinkUp = false;
-			if(IntegrityScan)
-				IntegrityScan->Demand();
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->debug("{}: Setting IntegrityScanNeeded for Link-up.",Name);
+			IntegrityScanNeeded = true;
 		}
 
 		// Notify subscribers that a connect event has occured
@@ -295,6 +300,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 					DisableStack();
 				});
 		}
+		IntegrityScanDone = false;
 		return;
 	}
 }
@@ -308,7 +314,7 @@ void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
 		if(on)                    //don't mark the stack as disabled, because this is just a restart
 			pMaster->Disable(); //it will be enabled again shortly when the trigger is off
 		else
-			EnableStack();
+			pMaster->Enable();
 	}
 }
 
@@ -331,18 +337,34 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
 	pChanH->LinkUp();
-
-	//Work-around for the fact DEVICE_RESTART and EVENT_BUFFER_OVERFLOW don't trigger
-	//	an integrity scan in opendnp3 unless a startup integrity scan is configured.
-	//We don't configure a startup integ because opendnp3 does that on EVERY LowerLayerUp call!
-	//So we'll do it here until I get around to fixing opendnp3
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if((iin.IsSet(opendnp3::IINBit::EVENT_BUFFER_OVERFLOW) && pConf->pPointConf->IntegrityOnEventOverflowIIN) ||
-	   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
-	{
-		if(IntegrityScan)
-			IntegrityScan->Demand();
-	}
+	pChanH->Post([this,iin]()
+		{
+			if(pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp)
+			{
+				auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+				if((iin.IsSet(opendnp3::IINBit::EVENT_BUFFER_OVERFLOW) && pConf->pPointConf->IntegrityOnEventOverflowIIN) ||
+				   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: Stack executed integrity scan for this link session.",Name);
+					IntegrityScanDone = true;
+				}
+				if(IntegrityScanNeeded)
+				{
+					IntegrityScanNeeded = false;
+					if(IntegrityScanDone)
+					{
+						if(auto log = odc::spdlog_get("DNP3Port"))
+							log->debug("{}: Skipping startup integrity scan (stack already did one).",Name);
+						return;
+					}
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: Executing startup integrity scan.",Name);
+					pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
+					IntegrityScanDone = true;
+				}
+			}
+		});
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
@@ -396,6 +418,9 @@ void DNP3MasterPort::Build()
 	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
 	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
 
+	//Configure mandatory integrity scans separately to the disabled startup scan
+	StackConfig.master.useAlternateMaskForForcedIntegrity = true;
+	StackConfig.master.alternateIntegrityClassMask = pConf->pPointConf->GetForcedIntegrityClassMask();
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.ignoreRestartIIN = pConf->pPointConf->IgnoreRestartIIN;
 
@@ -404,8 +429,8 @@ void DNP3MasterPort::Build()
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
 	auto wont_free = std::shared_ptr<DNP3MasterPort>(this,[](void*){});
-	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
-	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
+	ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
+	MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
 
 	pMaster = pChanH->GetChannel()->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
 
@@ -418,9 +443,7 @@ void DNP3MasterPort::Build()
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
-		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
-	else
-		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Minutes(600000000),ISOEHandle); //ten million hours
+		pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass1ScanRatems > 0)
 		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class1), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass2ScanRatems > 0)

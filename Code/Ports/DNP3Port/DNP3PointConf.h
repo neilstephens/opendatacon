@@ -84,7 +84,14 @@ public:
 	/// When will the startup integrity scan be triggered
 	enum class LinkUpIntegrityTrigger_t { NEVER, ON_FIRST, ON_EVERY };
 	LinkUpIntegrityTrigger_t LinkUpIntegrityTrigger;
-	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
+	/// Which classes should be requested for forced integrity scans
+	opendnp3::ClassField GetForcedIntegrityClassMask();
+	bool ForcedIntegrityClass0;
+	bool ForcedIntegrityClass1;
+	bool ForcedIntegrityClass2;
+	bool ForcedIntegrityClass3;
+	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected.
+	/// Warning: non compliant behaviour if set to false
 	bool IntegrityOnEventOverflowIIN;
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
 	bool IgnoreRestartIIN;
