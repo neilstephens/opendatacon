@@ -91,7 +91,8 @@ TEST_CASE(SUITE("Thread Safety"))
 					new_evt->SetPayload<EventType::OctetString>(std::to_string(j));
 					auto old_evt = pDB->Swap(new_evt);
 
-					REQUIRE(old_evt);
+					if(!old_evt) //avoid calling REQUIRE multi-threaded
+						REQUIRE(old_evt);
 
 					//access the data - randomly print
 					if(std::stoi(ToString(old_evt->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw))%10000 == 0 && old_evt->GetIndex() == 5)
