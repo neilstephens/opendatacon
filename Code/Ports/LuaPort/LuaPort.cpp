@@ -57,6 +57,8 @@ void LuaPort::Enable_()
 void LuaPort::Disable_()
 {
 	CallLuaGlobalVoidVoidFunc("Disable");
+	//Force garbage collection now. Lingering shared_ptr finalizers can block shutdown etc
+	lua_gc(LuaState,LUA_GCCOLLECT);
 }
 
 //Build is called while there's only one active thread, so we don't need to sync access to LuaState here
