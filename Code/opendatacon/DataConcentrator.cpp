@@ -1192,7 +1192,8 @@ void DataConcentrator::Run()
 	try
 	{
 		while(starting_element_count > 0)
-			pIOS->run_one();
+			if(!pIOS->poll_one())
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 		if(auto log = odc::spdlog_get("opendatacon"))
 			log->info("Up and running.");
@@ -1232,7 +1233,8 @@ void DataConcentrator::ParkThread()
 
 	//wait for startup to finish
 	while(starting_element_count > 0)
-		pIOS->run_one();
+		if(!pIOS->poll_one())
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 	//park another threads if there's any left
 	pIOS->post([this](){ParkThread();});
@@ -1804,7 +1806,8 @@ void DataConcentrator::Shutdown()
 			{
 			//wait for startup to finish before shutdown
 			      while(starting_element_count > 0)
-					pIOS->run_one();
+					if(!pIOS->poll_one())
+						std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 			      if(auto log = odc::spdlog_get("opendatacon"))
 			      {

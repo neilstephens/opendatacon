@@ -45,7 +45,6 @@ TEST_CASE(SUITE("StatusCallback"))
 	 */
 
 	auto ios = odc::asio_service::Get();
-	auto work = ios->make_work();
 
 	PublicPublishPort Source("Null1","",Json::Value::nullSingleton());
 	NullPort Null2("Null2","",Json::Value::nullSingleton());
@@ -114,6 +113,8 @@ TEST_CASE(SUITE("StatusCallback"))
 		Source.PublicPublishEvent(event,StatusCallback);
 		while(!executed)
 		{
+			//run_one is usually bad because it risks getting blocked permanently if there's no work
+			//but it's OK here because this is the only thread and we posted work
 			ios->run_one();
 		}
 		if(mask == 0x00)

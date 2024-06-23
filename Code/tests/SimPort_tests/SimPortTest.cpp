@@ -297,6 +297,8 @@ inline void SendEvent(ControlCode code, std::size_t index, std::shared_ptr<DataP
 	sim_port->Event(event, "TestHarness", pStatusCallback);
 	while(!executed)
 	{
+		//run_one is usually bad because it risks getting blocked permanently if there's no work
+		//but it's OK here because this is the only thread and we posted work
 		IOS->run_one();
 	}
 	CHECK(cb_status == status);
