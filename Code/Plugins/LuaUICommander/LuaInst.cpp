@@ -53,12 +53,12 @@ LuaInst::LuaInst(const std::string& lua_code,
 				auto self = static_cast<LuaInst*>(lua_touserdata(L, lua_upvalueindex(1)));
 				if(!(lua_isstring(L,1) && lua_isstring(L,2)))
 				{
-				      std::string name = lua_tostring(L, lua_upvalueindex(2));
-				      std::string logname = lua_tostring(L, lua_upvalueindex(3));
-				      if(auto log = odc::spdlog_get(logname))
+					std::string name = lua_tostring(L, lua_upvalueindex(2));
+					std::string logname = lua_tostring(L, lua_upvalueindex(3));
+					if(auto log = odc::spdlog_get(logname))
 						log->error("{}: UICommand() requires 'responder name' and 'command' string args.",name);
-				      lua_pushnil(L);
-				      return 1;
+					lua_pushnil(L);
+					return 1;
 				}
 				auto responder_name = lua_tostring(L,1);
 				auto cmd = lua_tostring(L,2);
@@ -82,11 +82,11 @@ LuaInst::LuaInst(const std::string& lua_code,
 				auto self = static_cast<LuaInst*>(lua_touserdata(L, lua_upvalueindex(1)));
 				if(!lua_isstring(L,1))
 				{
-				      std::string name = lua_tostring(L, lua_upvalueindex(2));
-				      std::string logname = lua_tostring(L, lua_upvalueindex(3));
-				      if(auto log = odc::spdlog_get(logname))
+					std::string name = lua_tostring(L, lua_upvalueindex(2));
+					std::string logname = lua_tostring(L, lua_upvalueindex(3));
+					if(auto log = odc::spdlog_get(logname))
 						log->error("{}: UIMessage() requires string argument.",name);
-				      return 0;
+					return 0;
 				}
 				auto msg = lua_tostring(L,1);
 				self->MsgHandler(self->ID,msg);
@@ -155,18 +155,21 @@ void LuaInst::Runner(const std::string& args)
 				log->error(err);
 			lua_pop(L,1);
 			completed = true;
+			lua_gc(L,LUA_GCCOLLECT);
 			return;
 		}
 		//should have a sleep time in ms on the stack (return value)
 		if(!lua_isinteger(L,-1))
 		{
 			completed = true;
+			lua_gc(L,LUA_GCCOLLECT);
 			return;
 		}
 		auto sleep_time_ms = lua_tointeger(L,-1);
 		if(sleep_time_ms < 0)
 		{
 			completed = true;
+			lua_gc(L,LUA_GCCOLLECT);
 			return;
 		}
 		pSleepTimer->expires_from_now(std::chrono::milliseconds(sleep_time_ms));
@@ -193,4 +196,5 @@ void LuaInst::Runner(const std::string& args)
 		}
 	}
 	completed = true;
+	lua_gc(L,LUA_GCCOLLECT);
 }

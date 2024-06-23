@@ -105,4 +105,6 @@ void LuaTransform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllo
 			log->error("{}: Lua Event() call error: {}",Name,err);
 		lua_pop(LuaState,1);
 	}
+	if(event && event->GetEventType() == EventType::ConnectState && event->HasPayload() && event->GetPayload<EventType::ConnectState>() == ConnectState::PORT_DOWN)
+		lua_gc(LuaState,LUA_GCCOLLECT); //Port down is a sign things might be shutting down. Force garbage collection just in case
 }
