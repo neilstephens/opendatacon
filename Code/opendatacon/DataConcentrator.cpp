@@ -1164,13 +1164,13 @@ void DataConcentrator::Run()
 			{
 				try
 				{
-				      pIOS->run();
+					pIOS->run();
 				}
 				catch (std::exception& e)
 				{
-				      if(auto log = odc::spdlog_get("opendatacon"))
+					if(auto log = odc::spdlog_get("opendatacon"))
 						log->critical("Shutting down due to exception from thread pool: {}", e.what());
-				      Shutdown();
+					Shutdown();
 				}
 			});
 
@@ -1804,77 +1804,77 @@ void DataConcentrator::Shutdown()
 			shutting_down = true;
 			try
 			{
-			//wait for startup to finish before shutdown
-			      while(starting_element_count > 0)
+				//wait for startup to finish before shutdown
+				while(starting_element_count > 0)
 					if(!pIOS->poll_one())
 						std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-			      if(auto log = odc::spdlog_get("opendatacon"))
-			      {
-			            log->critical("Shutting Down...");
-			            log->info("Disabling Interfaces...");
+				if(auto log = odc::spdlog_get("opendatacon"))
+				{
+					log->critical("Shutting Down...");
+					log->info("Disabling Interfaces...");
 				}
-			      for(auto& Name_n_UI : Interfaces)
-			      {
-			            Name_n_UI.second->Disable();
+				for(auto& Name_n_UI : Interfaces)
+				{
+					Name_n_UI.second->Disable();
 				}
-			      if(auto log = odc::spdlog_get("opendatacon"))
+				if(auto log = odc::spdlog_get("opendatacon"))
 					log->info("Disabling DataConnectors...");
-			      for(auto& Name_n_Conn : DataConnectors)
-			      {
-			            Name_n_Conn.second->Disable();
+				for(auto& Name_n_Conn : DataConnectors)
+				{
+					Name_n_Conn.second->Disable();
 				}
-			      if(auto log = odc::spdlog_get("opendatacon"))
+				if(auto log = odc::spdlog_get("opendatacon"))
 					log->info("Disabling DataPorts...");
-			      for(auto& Name_n_Port : DataPorts)
-			      {
-			            Name_n_Port.second->Disable();
+				for(auto& Name_n_Port : DataPorts)
+				{
+					Name_n_Port.second->Disable();
 				}
 
-			      if (auto log = odc::spdlog_get("opendatacon"))
-			      {
-			            log->info("Destroying user log sinks");
-			//wait for async logging, so the sinks get the message before they're destroyed
-			            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			            log->flush();
+				if (auto log = odc::spdlog_get("opendatacon"))
+				{
+					log->info("Destroying user log sinks");
+					//wait for async logging, so the sinks get the message before they're destroyed
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					log->flush();
 				}
 
-			      auto user_sinks = LogSinks;
-			      user_sinks.erase("file");
-			      user_sinks.erase("console");
-			      for (const auto& [sink_name,sink_ptr] : user_sinks)
+				auto user_sinks = LogSinks;
+				user_sinks.erase("file");
+				user_sinks.erase("console");
+				for (const auto& [sink_name,sink_ptr] : user_sinks)
 					LogSinks.erase(sink_name);
-			      ReloadLogSinks(LogSinks,0);
+				ReloadLogSinks(LogSinks,0);
 
-			// Wait for spdlog to finish with the user sinks
-			// and make sure they're well flushed
-			      size_t max_refs;
-			      do
-			      {
-			            max_refs = 0;
-			            for(const auto& [sink_name,sink_ptr] : user_sinks)
-			            {
-			                  size_t refs = sink_ptr.use_count();
-			                  max_refs = refs > max_refs ? refs : max_refs;
-			                  sink_ptr->flush();
+				// Wait for spdlog to finish with the user sinks
+				// and make sure they're well flushed
+				size_t max_refs;
+				do
+				{
+					max_refs = 0;
+					for(const auto& [sink_name,sink_ptr] : user_sinks)
+					{
+						size_t refs = sink_ptr.use_count();
+						max_refs = refs > max_refs ? refs : max_refs;
+						sink_ptr->flush();
 					}
 				} while(max_refs > 1);
-			      user_sinks.clear();
+				user_sinks.clear();
 
-			      if(auto log = odc::spdlog_get("opendatacon"))
+				if(auto log = odc::spdlog_get("opendatacon"))
 					log->info("Finishing asynchronous tasks...");
 
-			//shutdown tcp stream bufs so they don't keep the io_service going
-			      for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
+				//shutdown tcp stream bufs so they don't keep the io_service going
+				for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
 					it->second.DeInit();
 
-			      ios_working.reset();
+				ios_working.reset();
 			}
 			catch(const std::exception& e)
 			{
-			      if(auto log = odc::spdlog_get("opendatacon"))
+				if(auto log = odc::spdlog_get("opendatacon"))
 					log->critical("Caught exception in DataConcentrator::Shutdown(): {}", e.what());
-			//Fall through - we set the shutting_down flag for watchdog
+				//Fall through - we set the shutting_down flag for watchdog
 			}
 		});
 }
