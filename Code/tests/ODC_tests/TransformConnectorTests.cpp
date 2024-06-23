@@ -55,6 +55,7 @@ TEST_CASE("TransformTests")
 	TestSetup();
 
 	auto ios = odc::asio_service::Get();
+	auto work = ios->make_work();
 
 	PublicPublishPort P1("P1","",Json::Value::nullSingleton());
 	AnalogCheckPort P2("P2","",Json::Value::nullSingleton(),1230);
@@ -97,9 +98,7 @@ TEST_CASE("TransformTests")
 	P1.PublicPublishEvent(event,StatusCallback);
 	while(!executed)
 	{
-		//run_one is usually bad because it risks getting blocked permanently if there's no work
-		//but it's OK here because this is the only thread and we posted work
-		ios->run_one();
+		ios->run_one_for(std::chrono::milliseconds(10));
 	}
 	REQUIRE(cb_status == CommandStatus::SUCCESS);
 
