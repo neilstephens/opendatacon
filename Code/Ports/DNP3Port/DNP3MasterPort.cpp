@@ -423,8 +423,11 @@ void DNP3MasterPort::Build()
 	StackConfig.master.alternateIntegrityClassMask = pConf->pPointConf->GetForcedIntegrityClassMask();
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.ignoreRestartIIN = pConf->pPointConf->IgnoreRestartIIN;
+	StackConfig.master.retryForcedIntegrity = pConf->pPointConf->RetryForcedIntegrity;
 
+	//TODO?: have a separate max retry time to pass to opendnp3
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
+	StackConfig.master.maxTaskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory

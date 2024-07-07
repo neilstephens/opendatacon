@@ -71,6 +71,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	IntegrityOnEventOverflowIIN(true),
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
 	IgnoreRestartIIN(false),
+	/// Whether to retry a integrity scan that is forced by IIN
+	RetryForcedIntegrity(false),
 	/// Time delay beforce retrying a failed task
 	TaskRetryPeriodms(5000),
 	// Master Station scanning configuration
@@ -265,6 +267,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
 	if (JSONRoot.isMember("IgnoreRestartIIN"))
 		IgnoreRestartIIN = JSONRoot["IgnoreRestartIIN"].asBool();
+	/// Whether to retry a integrity scan that is forced by IIN
+	if (JSONRoot.isMember("RetryForcedIntegrity"))
+		RetryForcedIntegrity = JSONRoot["RetryForcedIntegrity"].asBool();
 	/// Time delay beforce retrying a failed task
 	if (JSONRoot.isMember("TaskRetryPeriodms"))
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();

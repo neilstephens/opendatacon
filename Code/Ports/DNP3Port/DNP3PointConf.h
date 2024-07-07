@@ -95,6 +95,8 @@ public:
 	bool IntegrityOnEventOverflowIIN;
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
 	bool IgnoreRestartIIN;
+	/// Whether to retry a integrity scan that is forced by IIN
+	bool RetryForcedIntegrity;
 	/// Time delay beforce retrying a failed task
 	uint32_t TaskRetryPeriodms;
 
