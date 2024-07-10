@@ -17,7 +17,7 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(KafkaPort)
+project(KafkaPort CXX)
 
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/librdkafka/.git")
 	execute_process(COMMAND git submodule update --init -- Code/submodules/librdkafka
