@@ -16,3 +16,9 @@
 [submodule "Code/submodules/Simple-Web-Server"]
 	path = Code/submodules/Simple-Web-Server
 	url = https://gitlab.com/eidheim/Simple-Web-Server.git
+[submodule "Code/submodules/modern-cpp-kafka"]
+	path = Code/submodules/modern-cpp-kafka
+	url = git@github.com:morganstanley/modern-cpp-kafka.git
+[submodule "Code/submodules/librdkafka"]
+	path = Code/submodules/librdkafka
+	url = git@github.com:confluentinc/librdkafka.git
