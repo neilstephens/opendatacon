@@ -27,6 +27,13 @@
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
 
+KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides):
+	DataPort(Name, Filename, Overrides)
+{
+	pConf = std::make_unique<KafkaPortConf>();
+	ProcessFile();
+}
+
 void KafkaPort::Enable()
 {
 	enabled = true;
