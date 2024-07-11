@@ -40,12 +40,15 @@ void KafkaProducerPort::Build()
 
 	//TODO: consider also forcing enable.idempotence=true depending on the retry model
 	// see https://github.com/confluentinc/librdkafka/blob/master/INTRODUCTION.md#idempotent-producer
+	//TODO: consider also setting the acks property to "all" depending on the retry model
 
-	//TODO: check if this can throw
-	pKafkaProducer = std::make_shared<KCP::KafkaProducer>(pConf->NativeKafkaProperties);
+	//TODO: use a factory function to create the producer or return an existing one
+	// depending on the configuration, ports could share a producer or have their own
+	pKafkaProducer = std::make_shared<KCP::KafkaProducer>(pConf->NativeKafkaProperties); // <--- TODO: check if this can throw
 
 	//TODO: set up a polling loop using asio to call pKafkaProducer->pollEvents() at a regular interval
 	// to ensure we get callbacks in the case there's no following Event
+	// would belong in the producer factory/manager class if sharing producers
 }
 
 void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -53,7 +56,7 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	if(!enabled) return;
 
 	//TODO: build the KCP::ProducerRecord from the EventInfo
-	KCP::ProducerRecord record(kafka::Topic("FIXME:"), kafka::NullKey, kafka::Value("test"));
+	KCP::ProducerRecord record(kafka::Topic("example-topic"), kafka::NullKey, kafka::Value("test"));
 
 	auto deliveryCb = [](const KCP::RecordMetadata& metadata, const kafka::Error& error)
 				{
