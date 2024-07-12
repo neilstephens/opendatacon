@@ -91,6 +91,9 @@ message("RDKAFKA_HOME: ${RDKAFKA_HOME}")
 message("RdKafka_CMAKE_MODULES: ${RdKafka_CMAKE_MODULES}")
 list(APPEND CMAKE_MODULE_PATH "${RdKafka_CMAKE_MODULES}")
 set(RdKafka_DIR "${RdKafka_CMAKE_MODULES}")
+#set these here for consistent dependency discovery, since we set them in the librdkafka build
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+set(OPENSSL_MSVC_STATIC_RT TRUE)
 find_package(RdKafka REQUIRED PATHS ${RDKAFKA_HOME} NO_DEFAULT_PATH)
 
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/.git")
