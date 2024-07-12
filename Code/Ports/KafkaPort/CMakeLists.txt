@@ -19,6 +19,10 @@
  # 
 project(KafkaPort CXX)
 
+if(NOT ODC_ASIO_SSL)
+	message(WARNING "KafkaPort requires ODC_ASIO_SSL to be enabled for librdkafka SSL support.")
+endif()
+
 set(RDKAFKA_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/librdkafka")
 set(RDKAFKA_BUILD "${CMAKE_BINARY_DIR}/Code/submodules/librdkafka")
 mark_as_advanced(FORCE RDKAFKA_SOURCE)
@@ -33,6 +37,7 @@ set(
 		-DRDKAFKA_BUILD_TESTS=OFF
 		-DOPENSSL_USE_STATIC_LIBS=TRUE
 		-DOPENSSL_MSVC_STATIC_RT=TRUE
+		-DWITH_SSL=${ODC_ASIO_SSL}
 		-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 		-DCMAKE_INSTALL_PREFIX=${RDKAFKA_HOME}/
 		-DCMAKE_DEBUG_POSTFIX=${CMAKE_DEBUG_POSTFIX}
@@ -95,6 +100,16 @@ set(RdKafka_DIR "${RdKafka_CMAKE_MODULES}")
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 set(OPENSSL_MSVC_STATIC_RT TRUE)
 find_package(RdKafka REQUIRED PATHS ${RDKAFKA_HOME} NO_DEFAULT_PATH)
+
+if(ODC_ASIO_SSL)
+	#big fat hack to remove OpenSSL::SSL and OpenSSL::Crypto from the librdkafka interface libs
+	# because there's no way to tell librdkafka that it's compiled/linked into ODC already
+	get_target_property(KAF_REQUIRED_LIBS RdKafka::rdkafka INTERFACE_LINK_LIBRARIES)
+	message("KAF_REQUIRED_LIBS BEFORE: ${KAF_REQUIRED_LIBS}")
+	list(FILTER KAF_REQUIRED_LIBS EXCLUDE REGEX "OpenSSL.*")
+	message("KAF_REQUIRED_LIBS AFTER: ${KAF_REQUIRED_LIBS}")
+	set_target_properties(RdKafka::rdkafka PROPERTIES INTERFACE_LINK_LIBRARIES "${KAF_REQUIRED_LIBS}")
+endif()
 
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/.git")
 	execute_process(COMMAND git submodule update --init -- Code/submodules/modern-cpp-kafka
