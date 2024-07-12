@@ -101,6 +101,14 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 set(OPENSSL_MSVC_STATIC_RT TRUE)
 find_package(RdKafka REQUIRED PATHS ${RDKAFKA_HOME} NO_DEFAULT_PATH)
 
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/.git")
+	execute_process(COMMAND git submodule update --init -- Code/submodules/modern-cpp-kafka
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
+
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
+add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+
 if(ODC_ASIO_SSL)
 	#big fat hack to remove OpenSSL::SSL and OpenSSL::Crypto from the librdkafka interface libs
 	# because there's no way to tell librdkafka that it's compiled/linked into ODC already
@@ -109,16 +117,12 @@ if(ODC_ASIO_SSL)
 	list(FILTER KAF_REQUIRED_LIBS EXCLUDE REGEX "OpenSSL.*")
 	message("KAF_REQUIRED_LIBS AFTER: ${KAF_REQUIRED_LIBS}")
 	set_target_properties(RdKafka::rdkafka PROPERTIES INTERFACE_LINK_LIBRARIES "${KAF_REQUIRED_LIBS}")
+	if(WIN32)
+		# and even worse, we have to tell the linker to ignore default libs that librdkafka hard coded with pragmas!
+		target_link_options(${PROJECT_NAME} PRIVATE "/NODEFAULTLIB:libssl.lib" "/NODEFAULTLIB:libcrypto.lib")
+	endif()
 endif()
 
-if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/.git")
-	execute_process(COMMAND git submodule update --init -- Code/submodules/modern-cpp-kafka
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif()
-
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
-
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC RdKafka::rdkafka)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/include)
 
