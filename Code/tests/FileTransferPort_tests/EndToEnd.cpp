@@ -207,6 +207,7 @@ TEST_CASE(SUITE("CorruptConnector"))
 		//turn them off
 		RX->Disable();
 		TX->Disable();
+		nasty.Disable();
 	}
 	//Unload the library
 	UnLoadModule(portlib);

@@ -136,6 +136,9 @@ TEST_CASE(SUITE("PayloadTransport"))
 		ios->poll_one();
 
 	watchdog->cancel();
+	Source.Disable();
+	Sink.Disable();
+	Conn.Disable();
 	work.reset();
 	ios->run();
 

@@ -432,6 +432,9 @@ TEST_CASE(SUITE("Single Drop"))
 			auto new_open1 = require_connection_increase(pMITM,true,start_open1);
 			auto new_open2 = require_connection_increase(pMITM,false,start_open2);
 			odc::spdlog_get("DNP3Port")->info("New connection count: {},{}",new_open1,new_open2);
+
+			port_pair.first->Disable();
+			port_pair.second->Disable();
 		}
 
 		work.reset();
