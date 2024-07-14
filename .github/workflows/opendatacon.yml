@@ -169,6 +169,9 @@ jobs:
     - name: DNP3Port_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
+    - name: KafkaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}KafkaPort_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
@@ -309,6 +312,9 @@ jobs:
     - name: DNP3Port_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
+    - name: KafkaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: /github/workspace/build/install/${{env.BINDIR}}KafkaPort_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
