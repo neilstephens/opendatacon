@@ -46,6 +46,8 @@ void KafkaPort::Disable()
 
 void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 {
+	if(!JSONRoot.isObject()) return;
+
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 	//JSON member NativeKafkaProperties has all the kafka property strings that are directly passed to the kafka stack
 	if(JSONRoot.isMember("NativeKafkaProperties"))
