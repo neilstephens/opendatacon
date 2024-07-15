@@ -26,8 +26,11 @@
 
 #include "KafkaProducerPort.h"
 #include "KafkaPortConf.h"
-#include <kafka/KafkaProducer.h>
+#include <opendatacon/asio.h>
 #include <opendatacon/spdlog.h>
+#include <kafka/KafkaProducer.h>
+#include <chrono>
+#include <memory>
 
 void KafkaProducerPort::Build()
 {
@@ -69,13 +72,40 @@ void KafkaProducerPort::Build()
 	// see https://github.com/confluentinc/librdkafka/blob/master/INTRODUCTION.md#idempotent-producer
 	//TODO: consider also setting the acks property to "all" depending on the retry model
 
-	//TODO: use a factory function to create the producer or return an existing one
-	// depending on the configuration, ports could share a producer or have their own
-	pKafkaProducer = std::make_shared<KCP::KafkaProducer>(pConf->NativeKafkaProperties); // <--- FIXME: this can throw - catch it, and at least log it
+	//FIXME: KafkaProducer ctor can throw - catch it, and at least log it
+	if(pConf->ShareKafkaClient)
+	{
+		if(pConf->SharedKafkaClientKey == "")
+		{
+			auto bs_servers = pConf->NativeKafkaProperties.getProperty("bootstrap.servers").value();
+			pConf->SharedKafkaClientKey.append("Producer:").append(bs_servers);
+		}
+
+		pKafkaProducer = pKafkaClientCache->GetClient<KCP::KafkaProducer>(
+			pConf->SharedKafkaClientKey,
+			pConf->NativeKafkaProperties);
+	}
+	else
+		pKafkaProducer = std::make_shared<KCP::KafkaProducer>(pConf->NativeKafkaProperties);
 
 	//TODO: set up a polling loop using asio to call pKafkaProducer->pollEvents() at a regular interval
 	// to ensure we get callbacks in the case there's no following Event
 	// would belong in the producer factory/manager class if sharing producers
+	std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer(std::chrono::milliseconds(pConf->MinPollIntervalms));
+	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(this->shared_from_this());
+	auto polling_handler = [weak_self,pTimer,pConf](auto timer_handler)
+				     {
+					     auto self = weak_self.lock();
+					     if(!self) return;
+					     self->pKafkaProducer->pollEvents(std::chrono::milliseconds::zero());
+					     pTimer->expires_from_now(std::chrono::milliseconds(pConf->MinPollIntervalms));
+					     pTimer->async_wait([timer_handler](asio::error_code err)
+						     {
+							     if(err) return;
+							     timer_handler(timer_handler);
+						     });
+				     };
+	polling_handler(polling_handler);
 }
 
 void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -104,8 +134,9 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	//TODO: check if any of the pKafkaProducer calls can throw
 
 	// Send a message
+	// Use the non-blocking option, and the overload that catches exceptions
 	pKafkaProducer->send(record, deliveryCb);
 
 	// Poll events (e.g. message delivery callback)
-	pKafkaProducer->pollEvents(std::chrono::milliseconds(0));
+	pKafkaProducer->pollEvents(std::chrono::milliseconds::zero());
 }

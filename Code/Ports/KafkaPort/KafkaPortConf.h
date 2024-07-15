@@ -32,7 +32,10 @@
 class KafkaPortConf: public DataPortConf
 {
 public:
+	bool ShareKafkaClient = true;
+	std::string SharedKafkaClientKey = "";
 	kafka::Properties NativeKafkaProperties;
+	size_t MinPollIntervalms = 100;
 };
 
 #endif /* KafkaPortConf_H_ */

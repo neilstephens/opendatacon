@@ -27,6 +27,7 @@
 #ifndef KAFKAPORT_H
 #define KAFKAPORT_H
 
+#include "KafkaClientCache.h"
 #include <atomic>
 #include <opendatacon/DataPort.h>
 
@@ -47,6 +48,7 @@ public:
 
 protected:
 	std::atomic_bool enabled {false};
+	std::shared_ptr<KafkaClientCache> pKafkaClientCache = KafkaClientCache::Get();
 };
 
 #endif // KAFKAPORT_H

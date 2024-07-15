@@ -66,4 +66,16 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 		}
 	}
+	if(JSONRoot.isMember("ShareKafkaClient"))
+	{
+		pConf->ShareKafkaClient = JSONRoot["ShareKafkaClient"].asBool();
+	}
+	if(JSONRoot.isMember("SharedKafkaClientKey"))
+	{
+		pConf->SharedKafkaClientKey = JSONRoot["SharedKafkaClientKey"].asString();
+	}
+	if(JSONRoot.isMember("MinPollIntervalms"))
+	{
+		pConf->SharedKafkaClientKey = JSONRoot["MinPollIntervalms"].asUInt();
+	}
 }
