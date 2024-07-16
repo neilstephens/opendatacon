@@ -91,14 +91,14 @@ void KafkaProducerPort::Build()
 	//TODO: set up a polling loop using asio to call pKafkaProducer->pollEvents() at a regular interval
 	// to ensure we get callbacks in the case there's no following Event
 	// would belong in the producer factory/manager class if sharing producers
-	std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer(std::chrono::milliseconds(pConf->MinPollIntervalms));
+	std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer(std::chrono::milliseconds(pConf->MaxPollIntervalms));
 	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(this->shared_from_this());
 	auto polling_handler = [weak_self,pTimer,pConf](auto timer_handler)
 				     {
 					     auto self = weak_self.lock();
-					     if(!self) return;
+					     if(!self || !self->enabled) return;
 					     self->pKafkaProducer->pollEvents(std::chrono::milliseconds::zero());
-					     pTimer->expires_from_now(std::chrono::milliseconds(pConf->MinPollIntervalms));
+					     pTimer->expires_from_now(std::chrono::milliseconds(pConf->MaxPollIntervalms));
 					     pTimer->async_wait([timer_handler](asio::error_code err)
 						     {
 							     if(err) return;

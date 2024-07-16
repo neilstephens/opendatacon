@@ -74,8 +74,8 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->SharedKafkaClientKey = JSONRoot["SharedKafkaClientKey"].asString();
 	}
-	if(JSONRoot.isMember("MinPollIntervalms"))
+	if(JSONRoot.isMember("MaxPollIntervalms"))
 	{
-		pConf->SharedKafkaClientKey = JSONRoot["MinPollIntervalms"].asUInt();
+		pConf->SharedKafkaClientKey = JSONRoot["MaxPollIntervalms"].asUInt();
 	}
 }
