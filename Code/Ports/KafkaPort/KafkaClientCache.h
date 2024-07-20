@@ -7,9 +7,11 @@
 class KafkaClientCache
 {
 private:
+	// Private constructor and destructor to ensure the cache is only created and destroyed by the singleton pattern
 	KafkaClientCache() = default;
 	~KafkaClientCache() = default;
 
+	// Polling function that will recall itself every MaxPollIntervalms until the client is destroyed or the timer is cancelled/destroyed
 	static void Poll(std::weak_ptr<kafka::clients::KafkaClient> weak_client, std::weak_ptr<asio::steady_timer> weak_timer, const size_t MaxPollIntervalms)
 	{
 		auto client = weak_client.lock();
@@ -18,6 +20,7 @@ private:
 		if(!pTimer) return;
 
 		client->pollEvents(std::chrono::milliseconds::zero());
+
 		pTimer->expires_from_now(std::chrono::milliseconds(MaxPollIntervalms));
 		pTimer->async_wait([weak_client,weak_timer,MaxPollIntervalms](asio::error_code err)
 			{
@@ -26,41 +29,57 @@ private:
 			});
 	}
 
+	//Called every time a client is retrieved, to ensure the polling timer is set to the correct value
+	void MaxPollTime(const std::string& client_key, const size_t MaxPollIntervalms)
+	{
+		//we know client exists and mutex is locked, because this is only called from GetClient
+		if(MaxPollIntervalms < poll_timers[client_key].first)
+		{
+			//reassigning the timer pointer will cancel+destroy the old timer, and expire weak pointer in the old polling handler
+			poll_timers[client_key].second = odc::asio_service::Get()->make_steady_timer(std::chrono::milliseconds(MaxPollIntervalms));
+			poll_timers[client_key].first = MaxPollIntervalms;
+			Poll(clients[client_key], poll_timers[client_key].second, MaxPollIntervalms);
+		}
+	}
+
 public:
 
+	// Clean up any expired clients
+	void Clean()
+	{
+		std::set<std::string> to_delete;
+		for(auto& client : clients)
+		{
+			if(client.second.expired())
+				to_delete.insert(client.first);
+		}
+		for(auto& key : to_delete)
+		{
+			clients.erase(key);
+			poll_timers.erase(key);
+		}
+	}
+
+	// Factory method to get a client from the cache, or create a new one if it doesn't exist
 	template<typename ClientType>
-	std::shared_ptr<ClientType> GetClient(const std::string& client_key, const kafka::Properties& properties)
+	std::shared_ptr<ClientType> GetClient(const std::string& client_key, const kafka::Properties& properties, const size_t MaxPollIntervalms = std::numeric_limits<size_t>::max())
 	{
 		if(auto client = clients[client_key].lock())
+		{
+			MaxPollTime(client_key, MaxPollIntervalms);
 			return std::static_pointer_cast<ClientType>(client);
+		}
 
 		auto new_client = std::make_shared<ClientType>(properties);
 		clients[client_key] = new_client;
 		poll_timers[client_key] = {std::numeric_limits<size_t>::max(),nullptr};
+		MaxPollTime(client_key, MaxPollIntervalms);
 		return new_client;
 	}
 
-	void MaxPollTime(const std::string& client_key, const size_t MaxPollIntervalms)
-	{
-		if(clients.find(client_key) == clients.end())
-			return;
-
-		auto client = clients[client_key].lock();
-		if(!client)
-			return;
-
-		if(MaxPollIntervalms < poll_timers[client_key].first)
-		{
-			//cancel the existing timer, and reassign the pointer (which will expire weak pointer in handler)
-			if(auto pTimer = poll_timers[client_key].second)
-				pTimer->cancel();
-			poll_timers[client_key].second = odc::asio_service::Get()->make_steady_timer(std::chrono::milliseconds(MaxPollIntervalms));
-			poll_timers[client_key].first = MaxPollIntervalms;
-
-			Poll(client, poll_timers[client_key].second, MaxPollIntervalms);
-		}
-	}
-
+	// Singleton pattern to manage the cache
+	// Only one instance of the cache will exist at any one time
+	// but it will be destroyed as soon as the weak_ptr expires
 	static std::shared_ptr<KafkaClientCache> Get()
 	{
 		static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
