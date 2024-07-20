@@ -86,26 +86,11 @@ void KafkaProducerPort::Build()
 			pConf->NativeKafkaProperties);
 	}
 	else
-		pKafkaProducer = std::make_shared<KCP::KafkaProducer>(pConf->NativeKafkaProperties);
-
-	//TODO: set up a polling loop using asio to call pKafkaProducer->pollEvents() at a regular interval
-	// to ensure we get callbacks in the case there's no following Event
-	// would belong in the producer factory/manager class if sharing producers
-	std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer(std::chrono::milliseconds(pConf->MaxPollIntervalms));
-	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(this->shared_from_this());
-	auto polling_handler = [weak_self,pTimer,pConf](auto timer_handler)
-				     {
-					     auto self = weak_self.lock();
-					     if(!self || !self->enabled) return;
-					     self->pKafkaProducer->pollEvents(std::chrono::milliseconds::zero());
-					     pTimer->expires_from_now(std::chrono::milliseconds(pConf->MaxPollIntervalms));
-					     pTimer->async_wait([timer_handler](asio::error_code err)
-						     {
-							     if(err) return;
-							     timer_handler(timer_handler);
-						     });
-				     };
-	polling_handler(polling_handler);
+	{
+		pKafkaProducer = pKafkaClientCache->GetClient<KCP::KafkaProducer>(
+			"Producer: " + Name,
+			pConf->NativeKafkaProperties);
+	}
 }
 
 void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
