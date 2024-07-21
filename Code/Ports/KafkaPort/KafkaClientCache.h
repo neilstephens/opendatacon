@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_map>
 #include <string>
+#include <mutex>
 
 class KafkaClientCache
 {
@@ -42,11 +43,10 @@ private:
 		}
 	}
 
-public:
-
 	// Clean up any expired clients
 	void Clean()
 	{
+		//we know mutex is locked, because this is only called from GetClient
 		std::set<std::string> to_delete;
 		for(auto& client : clients)
 		{
@@ -60,10 +60,14 @@ public:
 		}
 	}
 
+public:
+
 	// Factory method to get a client from the cache, or create a new one if it doesn't exist
 	template<typename ClientType>
 	std::shared_ptr<ClientType> GetClient(const std::string& client_key, const kafka::Properties& properties, const size_t MaxPollIntervalms = std::numeric_limits<size_t>::max())
 	{
+		std::lock_guard lock(mtx);
+
 		if(auto client = clients[client_key].lock())
 		{
 			MaxPollTime(client_key, MaxPollIntervalms);
@@ -74,6 +78,7 @@ public:
 		clients[client_key] = new_client;
 		poll_timers[client_key] = {std::numeric_limits<size_t>::max(),nullptr};
 		MaxPollTime(client_key, MaxPollIntervalms);
+		Clean();
 		return new_client;
 	}
 
@@ -107,6 +112,7 @@ public:
 	}
 
 private:
+	std::mutex mtx;
 	std::unordered_map<std::string, std::weak_ptr<kafka::clients::KafkaClient>> clients;
 	std::unordered_map<std::string, std::pair<size_t,std::shared_ptr<asio::steady_timer>>> poll_timers;
 };
