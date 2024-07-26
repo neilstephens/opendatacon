@@ -25,6 +25,7 @@
  */
 
 #include "FileTransferPort.h"
+#include "FileTransferPortConf.h"
 #include <opendatacon/util.h>
 #include <filesystem>
 #include <memory>
@@ -1080,19 +1081,19 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 			fin.open(path, std::ios::binary);
 			if (fin.fail())
 			{
-			      if(auto log = odc::spdlog_get("FileTransferPort"))
+				if(auto log = odc::spdlog_get("FileTransferPort"))
 					log->error("{}: Failed to open file path for reading: '{}'",Name,path);
-			      tx_in_progress = false;
-			      tx_filename_q.erase(path);
-			      if(!tx_filename_q.empty())
-			      {
-			            pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+				tx_in_progress = false;
+				tx_filename_q.erase(path);
+				if(!tx_filename_q.empty())
+				{
+					pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
 						{
 							auto& [next_path,next_tx_name] = next;
 							TrySend(next_path, next_tx_name);
 						});
 				}
-			      return;
+				return;
 			}
 			SendChunk(path,std::chrono::high_resolution_clock::now());
 		}));
@@ -1230,7 +1231,8 @@ std::pair<bool,std::string> FileTransferPort::FileNameTransmissionMatch(const st
 	if(std::regex_match(filename, match_results, *pConf->pFilenameRegex))
 	{
 		if(match_results.size() > pConf->FileNameTransmissionMatchGroup)
-			return {true,match_results.str(pConf->FileNameTransmissionMatchGroup)};
+			return {true,match_results.str(pConf->FileNameTransmissionMatchGroup)}
+		;
 		return {true,filename};
 	}
 	return {false,""};

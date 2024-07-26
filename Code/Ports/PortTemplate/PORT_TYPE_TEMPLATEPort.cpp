@@ -26,6 +26,7 @@
 
 #include "<PORT_TYPE_TEMPLATE>Port.h"
 #include <opendatacon/util.h>
+#include <opendatacon/spdlog.h>
 
 <PORT_TYPE_TEMPLATE>Port::<PORT_TYPE_TEMPLATE>Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
@@ -45,7 +46,7 @@ void <PORT_TYPE_TEMPLATE>Port::Build()
 }
 void <PORT_TYPE_TEMPLATE>Port::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	if(auto log = spdlog::get("<PORT_TYPE_TEMPLATE>Port"))
+	if(auto log = odc::spdlog_get("<PORT_TYPE_TEMPLATE>Port"))
 		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 
 	(*pStatusCallback)(CommandStatus::SUCCESS);

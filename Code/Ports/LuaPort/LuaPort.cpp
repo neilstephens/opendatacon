@@ -104,7 +104,7 @@ void LuaPort::Build()
 //only called on Lua sync strand
 void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	if(auto log = spdlog::get("LuaPort"))
+	if(auto log = odc::spdlog_get("LuaPort"))
 		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 
 	//Get ready to call the lua function
