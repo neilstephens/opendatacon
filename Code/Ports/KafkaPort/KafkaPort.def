@@ -21,3 +21,5 @@ LIBRARY KafkaPort
 EXPORTS
 	new_KafkaProducerPort
 	delete_KafkaProducerPort
+	new_KafkaConsumerPort
+	delete_KafkaConsumerPort

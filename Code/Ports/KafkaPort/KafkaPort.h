@@ -28,8 +28,9 @@
 #define KAFKAPORT_H
 
 #include "KafkaClientCache.h"
-#include <atomic>
+#include "KafkaPortConf.h"
 #include <opendatacon/DataPort.h>
+#include <atomic>
 
 using namespace odc;
 
@@ -49,6 +50,55 @@ public:
 protected:
 	std::atomic_bool enabled {false};
 	std::shared_ptr<KafkaClientCache> pKafkaClientCache = KafkaClientCache::Get();
+	template <class KafkaClientType> std::shared_ptr<KafkaClientType> Build(std::string TypeString = "")
+	{
+		auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+
+		if(!pConf->NativeKafkaProperties.contains("bootstrap.servers"))
+		{
+			pConf->NativeKafkaProperties.put("bootstrap.servers", "localhost:9092");
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("{}: bootstrap.servers property not found, defaulting to localhost:9092", Name);
+		}
+
+		if(pConf->NativeKafkaProperties.getProperty("enable.manual.events.poll") == "false")
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->warn("{}: enable.manual.events.poll property is set to false, forcing to true", Name);
+		pConf->NativeKafkaProperties.put("enable.manual.events.poll", "true");
+
+		pConf->NativeKafkaProperties.put("error_cb", [this](const kafka::Error& error)
+			{
+				if(auto log = odc::spdlog_get("KafkaPort"))
+					log->error("{}: {}",Name,error.toString());
+			});
+
+		pConf->NativeKafkaProperties.put("log_cb", [this](int level, const char* filename, int lineno, const char* msg)
+			{
+				auto spdlog_lvl = spdlog::level::level_enum(6-level);
+				if(auto log = odc::spdlog_get("KafkaPort"))
+					log->log(spdlog_lvl,"{} ({}:{}): {}",Name,filename,lineno,msg);
+			});
+
+		pConf->NativeKafkaProperties.put("stats_cb", [this](const std::string& jsonString)
+			{
+				if(auto log = odc::spdlog_get("KafkaPort"))
+					log->info("{}: Statistics: {}",Name,jsonString);
+			});
+
+		if(pConf->ShareKafkaClient)
+		{
+			if(pConf->SharedKafkaClientKey == "")
+			{
+				auto bs_servers = pConf->NativeKafkaProperties.getProperty("bootstrap.servers").value();
+				pConf->SharedKafkaClientKey = TypeString+":"+bs_servers;
+			}
+
+			return pKafkaClientCache->GetClient<KafkaClientType>(
+				pConf->SharedKafkaClientKey,
+				pConf->NativeKafkaProperties);
+		}
+		return pKafkaClientCache->GetClient<KafkaClientType>(Name, pConf->NativeKafkaProperties);
+	}
 };
 
 #endif // KAFKAPORT_H

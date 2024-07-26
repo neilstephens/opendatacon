@@ -25,7 +25,7 @@
  */
 
 #include "KafkaProducerPort.h"
-#include "KafkaPortConf.h"
+#include "KafkaPort.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/spdlog.h>
 #include <kafka/KafkaProducer.h>
@@ -34,85 +34,31 @@
 
 void KafkaProducerPort::Build()
 {
-	//create a kafka producer
-	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
-
-	if(!pConf->NativeKafkaProperties.contains("bootstrap.servers"))
-	{
-		pConf->NativeKafkaProperties.put("bootstrap.servers", "localhost:9092");
-		if(auto log = spdlog::get("KafkaPort"))
-			log->error("bootstrap.servers property not found, defaulting to localhost:9092");
-	}
-
-	if(pConf->NativeKafkaProperties.getProperty("enable.manual.events.poll") == "false")
-		if(auto log = spdlog::get("KafkaPort"))
-			log->warn("enable.manual.events.poll property is set to false, forcing to true");
-	pConf->NativeKafkaProperties.put("enable.manual.events.poll", "true");
-
-	pConf->NativeKafkaProperties.put("error_cb", [this](const kafka::Error& error)
-		{
-			if(auto log = spdlog::get("KafkaPort"))
-				log->error("{}: {}",Name,error.toString());
-		});
-
-	pConf->NativeKafkaProperties.put("log_cb", [this](int level, const char* filename, int lineno, const char* msg)
-		{
-			auto spdlog_lvl = spdlog::level::level_enum(6-level);
-			if(auto log = spdlog::get("KafkaPort"))
-				log->log(spdlog_lvl,"{} ({}:{}): {}",Name,filename,lineno,msg);
-		});
-
-	pConf->NativeKafkaProperties.put("stats_cb", [this](const std::string& jsonString)
-		{
-			if(auto log = spdlog::get("KafkaPort"))
-				log->info("{}: Statistics: {}",Name,jsonString);
-		});
-
-	//TODO: consider also forcing enable.idempotence=true depending on the retry model
-	// see https://github.com/confluentinc/librdkafka/blob/master/INTRODUCTION.md#idempotent-producer
-	//TODO: consider also setting the acks property to "all" depending on the retry model
-
-	//FIXME: KafkaProducer ctor can throw - catch it, and at least log it
-	if(pConf->ShareKafkaClient)
-	{
-		if(pConf->SharedKafkaClientKey == "")
-		{
-			auto bs_servers = pConf->NativeKafkaProperties.getProperty("bootstrap.servers").value();
-			pConf->SharedKafkaClientKey.append("Producer:").append(bs_servers);
-		}
-
-		pKafkaProducer = pKafkaClientCache->GetClient<KCP::KafkaProducer>(
-			pConf->SharedKafkaClientKey,
-			pConf->NativeKafkaProperties);
-	}
-	else
-	{
-		pKafkaProducer = pKafkaClientCache->GetClient<KCP::KafkaProducer>(
-			"Producer: " + Name,
-			pConf->NativeKafkaProperties);
-	}
+	pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
 }
 
 void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled) return;
+	if(!pKafkaProducer) return;
 
 	//TODO: build the KCP::ProducerRecord from the EventInfo
 	KCP::ProducerRecord record(kafka::Topic("example-topic"), kafka::NullKey, kafka::Value("test"));
 
-	auto deliveryCb = [](const KCP::RecordMetadata& metadata, const kafka::Error& error)
+	auto deliveryCb = [this,event](const KCP::RecordMetadata& metadata, const kafka::Error& error)
 				{
-					auto log = spdlog::get("KafkaPort");
+					auto log = odc::spdlog_get("KafkaPort");
 					if (!error)
 					{
 						if(log && log->should_log(spdlog::level::trace))
-							log->trace("Message delivered: {}", metadata.toString());
+							log->trace("{}: Message delivered: {}", Name, metadata.toString());
 					}
 					else
 					{
 						if(log)
-							log->error("Message failed to be delivered: {}", error.message());
-						//TODO: retry?
+							log->error("{}: Message failed to be delivered: {} {} {}: {}",
+								ToString(event->GetEventType()),event->GetIndex(),
+								event->GetPayloadString(), error.message());
 					}
 				};
 

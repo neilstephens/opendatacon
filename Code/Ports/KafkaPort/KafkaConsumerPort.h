@@ -18,33 +18,32 @@
  *	limitations under the License.
  */
 /*
- * main.cpp
+ * KafkaConsumerPort.h
  *
- *  Created on: 09/07/2024
+ *  Created on: 26/07/2024
  *      Author: Neil Stephens
  */
 
-#include "KafkaProducerPort.h"
-#include "KafkaConsumerPort.h"
+#ifndef KAFKACONSUMERPORT_H
+#define KAFKACONSUMERPORT_H
 
-extern "C" KafkaProducerPort* new_KafkaProducerPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
-{
-	return new KafkaProducerPort(Name,File,Overrides);
-}
+#include "KafkaPort.h"
+#include <kafka/KafkaConsumer.h>
 
-extern "C" void delete_KafkaProducerPort(KafkaProducerPort* aKafkaProducerPort_ptr)
-{
-	delete aKafkaProducerPort_ptr;
-	return;
-}
+using namespace odc;
+namespace KCC = kafka::clients::consumer;
 
-extern "C" KafkaConsumerPort* new_KafkaConsumerPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
+class KafkaConsumerPort: public KafkaPort
 {
-	return new KafkaConsumerPort(Name,File,Overrides);
-}
+public:
+	KafkaConsumerPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides)
+		:KafkaPort(Name,Filename,Overrides){};
+	virtual ~KafkaConsumerPort(){};
 
-extern "C" void delete_KafkaConsumerPort(KafkaConsumerPort* aKafkaConsumerPort_ptr)
-{
-	delete aKafkaConsumerPort_ptr;
-	return;
-}
+	virtual void Build() override;
+	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override {}
+private:
+	std::shared_ptr<KCC::KafkaConsumer> pKafkaConsumer;
+};
+
+#endif // KAFKACONSUMERPORT_H

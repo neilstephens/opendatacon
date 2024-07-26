@@ -25,7 +25,6 @@
  */
 
 #include "KafkaPort.h"
-#include "KafkaPortConf.h"
 
 KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides):
 	DataPort(Name, Filename, Overrides)
@@ -60,7 +59,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			{
 				pConf->NativeKafkaProperties.put(memberName, JSONRoot["NativeKafkaProperties"][memberName].asString());
 			}
-			else if(auto log = spdlog::get("KafkaPort"))
+			else if(auto log = odc::spdlog_get("KafkaPort"))
 			{
 				log->error("NativeKafkaProperties member '{}' is not a simple value; ignoring.", memberName);
 			}

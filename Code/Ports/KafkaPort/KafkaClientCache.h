@@ -1,5 +1,35 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * KafkaClientCache.h
+ *
+ *  Created on: 19/07/2024
+ *      Author: Neil Stephens
+ */
+
+#ifndef KAFKACLIENTCACHE_H
+#define KAFKACLIENTCACHE_H
+
 #include <kafka/KafkaClient.h>
 #include <opendatacon/asio.h>
+#include <opendatacon/util.h>
 #include <memory>
 #include <unordered_map>
 #include <string>
@@ -74,12 +104,21 @@ public:
 			return std::static_pointer_cast<ClientType>(client);
 		}
 
-		auto new_client = std::make_shared<ClientType>(properties);
-		clients[client_key] = new_client;
-		poll_timers[client_key] = {std::numeric_limits<size_t>::max(),nullptr};
-		MaxPollTime(client_key, MaxPollIntervalms);
-		Clean();
-		return new_client;
+		try
+		{
+			auto new_client = std::make_shared<ClientType>(properties);
+			clients[client_key] = new_client;
+			poll_timers[client_key] = {std::numeric_limits<size_t>::max(),nullptr};
+			MaxPollTime(client_key, MaxPollIntervalms);
+			Clean();
+			return new_client;
+		}
+		catch(const kafka::KafkaException& e)
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("{}: Failed to create KafkaClient: {}", client_key, e.what());
+			return nullptr;
+		}
 	}
 
 	// Singleton pattern to manage the cache
@@ -116,3 +155,5 @@ private:
 	std::unordered_map<std::string, std::weak_ptr<kafka::clients::KafkaClient>> clients;
 	std::unordered_map<std::string, std::pair<size_t,std::shared_ptr<asio::steady_timer>>> poll_timers;
 };
+
+#endif // KAFKACLIENTCACHE_H

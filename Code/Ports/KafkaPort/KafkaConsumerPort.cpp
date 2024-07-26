@@ -18,33 +18,23 @@
  *	limitations under the License.
  */
 /*
- * main.cpp
+ * KafkaConsumerPort.cpp
  *
- *  Created on: 09/07/2024
+ *  Created on: 26/07/2024
  *      Author: Neil Stephens
  */
 
-#include "KafkaProducerPort.h"
 #include "KafkaConsumerPort.h"
+#include "KafkaPort.h"
+#include <opendatacon/asio.h>
+#include <opendatacon/spdlog.h>
+#include <kafka/KafkaConsumer.h>
+#include <chrono>
+#include <memory>
 
-extern "C" KafkaProducerPort* new_KafkaProducerPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
+void KafkaConsumerPort::Build()
 {
-	return new KafkaProducerPort(Name,File,Overrides);
+	pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
+	//TODO: set up the consumer
 }
 
-extern "C" void delete_KafkaProducerPort(KafkaProducerPort* aKafkaProducerPort_ptr)
-{
-	delete aKafkaProducerPort_ptr;
-	return;
-}
-
-extern "C" KafkaConsumerPort* new_KafkaConsumerPort(const std::string& Name, const std::string& File, const Json::Value& Overrides)
-{
-	return new KafkaConsumerPort(Name,File,Overrides);
-}
-
-extern "C" void delete_KafkaConsumerPort(KafkaConsumerPort* aKafkaConsumerPort_ptr)
-{
-	delete aKafkaConsumerPort_ptr;
-	return;
-}
