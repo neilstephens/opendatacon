@@ -26,7 +26,6 @@
 
 #ifndef FileTransferPort_H_
 #define FileTransferPort_H_
-#include "FileTransferPortConf.h"
 #include <opendatacon/DataPort.h>
 #include <filesystem>
 #include <memory>
