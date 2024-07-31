@@ -1716,11 +1716,23 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	for(auto name : changedIUIs)
 		created_or_changeIUIs.insert(name);
 
+	std::set<std::string> do_not_enable;
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->debug("Building new and replacement Ports.");
 	for(auto& port_pair : DataPorts)
-		if(created_or_changeIOHs.find(port_pair.first) != created_or_changeIOHs.end())
-			port_pair.second->Build();
+	{
+		try
+		{
+			if(created_or_changeIOHs.find(port_pair.first) != created_or_changeIOHs.end())
+				port_pair.second->Build();
+		}
+		catch(std::exception& e)
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->critical("Will not enable Port '{}': Build() threw exception: '{}'",port_pair.first,e.what());
+			do_not_enable.insert(port_pair.first);
+		}
+	}
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->debug("Building new and replacement Connectors.");
@@ -1775,8 +1787,12 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			EnableIOHandler(conn_pair.second);
 
 	for(auto& port_pair : DataPorts)
+	{
+		if(do_not_enable.find(port_pair.first) != do_not_enable.end())
+			continue;
 		if(created_or_changeIOHs.find(port_pair.first) != created_or_changeIOHs.end())
 			EnableIOHandler(port_pair.second);
+	}
 
 	for(auto enable : reenable)
 		IOHandler::GetIOHandlers().at(enable)->Enable();
@@ -1786,7 +1802,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		EnableIUI(ui_pair.second);
 
 	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Enabled {} objects affected by reload.",created_or_changeIUIs.size()+created_or_changeIOHs.size()+reenable.size());
+		log->info("Enabled {} objects affected by reload.",created_or_changeIUIs.size()+created_or_changeIOHs.size()+reenable.size()-do_not_enable.size());
 
 	return true;
 }
