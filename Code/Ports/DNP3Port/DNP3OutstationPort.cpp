@@ -283,6 +283,14 @@ void DNP3OutstationPort::Build()
 	{
 		StackConfig.database.octet_string[index].clazz = pConf->pPointConf->OctetStringClasses[index];
 	}
+	//TODO: Analog Output Status and Binary Output Status
+	//StackConfig.database.binary_output_status[index].clazz
+	//StackConfig.database.binary_output_status[index].evariation
+	//StackConfig.database.binary_output_status[index].svariation
+	//StackConfig.database.analog_output_status[index].clazz
+	//StackConfig.database.analog_output_status[index].evariation
+	//StackConfig.database.analog_output_status[index].svariation
+	//StackConfig.database.analog_output_status[index].deadband
 
 	InitEventDB();
 

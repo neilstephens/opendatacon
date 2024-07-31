@@ -569,6 +569,11 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 	auto index = event->GetIndex();
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	//FIXME: ControlIndexes are checked before AnalogControlIndexes, without checking event type
+	//	so if a point is in both, it will be treated as a binary control and error out.
+	//	Small refactor needed to check event type first, then check control indexes
+
 	// TODO: SJE Need to process the analogcontrols in a separate loop.
 	for (auto i : pConf->pPointConf->ControlIndexes)
 	{
