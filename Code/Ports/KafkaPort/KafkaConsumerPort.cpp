@@ -35,6 +35,26 @@
 void KafkaConsumerPort::Build()
 {
 	pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
+	if(!pKafkaConsumer)
+		throw std::runtime_error(Name+": Failed to create Kafka Consumer");
+
 	//TODO: set up the consumer
+	//warn if the client id isn't set in the properties,
+	//	so that the consumer can be restarted without losing its place (kafka takes care of this I think)
+	//manually commitAsync() offsets in event callbacks - depending on "enable.auto.commit=true" in the config
+	//	provide a rebalance callback to commit offsets before rebalancing (if in a group and manual commit is enabled)
+
+	//Two options for what the consumer consumes:
+	//	1. "subscribe" to whole topics (optionally as part of a consumer group)
+	//	2. "assign" partitions to consume from manually (not compatible with consumer groups)
+
+	//Pause on start - resume on Enable()
+
+	//Set up polling timer chain
+	//	poll() should be called even when paused
+	//	re-call immediately fill events returned, otherwise exponentially back off to MaxPollIntervalms
+	pKafkaConsumer->poll(std::chrono::milliseconds::zero());
 }
 
+//TODO: override Disable/Enable methods to "pause"/"continue" the consumer, or destroy/recreate it (depending on group config)
+//	Option to fast forward to the end offset on enable, if not in group (minus 1 to get latest value, or configurable buffer)

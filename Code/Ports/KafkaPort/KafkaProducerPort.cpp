@@ -35,6 +35,8 @@
 void KafkaProducerPort::Build()
 {
 	pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
+	if(!pKafkaProducer)
+		throw std::runtime_error(Name+": Failed to build KafkaProducer.");
 }
 
 void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
