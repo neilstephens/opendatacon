@@ -36,8 +36,6 @@ opendnp3::StaticAnalogVariation StringToStaticAnalogResponse(const std::string& 
 	if (str == "Group30Var4") return opendnp3::StaticAnalogVariation::Group30Var4;
 	if (str == "Group30Var5") return opendnp3::StaticAnalogVariation::Group30Var5;
 	if (str == "Group30Var6") return opendnp3::StaticAnalogVariation::Group30Var6;
-	//	if (str == "Group30Var7") return opendnp3::StaticAnalogVariation::Group30Var7;
-	//	if (str == "Group30Var8") return opendnp3::StaticAnalogVariation::Group30Var8;
 	throw std::runtime_error("Unknown Static analog response type");
 }
 
@@ -56,12 +54,11 @@ opendnp3::StaticAnalogOutputStatusVariation StringToStaticAnalogOutputStatusResp
 	if (str == "Group40Var2") return opendnp3::StaticAnalogOutputStatusVariation::Group40Var2;
 	if (str == "Group40Var3") return opendnp3::StaticAnalogOutputStatusVariation::Group40Var3;
 	if (str == "Group40Var4") return opendnp3::StaticAnalogOutputStatusVariation::Group40Var4;
-	throw std::runtime_error("Unknown Static counter response type");
+	throw std::runtime_error("Unknown Static analog output status response type");
 }
 
 opendnp3::StaticBinaryOutputStatusVariation StringToStaticBinaryOutputStatusResponse(const std::string& str)
 {
-	// if (str == "Group10Var1") return opendnp3::StaticBinaryOutputStatusVariation::Group10Var1;
 	if (str == "Group10Var2") return opendnp3::StaticBinaryOutputStatusVariation::Group10Var2;
 	throw std::runtime_error("Unknown Static Binary Output Status response type");
 }
@@ -107,7 +104,7 @@ opendnp3::EventAnalogOutputStatusVariation StringToEventAnalogControlResponse(co
 	if (str == "Group42Var6") return opendnp3::EventAnalogOutputStatusVariation::Group42Var6; // double without time
 	if (str == "Group42Var7") return opendnp3::EventAnalogOutputStatusVariation::Group42Var7; // float with time
 	// if (str == "Group42Var8") return opendnp3::EventAnalogOutputStatusVariation::Group42Var8;	// double with time
-	throw std::runtime_error("Unknown event analog control response type");
+	throw std::runtime_error("Unknown analog control response type");
 }
 //FIXME: same deal here as above
 odc::EventType EventAnalogControlResponseToODCEvent(const opendnp3::EventAnalogOutputStatusVariation var)
@@ -128,4 +125,17 @@ opendnp3::EventBinaryOutputStatusVariation StringToEventBinaryOutputStatusRespon
 	if (str == "Group11Var1") return opendnp3::EventBinaryOutputStatusVariation::Group11Var1;
 	if (str == "Group11Var2") return opendnp3::EventBinaryOutputStatusVariation::Group11Var2;
 	throw std::runtime_error("Unknown event binary output status response type");
+}
+
+opendnp3::EventAnalogOutputStatusVariation StringToEventAnalogOutputStatusResponse(const std::string& str)
+{
+	if (str == "Group42Var1") return opendnp3::EventAnalogOutputStatusVariation::Group42Var1;
+	if (str == "Group42Var2") return opendnp3::EventAnalogOutputStatusVariation::Group42Var2;
+	if (str == "Group42Var3") return opendnp3::EventAnalogOutputStatusVariation::Group42Var3;
+	if (str == "Group42Var4") return opendnp3::EventAnalogOutputStatusVariation::Group42Var4;
+	if (str == "Group42Var5") return opendnp3::EventAnalogOutputStatusVariation::Group42Var5;
+	if (str == "Group42Var6") return opendnp3::EventAnalogOutputStatusVariation::Group42Var6;
+	if (str == "Group42Var7") return opendnp3::EventAnalogOutputStatusVariation::Group42Var7;
+	if (str == "Group42Var8") return opendnp3::EventAnalogOutputStatusVariation::Group42Var8;
+	throw std::runtime_error("Unknown event analog output status response type");
 }

@@ -95,11 +95,15 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
 	StaticCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
+	StaticAnalogOutputStatusResponse(opendnp3::StaticAnalogOutputStatusVariation::Group40Var1),
+	StaticBinaryOutputStatusResponse(opendnp3::StaticBinaryOutputStatusVariation::Group10Var2),
 	// Default Event Variations
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
 	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
 	EventAnalogControlResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var1), // 32 bit no time
+	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
+	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
 	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
@@ -360,6 +364,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		StaticAnalogResponse = StringToStaticAnalogResponse(JSONRoot["StaticAnalogResponse"].asString());
 	if (JSONRoot.isMember("StaticCounterResponse"))
 		StaticCounterResponse = StringToStaticCounterResponse(JSONRoot["StaticCounterResponse"].asString());
+	if (JSONRoot.isMember("StaticAnalogOutputStatusResponse"))
+		StaticAnalogOutputStatusResponse = StringToStaticAnalogOutputStatusResponse(JSONRoot["StaticAnalogOutputStatusResponse"].asString());
+	if (JSONRoot.isMember("StaticBinaryOutputStatusResponse"))
+		StaticBinaryOutputStatusResponse = StringToStaticBinaryOutputStatusResponse(JSONRoot["StaticBinaryOutputStatusResponse"].asString());
 
 	// Default Event Variations
 	if (JSONRoot.isMember("EventBinaryResponse"))
@@ -370,6 +378,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
 	if (JSONRoot.isMember("AnalogControlResponse"))
 		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["AnalogControlResponse"].asString());
+	if (JSONRoot.isMember("EventBinaryOutputStatusResponse"))
+		EventBinaryOutputStatusResponse = StringToEventBinaryOutputStatusResponse(JSONRoot["EventBinaryOutputStatusResponse"].asString());
+	if (JSONRoot.isMember("EventAnalogOutputStatusResponse"))
+		EventAnalogOutputStatusResponse = StringToEventAnalogOutputStatusResponse(JSONRoot["EventAnalogOutputStatusResponse"].asString());
 
 	// Timestamp Override Alternatives
 	if (JSONRoot.isMember("TimestampOverride"))
@@ -428,6 +440,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					   return {true,start,stop};
 				   };
 
+	//TODO: remove stale code from way back when removing a point on-the-fly was a thing
 	auto InsertOrDeleteIndex = [](const auto& PointArrayElement, auto& IndexVec, auto index) -> bool
 					   {
 						   if (std::find(IndexVec.begin(),IndexVec.end(),index) == IndexVec.end())
@@ -558,6 +571,106 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 		}
 		std::sort(BinaryIndexes.begin(),BinaryIndexes.end());
+	}
+
+	if(JSONRoot.isMember("AnalogOutputStatuses"))
+	{
+		const auto AnalogOutputStatuses = JSONRoot["AnalogOutputStatuses"];
+		for(Json::ArrayIndex n = 0; n < AnalogOutputStatuses.size(); ++n)
+		{
+			auto [success, start, stop] = GetIndexRange(AnalogOutputStatuses[n]);
+			if(!success)
+				continue;
+
+			double deadband = 0;
+			if(AnalogOutputStatuses[n].isMember("Deadband"))
+			{
+				deadband = AnalogOutputStatuses[n]["Deadband"].asDouble();
+			}
+
+			for(auto index = start; index <= stop; index++)
+			{
+				AnalogOutputStatusClasses[index] = GetClass(AnalogOutputStatuses[n]);
+				if (AnalogOutputStatuses[n].isMember("StaticAnalogOutputStatusResponse"))
+					StaticAnalogOutputStatusResponses[index] = StringToStaticAnalogOutputStatusResponse(AnalogOutputStatuses[n]["StaticAnalogOutputStatusResponse"].asString());
+				else
+					StaticAnalogOutputStatusResponses[index] = StaticAnalogOutputStatusResponse;
+				if (AnalogOutputStatuses[n].isMember("EventAnalogOutputStatusResponse"))
+					EventAnalogOutputStatusResponses[index] = StringToEventAnalogOutputStatusResponse(AnalogOutputStatuses[n]["EventAnalogOutputStatusResponse"].asString());
+				else
+					EventAnalogOutputStatusResponses[index] = EventAnalogOutputStatusResponse;
+
+				//TODO: make deadbands per point
+				AnalogOutputStatusDeadbands[index] = deadband;
+
+				if (std::find(AnalogOutputStatusIndexes.begin(),AnalogOutputStatusIndexes.end(),index) == AnalogOutputStatusIndexes.end())
+					AnalogOutputStatusIndexes.push_back(index);
+
+				if(AnalogOutputStatuses[n].isMember("StartVal"))
+				{
+					opendnp3::Flags flags;
+					std::string start_val = AnalogOutputStatuses[n]["StartVal"].asString();
+					if(start_val == "X")
+					{
+						flags.Set(opendnp3::AnalogOutputStatusQuality::COMM_LOST);
+						AnalogOutputStatusStartVals[index] = opendnp3::AnalogOutputStatus(0,flags);
+					}
+					else
+					{
+						flags.Set(opendnp3::AnalogOutputStatusQuality::ONLINE);
+						AnalogOutputStatusStartVals[index] = opendnp3::AnalogOutputStatus(std::stod(start_val),flags);
+					}
+				}
+				else if(AnalogOutputStatusStartVals.count(index))
+					AnalogOutputStatusStartVals.erase(index);
+			}
+		}
+		std::sort(AnalogOutputStatusIndexes.begin(),AnalogOutputStatusIndexes.end());
+	}
+
+	if(JSONRoot.isMember("BinaryOutputStatuses"))
+	{
+		const auto BinaryOutputStatuses = JSONRoot["BinaryOutputStatuses"];
+		for(Json::ArrayIndex n = 0; n < BinaryOutputStatuses.size(); ++n)
+		{
+			auto [success, start, stop] = GetIndexRange(BinaryOutputStatuses[n]);
+			if(!success)
+				continue;
+			for(auto index = start; index <= stop; index++)
+			{
+				BinaryOutputStatusClasses[index] = GetClass(BinaryOutputStatuses[n]);
+				if (BinaryOutputStatuses[n].isMember("StaticBinaryOutputStatusResponse"))
+					StaticBinaryOutputStatusResponses[index] = StringToStaticBinaryOutputStatusResponse(BinaryOutputStatuses[n]["StaticBinaryOutputStatusResponse"].asString());
+				else
+					StaticBinaryOutputStatusResponses[index] = StaticBinaryOutputStatusResponse;
+				if (BinaryOutputStatuses[n].isMember("EventBinaryOutputStatusResponse"))
+					EventBinaryOutputStatusResponses[index] = StringToEventBinaryOutputStatusResponse(BinaryOutputStatuses[n]["EventBinaryOutputStatusResponse"].asString());
+				else
+					EventBinaryOutputStatusResponses[index] = EventBinaryOutputStatusResponse;
+
+				if (std::find(BinaryOutputStatusIndexes.begin(),BinaryOutputStatusIndexes.end(),index) == BinaryOutputStatusIndexes.end())
+					BinaryOutputStatusIndexes.push_back(index);
+
+				if(BinaryOutputStatuses[n].isMember("StartVal"))
+				{
+					opendnp3::Flags flags;
+					std::string start_val = BinaryOutputStatuses[n]["StartVal"].asString();
+					if(start_val == "X")
+					{
+						flags.Set(opendnp3::BinaryQuality::COMM_LOST);
+						BinaryOutputStatusStartVals[index] = opendnp3::BinaryOutputStatus(false,flags);
+					}
+					else
+					{
+						flags.Set(opendnp3::BinaryQuality::ONLINE);
+						BinaryOutputStatusStartVals[index] = opendnp3::BinaryOutputStatus(BinaryOutputStatuses[n]["StartVal"].asBool(),flags);
+					}
+				}
+				else if(BinaryOutputStatusStartVals.count(index))
+					BinaryOutputStatusStartVals.erase(index);
+			}
+		}
+		std::sort(BinaryOutputStatusIndexes.begin(),BinaryOutputStatusIndexes.end());
 	}
 
 	if (JSONRoot.isMember("OctetStrings"))

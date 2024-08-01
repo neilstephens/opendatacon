@@ -162,6 +162,18 @@ void DNP3MasterPort::RePublishEvents()
 		if(ev->HasPayload())
 			PublishEvent(ev);
 	}
+	for (auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
+	{
+		auto ev = pDB->Get(EventType::AnalogOutputStatus,index);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
+	for (auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
+	{
+		auto ev = pDB->Get(EventType::BinaryOutputStatus,index);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		auto ev = pDB->Get(EventType::Binary,pConf->pPointConf->mCommsPoint.second);
@@ -202,34 +214,30 @@ void DNP3MasterPort::SetCommsFailed()
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
 
-		for (auto index : pConf->pPointConf->BinaryIndexes)
-		{
-			auto last_event = pDB->Get(EventType::Binary,index);
-			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
+		SetCommsFailedQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes);
+		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
+		SetCommsFailedQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes);
+		SetCommsFailedQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes);
+	}
+}
 
-			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
-			event->SetPayload<EventType::BinaryQuality>(QualityFlags(new_qual));
-			PublishEvent(event);
+template <EventType etype, EventType qtype>
+void DNP3MasterPort::SetCommsFailedQuality(std::vector<uint16_t>& indexes)
+{
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	for (auto index : indexes)
+	{
+		auto last_event = pDB->Get(etype,index);
+		auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
 
-			//update the EventDB event with the quality as well
-			auto new_event = std::make_shared<EventInfo>(*last_event);
-			new_event->SetQuality(std::move(new_qual));
-			pDB->Set(new_event);
-		}
-		for (auto index : pConf->pPointConf->AnalogIndexes)
-		{
-			auto last_event = pDB->Get(EventType::Analog,index);
-			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
+		auto event = std::make_shared<EventInfo>(qtype,index,Name);
+		event->SetPayload<qtype>(QualityFlags(new_qual));
+		PublishEvent(event);
 
-			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
-			event->SetPayload<EventType::AnalogQuality>(QualityFlags(new_qual));
-			PublishEvent(event);
-
-			//update the EventDB event with the quality as well
-			auto new_event = std::make_shared<EventInfo>(*last_event);
-			new_event->SetQuality(std::move(new_qual));
-			pDB->Set(new_event);
-		}
+		//update the EventDB event with the quality as well
+		auto new_event = std::make_shared<EventInfo>(*last_event);
+		new_event->SetQuality(std::move(new_qual));
+		pDB->Set(new_event);
 	}
 }
 

@@ -283,14 +283,19 @@ void DNP3OutstationPort::Build()
 	{
 		StackConfig.database.octet_string[index].clazz = pConf->pPointConf->OctetStringClasses[index];
 	}
-	//TODO: Analog Output Status and Binary Output Status
-	//StackConfig.database.binary_output_status[index].clazz
-	//StackConfig.database.binary_output_status[index].evariation
-	//StackConfig.database.binary_output_status[index].svariation
-	//StackConfig.database.analog_output_status[index].clazz
-	//StackConfig.database.analog_output_status[index].evariation
-	//StackConfig.database.analog_output_status[index].svariation
-	//StackConfig.database.analog_output_status[index].deadband
+	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
+	{
+		StackConfig.database.analog_output_status[index].clazz = pConf->pPointConf->AnalogOutputStatusClasses[index];
+		StackConfig.database.analog_output_status[index].evariation = pConf->pPointConf->EventAnalogOutputStatusResponses[index];
+		StackConfig.database.analog_output_status[index].svariation = pConf->pPointConf->StaticAnalogOutputStatusResponses[index];
+		StackConfig.database.analog_output_status[index].deadband = pConf->pPointConf->AnalogOutputStatusDeadbands[index];
+	}
+	for(auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
+	{
+		StackConfig.database.binary_output_status[index].clazz = pConf->pPointConf->BinaryOutputStatusClasses[index];
+		StackConfig.database.binary_output_status[index].evariation = pConf->pPointConf->EventBinaryOutputStatusResponses[index];
+		StackConfig.database.binary_output_status[index].svariation = pConf->pPointConf->StaticBinaryOutputStatusResponses[index];
+	}
 
 	InitEventDB();
 
@@ -321,10 +326,12 @@ void DNP3OutstationPort::Build()
 	StackConfig.outstation.params.unsolConfirmTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->UnsolConfirmTimeoutms); /// Timeout for unsolicited confirms
 
 	// TODO: Expose event limits for any new event types to be supported by opendatacon
-	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;          /// The number of binary events the outstation will buffer before overflowing
-	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;          /// The number of analog events the outstation will buffer before overflowing
-	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;        /// The number of counter events the outstation will buffer before overflowing
-	StackConfig.outstation.eventBufferConfig.maxOctetStringEvents =pConf->pPointConf->MaxOctetStringEvents; /// The number of octet string events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;                         /// The number of binary events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;                         /// The number of analog events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;                       /// The number of counter events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxOctetStringEvents =pConf->pPointConf->MaxOctetStringEvents;                /// The number of octet string events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxAnalogOutputStatusEvents = pConf->pPointConf->MaxAnalogOutputStatusEvents; /// The number of analog output status events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxBinaryOutputStatusEvents = pConf->pPointConf->MaxBinaryOutputStatusEvents; /// The number of binary output status events the outstation will buffer before overflowing
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
@@ -499,6 +506,12 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			break;
 		case EventType::OctetString:
 			EventT(FromODC<opendnp3::OctetString>(event), event->GetIndex());
+			break;
+		case EventType::AnalogOutputStatus:
+			EventT(FromODC<opendnp3::AnalogOutputStatus>(event), event->GetIndex());
+			break;
+		case EventType::BinaryOutputStatus:
+			EventT(FromODC<opendnp3::BinaryOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
 			UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());

@@ -133,6 +133,8 @@ private:
 	void RePublishEvents();
 	void SetCommsGood();
 	void SetCommsFailed();
+	template <EventType etype, EventType qtype>
+	void SetCommsFailedQuality(std::vector<uint16_t>& indexes);
 	void CommsHeartBeat(bool isFailed);
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	template<typename T>
