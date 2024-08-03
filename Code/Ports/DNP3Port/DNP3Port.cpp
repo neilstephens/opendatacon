@@ -78,7 +78,9 @@ void DNP3Port::InitEventDB()
 		pConf->pPointConf->BinaryIndexes.size()+
 		pConf->pPointConf->OctetStringIndexes.size()+
 		pConf->pPointConf->ControlIndexes.size()+
-		pConf->pPointConf->AnalogControlIndexes.size());
+		pConf->pPointConf->AnalogControlIndexes.size()+
+		pConf->pPointConf->AnalogOutputStatusIndexes.size()+
+		pConf->pPointConf->BinaryOutputStatusIndexes.size());
 
 	for(auto index : pConf->pPointConf->AnalogIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART,0));
@@ -95,6 +97,10 @@ void DNP3Port::InitEventDB()
 		auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
 		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART, 0));
 	}
+	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputStatus,index,"",QualityFlags::RESTART,0));
+	for(auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::BinaryOutputStatus,index,"",QualityFlags::RESTART,0));
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART,0));
 
@@ -132,6 +138,8 @@ const Json::Value DNP3Port::GetCurrentState() const
 	ret[time_str]["Binaries"] = Json::arrayValue;
 	ret[time_str]["BinaryControls"] = Json::arrayValue;
 	ret[time_str]["AnalogControls"] = Json::arrayValue;
+	ret[time_str]["AnalogOutputStatus"] = Json::arrayValue;
+	ret[time_str]["BinaryOutputStatus"] = Json::arrayValue;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	auto time_correction = [=](const auto& event)
@@ -202,6 +210,36 @@ const Json::Value DNP3Port::GetCurrentState() const
 		try
 		{
 			state["Value"] = event->GetPayloadString();
+		}
+		catch (std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = time_correction(event);
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for (const auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
+	{
+		auto event = pDB->Get(EventType::AnalogOutputStatus, index);
+		auto& state = ret[time_str]["AnalogOutputStatus"].append(Json::Value());
+		state["Index"] = Json::UInt(event->GetIndex());
+		try
+		{
+			state["Value"] = event->GetPayload<EventType::AnalogOutputStatus>();
+		}
+		catch (std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = time_correction(event);
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for (const auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
+	{
+		auto event = pDB->Get(EventType::BinaryOutputStatus, index);
+		auto& state = ret[time_str]["BinaryOutputStatus"].append(Json::Value());
+		state["Index"] = Json::UInt(event->GetIndex());
+		try
+		{
+			state["Value"] = event->GetPayload<EventType::BinaryOutputStatus>();
 		}
 		catch (std::runtime_error&)
 		{}
