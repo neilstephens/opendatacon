@@ -335,8 +335,8 @@ void PyPort::RemoveHTTPHandlers()
 
 std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
 {
-	EventType EventTypeResult;
-	if (!GetEventTypeFromStringName(EventTypeStr, EventTypeResult))
+	EventType EventTypeResult = EventTypeFromString(EventTypeStr);
+	if (EventTypeResult >= EventType::AfterRange)
 	{
 		LOGERROR("Invalid Event Type String passed from Python Code to ODC - {}", EventTypeStr);
 		return nullptr;
