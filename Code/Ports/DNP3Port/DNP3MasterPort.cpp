@@ -28,7 +28,6 @@
 #include "ChannelStateSubscriber.h"
 #include "ChannelHandler.h"
 #include "TypeConversion.h"
-#include "OpenDNP3Helpers.h"
 #include <array>
 #include <limits>
 #include <opendnp3/master/IUTCTimeSource.h>
@@ -658,7 +657,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command.
 			// So we need to do the translation (without triggering any exceptions)
 			// Create the basis of the target event
-			auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
+			auto evttype = pConf->pPointConf->AnalogControlTypes[index];
 			// Now create an event of this type and copy the quality and time from the source event
 			auto newevent = std::make_shared<const EventInfo>(evttype, index, "", event->GetQuality(), event->GetTimestamp());
 			// Still have to set the payload (possibley with conversion)
