@@ -68,7 +68,7 @@ std::shared_ptr<EventInfo> ToODC(const opendnp3::AnalogOutputDouble64& dnp3, con
 //Map EventTypes to opendnp3 types
 template<EventType t> struct EventTypeDNP3 { typedef void type; };
 #define EVENTDNP3(E,T)\
-	template<> struct EventTypeDNP3<E> { typedef T type; };
+	  template<> struct EventTypeDNP3<E> { typedef T type; };
 EVENTDNP3(EventType::Binary                   , opendnp3::Binary)
 EVENTDNP3(EventType::DoubleBitBinary          , opendnp3::DoubleBitBinary)
 EVENTDNP3(EventType::Analog                   , opendnp3::Analog)
@@ -95,5 +95,11 @@ EVENTDNP3(EventType::AnalogOutputStatusQuality, opendnp3::AnalogQuality)
 
 template<typename T> T FromODC(const QualityFlags& qual);
 template<typename T> T FromODC(const std::shared_ptr<const EventInfo>& event);
+
+template<EventType ET>
+typename EventTypeDNP3<ET>::type FromODC(const std::shared_ptr<const EventInfo>& event)
+{
+	return FromODC<typename EventTypeDNP3<ET>::type>(event);
+}
 
 } //namespace odc

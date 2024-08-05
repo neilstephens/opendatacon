@@ -607,19 +607,9 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 				if (auto log = odc::spdlog_get("DNP3Port"))
 					log->debug("{}: Executing direct operate to index: {}", Name, index);
 
-				switch (event->GetEventType())
-				{
-					case EventType::ControlRelayOutputBlock:
-					{
-						auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					default:
-						(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-						break;
-				}
+				auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
+				DoOverrideControlCode(lCommand);
+				this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
 				return;
 			}
 			if(auto log = odc::spdlog_get("DNP3Port"))
@@ -643,16 +633,16 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 					switch(new_event_type)
 					{
 						case EventType::AnalogOutputInt16:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputInt16>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt16>(newevent), index, DNP3Callback);
 							break;
 						case EventType::AnalogOutputInt32:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputInt32>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt32>(newevent), index, DNP3Callback);
 							break;
 						case EventType::AnalogOutputFloat32:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputFloat32>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputFloat32>(newevent), index, DNP3Callback);
 							break;
 						case EventType::AnalogOutputDouble64:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputDouble64>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputDouble64>(newevent), index, DNP3Callback);
 							break;
 						default:
 							(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
