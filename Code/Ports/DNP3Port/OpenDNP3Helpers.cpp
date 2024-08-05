@@ -92,34 +92,6 @@ opendnp3::EventCounterVariation StringToEventCounterResponse(const std::string& 
 	throw std::runtime_error("Unknown event counter response type");
 }
 
-//FIXME: Analog Output *events* (Grp42) aren't the same as Analog Output *commands* (Grp41)
-//	careful assesment to figure out what will break if this is fixed
-opendnp3::EventAnalogOutputStatusVariation StringToEventAnalogControlResponse(const std::string& str)
-{
-	if (str == "Group42Var1") return opendnp3::EventAnalogOutputStatusVariation::Group42Var1; // 32 bit no time
-	if (str == "Group42Var2") return opendnp3::EventAnalogOutputStatusVariation::Group42Var2; // 16 bit no time
-	if (str == "Group42Var3") return opendnp3::EventAnalogOutputStatusVariation::Group42Var3; // 32 bit with time
-	if (str == "Group42Var4") return opendnp3::EventAnalogOutputStatusVariation::Group42Var4; // 16 bit with time
-	if (str == "Group42Var5") return opendnp3::EventAnalogOutputStatusVariation::Group42Var5; // float without time
-	if (str == "Group42Var6") return opendnp3::EventAnalogOutputStatusVariation::Group42Var6; // double without time
-	if (str == "Group42Var7") return opendnp3::EventAnalogOutputStatusVariation::Group42Var7; // float with time
-	// if (str == "Group42Var8") return opendnp3::EventAnalogOutputStatusVariation::Group42Var8;	// double with time
-	throw std::runtime_error("Unknown analog control response type");
-}
-//FIXME: same deal here as above
-odc::EventType EventAnalogControlResponseToODCEvent(const opendnp3::EventAnalogOutputStatusVariation var)
-{
-	if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var1) return odc::EventType::AnalogOutputInt32;    // 32 bit no time
-	if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var2) return odc::EventType::AnalogOutputInt16;    // 16 bit no time
-	if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var3) return odc::EventType::AnalogOutputInt32;    // 32 bit with time
-	if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var4) return odc::EventType::AnalogOutputInt16;    // 16 bit with time
-	if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var5) return odc::EventType::AnalogOutputFloat32;  // float no time
-	if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var6) return odc::EventType::AnalogOutputDouble64; // double no time
-	if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var7) return odc::EventType::AnalogOutputFloat32;  // float with time
-	//if (var == opendnp3::EventAnalogOutputStatusVariation::Group42Var8) return odc::EventType::AnalogOutputDouble64;	// double with time
-	throw std::runtime_error("Unknown event counter response type");
-}
-
 opendnp3::EventBinaryOutputStatusVariation StringToEventBinaryOutputStatusResponse(const std::string& str)
 {
 	if (str == "Group11Var1") return opendnp3::EventBinaryOutputStatusVariation::Group11Var1;

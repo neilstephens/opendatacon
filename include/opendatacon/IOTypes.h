@@ -366,36 +366,16 @@ inline CommandStatus CommandStatusFromString(const std::string& StrCommandStatus
 	return CommandStatus::UNDEFINED;
 }
 
-//FIXME: this is an anti-pattern. Should be
-// EventTypeFromString(), returning an EventType, After/BeforeRange if not found
-inline bool GetEventTypeFromStringName(const std::string StrEventType, EventType& EventTypeResult)
+inline EventType EventTypeFromString(const std::string StrEventType)
 {
-#define CHECKEVENTSTRING(X) if (StrEventType.find(ToString(X)) != std::string::npos) EventTypeResult = X
-
-	EventTypeResult = EventType::BeforeRange;
-
-	CHECKEVENTSTRING(EventType::ConnectState);
-	CHECKEVENTSTRING(EventType::Binary);
-	CHECKEVENTSTRING(EventType::Analog);
-	CHECKEVENTSTRING(EventType::Counter);
-	CHECKEVENTSTRING(EventType::FrozenCounter);
-	CHECKEVENTSTRING(EventType::BinaryOutputStatus);
-	CHECKEVENTSTRING(EventType::AnalogOutputStatus);
-	CHECKEVENTSTRING(EventType::ControlRelayOutputBlock);
-	CHECKEVENTSTRING(EventType::AnalogOutputInt16);
-	CHECKEVENTSTRING(EventType::AnalogOutputInt32);
-	CHECKEVENTSTRING(EventType::AnalogOutputFloat32);
-	CHECKEVENTSTRING(EventType::AnalogOutputDouble64);
-	CHECKEVENTSTRING(EventType::OctetString);
-	CHECKEVENTSTRING(EventType::BinaryQuality);
-	CHECKEVENTSTRING(EventType::DoubleBitBinaryQuality);
-	CHECKEVENTSTRING(EventType::AnalogQuality);
-	CHECKEVENTSTRING(EventType::CounterQuality);
-	CHECKEVENTSTRING(EventType::BinaryOutputStatusQuality);
-	CHECKEVENTSTRING( EventType::FrozenCounterQuality);
-	CHECKEVENTSTRING(EventType::AnalogOutputStatusQuality);
-
-	return (EventTypeResult != EventType::BeforeRange);
+	auto EventTypeResult = EventType::BeforeRange;
+	do
+	{
+		EventTypeResult = EventTypeResult+1;
+		if (StrEventType.find(ToString(EventTypeResult)) != std::string::npos)
+			break;
+	} while (EventTypeResult != EventType::AfterRange);
+	return EventTypeResult;
 }
 
 //FIXME: this is an anti-pattern. Should be

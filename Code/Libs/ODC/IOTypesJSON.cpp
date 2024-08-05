@@ -64,7 +64,8 @@ std::shared_ptr<EventInfo> EventInfoFromJson(Json::Value JEvtInfo)
 	}
 	else if(JEvtInfo["EventType"].isString())
 	{
-		if(!GetEventTypeFromStringName(JEvtInfo["EventType"].asString(),ET))
+		ET = EventTypeFromString(JEvtInfo["EventType"].asString());
+		if(ET <= EventType::BeforeRange || ET >= EventType::AfterRange)
 			throw std::invalid_argument("EventInfoFromJson() Invalid 'EventType': "+JEvtInfo["EventType"].toStyledString());
 	}
 	else
