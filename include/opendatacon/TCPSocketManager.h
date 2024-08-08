@@ -90,14 +90,14 @@ public:
 		const std::function<void(buf_t&)>& aReadCallback,                 //Handler for data read off socket
 		const std::function<void(bool)>& aStateCallback,                  //Handler for communicating the connection state of the socket
 		const size_t abuffer_limit                                        //
-		      = std::numeric_limits<size_t>::max(),                       //maximum number of writes to buffer
+		= std::numeric_limits<size_t>::max(),                             //maximum number of writes to buffer
 		const bool aauto_reopen = false,                                  //Keeps the socket open (retry on error), unless you explicitly Close() it
 		const uint16_t aretry_time_ms = 0,                                //You can specify a fixed retry time if auto_open is enabled, zero means exponential backoff
 		const uint64_t athrottle_bitrate = 0,                             //You can throttle the throughput, zero means don't throttle
 		const uint64_t athrottle_chunksize = 0,                           //You can define the max chunksize in bytes to write in one go when throttling, zero means dont chunk writes
 		const uint64_t athrottle_writedelay_ms = 0,                       //You can define a delay (in milliseconds) before data is written
 		const std::function<void(const std::string&,const std::string&)>& //
-		aLogCallback = [](const std::string&, const std::string&){},      //Handler for log messages
+		aLogCallback = [] (const std::string&, const std::string&){},     //Handler for log messages
 		const bool useKeepalives = true,                                  //Set TCP keepalive socket option
 		const unsigned int KeepAliveTimeout_s = 599,                      //TCP keepalive idle timeout (seconds)
 		const unsigned int KeepAliveRetry_s = 10,                         //TCP keepalive retry interval (seconds)

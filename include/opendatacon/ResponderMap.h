@@ -47,17 +47,17 @@ public:
 				Json::Value vec;
 				if(params.count("Target") == 0)
 				{
-				      for(auto& responder: *this)
-				      {
-				            vec.append(Json::Value(responder.first));
+					for(auto& responder: *this)
+					{
+						vec.append(Json::Value(responder.first));
 					}
 				}
 				else
 				{
-				      auto list = GetTargetNames(params);
-				      for(auto& target: list)
-				      {
-				            vec.append(Json::Value(target));
+					auto list = GetTargetNames(params);
+					for(auto& target: list)
+					{
+						vec.append(Json::Value(target));
 					}
 				}
 				result["Items"]  = vec;

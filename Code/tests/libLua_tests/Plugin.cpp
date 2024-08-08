@@ -55,10 +55,10 @@ extern "C" bool test_func()
 	Lua::DynamicSymbols syms;
 
 	auto LuaCode =
-	"    package.cpath = [=["+paths+"]=] .. package.cpath;     \n"
-	"    local mo = require(\""+name+"\");                     \n"
-	"    mo.echo(\"Message from Lua module\");                 \n"
-	"    odc.log.info(\"Message from Lua\");                   \n";
+		"    package.cpath = [=["+paths+"]=] .. package.cpath;     \n"
+		"    local mo = require(\""+name+"\");                     \n"
+		"    mo.echo(\"Message from Lua module\");                 \n"
+		"    odc.log.info(\"Message from Lua\");                   \n";
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->info("Lua code:\n{}", LuaCode);

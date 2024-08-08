@@ -108,7 +108,8 @@ struct BinaryFeedback
 		off_value(off),
 		mode(amode),
 		delay(delay_ms),
-		update_interval(u_interval) {}
+		update_interval(u_interval)
+	{}
 };
 
 struct PositionFeedback
@@ -118,7 +119,8 @@ struct PositionFeedback
 		const std::vector<std::size_t>& index,
 		std::size_t l_limit, std::size_t r_limit,
 		double r_tap_step):
-		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit), tap_step(r_tap_step) {}
+		type(feedback_type), action(an), indexes(index), lower_limit(l_limit), raise_limit(r_limit), tap_step(r_tap_step)
+	{}
 
 	FeedbackType type;
 	std::vector<PositionAction> action;

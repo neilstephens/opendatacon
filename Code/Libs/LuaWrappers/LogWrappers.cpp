@@ -74,8 +74,8 @@ extern "C" void ExportLogWrappers(lua_State* const L, const std::string& Name, c
 			{
 				if(!lua_isinteger(L,1))
 				{
-				      lua_pushnil(L);
-				      return 1;
+					lua_pushnil(L);
+					return 1;
 				}
 				auto l = static_cast<spdlog::level::level_enum>(lua_tointeger(L,1));
 				lua_pushstring(L,spdlog::level::to_string_view(l).data());

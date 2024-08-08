@@ -24,16 +24,17 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-    #ifndef SIMPORT_H
-    #define SIMPORT_H
-    #include "SimPortConf.h"
-    #include "../HTTP/HttpServerManager.h"
-    #include "sqlite3/sqlite3.h"
-    #include <opendatacon/DataPort.h>
-    #include <opendatacon/util.h>
-    #include <opendatacon/EnumClassFlags.h>
-    #include <shared_mutex>
-    #include <random>
+#ifndef SIMPORT_H
+#define SIMPORT_H
+
+#include "SimPortConf.h"
+#include "../HTTP/HttpServerManager.h"
+#include "sqlite3/sqlite3.h"
+#include <opendatacon/DataPort.h>
+#include <opendatacon/util.h>
+#include <opendatacon/EnumClassFlags.h>
+#include <shared_mutex>
+#include <random>
 
 using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>;
 
@@ -144,4 +145,4 @@ private:
 	Json::Value JSONConf;
 };
 
-    #endif // SIMPORT_H
+#endif // SIMPORT_H

@@ -21,7 +21,7 @@ public:
 				//check mandatory params are there
 				if(params.count("0") == 0 || FromString(params.at("0")) == AppIINFlags::NONE)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter");
+					return IUIResponder::GenerateResult("Bad parameter");
 				}
 				target->SetIINFlags(params.at("0"));
 				return IUIResponder::GenerateResult("Success");
@@ -35,7 +35,7 @@ public:
 				//check mandatory params are there
 				if(params.count("0") == 0 || FromString(params.at("0")) == AppIINFlags::NONE)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter");
+					return IUIResponder::GenerateResult("Bad parameter");
 				}
 				target->ClearIINFlags(params.at("0"));
 				return IUIResponder::GenerateResult("Success");

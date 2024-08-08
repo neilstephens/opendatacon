@@ -52,8 +52,8 @@ public:
 			{
 				if (err_code != asio::error::operation_aborted)
 				{
-				      PublishEvent(ConnectState::PORT_UP);
-				      PublishEvent(ConnectState::CONNECTED);
+					PublishEvent(ConnectState::PORT_UP);
+					PublishEvent(ConnectState::CONNECTED);
 				}
 			});
 		enabled = true;

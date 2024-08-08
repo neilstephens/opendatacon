@@ -54,61 +54,61 @@ ConsoleUI::ConsoleUI():
 	context("")
 {
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
-		  "the first argument is taken as a regex to match which items in the collection the "
-		  "command will run for. The remainer of the arguments will be passed through to each element."
-		  "Eg. Collection Dosomething \".*OnlyAFewMatch.*\" arg_to_dosomething ...");
+		"the first argument is taken as a regex to match which items in the collection the "
+		"command will run for. The remainer of the arguments will be passed through to each element."
+		"Eg. Collection Dosomething \".*OnlyAFewMatch.*\" arg_to_dosomething ...");
 	AddCommand("help",[this](std::stringstream& LineStream) -> Json::Value
 		{
 			std::string arg;
 			std::cout<<std::endl;
 			if(LineStream>>arg) //asking for help on a specific command
 			{
-			      if(!mDescriptions.count(arg) && !Responders.count(arg))
+				if(!mDescriptions.count(arg) && !Responders.count(arg))
 					std::cout<<"No such command or context: '"<<arg<<"'"<<std::endl;
-			      else if(mDescriptions.count(arg))
+				else if(mDescriptions.count(arg))
 					std::cout<<std::setw(25)<<std::left<<arg+":"<<column_wrap(mDescriptions[arg])<<std::endl<<std::endl;
-			      else if(Responders.count(arg))
-			      {
-			            std::cout<<std::setw(25)<<std::left<<arg+":"<<
-			            "Access contextual subcommands:"<<std::endl<<std::endl;
-			            auto commands = Responders[arg]->GetCommandList();
-			            for (const auto& command : commands) //list sub commands
-			            {
-			                  auto cmd = command.asString();
-			                  auto desc = Responders[arg]->GetCommandDescription(cmd);
-			                  std::cout<<std::setw(25)<<std::left<<"  "+cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
+				else if(Responders.count(arg))
+				{
+					std::cout<<std::setw(25)<<std::left<<arg+":"<<
+					      "Access contextual subcommands:"<<std::endl<<std::endl;
+					auto commands = Responders[arg]->GetCommandList();
+					for (const auto& command : commands) //list sub commands
+					{
+						auto cmd = command.asString();
+						auto desc = Responders[arg]->GetCommandDescription(cmd);
+						std::cout<<std::setw(25)<<std::left<<"  "+cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
 					}
 				}
 			}
 			else
 			{
-			      std::cout<<help_intro<<std::endl<<std::endl;
-			      std::cout<<"============ Root Commands ============"<<std::endl<<std::endl;
-			      for(const auto& desc: mDescriptions)
-			      {
-			            std::cout<<std::setw(25)<<std::left<<desc.first+":"<<column_wrap(desc.second)<<std::endl<<std::endl;
+				std::cout<<help_intro<<std::endl<<std::endl;
+				std::cout<<"============ Root Commands ============"<<std::endl<<std::endl;
+				for(const auto& desc: mDescriptions)
+				{
+					std::cout<<std::setw(25)<<std::left<<desc.first+":"<<column_wrap(desc.second)<<std::endl<<std::endl;
 				}
-			      if (this->context.empty()) //if there is no context, print Responders
-			      {
-			            std::cout<<"============ Command Contexts ============"<<std::endl<<std::endl;
-			            for(const auto& name_n_responder : Responders)
-			            {
-			                  std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
-			                  "Access contextual subcommands."<<std::endl<<std::endl;
+				if (this->context.empty()) //if there is no context, print Responders
+				{
+					std::cout<<"============ Command Contexts ============"<<std::endl<<std::endl;
+					for(const auto& name_n_responder : Responders)
+					{
+						std::cout<<std::setw(25)<<std::left<<name_n_responder.first+":"<<
+						      "Access contextual subcommands."<<std::endl<<std::endl;
 					}
 				}
-			      else //we have context - list sub commands
-			      {
-			            std::cout<<"============ Context Specific Commands ============"<<std::endl<<std::endl;
-			            auto commands = Responders[this->context]->GetCommandList();
-			            for (const auto& command : commands)
-			            {
-			                  auto cmd = command.asString();
-			                  auto desc = Responders[this->context]->GetCommandDescription(cmd);
-			                  std::cout<<std::setw(25)<<std::left<<cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
+				else //we have context - list sub commands
+				{
+					std::cout<<"============ Context Specific Commands ============"<<std::endl<<std::endl;
+					auto commands = Responders[this->context]->GetCommandList();
+					for (const auto& command : commands)
+					{
+						auto cmd = command.asString();
+						auto desc = Responders[this->context]->GetCommandDescription(cmd);
+						std::cout<<std::setw(25)<<std::left<<cmd+":"<<column_wrap(desc)<<std::endl<<std::endl;
 					}
-			            std::cout<<std::setw(25)<<std::left<<"exit:"<<
-			            "Leave '"+context+"' context."<<std::endl<<std::endl;
+					std::cout<<std::setw(25)<<std::left<<"exit:"<<
+					      "Leave '"+context+"' context."<<std::endl<<std::endl;
 				}
 			}
 			std::cout<<std::endl;

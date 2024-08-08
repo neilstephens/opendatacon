@@ -119,21 +119,21 @@ int main(int argc, char* argv[])
 							 {
 								 try
 								 {
-								       TheDataConcentrator->ReloadConfig();
+									 TheDataConcentrator->ReloadConfig();
 								 }
 								 catch(const std::exception& e)
 								 {
-								       if(auto log = odc::spdlog_get("opendatacon"))
+									 if(auto log = odc::spdlog_get("opendatacon"))
 										 log->critical("Shutting down due to exception in config reload: {}", e.what());
-								       TheDataConcentrator->Shutdown();
+									 TheDataConcentrator->Shutdown();
 								 }
 							 }).detach();
 					 };
 		auto ignore_func = [] (int signum)
 					 {
 						 std::cout<<"Signal "<<signum<<" ignored. Not designed to be interrupted or suspended.\n"
-						                               "To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
-						                               "To run in the background, run as a daemon or service."<<std::endl;
+						       "To terminate, send a quit, kill, abort or break signal, or use a UI shutdown command.\n"
+						       "To run in the background, run as a daemon or service."<<std::endl;
 					 };
 
 		for (auto SIG : SIG_SHUTDOWN)
@@ -151,13 +151,13 @@ int main(int argc, char* argv[])
 			{
 				try
 				{
-				      TheDataConcentrator->Run();
+					TheDataConcentrator->Run();
 				}
 				catch(const std::exception& e)
 				{
-				      if(auto log = odc::spdlog_get("opendatacon"))
+					if(auto log = odc::spdlog_get("opendatacon"))
 						log->critical("Shutting down due to exception in DataConcentrator::Run() thread: {}", e.what());
-				      TheDataConcentrator->Shutdown();
+					TheDataConcentrator->Shutdown();
 				}
 			});
 

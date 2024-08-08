@@ -333,7 +333,7 @@ inline std::string ToString(const ConnectState cs)
 
 inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 {
-#define CHECKFLAGSTRING(X) if (StrQuality.find(#X) != std::string::npos) QualityResult |= QualityFlags::X
+	#define CHECKFLAGSTRING(X) if (StrQuality.find(#X) != std::string::npos) QualityResult |= QualityFlags::X
 
 	QualityFlags QualityResult = QualityFlags::NONE;
 
@@ -353,7 +353,7 @@ inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 
 inline CommandStatus CommandStatusFromString(const std::string& StrCommandStatus)
 {
-#define CHECKCSSTRING(C,X) if (StrCommandStatus == #X) return C::X
+	#define CHECKCSSTRING(C,X) if (StrCommandStatus == #X) return C::X
 	CHECKCSSTRING(CommandStatus,SUCCESS);
 	CHECKCSSTRING(CommandStatus,TIMEOUT);
 	CHECKCSSTRING(CommandStatus,NO_SELECT);
@@ -394,7 +394,7 @@ inline EventType EventTypeFromString(const std::string StrEventType)
 // ControlCodeFromString(), returning a ControlCode, UNDEFINED if not found
 inline bool ToControlCode(const std::string StrControlCode, ControlCode& ControlCodeResult)
 {
-#define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
+	#define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
 
 	ControlCodeResult = ControlCode::UNDEFINED;
 
@@ -413,7 +413,7 @@ inline bool ToControlCode(const std::string StrControlCode, ControlCode& Control
 // ConnectStateFromString(), returning a ConnectState, UNDEFINED if not found
 inline bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
 {
-#define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
+	#define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
 
 	CHECKCONNECTSTATESTRING(ConnectState::CONNECTED);
 	CHECKCONNECTSTATESTRING(ConnectState::DISCONNECTED);
@@ -436,7 +436,7 @@ inline EventType ToEventType(const std::string& str_type)
 //Map EventTypes to payload types
 template<EventType t> struct EventTypePayload { typedef void type; };
 #define EVENTPAYLOAD(E,T)\
-	  template<> struct EventTypePayload<E> { typedef T type; };
+	template<> struct EventTypePayload<E> { typedef T type; };
 
 //TODO: make these structs?
 typedef std::pair<bool,bool> DBB;
@@ -561,17 +561,17 @@ inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod met
 }
 
 #define DELETEPAYLOADCASE(T)\
-	  case T: \
-		  delete static_cast<typename EventTypePayload<T>::type*>(pPayload); \
-		  break;
+	case T: \
+		delete static_cast<typename EventTypePayload<T>::type*>(pPayload); \
+		break;
 #define COPYPAYLOADCASE(T)\
-	  case T: \
-		  pPayload = static_cast<void*>(new typename EventTypePayload<T>::type(evt.GetPayload<T>())); \
-		  break;
+	case T: \
+		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type(evt.GetPayload<T>())); \
+		break;
 #define DEFAULTPAYLOADCASE(T)\
-	  case T: \
-		  pPayload = static_cast<void*>(new typename EventTypePayload<T>::type()); \
-		  break;
+	case T: \
+		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type()); \
+		break;
 
 class EventInfo
 {

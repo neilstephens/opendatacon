@@ -48,7 +48,7 @@ public:
 				// Active - True or False
 				if(params.count("0") == 0)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter - Pass True to activate or False to deactivate");
+					return IUIResponder::GenerateResult("Bad parameter - Pass True to activate or False to deactivate");
 				}
 				auto active = params.at("0");
 				return target->UIFailControl(active) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
@@ -96,7 +96,7 @@ public:
 				//param 0: Probability 0 to 1
 				if (params.count("0") == 0)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a bit flip range 0 to 1");
+					return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a bit flip range 0 to 1");
 				}
 				auto probability = params.at("0");
 				return target->UIRandomReponseBitFlips(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");
@@ -112,7 +112,7 @@ public:
 				//param 0: Probability 0 to 1
 				if (params.count("0") == 0)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a dropped packet range 0 to 1");
+					return IUIResponder::GenerateResult("Bad parameter - Pass in the Probability of a dropped packet range 0 to 1");
 				}
 				auto probability = params.at("0");
 				return target->UIRandomReponseDrops(probability) ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult("Bad Parameter");

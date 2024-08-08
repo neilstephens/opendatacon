@@ -434,7 +434,7 @@ std::string BuildBinaryStringFromASCIIHexString(const std::string &as);
 std::string BuildASCIIHexStringfromBinaryString(const std::string &bs);
 
 std::string BuildASCIIHexStringfromCBMessage(const CBMessage_t & CBMessage);
-CBMessage_t BuildCBMessageFromASCIIHexString(const  std::string Message);
+CBMessage_t BuildCBMessageFromASCIIHexString(const std::string Message);
 std::string CBMessageAsString(const CBMessage_t& CompleteCBMessage);
 
 // SOE Data Packet Definitions.
@@ -469,7 +469,7 @@ inline bool HoursMinutesHaveChanged(CBTime& oldtime, CBTime& newtime)
 	uint8_t min2;
 	uint8_t sec2;
 	uint16_t msec2;
-		
+
 	ConvertCBTimeToHMSMSEC(oldtime, hour1, min1, sec1, msec1);
 	ConvertCBTimeToHMSMSEC(newtime, hour2, min2, sec2, msec2);
 	return (hour1 != hour2) || (min1 != min2);

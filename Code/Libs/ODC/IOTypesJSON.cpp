@@ -410,10 +410,10 @@ template<> ConnectState PayloadFromJson(const Json::Value& JLoad)
 
 #define POP_PAYLOAD_CASE(T)\
 	case T:\
-	{\
-		event->SetPayload<T>(PayloadFromJson<typename EventTypePayload<T>::type>(JLoad));\
-		break;\
-	}
+		{\
+			event->SetPayload<T>(PayloadFromJson<typename EventTypePayload<T>::type>(JLoad));\
+			break;\
+		}
 void PayloadFromJson(const Json::Value& JLoad, std::shared_ptr<EventInfo> event)
 {
 	switch(event->GetEventType())

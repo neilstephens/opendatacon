@@ -35,7 +35,7 @@
 #include <string>
 #include <atomic>
 
-using CommandHandler = std::function<Json::Value(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss)>;
+using CommandHandler = std::function<Json::Value (const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss)>;
 using MessageHandler = std::function<void (const std::string& ID, const std::string& msg)>;
 
 class LuaInst

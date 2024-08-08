@@ -128,17 +128,17 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 		{
 			if(!isConnected || manuallyClosed || pending_write)
 			{
-			      queue_writebufs->push_back(buf);
-			      if(queue_writebufs->size() > buffer_limit)
-			      {
-			            std::stringstream ss;
-			            ss << "Write queue full: dropping " << queue_writebufs->begin()->size() << " bytes. ";
-			            ss << "isConnected|manuallyClosed|pending_write == " << isConnected <<"|"<< manuallyClosed <<"|"<< pending_write << ".";
-			            LogCallback("warning",ss.str());
+				queue_writebufs->push_back(buf);
+				if(queue_writebufs->size() > buffer_limit)
+				{
+					std::stringstream ss;
+					ss << "Write queue full: dropping " << queue_writebufs->begin()->size() << " bytes. ";
+					ss << "isConnected|manuallyClosed|pending_write == " << isConnected <<"|"<< manuallyClosed <<"|"<< pending_write << ".";
+					LogCallback("warning",ss.str());
 
-			            queue_writebufs->erase(queue_writebufs->begin());
+					queue_writebufs->erase(queue_writebufs->begin());
 				}
-			      return;
+				return;
 			}
 
 			pending_write = true;
@@ -161,17 +161,17 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 					write_count += n;
 					if(err_code || buf.size() > n)
 					{
-					      if(err_code)
+						if(err_code)
 							LogCallback("debug","Async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(buf.size())+" bytes) error: "+err_code.message());
-					      if(buf.size() > n)
-					      {
-					            LogCallback("trace","Buffering "+std::to_string(buf.size()-n)+" bytes");
-					            queue_writebufs->push_back(buf);
-					            queue_writebufs->back() += n;
-					            if(queue_writebufs->size() > buffer_limit)
-					            {
-					                  LogCallback("warning","Write queue full: dropping "+std::to_string(queue_writebufs->begin()->size())+" bytes.");
-					                  queue_writebufs->erase(queue_writebufs->begin());
+						if(buf.size() > n)
+						{
+							LogCallback("trace","Buffering "+std::to_string(buf.size()-n)+" bytes");
+							queue_writebufs->push_back(buf);
+							queue_writebufs->back() += n;
+							if(queue_writebufs->size() > buffer_limit)
+							{
+								LogCallback("warning","Write queue full: dropping "+std::to_string(queue_writebufs->begin()->size())+" bytes.");
+								queue_writebufs->erase(queue_writebufs->begin());
 							}
 						}
 					}
@@ -237,9 +237,9 @@ bool TCPSocketManager::EndPointResolved(std::shared_ptr<void> tracker)
 					return;
 				if(err_code)
 				{
-				      LogCallback("error","Resolution error: "+err_code.message());
-				      AutoOpen(tracker);
-				      return;
+					LogCallback("error","Resolution error: "+err_code.message());
+					AutoOpen(tracker);
+					return;
 				}
 				LogCallback("debug","Resolved endpoint(s).");
 				EndpointIterator = endpoint_it;
@@ -381,23 +381,23 @@ void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWrite
 
 				if(err_code || data_size > n)
 				{
-				      size_t consumed = 0;
-				      while(consumed < n)
-				      {
-				            if(dispatch_writebufs->begin()->size() > (n-consumed))
-				            {
-				                  (*(dispatch_writebufs->begin())) += (n-consumed);
-				                  consumed = n;
-				                  break;
+					size_t consumed = 0;
+					while(consumed < n)
+					{
+						if(dispatch_writebufs->begin()->size() > (n-consumed))
+						{
+							(*(dispatch_writebufs->begin())) += (n-consumed);
+							consumed = n;
+							break;
 						}
-				            consumed += dispatch_writebufs->begin()->size();
-				            dispatch_writebufs->erase(dispatch_writebufs->begin());
+						consumed += dispatch_writebufs->begin()->size();
+						dispatch_writebufs->erase(dispatch_writebufs->begin());
 					}
 
-				      if(err_code)
-				      {
-				            LogCallback("debug","Buffer async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(data_size)+" bytes) error: "+err_code.message());
-				            LogCallback("debug","Leaving "+std::to_string(data_size-n)+" bytes in buffer");
+					if(err_code)
+					{
+						LogCallback("debug","Buffer async write to "+remote_addr_str+" ("+std::to_string(n)+" of "+std::to_string(data_size)+" bytes) error: "+err_code.message());
+						LogCallback("debug","Leaving "+std::to_string(data_size-n)+" bytes in buffer");
 					}
 				}
 				else //wrote everything, connection still healthy
@@ -519,19 +519,19 @@ void TCPSocketManager::AutoOpen(std::shared_ptr<void> tracker)
 
 			if(retry_time_ms != 0)
 			{
-			      ramp_time_ms = retry_time_ms;
+				ramp_time_ms = retry_time_ms;
 			}
 
 			if(ramp_time_ms == 0)
 			{
-			      ramp_time_ms = 125;
-			      LogCallback("debug","Trying to open socket...");
-			      Open(tracker);
+				ramp_time_ms = 125;
+				LogCallback("debug","Trying to open socket...");
+				Open(tracker);
 			}
 			else
 			{
-			      pRetryTimer->expires_from_now(std::chrono::milliseconds(ramp_time_ms));
-			      pRetryTimer->async_wait(pSockStrand->wrap([this,tracker](asio::error_code err_code)
+				pRetryTimer->expires_from_now(std::chrono::milliseconds(ramp_time_ms));
+				pRetryTimer->async_wait(pSockStrand->wrap([this,tracker](asio::error_code err_code)
 					{
 						if(manuallyClosed || err_code)
 							return;
@@ -550,35 +550,35 @@ void TCPSocketManager::AutoClose(std::shared_ptr<void> tracker)
 		{
 			if(!isConnected)
 			{
-			      return;
+				return;
 			}
 			LogCallback("debug","Connection auto close.");
 			if(!pending_write) //if there's a pending write - the write handler will shutdown sending
 			{
-			      LogCallback("debug","Not sending - shutting socket send from auto-close");
-			      asio::error_code err;
-			      pSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
-			      if(err)
+				LogCallback("debug","Not sending - shutting socket send from auto-close");
+				asio::error_code err;
+				pSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
+				if(err)
 					LogCallback("debug","Send shutdown failed from auto-close: "+err.message());
 			}
 			else if(!pending_read) //only time there's no pending read is if other side sent fin
 			{
-			      asio::error_code err;
-			      pSock->cancel(err);
-			      if(err)
+				asio::error_code err;
+				pSock->cancel(err);
+				if(err)
 					LogCallback("debug","Cancel pending write failed from auto-close: "+err.message());
-			//sometimes cancelling write tasks fails silently under windows
-			//post a backup task 3s in the future to call close if needed
-			//close will cause the gracefull socket::shutdown_send in the write handler to fail, but nothing better to do
-			      std::weak_ptr<asio::ip::tcp::socket> pSockWeak = pSock;
-			      std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
-			      pTimer->expires_from_now(std::chrono::seconds(3));
-			      pTimer->async_wait(pSockStrand->wrap([this,pSockWeak,pTimer,tracker](asio::error_code)
+				//sometimes cancelling write tasks fails silently under windows
+				//post a backup task 3s in the future to call close if needed
+				//close will cause the gracefull socket::shutdown_send in the write handler to fail, but nothing better to do
+				std::weak_ptr<asio::ip::tcp::socket> pSockWeak = pSock;
+				std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+				pTimer->expires_from_now(std::chrono::seconds(3));
+				pTimer->async_wait(pSockStrand->wrap([this,pSockWeak,pTimer,tracker](asio::error_code)
 					{
 						if(auto pSock = pSockWeak.lock())
 						{
-						      LogCallback("debug","Timeout waiting for socket::shutdown_send in the write handler. Closing ungracefully.");
-						      pSock->close();
+							LogCallback("debug","Timeout waiting for socket::shutdown_send in the write handler. Closing ungracefully.");
+							pSock->close();
 						}
 					}));
 			}
