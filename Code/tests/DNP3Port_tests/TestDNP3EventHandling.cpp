@@ -27,13 +27,14 @@
 #include <catch.hpp>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <opendatacon/asio.h>
 #include <thread>
 
 #define SUITE(name) "DNP3EventHandlingTestSuite - " name
 
-constexpr size_t num_indexes = 10;
+constexpr size_t num_indexes = 1024; //needs a multiple of 4 for the Analog Output Types
 constexpr size_t test_timeout_ms = 5000;
 
 constexpr const char* AnaOutTypes[] = {"AnalogOutputInt16", "AnalogOutputInt32", "AnalogOutputFloat32", "AnalogOutputDouble64"};
@@ -112,6 +113,26 @@ void SendEvent(const std::shared_ptr<DataPort>& port, const size_t idx, PayloadT
 	port->Event(event, "Test", std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}));
 }
 
+template<odc::EventType ET, typename ExpectedT>
+bool CheckAnalogOutPayload(const std::shared_ptr<const EventInfo>& event, const ExpectedT& expected_payload)
+{
+	auto payload = event->GetPayload<ET>();
+	if((double)expected_payload.first > std::numeric_limits<decltype(payload.first)>::max()
+	   || (double)expected_payload.first < std::numeric_limits<decltype(payload.first)>::lowest())
+	{
+		if(payload.first == std::numeric_limits<decltype(payload.first)>::max()
+		   || payload.first == std::numeric_limits<decltype(payload.first)>::lowest())
+			return true;
+	}
+	auto delta = std::abs(expected_payload.first*0.0001);
+	auto min = expected_payload.first - delta;
+	auto max = expected_payload.first + delta;
+	if(payload.first >= min && payload.first <= max)
+		return true;
+	UNSCOPED_INFO("Payload is " << payload.first << ", expected " << min << " to " << max);
+	return false;
+}
+
 template<odc::EventType ET, typename PayloadT>
 void CheckPointDB(const std::shared_ptr<DataPort>& port, const std::vector<PayloadT>& payloads)
 {
@@ -121,7 +142,7 @@ void CheckPointDB(const std::shared_ptr<DataPort>& port, const std::vector<Paylo
 		auto event = port->pEventDB()->Get(ET, idx);
 		auto expected_payload = payloads.at(idx);
 		bool payload_as_expected = false;
-		while(ms_count++ < test_timeout_ms)
+		while(ms_count < test_timeout_ms)
 		{
 			if(ET >= odc::EventType::AnalogOutputInt16 && ET <= odc::EventType::AnalogOutputDouble64)
 			{
@@ -141,33 +162,17 @@ void CheckPointDB(const std::shared_ptr<DataPort>& port, const std::vector<Paylo
 						switch(event->GetEventType())
 						{
 							case odc::EventType::AnalogOutputInt16:
-							{
-								auto payload = event->GetPayload<odc::EventType::AnalogOutputInt16>();
-								if(payload.first == expected_payload.first)
-									payload_as_expected = true;
+								payload_as_expected = CheckAnalogOutPayload<odc::EventType::AnalogOutputInt16>(event, expected_payload);
 								break;
-							}
 							case odc::EventType::AnalogOutputInt32:
-							{
-								auto payload = event->GetPayload<odc::EventType::AnalogOutputInt32>();
-								if(payload.first == expected_payload.first)
-									payload_as_expected = true;
+								payload_as_expected = CheckAnalogOutPayload<odc::EventType::AnalogOutputInt32>(event, expected_payload);
 								break;
-							}
 							case odc::EventType::AnalogOutputFloat32:
-							{
-								auto payload = event->GetPayload<odc::EventType::AnalogOutputFloat32>();
-								if(payload.first == expected_payload.first)
-									payload_as_expected = true;
+								payload_as_expected = CheckAnalogOutPayload<odc::EventType::AnalogOutputFloat32>(event, expected_payload);
 								break;
-							}
 							case odc::EventType::AnalogOutputDouble64:
-							{
-								auto payload = event->GetPayload<odc::EventType::AnalogOutputDouble64>();
-								if(payload.first == expected_payload.first)
-									payload_as_expected = true;
+								payload_as_expected = CheckAnalogOutPayload<odc::EventType::AnalogOutputDouble64>(event, expected_payload);
 								break;
-							}
 							default:
 								break;
 						}
@@ -187,13 +192,14 @@ void CheckPointDB(const std::shared_ptr<DataPort>& port, const std::vector<Paylo
 				catch(std::exception&)
 				{}
 			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			ms_count += 50;
 		}
-		CHECK(event);
 		if(event)
 		{
 			CHECK(payload_as_expected);
 		}
+		CHECK(event);
 	}
 	CHECK(ms_count < test_timeout_ms);
 }
@@ -324,6 +330,24 @@ TEST_CASE(SUITE("BinaryControls"))
 	TestTearDown();
 }
 
+template<odc::EventType ET>
+void CheckAnalogOutRange(const std::shared_ptr<DataPort>& MPUT, const std::shared_ptr<DataPort>& OPUT, const double min, const double max)
+{
+	typename EventTypePayload<ET>::type value = {min, CommandStatus::SUCCESS};
+	size_t num_values = num_indexes/4;
+	auto step_size = (max-min)/(num_values-1);
+	//send a value to each index
+	std::vector<typename EventTypePayload<ET>::type> values;
+	for(size_t idx = 0; idx < num_indexes; ++idx)
+	{
+		SendEvent<ET>(MPUT, idx, value);
+		values.push_back(value);
+		if(idx%4 == 3 && idx < num_indexes-1)
+			value.first += step_size;
+	}
+	CheckPointDB<ET>(OPUT, values);
+}
+
 TEST_CASE(SUITE("Analog Controls"))
 {
 	TestSetup();
@@ -337,20 +361,10 @@ TEST_CASE(SUITE("Analog Controls"))
 		MPUT->Enable();
 		CHECK(WaitForLinkUp(MPUT));
 
-		//send a value to each index
-		std::vector<typename EventTypePayload<odc::EventType::AnalogOutputDouble64>::type> values;
-		for(size_t idx = 0; idx < num_indexes; ++idx)
-		{
-			typename EventTypePayload<odc::EventType::AnalogOutputDouble64>::type value;
-			value.first = rand()%100;
-			values.push_back(value);
-			SendEvent<odc::EventType::AnalogOutputDouble64>(MPUT, idx, values.back());
-		}
-		CheckPointDB<odc::EventType::AnalogOutputDouble64>(OPUT, values);
-
-		//TODO: test the other Analog Output Types
-		//  and test that values are capped if out of range, and warnings are generated
-		//  also, should there be an option to block out of range commands, and return bad command status?
+		CheckAnalogOutRange<odc::EventType::AnalogOutputDouble64>(MPUT, OPUT, -4e38, 4e38);
+		CheckAnalogOutRange<odc::EventType::AnalogOutputFloat32>(MPUT, OPUT, -2500000000, 2500000000);
+		CheckAnalogOutRange<odc::EventType::AnalogOutputInt32>(MPUT, OPUT, -40000, 40000);
+		CheckAnalogOutRange<odc::EventType::AnalogOutputInt16>(MPUT, OPUT, std::numeric_limits<int16_t>::lowest(), std::numeric_limits<int16_t>::max());
 
 		//turn things off
 		OPUT->Disable();
