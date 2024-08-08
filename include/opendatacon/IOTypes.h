@@ -308,6 +308,18 @@ struct ControlRelayOutputBlock
 		       "|ON "+std::to_string(onTimeMS)+"ms|OFF "+std::to_string(offTimeMS)+"ms|";
 	}
 };
+inline bool operator==(const ControlRelayOutputBlock& lhs, const ControlRelayOutputBlock& rhs)
+{
+	return lhs.functionCode == rhs.functionCode &&
+	       lhs.count == rhs.count &&
+	       lhs.onTimeMS == rhs.onTimeMS &&
+	       lhs.offTimeMS == rhs.offTimeMS &&
+	       lhs.status == rhs.status;
+}
+inline bool operator!=(const ControlRelayOutputBlock& lhs, const ControlRelayOutputBlock& rhs)
+{
+	return !(lhs == rhs);
+}
 
 enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 inline std::string ToString(const ConnectState cs)
@@ -424,7 +436,7 @@ inline EventType ToEventType(const std::string& str_type)
 //Map EventTypes to payload types
 template<EventType t> struct EventTypePayload { typedef void type; };
 #define EVENTPAYLOAD(E,T)\
-	template<> struct EventTypePayload<E> { typedef T type; };
+	  template<> struct EventTypePayload<E> { typedef T type; };
 
 //TODO: make these structs?
 typedef std::pair<bool,bool> DBB;
@@ -468,6 +480,21 @@ struct OctetStringBuffer: public shared_const_buffer
 		shared_const_buffer(odc::make_shared(std::string("")))
 	{}
 };
+inline bool operator==(const OctetStringBuffer& lhs, const OctetStringBuffer& rhs)
+{
+	if(lhs.size() != rhs.size())
+		return false;
+	for (size_t i = 0; i < lhs.size(); i++)
+	{
+		if (*((uint8_t*)lhs.data()+i) != *((uint8_t*)rhs.data()+i))
+			return false;
+	}
+	return true;
+}
+inline bool operator!=(const OctetStringBuffer& lhs, const OctetStringBuffer& rhs)
+{
+	return !(lhs == rhs);
+}
 
 EVENTPAYLOAD(EventType::Binary                   , bool)
 EVENTPAYLOAD(EventType::DoubleBitBinary          , DBB)
@@ -534,17 +561,17 @@ inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod met
 }
 
 #define DELETEPAYLOADCASE(T)\
-	case T: \
-		delete static_cast<typename EventTypePayload<T>::type*>(pPayload); \
-		break;
+	  case T: \
+		  delete static_cast<typename EventTypePayload<T>::type*>(pPayload); \
+		  break;
 #define COPYPAYLOADCASE(T)\
-	case T: \
-		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type(evt.GetPayload<T>())); \
-		break;
+	  case T: \
+		  pPayload = static_cast<void*>(new typename EventTypePayload<T>::type(evt.GetPayload<T>())); \
+		  break;
 #define DEFAULTPAYLOADCASE(T)\
-	case T: \
-		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type()); \
-		break;
+	  case T: \
+		  pPayload = static_cast<void*>(new typename EventTypePayload<T>::type()); \
+		  break;
 
 class EventInfo
 {
