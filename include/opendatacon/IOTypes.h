@@ -384,7 +384,10 @@ inline EventType EventTypeFromString(const std::string StrEventType)
 	do
 	{
 		EventTypeResult = EventTypeResult+1;
-		if (StrEventType.find(ToString(EventTypeResult)) != std::string::npos)
+		auto FindStr = ToString(EventTypeResult);
+		if(FindStr.length() > StrEventType.length())
+			continue;
+		if (StrEventType.find(FindStr, StrEventType.length()-FindStr.length()) != std::string::npos)
 			break;
 	} while (EventTypeResult != EventType::AfterRange);
 	return EventTypeResult;

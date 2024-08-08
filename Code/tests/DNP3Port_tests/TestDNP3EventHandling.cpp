@@ -51,7 +51,7 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 		for(size_t idx = 0; idx < num_indexes; ++idx)
 		{
 			Json::Value point = Json::objectValue;
-			point["Index"] = idx;
+			point["Index"] = Json::UInt(idx);
 			conf[PointType].append(point);
 		}
 	}
@@ -65,10 +65,10 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	conf["UnsolClass2"] = true;
 	conf["UnsolClass3"] = true;
 	conf["DoUnsolOnStartup"] = true;
-	conf["IntegrityScanRatems"] = 0;
-	conf["EventClass1ScanRatems"] = 0;
-	conf["EventClass2ScanRatems"] = 0;
-	conf["EventClass3ScanRatems"] = 0;
+	conf["IntegrityScanRatems"] = Json::UInt(0);
+	conf["EventClass1ScanRatems"] = Json::UInt(0);
+	conf["EventClass2ScanRatems"] = Json::UInt(0);
+	conf["EventClass3ScanRatems"] = Json::UInt(0);
 
 
 	//make an outstation port
