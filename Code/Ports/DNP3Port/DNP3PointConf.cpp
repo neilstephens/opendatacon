@@ -112,7 +112,9 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),
 	MaxCounterEvents(1000),
-	MaxOctetStringEvents(1000)
+	MaxOctetStringEvents(1000),
+	MaxAnalogOutputStatusEvents(1000),
+	MaxBinaryOutputStatusEvents(1000)
 {
 	ProcessFile();
 }
@@ -433,6 +435,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MaxCounterEvents = cap_evenbuffer_size("MaxCounterEvents");
 	if (JSONRoot.isMember("MaxOctetStringEvents"))
 		MaxOctetStringEvents = cap_evenbuffer_size("MaxOctetStringEvents");
+	if (JSONRoot.isMember("MaxAnalogOutputStatusEvents"))
+		MaxAnalogOutputStatusEvents = cap_evenbuffer_size("MaxAnalogOutputStatusEvents");
+	if (JSONRoot.isMember("MaxBinaryOutputStatusEvents"))
+		MaxBinaryOutputStatusEvents = cap_evenbuffer_size("MaxBinaryOutputStatusEvents");
 
 	auto GetIndexRange = [](const auto& PointArrayElement) -> std::tuple<bool,size_t,size_t>
 				   {

@@ -69,6 +69,11 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	conf["EventClass1ScanRatems"] = Json::UInt(0);
 	conf["EventClass2ScanRatems"] = Json::UInt(0);
 	conf["EventClass3ScanRatems"] = Json::UInt(0);
+	conf["MaxBinaryEvents"] = Json::UInt(num_indexes+1);
+	conf["MaxAnalogEvents"] = Json::UInt(num_indexes+1);
+	conf["MaxBinaryOutputStatusEvents"] = Json::UInt(num_indexes+1);
+	conf["MaxAnalogOutputStatusEvents"] = Json::UInt(num_indexes+1);
+	conf["MaxOctetStringEvents"] = Json::UInt(num_indexes+1);
 
 
 	//make an outstation port
@@ -142,7 +147,7 @@ void CheckPointDB(const std::shared_ptr<DataPort>& port, const std::vector<Paylo
 		auto event = port->pEventDB()->Get(ET, idx);
 		auto expected_payload = payloads.at(idx);
 		bool payload_as_expected = false;
-		while(ms_count < test_timeout_ms)
+		do
 		{
 			if(ET >= odc::EventType::AnalogOutputInt16 && ET <= odc::EventType::AnalogOutputDouble64)
 			{
@@ -187,14 +192,22 @@ void CheckPointDB(const std::shared_ptr<DataPort>& port, const std::vector<Paylo
 							payload_as_expected = true;
 							break;
 						}
+						if constexpr(ET == EventType::OctetString)
+							UNSCOPED_INFO("Payload is " << ToString(payload) << ", expected " << ToString(expected_payload));
+						else if constexpr(ET == EventType::ControlRelayOutputBlock)
+							UNSCOPED_INFO("Payload is " << std::string(payload) << ", expected " << std::string(expected_payload));
+						else
+							UNSCOPED_INFO("Payload is " << payload << ", expected " << expected_payload);
 					}
 				}
-				catch(std::exception&)
-				{}
+				catch(std::exception& e)
+				{
+					UNSCOPED_INFO("No payload: " << e.what());
+				}
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 			ms_count += 50;
-		}
+		} while(ms_count < test_timeout_ms);
 		if(event)
 		{
 			CHECK(payload_as_expected);
@@ -348,7 +361,7 @@ void CheckAnalogOutRange(const std::shared_ptr<DataPort>& MPUT, const std::share
 	CheckPointDB<ET>(OPUT, values);
 }
 
-TEST_CASE(SUITE("Analog Controls"))
+TEST_CASE(SUITE("AnalogControls"))
 {
 	TestSetup();
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
@@ -375,7 +388,7 @@ TEST_CASE(SUITE("Analog Controls"))
 	TestTearDown();
 }
 
-TEST_CASE(SUITE("Analog Output Statuses"))
+TEST_CASE(SUITE("AnalogOutputStatuses"))
 {
 	TestSetup();
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
@@ -388,7 +401,14 @@ TEST_CASE(SUITE("Analog Output Statuses"))
 		MPUT->Enable();
 		CHECK(WaitForLinkUp(MPUT));
 
-		//TODO: send some events
+		//send a value to each index
+		std::vector<double> values;
+		for(size_t idx = 0; idx < num_indexes; ++idx)
+		{
+			values.push_back(rand()>RAND_MAX/2);
+			SendEvent<odc::EventType::AnalogOutputStatus>(OPUT, idx, values.back());
+		}
+		CheckPointDB<odc::EventType::AnalogOutputStatus>(MPUT, values);
 
 		//turn things off
 		OPUT->Disable();
@@ -399,7 +419,7 @@ TEST_CASE(SUITE("Analog Output Statuses"))
 	TestTearDown();
 }
 
-TEST_CASE(SUITE("Binary Output Statuses"))
+TEST_CASE(SUITE("BinaryOutputStatuses"))
 {
 	TestSetup();
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
@@ -412,7 +432,14 @@ TEST_CASE(SUITE("Binary Output Statuses"))
 		MPUT->Enable();
 		CHECK(WaitForLinkUp(MPUT));
 
-		//TODO: send some events
+		//send a value to each index
+		std::vector<bool> values;
+		for(size_t idx = 0; idx < num_indexes; ++idx)
+		{
+			values.push_back(rand()>RAND_MAX/2);
+			SendEvent<odc::EventType::BinaryOutputStatus>(OPUT, idx, values.back());
+		}
+		CheckPointDB<odc::EventType::BinaryOutputStatus>(MPUT, values);
 
 		//turn things off
 		OPUT->Disable();

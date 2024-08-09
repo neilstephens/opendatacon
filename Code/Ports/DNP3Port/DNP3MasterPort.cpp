@@ -472,11 +472,7 @@ void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::I
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::FrozenCounter> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryOutputStatus> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogOutputStatus> >& meas){ LoadT(meas); }
-void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	if(info.gv == opendnp3::GroupVariation::Group111Var0) //TODO: implement another ODC type for static data if there's any use for it
-		LoadT(meas);
-}
+void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas){ /*LoadT(meas);*/ }
@@ -487,23 +483,12 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([this,pConf](const opendnp3::Indexed<T>&pair)
 		{
+			auto TSO = pConf->pPointConf->TimestampOverride;
 			auto event = ToODC(pair.value, pair.index, Name);
-			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time.value == 0)))
-			{
-				event->SetTimestamp();
-			}
-			PublishEvent(event);
-			pDB->Set(event);
-		});
-}
-
-template<>
-inline void DNP3MasterPort::LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	meas.ForeachItem([this](const opendnp3::Indexed<opendnp3::OctetString>&pair)
-		{
-			auto event = ToODC(pair.value, pair.index, Name);
+			if constexpr(!std::is_same<decltype(pair.value),opendnp3::OctetString>()) //OctetString has no time
+				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
+				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
+					event->SetTimestamp();
 			PublishEvent(event);
 			pDB->Set(event);
 		});
