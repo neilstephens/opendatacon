@@ -320,8 +320,12 @@ inline bool operator!=(const ControlRelayOutputBlock& lhs, const ControlRelayOut
 {
 	return !(lhs == rhs);
 }
+inline std::string ToString(const ControlRelayOutputBlock& crob)
+{
+	return std::string(crob);
+}
 
-enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
+enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN,UNDEFINED};
 inline std::string ToString(const ConnectState cs)
 {
 	ENUMSTRING(cs, ConnectState, PORT_UP)
@@ -351,89 +355,64 @@ inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 	return QualityResult;
 }
 
+#define CHECKENUMSTRING(S,C,X) if (S == #X) return C::X
+
 inline CommandStatus CommandStatusFromString(const std::string& StrCommandStatus)
 {
-	#define CHECKCSSTRING(C,X) if (StrCommandStatus == #X) return C::X
-	CHECKCSSTRING(CommandStatus,SUCCESS);
-	CHECKCSSTRING(CommandStatus,TIMEOUT);
-	CHECKCSSTRING(CommandStatus,NO_SELECT);
-	CHECKCSSTRING(CommandStatus,FORMAT_ERROR);
-	CHECKCSSTRING(CommandStatus,NOT_SUPPORTED);
-	CHECKCSSTRING(CommandStatus,ALREADY_ACTIVE);
-	CHECKCSSTRING(CommandStatus,HARDWARE_ERROR);
-	CHECKCSSTRING(CommandStatus,LOCAL);
-	CHECKCSSTRING(CommandStatus,TOO_MANY_OPS);
-	CHECKCSSTRING(CommandStatus,NOT_AUTHORIZED);
-	CHECKCSSTRING(CommandStatus,AUTOMATION_INHIBIT);
-	CHECKCSSTRING(CommandStatus,PROCESSING_LIMITED);
-	CHECKCSSTRING(CommandStatus,OUT_OF_RANGE);
-	CHECKCSSTRING(CommandStatus,DOWNSTREAM_LOCAL);
-	CHECKCSSTRING(CommandStatus,ALREADY_COMPLETE);
-	CHECKCSSTRING(CommandStatus,BLOCKED);
-	CHECKCSSTRING(CommandStatus,CANCELLED);
-	CHECKCSSTRING(CommandStatus,BLOCKED_OTHER_MASTER);
-	CHECKCSSTRING(CommandStatus,DOWNSTREAM_FAIL);
-	CHECKCSSTRING(CommandStatus,NON_PARTICIPATING);
-	CHECKCSSTRING(CommandStatus,UNDEFINED);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,SUCCESS);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,TIMEOUT);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,NO_SELECT);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,FORMAT_ERROR);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,NOT_SUPPORTED);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,ALREADY_ACTIVE);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,HARDWARE_ERROR);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,LOCAL);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,TOO_MANY_OPS);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,NOT_AUTHORIZED);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,AUTOMATION_INHIBIT);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,PROCESSING_LIMITED);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,OUT_OF_RANGE);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,DOWNSTREAM_LOCAL);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,ALREADY_COMPLETE);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,BLOCKED);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,CANCELLED);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,BLOCKED_OTHER_MASTER);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,DOWNSTREAM_FAIL);
+	CHECKENUMSTRING(StrCommandStatus,CommandStatus,NON_PARTICIPATING);
 	return CommandStatus::UNDEFINED;
 }
 
-inline EventType EventTypeFromString(const std::string StrEventType)
+inline EventType EventTypeFromString(const std::string& StrEventType)
 {
 	auto EventTypeResult = EventType::BeforeRange;
 	do
 	{
 		EventTypeResult = EventTypeResult+1;
-		auto FindStr = ToString(EventTypeResult);
-		if(FindStr.length() > StrEventType.length())
-			continue;
-		if (StrEventType.find(FindStr, StrEventType.length()-FindStr.length()) != std::string::npos)
+		if (StrEventType == ToString(EventTypeResult))
 			break;
 	} while (EventTypeResult != EventType::AfterRange);
 	return EventTypeResult;
 }
 
-//FIXME: this is an anti-pattern. Should be
-// ControlCodeFromString(), returning a ControlCode, UNDEFINED if not found
-inline bool ToControlCode(const std::string StrControlCode, ControlCode& ControlCodeResult)
+inline ControlCode ControlCodeFromString(const std::string& StrControlCode)
 {
-	#define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
-
-	ControlCodeResult = ControlCode::UNDEFINED;
-
-	CHECKCONTROLCODESTRING(ControlCode::CLOSE_PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::LATCH_OFF);
-	CHECKCONTROLCODESTRING(ControlCode::LATCH_ON);
-	CHECKCONTROLCODESTRING(ControlCode::NUL);
-	CHECKCONTROLCODESTRING(ControlCode::PULSE_OFF);
-	CHECKCONTROLCODESTRING(ControlCode::PULSE_ON);
-	CHECKCONTROLCODESTRING(ControlCode::TRIP_PULSE_ON);
-
-	return (ControlCodeResult != ControlCode::UNDEFINED);
+	CHECKENUMSTRING(StrControlCode,ControlCode,CLOSE_PULSE_ON);
+	CHECKENUMSTRING(StrControlCode,ControlCode,LATCH_OFF);
+	CHECKENUMSTRING(StrControlCode,ControlCode,LATCH_ON);
+	CHECKENUMSTRING(StrControlCode,ControlCode,NUL);
+	CHECKENUMSTRING(StrControlCode,ControlCode,PULSE_OFF);
+	CHECKENUMSTRING(StrControlCode,ControlCode,PULSE_ON);
+	CHECKENUMSTRING(StrControlCode,ControlCode,TRIP_PULSE_ON);
+	return ControlCode::UNDEFINED;
 }
 
-//FIXME: this is an anti-pattern. Should be
-// ConnectStateFromString(), returning a ConnectState, UNDEFINED if not found
-inline bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
+inline ConnectState ConnectStateFromString(const std::string StrConnectState)
 {
-	#define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
-
-	CHECKCONNECTSTATESTRING(ConnectState::CONNECTED);
-	CHECKCONNECTSTATESTRING(ConnectState::DISCONNECTED);
-	CHECKCONNECTSTATESTRING(ConnectState::PORT_DOWN);
-	CHECKCONNECTSTATESTRING(ConnectState::PORT_UP);
-
-	return false;
-}
-
-inline EventType ToEventType(const std::string& str_type)
-{
-	EventType type = EventType::BeforeRange;
-	if (to_lower(str_type) == "binary")
-		type = EventType::Binary;
-	else if (to_lower(str_type) == "analog")
-		type = EventType::Analog;
-	return type;
+	CHECKENUMSTRING(StrConnectState,ConnectState,CONNECTED);
+	CHECKENUMSTRING(StrConnectState,ConnectState,DISCONNECTED);
+	CHECKENUMSTRING(StrConnectState,ConnectState,PORT_DOWN);
+	CHECKENUMSTRING(StrConnectState,ConnectState,PORT_UP);
+	return ConnectState::UNDEFINED;
 }
 
 //Map EventTypes to payload types

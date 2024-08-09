@@ -192,10 +192,8 @@ void CheckPointDB(const std::shared_ptr<DataPort>& port, const std::vector<Paylo
 							payload_as_expected = true;
 							break;
 						}
-						if constexpr(ET == EventType::OctetString)
+						if constexpr(ET == EventType::OctetString || ET == EventType::ControlRelayOutputBlock)
 							UNSCOPED_INFO("Payload is " << ToString(payload) << ", expected " << ToString(expected_payload));
-						else if constexpr(ET == EventType::ControlRelayOutputBlock)
-							UNSCOPED_INFO("Payload is " << std::string(payload) << ", expected " << std::string(expected_payload));
 						else
 							UNSCOPED_INFO("Payload is " << payload << ", expected " << expected_payload);
 					}

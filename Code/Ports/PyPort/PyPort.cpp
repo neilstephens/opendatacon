@@ -354,8 +354,8 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 	{
 		case EventType::ConnectState:
 		{
-			ConnectState state; // PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN
-			if (!GetConnectStateFromStringName(PayloadStr, state))
+			ConnectState state = ConnectStateFromString(PayloadStr);
+			if (state == ConnectState::UNDEFINED)
 			{
 				LOGERROR("Invalid Connection State passed from Python Code to ODC - {}", PayloadStr);
 				return nullptr;
@@ -406,8 +406,8 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				auto Parts = split(PayloadStr, '|');
 				if (Parts.size() != 5) throw std::runtime_error("Payload for ControlRelayOutputBlock does not have enough sections " + PayloadStr);
 
-				ControlCode ControlCodeResult;
-				ToControlCode(Parts[1], ControlCodeResult);
+				ControlCode ControlCodeResult = ControlCodeFromString(Parts[1]);
+				if(ControlCodeResult == ControlCode::UNDEFINED) throw std::runtime_error("ControlCode field of ControlRelayOutputBlock not in " + Parts[1]);
 				val.functionCode = ControlCodeResult;
 
 				if (Parts[2].find("Count") == std::string::npos) throw std::runtime_error("Count field of ControlRelayOutputBlock not in " + Parts[2]);

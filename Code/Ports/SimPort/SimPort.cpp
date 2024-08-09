@@ -708,7 +708,7 @@ void SimPort::Build()
 				std::string error = "";
 
 				if (parameters.count("type") != 0)
-					type = ToEventType(parameters.at("type"));
+					type = EventTypeFromString(parameters.at("type"));
 				else
 					error = "No 'type' parameter found";
 
