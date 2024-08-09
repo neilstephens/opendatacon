@@ -53,5 +53,15 @@ if(GIT_FOUND)
 			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		)
 	endif()
+	
+	#git version 2.23 can ignore specified commits in blame
+	if((${CMAKE_MATCH_1} GREATER 2) OR
+		((${CMAKE_MATCH_1} EQUAL 2) AND (${CMAKE_MATCH_2} GREATER 22)))
+		message("Setting blame ignore file")
+		execute_process(
+			COMMAND git config blame.ignoreRevsFile .git-blame-ignore-revs
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		)
+	endif()
 
 endif()

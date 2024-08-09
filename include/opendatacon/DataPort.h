@@ -46,15 +46,20 @@ public:
 	{}
 	~DataPort() override {}
 
-	virtual void Enable() override =0;
-	virtual void Disable() override =0;
+	virtual void Enable() override = 0;
+	virtual void Disable() override = 0;
 	virtual void Build() = 0;
-	virtual void ProcessElements(const Json::Value& JSONRoot) override =0;
+	virtual void ProcessElements(const Json::Value& JSONRoot) override = 0;
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
 	void Event(ConnectState state, const std::string& SenderName) final
 	{
 		MuxConnectionEvents(state, SenderName);
+	}
+
+	virtual const std::unique_ptr<EventDB>& pEventDB() const
+	{
+		return pDB;
 	}
 
 	virtual std::pair<std::string,const IUIResponder*> GetUIResponder()

@@ -310,7 +310,7 @@ public:
 	bool IsOverFlowMarkerPoint()
 	{
 		return (Index == 0) && (ModuleAddress == 0) && (Channel == 0) && (PollGroup == 0) &&
-				(ChangedTime == 0) && (Binary == 0) && (PointType == BinaryPointType::TIMETAGGEDINPUT);
+		       (ChangedTime == 0) && (Binary == 0) && (PointType == BinaryPointType::TIMETAGGEDINPUT);
 	}
 
 protected:

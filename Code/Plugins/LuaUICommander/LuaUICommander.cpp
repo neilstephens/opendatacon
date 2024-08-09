@@ -47,20 +47,20 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			std::string filename,ID;
 			if(odc::extract_delimited_string("'`/",LineStream,filename) && LineStream>>ID)
 			{
-			      std::ifstream fin(filename);
-			      if(fin.is_open())
-			      {
-			            std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
-			            auto started = Execute(lua_code,ID,LineStream);
-			            auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
-			            return IUIResponder::GenerateResult(msg);
+				std::ifstream fin(filename);
+				if(fin.is_open())
+				{
+					std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
+					auto started = Execute(lua_code,ID,LineStream);
+					auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
+					return IUIResponder::GenerateResult(msg);
 				}
-			      return IUIResponder::GenerateResult("Failed to open file.");
+				return IUIResponder::GenerateResult("Failed to open file.");
 			}
 			return IUIResponder::GenerateResult("Bad parameter");
 
 		},"Load a Lua script to automate sending UI commands. Usage: 'ExecuteFile <lua_filename> <ID> [script args]'. "
-		  "ID is a arbitrary user-specified ID that can be used with 'StatExecution'");
+		"ID is a arbitrary user-specified ID that can be used with 'StatExecution'");
 
 	IUIResponder::AddCommand("Base64Execute", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -68,16 +68,16 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			std::string Base64,ID;
 			if(LineStream>>Base64 && LineStream>>ID)
 			{
-			      std::string lua_code = odc::b64decode(Base64);
-			      if(auto log = odc::spdlog_get("ConsoleUI"))
+				std::string lua_code = odc::b64decode(Base64);
+				if(auto log = odc::spdlog_get("ConsoleUI"))
 					log->trace("Decoded base64 as:\n{}",lua_code);
-			      auto started = Execute(lua_code,ID,LineStream);
-			      auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
-			      return IUIResponder::GenerateResult(msg);
+				auto started = Execute(lua_code,ID,LineStream);
+				auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
+				return IUIResponder::GenerateResult(msg);
 			}
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Similar to 'ExecuteFile', but instead of loading the lua code from file, decodes it directly from base64 entered at the console. "
-		  "Usage: 'Base64Execute <base64_encoded_script> <ID> [script args]'");
+		"Usage: 'Base64Execute <base64_encoded_script> <ID> [script args]'");
 
 	IUIResponder::AddCommand("StatExecution", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -85,7 +85,7 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			std::string ID;
 			if(LineStream>>ID)
 			{
-			      return Status(ID);
+				return Status(ID);
 			}
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Check the execution status of a command script started by 'ExecuteFile/Base64Execute'. Usage: 'StatExecution <ID>'");
@@ -96,8 +96,8 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			std::string ID;
 			if(LineStream>>ID)
 			{
-			      Cancel(ID);
-			      return IUIResponder::GenerateResult("Success");
+				Cancel(ID);
+				return IUIResponder::GenerateResult("Success");
 			}
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Cancel the execution of a command script started by 'ExecuteFile' the next time it returns or yeilds. Usage: 'CancelExecution <ID>'");
@@ -120,8 +120,8 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			size_t sz;
 			if(LineStream>>sz)
 			{
-			      maxQ = sz;
-			      return IUIResponder::GenerateResult("Success");
+				maxQ = sz;
+				return IUIResponder::GenerateResult("Success");
 			}
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Set the maximum number of messages that will be retained for each script (default 500). Usage: 'MessageQueueSize <integer>'");

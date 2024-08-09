@@ -472,11 +472,7 @@ void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::I
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::FrozenCounter> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryOutputStatus> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogOutputStatus> >& meas){ LoadT(meas); }
-void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	if(info.gv == opendnp3::GroupVariation::Group111Var0) //TODO: implement another ODC type for static data if there's any use for it
-		LoadT(meas);
-}
+void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas){ /*LoadT(meas);*/ }
@@ -487,23 +483,12 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([this,pConf](const opendnp3::Indexed<T>&pair)
 		{
+			auto TSO = pConf->pPointConf->TimestampOverride;
 			auto event = ToODC(pair.value, pair.index, Name);
-			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time.value == 0)))
-			{
-				event->SetTimestamp();
-			}
-			PublishEvent(event);
-			pDB->Set(event);
-		});
-}
-
-template<>
-inline void DNP3MasterPort::LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	meas.ForeachItem([this](const opendnp3::Indexed<opendnp3::OctetString>&pair)
-		{
-			auto event = ToODC(pair.value, pair.index, Name);
+			if constexpr(!std::is_same<decltype(pair.value),opendnp3::OctetString>()) //OctetString has no time
+				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
+				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
+					event->SetTimestamp();
 			PublishEvent(event);
 			pDB->Set(event);
 		});
@@ -607,19 +592,9 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 				if (auto log = odc::spdlog_get("DNP3Port"))
 					log->debug("{}: Executing direct operate to index: {}", Name, index);
 
-				switch (event->GetEventType())
-				{
-					case EventType::ControlRelayOutputBlock:
-					{
-						auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					default:
-						(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-						break;
-				}
+				auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
+				DoOverrideControlCode(lCommand);
+				this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
 				return;
 			}
 			if(auto log = odc::spdlog_get("DNP3Port"))
@@ -643,16 +618,16 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 					switch(new_event_type)
 					{
 						case EventType::AnalogOutputInt16:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputInt16>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt16>(newevent), index, DNP3Callback);
 							break;
 						case EventType::AnalogOutputInt32:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputInt32>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt32>(newevent), index, DNP3Callback);
 							break;
 						case EventType::AnalogOutputFloat32:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputFloat32>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputFloat32>(newevent), index, DNP3Callback);
 							break;
 						case EventType::AnalogOutputDouble64:
-							this->pMaster->DirectOperate(FromODC<EventTypeDNP3<EventType::AnalogOutputDouble64>::type>(newevent), index, DNP3Callback);
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputDouble64>(newevent), index, DNP3Callback);
 							break;
 						default:
 							(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);

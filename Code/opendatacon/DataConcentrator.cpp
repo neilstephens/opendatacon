@@ -217,9 +217,9 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 		{
 			return SpoofEvent(ss);
 		},"Usage: spoof_event <sender IOHandler> <receiver IOHandler> <EventInfo JSON>. "
-		  R"(Example EventInfo: {"EventType":"ControlRelayOutputBlock","Index":1234,"SourcePort":"Fake","Payload":{"ControlCode":"LATCH_OFF"}} )"
-		  R"(Another: '{"EventType":"Analog","Index":34,"Timestamp":"2050-12-12 01:02:33.444","Payload":666}' )"
-		  R"(And Another: {"EventType":"Analog","Index":1,"QualityFlags":"COMM_LOST|LOCAL_FORCED"} ...Etc)");
+		R"(Example EventInfo: {"EventType":"ControlRelayOutputBlock","Index":1234,"SourcePort":"Fake","Payload":{"ControlCode":"LATCH_OFF"}} )"
+		R"(Another: '{"EventType":"Analog","Index":34,"Timestamp":"2050-12-12 01:02:33.444","Payload":666}' )"
+		R"(And Another: {"EventType":"Analog","Index":1,"QualityFlags":"COMM_LOST|LOCAL_FORCED"} ...Etc)");
 
 	interface->SetResponders(RespondersMasterCopy);
 }

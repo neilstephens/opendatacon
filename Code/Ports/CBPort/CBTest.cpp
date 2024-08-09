@@ -528,14 +528,14 @@ TEST_CASE("Util - SOEEventFormat")
 
 	REQUIRE(newstartbit == 30);
 	REQUIRE(SOE2.GetResultBitLength() == 30); // We changed this!
-	REQUIRE(SOE2.GetFormattedData() == 0xb064300c00000000); 
+	REQUIRE(SOE2.GetFormattedData() == 0xb064300c00000000);
 	REQUIRE(SOE2.Group == 5);
 	REQUIRE(SOE2.Number == 0x41);
 	REQUIRE(SOE2.ValueBit == true);
-	REQUIRE(SOE2.TimeFormatBit == false);	// We changed this
+	REQUIRE(SOE2.TimeFormatBit == false); // We changed this
 	REQUIRE(SOE2.Second == 0x21);
 	REQUIRE(SOE2.Millisecond == 0x201);
-	REQUIRE(SOE2.LastEventFlag == true);	// We changed this too
+	REQUIRE(SOE2.LastEventFlag == true); // We changed this too
 	REQUIRE(Success);
 
 	uint64_t payload = 0x9945455800000000; // From a packet capture
@@ -1046,7 +1046,7 @@ TEST_CASE("Station - SOERequest F10")
 
 	// Now we should get back the SOE queued events.
 	// No need to delay to process result, all done in the InjectCommand at call time.
-						
+
 	REQUIRE(Response == "a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a1619399888606a6821");
 
 	// Now send the SOE resend command and make sure we get the same result.
@@ -1062,7 +1062,7 @@ TEST_CASE("Station - SOERequest F10")
 
 	// No need to delay to process result, all done in the InjectCommand at call time.
 	REQUIRE(Response == "a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a1619399888606a6821");
-		
+
 
 	// Check if the lastmessagebit is set, if so request the remaining events - we happen to know it it is, so ask for them.
 	commandblock = CBBlockData(station, 0, FUNC_SEND_NEW_SOE, 0, true);
@@ -1653,10 +1653,10 @@ TEST_CASE("Master - Scan Request F0")
 
 	// From the outstation test above!!
 	std::string Payload = BuildBinaryStringFromASCIIHexString("09355516" // Echoed block plus data 1B
-		                                                    "fc080016" // Data 2A and 2B
-		                                                    "400a00b6"
-		                                                    "4028000c"
-		                                                    "800f7d19");
+		"fc080016"                                                     // Data 2A and 2B
+		"400a00b6"
+		"4028000c"
+		"800f7d19");
 	output << Payload;
 
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
@@ -1791,7 +1791,7 @@ TEST_CASE("Master - SOE Request F10")
 			std::string CommandResponse = BuildBinaryStringFromASCIIHexString("024670") +
 			                              BuildBinaryStringFromASCIIHexString("a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a") +
 			                              BuildBinaryStringFromASCIIHexString("a903011892a8c9329309031a4a8e0a04192d9836606a5832c248c934d30d032e4b8e1a14192f9800e06a6026c448c9ae131903324c8e2a1619399888606a6821");
-																				
+
 			MAoutput << CommandResponse;
 			CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 

@@ -391,7 +391,7 @@ TEST_CASE("Py.TestsUsingPython")
 					return (PythonPort->Enabled() && PythonPort2->Enabled() && PythonPort3->Enabled() && PythonPort4->Enabled());
 				}))
 			{
-			      throw std::runtime_error("Waiting for Ports to Enable timed out");
+				throw std::runtime_error("Waiting for Ports to Enable timed out");
 			}
 		} ());
 	LOGINFO("Ports Enabled");
@@ -461,7 +461,7 @@ TEST_CASE("Py.TestsUsingPython")
 						return bool(done_count);
 					}))
 				{
-				      throw("Waiting for RestHandler response timed out");
+					throw("Waiting for RestHandler response timed out");
 				}
 			} ());
 
@@ -496,7 +496,7 @@ TEST_CASE("Py.TestsUsingPython")
 						return false;
 					}))
 				{
-				      throw("Waiting for 1000 RestHandler responses timed out");
+					throw("Waiting for 1000 RestHandler responses timed out");
 				}
 			} ());
 		LOGDEBUG("Last Response {}", sres.get());
@@ -510,8 +510,8 @@ TEST_CASE("Py.TestsUsingPython")
 
 		// Do a http request to the root port and make sure we are getting the answer we expect.
 		std::string expectedresponse("Content-Length: 185\r\nContent-Type: text/html\r\n\n"
-			                       "You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, "
-			                       "which is case senstive.<br>Anything beyond this will be passed to the Python code.");
+			"You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, "
+			"which is case senstive.<br>Anything beyond this will be passed to the Python code.");
 
 		LOGERROR("If the Tests Hang here, the client making a HTTP request is waiting for an answer from the HTTP server - and is not getting it..");
 		std::string callresp;
@@ -556,7 +556,7 @@ TEST_CASE("Py.TestsUsingPython")
 					return (!PythonPort->Enabled() && !PythonPort2->Enabled() && !PythonPort3->Enabled() && !PythonPort4->Enabled());
 				}))
 			{
-			      throw("Waiting for Ports to be disabled timed out");
+				throw("Waiting for Ports to be disabled timed out");
 			}
 		} ());
 	LOGDEBUG("Ports1-4 Disabled");
@@ -584,7 +584,7 @@ TEST_CASE("Py.TestsUsingPython")
 						return (PythonPort5->Enabled());
 					}))
 				{
-				      throw std::runtime_error("Waiting for Ports to Enable timed out");
+					throw std::runtime_error("Waiting for Ports to Enable timed out");
 				}
 			} ());
 
@@ -606,10 +606,10 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 1");
 				for (int ODCIndex = 1; ODCIndex <= 5000; ODCIndex++)
 				{
-				      bool val = (ODCIndex % 2 == 0);
-				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing1");
-				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[0]);
+					bool val = (ODCIndex % 2 == 0);
+					auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing1");
+					boolevent->SetPayload<EventType::Binary>(std::move(val));
+					PythonPort5->Event(boolevent, "Connector1", block_callbacks[0]);
 				}
 				LOGINFO("Sending Binary Events 1 Done");
 			});
@@ -618,10 +618,10 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 2");
 				for (int ODCIndex = 5001; ODCIndex <= 9000; ODCIndex++)
 				{
-				      bool val = (ODCIndex % 2 == 0);
-				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
-				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[1]);
+					bool val = (ODCIndex % 2 == 0);
+					auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+					boolevent->SetPayload<EventType::Binary>(std::move(val));
+					PythonPort5->Event(boolevent, "Connector1", block_callbacks[1]);
 				}
 				LOGINFO("Sending Binary Events 2 Done");
 			});
@@ -630,10 +630,10 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 3");
 				for (int ODCIndex = 9001; ODCIndex <= 12000; ODCIndex++)
 				{
-				      bool val = (ODCIndex % 2 == 0);
-				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
-				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[2]);
+					bool val = (ODCIndex % 2 == 0);
+					auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+					boolevent->SetPayload<EventType::Binary>(std::move(val));
+					PythonPort5->Event(boolevent, "Connector1", block_callbacks[2]);
 				}
 				LOGINFO("Sending Binary Events 3 Done");
 			});
@@ -642,10 +642,10 @@ TEST_CASE("Py.TestsUsingPython")
 				LOGINFO("Sending Binary Events 4");
 				for (int ODCIndex = 12001; ODCIndex <= 15000; ODCIndex++)
 				{
-				      bool val = (ODCIndex % 2 == 0);
-				      auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
-				      boolevent->SetPayload<EventType::Binary>(std::move(val));
-				      PythonPort5->Event(boolevent, "Connector1", block_callbacks[3]);
+					bool val = (ODCIndex % 2 == 0);
+					auto boolevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, "Testing2");
+					boolevent->SetPayload<EventType::Binary>(std::move(val));
+					PythonPort5->Event(boolevent, "Connector1", block_callbacks[3]);
 				}
 				LOGINFO("Sending Binary Events 4 Done");
 			});
@@ -661,8 +661,8 @@ TEST_CASE("Py.TestsUsingPython")
 						return true;
 					}))
 				{
-				      LOGERROR("Waiting for queuing events timed out"); // the throw does not get reported - causes a seg fault in travis
-				      throw("Waiting for queuing events timed out");
+					LOGERROR("Waiting for queuing events timed out"); // the throw does not get reported - causes a seg fault in travis
+					throw("Waiting for queuing events timed out");
 				}
 			} ());
 		LOGERROR("All events queued");
@@ -676,7 +676,7 @@ TEST_CASE("Py.TestsUsingPython")
 						return true;
 					}))
 				{
-				      throw("Waiting for queued events timed out");
+					throw("Waiting for queued events timed out");
 				}
 			} ());
 
@@ -713,7 +713,7 @@ TEST_CASE("Py.TestsUsingPython")
 						return (!PythonPort->Enabled());
 					}))
 				{
-				      throw("Waiting for Ports to be disabled timed out");
+					throw("Waiting for Ports to be disabled timed out");
 				}
 			} ());
 		LOGDEBUG("Port5 Disabled");

@@ -161,12 +161,12 @@ void CBMasterPort::QueueCBCommand(const CBMessage_t& CompleteCBMessage, const Sh
 		{
 			if (MasterCommandProtectedData.MasterCommandQueue.size() < MasterCommandProtectedData.MaxCommandQueueSize)
 			{
-			      MasterCommandProtectedData.MasterCommandQueue.push(MasterCommandQueueItem(CompleteCBMessage, pStatusCallback)); // async
+				MasterCommandProtectedData.MasterCommandQueue.push(MasterCommandQueueItem(CompleteCBMessage, pStatusCallback)); // async
 			}
 			else
 			{
-			      LOGDEBUG("{} Tried to queue another CB Master PendingCommand when the command queue is full",Name);
-			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
+				LOGDEBUG("{} Tried to queue another CB Master PendingCommand when the command queue is full",Name);
+				PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
 			}
 
 			// Will only send if we can - blockindex.e. not currently processing a command
@@ -295,19 +295,19 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				{
 					if (err_code != asio::error::operation_aborted)
 					{
-					// We need strand protection for the variables, so this will queue another chunk of work below.
-					// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
-					      MasterCommandStrand->dispatch([this, endtime]()
+						// We need strand protection for the variables, so this will queue another chunk of work below.
+						// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
+						MasterCommandStrand->dispatch([this, endtime]()
 							{
 								// The checking of the expire time is another way to make sure that we have not cancelled the timer. We really need to make sure that if
 								// we have cancelled the timer and this callback is called, that we do NOT take any action!
 								if (endtime == MasterCommandProtectedData.TimerExpireTime)
 								{
-								      LOGDEBUG("{} Master Timeout valid - CB Function {}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode));
+									LOGDEBUG("{} Master Timeout valid - CB Function {}", Name, GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode));
 
-								      MasterCommandProtectedData.ProcessingCBCommand = false; // Only gets reset on success or timeout.
+									MasterCommandProtectedData.ProcessingCBCommand = false; // Only gets reset on success or timeout.
 
-								      UnprotectedSendNextMasterCommand(true); // We already have the strand, so don't need the wrapper here
+									UnprotectedSendNextMasterCommand(true); // We already have the strand, so don't need the wrapper here
 								}
 								else
 									LOGDEBUG("{} Master Timeout callback called, when we had already moved on to the next command",Name);
@@ -315,7 +315,7 @@ void CBMasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 					}
 					else
 					{
-					      LOGDEBUG("{} Master Timeout callback cancelled",Name);
+						LOGDEBUG("{} Master Timeout callback cancelled",Name);
 					}
 				});
 		}
@@ -333,7 +333,7 @@ void CBMasterPort::ClearCBCommandQueue()
 			CBMessage_t NextCommand;
 			while (!MasterCommandProtectedData.MasterCommandQueue.empty())
 			{
-			      MasterCommandProtectedData.MasterCommandQueue.pop();
+				MasterCommandProtectedData.MasterCommandQueue.pop();
 			}
 			MasterCommandProtectedData.CurrentFunctionCode = 0;
 			MasterCommandProtectedData.ProcessingCBCommand = false;
@@ -363,8 +363,8 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &&CompleteCBMessage)
 		{
 			if (CompleteCBMessage.size() == 0)
 			{
-			      LOGERROR("{} Received a Station to Master message with zero length!!! ",Name);
-			      return;
+				LOGERROR("{} Received a Station to Master message with zero length!!! ",Name);
+				return;
 			}
 
 			CBBlockData Header = CompleteCBMessage[0];
@@ -374,18 +374,18 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &&CompleteCBMessage)
 			// If we have an error, we have to wait for the timeout to occur, there may be another packet in behind which is the correct one. If we bail now we may never re-synchronise.
 			if (Header.GetStationAddress() == 0)
 			{
-			      LOGERROR("{} Received broadcast return message - address 0 - ignoring - {} On Station Address - {}", Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
-			      return;
+				LOGERROR("{} Received broadcast return message - address 0 - ignoring - {} On Station Address - {}", Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
+				return;
 			}
 			if (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr)
 			{
-			      LOGERROR("{} Received a message from the wrong address - ignoring - {} On Station Address - {}",Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
-			      return;
+				LOGERROR("{} Received a message from the wrong address - ignoring - {} On Station Address - {}",Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
+				return;
 			}
 			if (Header.GetFunctionCode() != MasterCommandProtectedData.CurrentFunctionCode)
 			{
-			      LOGERROR("{} Received a message with the wrong (non-matching) function code - ignoring - {} On Station Address - {}",Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
-			      return;
+				LOGERROR("{} Received a message with the wrong (non-matching) function code - ignoring - {} On Station Address - {}",Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
+				return;
 			}
 
 			bool success = false;
@@ -441,21 +441,21 @@ void CBMasterPort::ProcessCBMessage(CBMessage_t &&CompleteCBMessage)
 
 			if (NotImplemented == true)
 			{
-			      LOGERROR("{} PendingCommand Function NOT Implemented - {} On Station Address - {}", Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
+				LOGERROR("{} PendingCommand Function NOT Implemented - {} On Station Address - {}", Name, GetFunctionCodeName(Header.GetFunctionCode()), std::to_string(Header.GetStationAddress()));
 			}
 
 			if (success) // Move to the next command. Only other place we do this is in the timeout.
 			{
-			      MasterCommandProtectedData.CurrentCommandTimeoutTimer->cancel(); // Have to be careful the handler still might do something?
-			      MasterCommandProtectedData.ProcessingCBCommand = false;          // Only gets reset on success or timeout.
+				MasterCommandProtectedData.CurrentCommandTimeoutTimer->cancel(); // Have to be careful the handler still might do something?
+				MasterCommandProtectedData.ProcessingCBCommand = false;          // Only gets reset on success or timeout.
 
-			      // Execute the callback with a success code.
-			      PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::SUCCESS); // Does null check
-			      UnprotectedSendNextMasterCommand(false);                                                    // We already have the strand, so don't need the wrapper here. Pass in that this is not a retry.
+				// Execute the callback with a success code.
+				PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::SUCCESS); // Does null check
+				UnprotectedSendNextMasterCommand(false);                                                    // We already have the strand, so don't need the wrapper here. Pass in that this is not a retry.
 			}
 			else
 			{
-			      LOGERROR("{} PendingCommand Response failed - Received - {},  Expecting {}  On Station Address - {}",Name,
+				LOGERROR("{} PendingCommand Response failed - Received - {},  Expecting {}  On Station Address - {}",Name,
 					GetFunctionCodeName(Header.GetFunctionCode()), GetFunctionCodeName(MasterCommandProtectedData.CurrentFunctionCode), std::to_string(Header.GetStationAddress()));
 			}
 			#ifdef _MSC_VER
@@ -508,11 +508,11 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 			uint16_t analogvalue = data;
 			if (pt.GetPointType() == ANA6)
 			{
-			      if (pt.GetChannel() == 1)
+				if (pt.GetChannel() == 1)
 					analogvalue = (data >> 6) & 0x3F; // Top 6 bits only.
-			      else
+				else
 					analogvalue &= 0x3F;      // Bottom 6 bits only.
-			      analogvalue = 63 - analogvalue; // ANA6 Are Inverted
+				analogvalue = 63 - analogvalue; // ANA6 Are Inverted
 			}
 
 			pt.SetAnalog(analogvalue, now);
@@ -558,46 +558,46 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 				switch (pt.GetPointType())
 				{
 					case DIG:
-						{
-						      int bitshift = 12 - ch;
-						      if (MyPointConf->IsBakerDevice)
-								bitshift = ch - 1; // 0 to 11, Baker reverse bit order
+					{
+						int bitshift = 12 - ch;
+						if (MyPointConf->IsBakerDevice)
+							bitshift = ch - 1; // 0 to 11, Baker reverse bit order
 
-						      uint8_t bitvalue = (data >> bitshift) & 0x0001;
-						      LOGDEBUG("{} - DIG Block Received - Chan {} - Value {}", Name, ch, bitvalue);
+						uint8_t bitvalue = (data >> bitshift) & 0x0001;
+						LOGDEBUG("{} - DIG Block Received - Chan {} - Value {}", Name, ch, bitvalue);
 
-						      SendBinaryEvent(pt, bitvalue, now);
+						SendBinaryEvent(pt, bitvalue, now);
 
-						      FoundMatch = true;
-						}
-						break;
+						FoundMatch = true;
+					}
+					break;
 
 					// Note that we get CHANGE information from the packet, but ODC has no mechanism for dealing with this. We can only send events
 					// to other ports through the connectors. If we were a "real" scada master, we might use this information in a different way.
 					case MCA:
 					case MCB:
 					case MCC:
+					{
+						int bitshiftval = (10 - (ch - 1) * 2);
+						int bitshiftcos = (11 - (ch - 1) * 2);
+						if (MyPointConf->IsBakerDevice)
 						{
-						      int bitshiftval = (10 - (ch - 1) * 2);
-						      int bitshiftcos = (11 - (ch - 1) * 2);
-						      if (MyPointConf->IsBakerDevice)
-						      {
-						            bitshiftval = 1 + (ch - 1) * 2; // Baker reverse bit order
-						            bitshiftcos = (ch - 1) * 2;
-							}
-						                                                         // The Change state cannot be handled in ODC, it will be handled by the actual value changes
-						      uint8_t bitvalue = (data >> bitshiftval) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
-						      uint8_t cos = (data >> bitshiftcos) & 0x0001;
-						      LOGDEBUG("{} - {} Block Received - Chan {} - Value {} - COS {}", Name, pt.GetPointTypeName(), ch, bitvalue, cos);
-
-						      if (pt.GetPointType() == MCA)
-								bitvalue = !bitvalue; // For MCA the bit value is inverted!!!!
-
-						      SendBinaryEvent(pt, bitvalue, now);
-
-						      FoundMatch = true;
+							bitshiftval = 1 + (ch - 1) * 2; // Baker reverse bit order
+							bitshiftcos = (ch - 1) * 2;
 						}
-						break;
+						// The Change state cannot be handled in ODC, it will be handled by the actual value changes
+						uint8_t bitvalue = (data >> bitshiftval) & 0x0001; // Bit 11 is COS, Bit 10 is Value. Bit 1 is COS, Bit 0 is value
+						uint8_t cos = (data >> bitshiftcos) & 0x0001;
+						LOGDEBUG("{} - {} Block Received - Chan {} - Value {} - COS {}", Name, pt.GetPointTypeName(), ch, bitvalue, cos);
+
+						if (pt.GetPointType() == MCA)
+							bitvalue = !bitvalue; // For MCA the bit value is inverted!!!!
+
+						SendBinaryEvent(pt, bitvalue, now);
+
+						FoundMatch = true;
+					}
+					break;
 
 					default:
 						LOGERROR("{} - We received an un-handled digital point type - Group {} Payload Location ",Name, group, payloadlocation.to_string());
@@ -663,44 +663,44 @@ bool CBMasterPort::ProcessSOEScanRequestReturn(const CBBlockData& ReceivedHeader
 
 			if (MyPointConf->PointTable.GetBinaryODCIndexUsingSOE(SOEIndex, ODCIndex) || (SOEIndex == 127))
 			{
-			      uint8_t bitvalue = soeevnt.ValueBit;
+				uint8_t bitvalue = soeevnt.ValueBit;
 
-			// In the processing loop that calls us, we have converted the (possibly) delta time records to full h:m:s:msec records.
-			// We just then need to add the current day to the value to make an ODC compatible time...
+				// In the processing loop that calls us, we have converted the (possibly) delta time records to full h:m:s:msec records.
+				// We just then need to add the current day to the value to make an ODC compatible time...
 
-			      // Deal with midnight roll over in the SOE CB Time records
-			// The SOE Event Hour should be <= to the current hour - i.e. the event was in the past.
-			// If it is not, it must be a midnight rollover. i.e. Event Hour == 23, Current Hour == 0
-			// So if this occurs, the day must have been yesterday...
+				// Deal with midnight roll over in the SOE CB Time records
+				// The SOE Event Hour should be <= to the current hour - i.e. the event was in the past.
+				// If it is not, it must be a midnight rollover. i.e. Event Hour == 23, Current Hour == 0
+				// So if this occurs, the day must have been yesterday...
 
-			      CBTime Now = CBNowUTC();
+				CBTime Now = CBNowUTC();
 
-			      if (GetHour(Now) > soeevnt.Hour)
-			      {
-			// The Event hour is in the future relative to the current hour, so it must have been yesterday...
-			// Subtract 1 day from the Now time, then we should be good.
-			            Now = Now - CBTimeOneDay;
+				if (GetHour(Now) > soeevnt.Hour)
+				{
+					// The Event hour is in the future relative to the current hour, so it must have been yesterday...
+					// Subtract 1 day from the Now time, then we should be good.
+					Now = Now - CBTimeOneDay;
 				}
-			      CBTime changedtime = GetDayStartTime(Now) + soeevnt.GetTotalMsecTime();
+				CBTime changedtime = GetDayStartTime(Now) + soeevnt.GetTotalMsecTime();
 
-			// SOEIndex 127 is the buffer overflow record
-			      if (SOEIndex == 127)
-			      {
-			            LOGERROR("{} Received a Binary SOE Buffer Overflow Event Record, data was lost at the OutStation",Name);
-			            OutStationSOEBufferOverflow.set(true);
+				// SOEIndex 127 is the buffer overflow record
+				if (SOEIndex == 127)
+				{
+					LOGERROR("{} Received a Binary SOE Buffer Overflow Event Record, data was lost at the OutStation",Name);
+					OutStationSOEBufferOverflow.set(true);
 				}
-			      else
-			      {
-			            QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
-			            LOGDEBUG("{} Published Binary SOE Event -  SOE Index {} ODC Index {} Bit Value {}",Name, SOEIndex, ODCIndex, bitvalue);
-			            auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
-			            event->SetPayload<EventType::Binary>(bitvalue == 1);
-			            PublishEvent(event);
+				else
+				{
+					QualityFlags qual = QualityFlags::ONLINE; // CalculateBinaryQuality(enabled, now); //TODO: Handle quality better?
+					LOGDEBUG("{} Published Binary SOE Event -  SOE Index {} ODC Index {} Bit Value {}",Name, SOEIndex, ODCIndex, bitvalue);
+					auto event = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, qual, static_cast<msSinceEpoch_t>(changedtime));
+					event->SetPayload<EventType::Binary>(bitvalue == 1);
+					PublishEvent(event);
 				}
 			}
 			else
 			{
-			      LOGERROR("{} Received an Binary SOE Event Record, but we dont have a matching point definition... Number {}", Name, SOEIndex);
+				LOGERROR("{} Received an Binary SOE Event Record, but we dont have a matching point definition... Number {}", Name, SOEIndex);
 			}
 		});
 

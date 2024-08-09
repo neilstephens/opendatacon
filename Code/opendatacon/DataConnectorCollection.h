@@ -57,9 +57,9 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      Json::Value result;
-				      result["Result"] = target->Enabled();
-				      return result;
+					Json::Value result;
+					result["Result"] = target->Enabled();
+					return result;
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			});
@@ -67,8 +67,8 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Enable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Enable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			});
@@ -76,8 +76,8 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Disable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Disable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			});
@@ -85,9 +85,9 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Disable();
-				      target->Enable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Disable();
+					target->Enable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			});

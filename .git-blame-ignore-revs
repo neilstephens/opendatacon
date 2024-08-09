@@ -1,0 +1,15 @@
+a5e3bfaff2d3dea92db6b9dfb9904c169c896b23 # formatting only
+d1c787f819bc446fa46f0917c3ff00407cb4ef73 # formatting
+61c36c6732dba6572e6cbe74b85d4041113a4e94 # formatting only
+a2dc324aa19e7ee51342d6497f03d55bffc9ff2e # Fixed an uncrustify preprocessor directive formatting problem and applied.
+42173d61d4e0e9201675afea3b5750375100f998 # minor formatting and comments
+b38edbc6cc01101d9a63665f6dabec6efa0a0cec # update uncrustify config for new version (Uncrustify-0.78.1_f) [skip CI]
+16221be1eb9e31949104603084305cbf3fb0129f # updated and applied uncrustify config
+f82fe9f399ab11cb51e6fd4fcf598fcdc17c96bc # updated uncrustify config
+227e5b98e40141603a496ddd0b31eefb23b83300 # new uncrustify config
+1eed12777f0b9797028941a09865e500e7227c45 # Ran uncrustify with option to remove extra ;s I left the option off by default though, because it made a few mistakes (;s at the end of lambdas)
+62abb0dd917485fe63343fa5711aa034005351e3 # ran uncrustify
+a2dc324aa19e7ee51342d6497f03d55bffc9ff2e # Fixed an uncrustify preprocessor directive formatting problem and applied.
+a6000dda17ace02bb589bb50a9724a5b2affd723 # Fixed comment alignment problem in uncrustify config, and applied.
+135a2eec9edc8ef9b5500ddaf57b82a9a304c8f6 # Ran uncrustify on entire repo.
+

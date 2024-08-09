@@ -49,7 +49,7 @@ public:
 				//check mandatory params are there
 				if(params.count("0") == 0 || params.count("1") == 0 || params.count("2") == 0)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter");
+					return IUIResponder::GenerateResult("Bad parameter");
 				}
 				auto type = ToEventType(params.at("0"));
 				auto index = params.at("1");
@@ -69,16 +69,16 @@ public:
 				//check mandatory params are there
 				if(params.count("0") == 0)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter");
+					return IUIResponder::GenerateResult("Bad parameter");
 				}
 				double scale_factor;
 				try
 				{
-				      scale_factor = std::stod(params.at("0"));
+					scale_factor = std::stod(params.at("0"));
 				}
 				catch(std::exception&)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter");
+					return IUIResponder::GenerateResult("Bad parameter");
 				}
 				target->UISetStdDevScaling(scale_factor);
 				return IUIResponder::GenerateResult("Success");
@@ -117,7 +117,7 @@ public:
 				//check mandatory params are there
 				if(params.count("0") == 0 || params.count("1") == 0)
 				{
-				      return IUIResponder::GenerateResult("Bad parameter");
+					return IUIResponder::GenerateResult("Bad parameter");
 				}
 				auto type = ToEventType(params.at("0"));
 				auto index = params.at("1");

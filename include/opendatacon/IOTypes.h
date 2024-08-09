@@ -308,6 +308,18 @@ struct ControlRelayOutputBlock
 		       "|ON "+std::to_string(onTimeMS)+"ms|OFF "+std::to_string(offTimeMS)+"ms|";
 	}
 };
+inline bool operator==(const ControlRelayOutputBlock& lhs, const ControlRelayOutputBlock& rhs)
+{
+	return lhs.functionCode == rhs.functionCode &&
+	       lhs.count == rhs.count &&
+	       lhs.onTimeMS == rhs.onTimeMS &&
+	       lhs.offTimeMS == rhs.offTimeMS &&
+	       lhs.status == rhs.status;
+}
+inline bool operator!=(const ControlRelayOutputBlock& lhs, const ControlRelayOutputBlock& rhs)
+{
+	return !(lhs == rhs);
+}
 
 enum class ConnectState {PORT_UP,CONNECTED,DISCONNECTED,PORT_DOWN};
 inline std::string ToString(const ConnectState cs)
@@ -321,7 +333,7 @@ inline std::string ToString(const ConnectState cs)
 
 inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 {
-#define CHECKFLAGSTRING(X) if (StrQuality.find(#X) != std::string::npos) QualityResult |= QualityFlags::X
+	#define CHECKFLAGSTRING(X) if (StrQuality.find(#X) != std::string::npos) QualityResult |= QualityFlags::X
 
 	QualityFlags QualityResult = QualityFlags::NONE;
 
@@ -341,7 +353,7 @@ inline QualityFlags QualityFlagsFromString(const std::string& StrQuality)
 
 inline CommandStatus CommandStatusFromString(const std::string& StrCommandStatus)
 {
-#define CHECKCSSTRING(C,X) if (StrCommandStatus == #X) return C::X
+	#define CHECKCSSTRING(C,X) if (StrCommandStatus == #X) return C::X
 	CHECKCSSTRING(CommandStatus,SUCCESS);
 	CHECKCSSTRING(CommandStatus,TIMEOUT);
 	CHECKCSSTRING(CommandStatus,NO_SELECT);
@@ -372,7 +384,10 @@ inline EventType EventTypeFromString(const std::string StrEventType)
 	do
 	{
 		EventTypeResult = EventTypeResult+1;
-		if (StrEventType.find(ToString(EventTypeResult)) != std::string::npos)
+		auto FindStr = ToString(EventTypeResult);
+		if(FindStr.length() > StrEventType.length())
+			continue;
+		if (StrEventType.find(FindStr, StrEventType.length()-FindStr.length()) != std::string::npos)
 			break;
 	} while (EventTypeResult != EventType::AfterRange);
 	return EventTypeResult;
@@ -382,7 +397,7 @@ inline EventType EventTypeFromString(const std::string StrEventType)
 // ControlCodeFromString(), returning a ControlCode, UNDEFINED if not found
 inline bool ToControlCode(const std::string StrControlCode, ControlCode& ControlCodeResult)
 {
-#define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
+	#define CHECKCONTROLCODESTRING(X) if (StrControlCode.find(ToString(X)) != std::string::npos) ControlCodeResult = X
 
 	ControlCodeResult = ControlCode::UNDEFINED;
 
@@ -401,7 +416,7 @@ inline bool ToControlCode(const std::string StrControlCode, ControlCode& Control
 // ConnectStateFromString(), returning a ConnectState, UNDEFINED if not found
 inline bool GetConnectStateFromStringName(const std::string StrConnectState, ConnectState& ConnectStateResult)
 {
-#define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
+	#define CHECKCONNECTSTATESTRING(X) if (StrConnectState.find(ToString(X)) != std::string::npos) {ConnectStateResult = X;return true;}
 
 	CHECKCONNECTSTATESTRING(ConnectState::CONNECTED);
 	CHECKCONNECTSTATESTRING(ConnectState::DISCONNECTED);
@@ -468,6 +483,21 @@ struct OctetStringBuffer: public shared_const_buffer
 		shared_const_buffer(odc::make_shared(std::string("")))
 	{}
 };
+inline bool operator==(const OctetStringBuffer& lhs, const OctetStringBuffer& rhs)
+{
+	if(lhs.size() != rhs.size())
+		return false;
+	for (size_t i = 0; i < lhs.size(); i++)
+	{
+		if (*((uint8_t*)lhs.data()+i) != *((uint8_t*)rhs.data()+i))
+			return false;
+	}
+	return true;
+}
+inline bool operator!=(const OctetStringBuffer& lhs, const OctetStringBuffer& rhs)
+{
+	return !(lhs == rhs);
+}
 
 EVENTPAYLOAD(EventType::Binary                   , bool)
 EVENTPAYLOAD(EventType::DoubleBitBinary          , DBB)
