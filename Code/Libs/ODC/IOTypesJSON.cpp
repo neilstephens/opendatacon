@@ -261,7 +261,9 @@ template<> ControlRelayOutputBlock PayloadFromJson(const Json::Value& JLoad)
 	ControlRelayOutputBlock CROB;
 	if(JLoad["ControlCode"].isUInt())
 		CROB.functionCode = static_cast<ControlCode>(JLoad["ControlCode"].asUInt()&0xFF);
-	else if(!JLoad["ControlCode"].isString() || !ToControlCode(JLoad["ControlCode"].asString(),CROB.functionCode))
+	else if(JLoad["ControlCode"].isString())
+		CROB.functionCode = ControlCodeFromString(JLoad["ControlCode"].asString());
+	else
 		throw std::invalid_argument("Payload 'ControlCode' is not unsigned integer or valid string.");
 
 	if(JLoad.isMember("CommandStatus"))
@@ -401,10 +403,12 @@ template<> ConnectState PayloadFromJson(const Json::Value& JLoad)
 		return static_cast<ConnectState>(JLoad.asUInt());
 	}
 
-	ConnectState CS;
-	if(JLoad.isString() && GetConnectStateFromStringName(JLoad.asString(),CS))
-		return CS;
-
+	if(JLoad.isString())
+	{
+		ConnectState CS = ConnectStateFromString(JLoad.asString());
+		if(CS != ConnectState::UNDEFINED)
+			return CS;
+	}
 	throw std::invalid_argument("Payload not convertable to odc::ConnectState.");
 }
 
