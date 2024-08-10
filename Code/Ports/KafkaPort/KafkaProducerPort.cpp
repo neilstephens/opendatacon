@@ -44,8 +44,10 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	if(!enabled) return;
 	if(!pKafkaProducer) return;
 
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+
 	//TODO: build the KCP::ProducerRecord from the EventInfo
-	KCP::ProducerRecord record(kafka::Topic("example-topic"), kafka::NullKey, kafka::Value("test"));
+	KCP::ProducerRecord record(pConf->DefaultTopic, kafka::NullKey, kafka::Value("test"));
 
 	auto deliveryCb = [this,event](const KCP::RecordMetadata& metadata, const kafka::Error& error)
 				{

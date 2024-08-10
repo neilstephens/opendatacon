@@ -36,6 +36,8 @@ public:
 	std::string SharedKafkaClientKey = "";
 	kafka::Properties NativeKafkaProperties;
 	size_t MaxPollIntervalms = 100;
+	kafka::Topic DefaultTopic = "opendatacon";
+	//TODO: Point Mapping
 };
 
 #endif /* KafkaPortConf_H_ */

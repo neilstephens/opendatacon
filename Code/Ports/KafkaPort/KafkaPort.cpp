@@ -77,4 +77,8 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->SharedKafkaClientKey = JSONRoot["MaxPollIntervalms"].asUInt();
 	}
+	if(JSONRoot.isMember("DefaultTopic"))
+	{
+		pConf->DefaultTopic = JSONRoot["DefaultTopic"].asString();
+	}
 }
