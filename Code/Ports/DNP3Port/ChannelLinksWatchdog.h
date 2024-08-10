@@ -30,29 +30,43 @@
 #include "DNP3PortConf.h"
 #include <opendatacon/asio.h>
 #include <set>
+#include <memory>
 
 namespace odc
 {
 class DataPort;
 }
 
-class ChannelLinksWatchdog
+class ChannelLinksWatchdog: public std::enable_shared_from_this<ChannelLinksWatchdog>
 {
 private:
 	//Strand for synchronising access to sets
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+
 public:
 	ChannelLinksWatchdog(const WatchdogBark& mode);
+
 	//Synchronised versions of their private couterparts
-	std::function<void(std::weak_ptr<odc::DataPort> pPort)> LinkUp = pSyncStrand->wrap([this](std::weak_ptr<odc::DataPort> pPort){LinkUp_(pPort);});
-	std::function<void(std::weak_ptr<odc::DataPort> pPort)> LinkDown = pSyncStrand->wrap([this](std::weak_ptr<odc::DataPort> pPort){LinkDown_(pPort);});
+	void LinkUp(std::weak_ptr<odc::DataPort> pPort)
+	{
+		pSyncStrand->post([this,guard{shared_from_this()},pPort]()
+			{
+				LinkUp_(pPort);
+			});
+	}
+	void LinkDown(std::weak_ptr<odc::DataPort> pPort)
+	{
+		pSyncStrand->post([this,guard{shared_from_this()},pPort]()
+			{
+				LinkDown_(pPort);
+			});
+	}
 
 private:
 	//these access sets, so they're only called by sync'd public counterparts
 	void LinkUp_(std::weak_ptr<odc::DataPort> pPort);
 	void LinkDown_(std::weak_ptr<odc::DataPort> pPort);
-
 	void Bark();
 
 	const WatchdogBark mode;

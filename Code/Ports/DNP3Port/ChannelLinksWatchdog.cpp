@@ -32,12 +32,12 @@ void ChannelLinksWatchdog::LinkDown_(std::weak_ptr<odc::DataPort> pPort)
 
 void ChannelLinksWatchdog::Bark()
 {
-	for(auto& Set : {UpSet,DownSet})
-		for(auto weak : Set)
+	for(const auto& pSet : {&UpSet,&DownSet})
+		for(const auto& weak : *pSet)
 			if(auto p = weak.lock())
 				std::static_pointer_cast<DNP3Port>(p)->ChannelWatchdogTrigger(true);
-	for(auto& Set : {UpSet,DownSet})
-		for(auto weak : Set)
+	for(const auto& pSet : {&UpSet,&DownSet})
+		for(const auto& weak : *pSet)
 			if(auto p = weak.lock())
 				std::static_pointer_cast<DNP3Port>(p)->ChannelWatchdogTrigger(false);
 }
