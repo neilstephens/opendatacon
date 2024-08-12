@@ -26,8 +26,55 @@
 
 #ifndef KafkaPortConf_H_
 #define KafkaPortConf_H_
+#include <kafka/Types.h>
+#include <opendatacon/IOTypes.h>
+#include <cstddef>
 #include <opendatacon/DataPortConf.h>
 #include <kafka/Properties.h>
+#include <string>
+
+enum class EventTranslationMethod
+{
+	Lua,
+	Template
+};
+
+enum class SourceLookupMethod
+{
+	SenderName,
+	SourcePort,
+	None
+};
+
+struct PointTranslationEntry
+{
+	std::unique_ptr<kafka::Topic> pTopic = nullptr;
+	std::unique_ptr<odc::OctetStringBuffer> pKey = nullptr;
+	std::unique_ptr<std::string> pTemplate = nullptr;
+	std::unique_ptr<std::unordered_map<std::string, std::string>> pExtraFields;
+};
+
+using SourceID = std::string;
+using PointIndex = size_t;
+using TranslationID = std::tuple<SourceID,PointIndex,odc::EventType>;
+using PointTranslationMap = std::map<TranslationID, PointTranslationEntry>;
+
+inline std::string JSONwPlaceholders()
+{
+	return R"(
+{
+	"EventType": "<EVENTTYPE>",
+	"Index": "<INDEX>",
+	"Description": "<POINT:Name>",
+	"Timestamp": "<TIMESTAMP>",
+	"Quality": "<QUALITY>",
+	"NumericQuality": "<RAWQUALITY>",
+	"Value": "<VALUE>",
+	"SourcePort": "<SOURCEPORT>",
+	"SenderName": "<SENDERNAME>"
+}
+)";
+}
 
 class KafkaPortConf: public DataPortConf
 {
@@ -37,7 +84,16 @@ public:
 	kafka::Properties NativeKafkaProperties;
 	size_t MaxPollIntervalms = 100;
 	kafka::Topic DefaultTopic = "opendatacon";
-	//TODO: Point Mapping
+	odc::OctetStringBuffer DefaultKey;
+	std::string DefaultTemplate = JSONwPlaceholders();
+	const std::unordered_map<std::string, std::string> DefaultExtraFields = {};
+	EventTranslationMethod TranslationMethod = EventTranslationMethod::Template;
+	bool BlockUnknownPoints = false;
+	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
+
+	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
+	//	then accessed by multiple threads in Event, so it needs to be const
+	std::unique_ptr<const PointTranslationMap> pPointMap = nullptr;
 };
 
 #endif /* KafkaPortConf_H_ */

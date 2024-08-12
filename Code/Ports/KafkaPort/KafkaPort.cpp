@@ -25,6 +25,10 @@
  */
 
 #include "KafkaPort.h"
+#include "KafkaPortConf.h"
+#include <kafka/Types.h>
+#include <opendatacon/IOTypes.h>
+#include <cstddef>
 
 KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides):
 	DataPort(Name, Filename, Overrides)
@@ -80,5 +84,133 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("DefaultTopic"))
 	{
 		pConf->DefaultTopic = JSONRoot["DefaultTopic"].asString();
+	}
+	if(JSONRoot.isMember("DefaultKey"))
+	{
+		pConf->DefaultKey = JSONRoot["DefaultKey"].asString();
+	}
+	if(JSONRoot.isMember("DefaultTemplate"))
+	{
+		pConf->DefaultTemplate = JSONRoot["DefaultTemplate"].asString();
+	}
+	if(JSONRoot.isMember("TranslationMethod"))
+	{
+		if(JSONRoot["TranslationMethod"].asString() == "Lua")
+			pConf->TranslationMethod = EventTranslationMethod::Lua;
+		else if(JSONRoot["TranslationMethod"].asString() == "Template")
+			pConf->TranslationMethod = EventTranslationMethod::Template;
+		else
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("Unknown TranslationMethod '{}'. Defaulting to Template.", JSONRoot["TranslationMethod"].asString());
+			pConf->TranslationMethod = EventTranslationMethod::Template;
+		}
+	}
+	if(JSONRoot.isMember("BlockUnknownPoints"))
+	{
+		pConf->BlockUnknownPoints = JSONRoot["BlockUnknownPoints"].asBool();
+	}
+	if(JSONRoot.isMember("PointTraslationSource"))
+	{
+		if(JSONRoot["PointTraslationSource"].asString() == "SenderName")
+			pConf->PointTraslationSource = SourceLookupMethod::SenderName;
+		else if(JSONRoot["PointTraslationSource"].asString() == "SourcePort")
+			pConf->PointTraslationSource = SourceLookupMethod::SourcePort;
+		else if(JSONRoot["PointTraslationSource"].asString() == "None")
+			pConf->PointTraslationSource = SourceLookupMethod::None;
+		else
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("Unknown PointTraslationSource '{}'. Defaulting to None.", JSONRoot["PointTraslationSource"].asString());
+			pConf->PointTraslationSource = SourceLookupMethod::None;
+		}
+	}
+
+	//Process PointTranslationMap
+	//Looks like:
+	/*
+	"PointTranslationMap" :
+	{
+		"Analog" :
+		[
+			{
+				"Index" : 1234,
+				"Topic" : "non-default-topic",
+				"Template" : "non-default-template",
+				"Name" : "Some Desc."
+			},
+			{"Index" : 12345, "Name" : "Some Desc."},
+			{"Range" : {"Start" : 50, "Stop" : 60}, "Template" : "...", "AnythingYouWant" : "Some Desc."}
+		],
+		"Binary" : ...
+	}
+	*/
+	if(JSONRoot.isMember("PointTranslationMap"))
+	{
+		PointTranslationMap ptm;
+		auto& JSON_PTM = JSONRoot["PointTranslationMap"];
+		for(auto EventTypeStr : JSON_PTM.getMemberNames())
+		{
+			auto eventType = EventTypeFromString(EventTypeStr);
+			if(eventType == odc::EventType::AfterRange)
+			{
+				if(auto log = odc::spdlog_get("KafkaPort"))
+				{
+					log->error("Unknown EventType '{}' in PointTranslationMap. Ignoring.", EventTypeStr);
+				}
+				continue;
+			}
+			if(!JSON_PTM[EventTypeStr].isArray())
+			{
+				if(auto log = odc::spdlog_get("KafkaPort"))
+				{
+					log->error("PointTranslationMap member '{}' should be an array. Ignoring.", EventTypeStr);
+				}
+				continue;
+			}
+			for(auto& entry : JSON_PTM[EventTypeStr])
+			{
+				size_t start, stop;
+				if(entry.isMember("Index"))
+					start = stop = entry["Index"].asUInt();
+				else if(entry["Range"].isMember("Start") && entry["Range"].isMember("Stop"))
+				{
+					start = entry["Range"]["Start"].asUInt();
+					stop = entry["Range"]["Stop"].asUInt();
+				}
+				else
+				{
+					if(auto log = odc::spdlog_get("KafkaPort"))
+						log->error("A PointTranslationMap entry needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : skipping '{}'", entry.toStyledString());
+					continue;
+				}
+				for(size_t idx = start; idx <= stop; idx++)
+				{
+					PointTranslationEntry pte;
+					TranslationID tid; auto& [source,point_idx,evt_type] = tid;
+					source = ""; point_idx = idx; evt_type = eventType;
+					for(auto pte_member : entry.getMemberNames())
+					{
+						if(pte_member == "Index" || pte_member == "Range") continue;
+						if(pte_member == "Topic")
+							pte.pTopic = std::make_unique<kafka::Topic>(entry["Topic"].asString());
+						else if(pte_member == "Key")
+							pte.pKey = std::make_unique<odc::OctetStringBuffer>(entry["Key"].asString());
+						else if(pte_member == "Template")
+							pte.pTemplate = std::make_unique<std::string>(entry["Template"].asString());
+						else if(pte_member == "Source")
+							source = entry["Source"].asString();
+						else
+						{
+							if(!pte.pExtraFields)
+								pte.pExtraFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+							pte.pExtraFields->insert_or_assign(pte_member, entry[pte_member].asString());
+						}
+					}
+					ptm[tid] = std::move(pte);
+				}
+			}
+		}
+		pConf->pPointMap = std::make_unique<PointTranslationMap>(std::move(ptm));
 	}
 }
