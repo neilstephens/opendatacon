@@ -27,6 +27,7 @@
 #include "KafkaProducerPort.h"
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
+#include "opendatacon/util.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/asio.h>
@@ -66,29 +67,31 @@ OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const 
 static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const std::unordered_map<std::string, std::string>& extra_fields)
 {
 	std::string message = template_str;
-	static auto find_and_replace = [&](const std::string& fnd, const auto& gen_replacement)
-						 {
-							 size_t pos = 0;
-							 while((pos = message.find(fnd, pos)) != std::string::npos)
-							 {
-								 auto rpl = gen_replacement(event);
-								 message.replace(pos, fnd.length(), rpl);
-								 pos += rpl.length();
-							 }
-						 };
+	auto find_and_replace = [&](const std::string& fnd, const auto& gen_replacement)
+					{
+						size_t pos = 0;
+						while((pos = message.find(fnd, pos)) != std::string::npos)
+						{
+							auto rpl = gen_replacement(event);
+							message.replace(pos, fnd.length(), rpl);
+							pos += rpl.length();
+						}
+					};
 	//Passing a generator lambda to the find_and_replace function means that the expensive string generation is only done if there is a match
 	static auto EVENTTYPE = [](const std::shared_ptr<const EventInfo>& event){ return ToString(event->GetEventType()); };
 	static auto INDEX = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(event->GetIndex()); };
 	static auto TIMESTAMP = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(event->GetTimestamp()); };
+	static auto DATETIME = [](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp()); };
 	static auto QUALITY = [](const std::shared_ptr<const EventInfo>& event){ return ToString(event->GetQuality()); };
 	static auto RAWQUALITY = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(static_cast<std::underlying_type<QualityFlags>::type>(event->GetQuality())); };
 	static auto VALUE = [](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(); };
 	static auto SOURCEPORT = [](const std::shared_ptr<const EventInfo>& event){ return event->GetSourcePort(); };
-	static auto SENDERNAME = [&](const std::shared_ptr<const EventInfo>& event){ return SenderName; };
+	auto SENDERNAME = [&](const std::shared_ptr<const EventInfo>& event){ return SenderName; };
 
 	find_and_replace("<EVENTTYPE>", EVENTTYPE);
 	find_and_replace("<INDEX>", INDEX);
 	find_and_replace("<TIMESTAMP>", TIMESTAMP);
+	find_and_replace("<DATETIME>", DATETIME);
 	find_and_replace("<QUALITY>", QUALITY);
 	find_and_replace("<RAWQUALITY>", RAWQUALITY);
 	find_and_replace("<VALUE>", VALUE);
@@ -118,7 +121,7 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		return;
 	}
 
-	#define VAL_OR(X,D) (point_mapping.has_value() ? point_mapping->get().X ? *point_mapping->get().X : D : D)
+	#define VAL_OR(X,D) (point_mapping.has_value() ? point_mapping->get().X ? *(point_mapping->get().X) : D : D)
 
 	const auto& topic = VAL_OR(pTopic,pConf->DefaultTopic);
 	const auto& key_buffer = VAL_OR(pKey,pConf->DefaultKey);

@@ -64,12 +64,13 @@ inline std::string JSONwPlaceholders()
 	return R"(
 {
 	"EventType": "<EVENTTYPE>",
-	"Index": "<INDEX>",
+	"Index": <INDEX>,
 	"Description": "<POINT:Name>",
-	"Timestamp": "<TIMESTAMP>",
+	"Timestamp": <TIMESTAMP>,
+	"DateTime": "<DATETIME>",
 	"Quality": "<QUALITY>",
-	"NumericQuality": "<RAWQUALITY>",
-	"Value": "<VALUE>",
+	"NumericQuality": <RAWQUALITY>,
+	"Value": <VALUE>,
 	"SourcePort": "<SOURCEPORT>",
 	"SenderName": "<SENDERNAME>"
 }
@@ -94,6 +95,9 @@ public:
 	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
 	//	then accessed by multiple threads in Event, so it needs to be const
 	std::unique_ptr<const PointTranslationMap> pPointMap = nullptr;
+
+	//TODO: Option for DateTime formatting string
+	//TODO: Option for OctetString formatting mode
 };
 
 #endif /* KafkaPortConf_H_ */
