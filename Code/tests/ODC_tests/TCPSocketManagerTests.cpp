@@ -57,7 +57,8 @@ void require_equal(const T& thing1, const T& thing2)
 	while(!stop)
 		odc::asio_service::Get()->poll_one();
 
-	REQUIRE(thing1 == thing2);
+	if(thing1 != thing2)
+		CHECK(thing1 == thing2);
 }
 
 TEST_CASE(SUITE("ListenClose"))
