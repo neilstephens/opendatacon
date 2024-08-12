@@ -1,0 +1,32 @@
+
+#include <catch.hpp>
+#include <map>
+#include <fstream>
+
+void WriteConfMap(const std::map<const char*,const char*> conf_map, const bool init)
+{
+	if(init)
+	{
+		for(auto conf_pair : conf_map)
+		{
+			std::ofstream fconf(conf_pair.first);
+			REQUIRE_FALSE(fconf.fail());
+			fconf << conf_pair.second;
+			fconf.close();
+		}
+	}
+	else
+		for(auto conf_pair : conf_map)
+			std::remove(conf_pair.first);
+}
+
+void PrepConfFiles(bool init)
+{
+	static std::map<const char*,const char*> conf_map;
+
+	conf_map["LuaPortDoco.lua"] =  R"001(@LuaPortDoco_lua@)001";
+
+	WriteConfMap(conf_map, init);
+}
+
+
