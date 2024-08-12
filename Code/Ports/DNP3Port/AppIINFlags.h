@@ -47,7 +47,7 @@ ENABLE_BITWISE(AppIINFlags)
 
 inline std::string ToString(const AppIINFlags q)
 {
-#define IINFLAGSTRING(E,X) if((q & E::X) == E::X) s += #X "|";
+	#define IINFLAGSTRING(E,X) if((q & E::X) == E::X) s += #X "|";
 	std::string s = "|";
 	IINFLAGSTRING(AppIINFlags,NEED_TIME            )
 	IINFLAGSTRING(AppIINFlags,LOCAL_CONTROL        )
@@ -60,7 +60,7 @@ inline std::string ToString(const AppIINFlags q)
 
 inline AppIINFlags FromString(const std::string& str)
 {
-#define CHECKIINFLAGSTRING(X) if (str.find(#X) != std::string::npos) flags |= AppIINFlags::X
+	#define CHECKIINFLAGSTRING(X) if (str.find(#X) != std::string::npos) flags |= AppIINFlags::X
 	AppIINFlags flags = AppIINFlags::NONE;
 	CHECKIINFLAGSTRING(NEED_TIME            );
 	CHECKIINFLAGSTRING(LOCAL_CONTROL        );

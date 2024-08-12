@@ -28,7 +28,7 @@
 #include "ChannelStateSubscriber.h"
 #include "ChannelHandler.h"
 #include "TypeConversion.h"
-#include "OpenDNP3Helpers.h"
+#include <opendatacon/EventConversion.h>
 #include <array>
 #include <limits>
 #include <opendnp3/master/IUTCTimeSource.h>
@@ -472,11 +472,7 @@ void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::I
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::FrozenCounter> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryOutputStatus> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogOutputStatus> >& meas){ LoadT(meas); }
-void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	if(info.gv == opendnp3::GroupVariation::Group111Var0) //TODO: implement another ODC type for static data if there's any use for it
-		LoadT(meas);
-}
+void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas){ /*LoadT(meas);*/ }
@@ -487,23 +483,12 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([this,pConf](const opendnp3::Indexed<T>&pair)
 		{
+			auto TSO = pConf->pPointConf->TimestampOverride;
 			auto event = ToODC(pair.value, pair.index, Name);
-			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time.value == 0)))
-			{
-				event->SetTimestamp();
-			}
-			PublishEvent(event);
-			pDB->Set(event);
-		});
-}
-
-template<>
-inline void DNP3MasterPort::LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	meas.ForeachItem([this](const opendnp3::Indexed<opendnp3::OctetString>&pair)
-		{
-			auto event = ToODC(pair.value, pair.index, Name);
+			if constexpr(!std::is_same<decltype(pair.value),opendnp3::OctetString>()) //OctetString has no time
+				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
+				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
+					event->SetTimestamp();
 			PublishEvent(event);
 			pDB->Set(event);
 		});
@@ -578,197 +563,91 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 	auto index = event->GetIndex();
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	//FIXME: ControlIndexes are checked before AnalogControlIndexes, without checking event type
-	//	so if a point is in both, it will be treated as a binary control and error out.
-	//	Small refactor needed to check event type first, then check control indexes
+	auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
+				  {
+					  auto status = CommandStatus::UNDEFINED;
+					  switch (response.summary)
+					  {
+						  case opendnp3::TaskCompletion::SUCCESS:
+							  status = CommandStatus::SUCCESS;
+							  break;
+						  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
+							  status = CommandStatus::TIMEOUT;
+							  break;
+						  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
+						  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
+						  default:
+							  status = CommandStatus::UNDEFINED;
+							  break;
+					  }
+					  (*pStatusCallback)(status);
+					  return;
+				  };
 
-	// TODO: SJE Need to process the analogcontrols in a separate loop.
-	for (auto i : pConf->pPointConf->ControlIndexes)
+	switch(event->GetEventType())
 	{
-		if (i == index)
-		{
-			if (auto log = odc::spdlog_get("DNP3Port"))
-				log->debug("{}: Executing direct operate to index: {}", Name, index);
-
-			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
-						  {
-							  auto status = CommandStatus::UNDEFINED;
-							  switch (response.summary)
-							  {
-								  case opendnp3::TaskCompletion::SUCCESS:
-									  status = CommandStatus::SUCCESS;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
-									  status = CommandStatus::TIMEOUT;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
-								  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
-								  default:
-									  status = CommandStatus::UNDEFINED;
-									  break;
-							  }
-							  (*pStatusCallback)(status);
-							  return;
-						  };
-
-			switch (event->GetEventType())
+		case odc::EventType::ControlRelayOutputBlock:
+			if(std::find(pConf->pPointConf->ControlIndexes.begin(), pConf->pPointConf->ControlIndexes.end(), index) != pConf->pPointConf->ControlIndexes.end())
 			{
-				case EventType::ControlRelayOutputBlock:
+				if (auto log = odc::spdlog_get("DNP3Port"))
+					log->debug("{}: Executing direct operate to index: {}", Name, index);
+
+				auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
+				DoOverrideControlCode(lCommand);
+				this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
+				return;
+			}
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("{}: CROB Control sent to invalid DNP3 index: {}", Name, index);
+			break;
+		case odc::EventType::AnalogOutputInt16:
+		case odc::EventType::AnalogOutputInt32:
+		case odc::EventType::AnalogOutputFloat32:
+		case odc::EventType::AnalogOutputDouble64:
+			if(std::find(pConf->pPointConf->AnalogControlIndexes.begin(), pConf->pPointConf->AnalogControlIndexes.end(), index) != pConf->pPointConf->AnalogControlIndexes.end())
+			{
+				if (auto log = odc::spdlog_get("DNP3Port"))
+					log->debug("{}: Executing analog control to index: {}", Name, index);
+
+				// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command, for example
+				// We need to convert the event to the correct type
+				auto new_event_type = pConf->pPointConf->AnalogControlTypes[index];
+				try
 				{
-					auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
-					DoOverrideControlCode(lCommand);
-					this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-					break;
+					auto newevent = ConvertEvent(event, new_event_type);
+					switch(new_event_type)
+					{
+						case EventType::AnalogOutputInt16:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt16>(newevent), index, DNP3Callback);
+							break;
+						case EventType::AnalogOutputInt32:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt32>(newevent), index, DNP3Callback);
+							break;
+						case EventType::AnalogOutputFloat32:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputFloat32>(newevent), index, DNP3Callback);
+							break;
+						case EventType::AnalogOutputDouble64:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputDouble64>(newevent), index, DNP3Callback);
+							break;
+						default:
+							(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+					}
 				}
-				default:
+				catch(const std::exception& e)
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->error("{}: Error converting event for analog control: {}", Name, e.what());
 					(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-					break;
-			}
-			return;
-		}
-	}
-	for (auto i : pConf->pPointConf->AnalogControlIndexes)
-	{
-		if (i == index)
-		{
-			if (auto log = odc::spdlog_get("DNP3Port"))
-				log->debug("{}: Executing analog control to index: {}", Name, index);
-
-			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
-						  {
-							  auto status = CommandStatus::UNDEFINED;
-							  switch (response.summary)
-							  {
-								  case opendnp3::TaskCompletion::SUCCESS:
-									  status = CommandStatus::SUCCESS;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
-									  status = CommandStatus::TIMEOUT;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
-								  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
-								  default:
-									  status = CommandStatus::UNDEFINED;
-									  break;
-							  }
-							  (*pStatusCallback)(status);
-							  return;
-						  };
-
-			// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command.
-			// So we need to do the translation (without triggering any exceptions)
-			// Create the basis of the target event
-			auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
-			// Now create an event of this type and copy the quality and time from the source event
-			auto newevent = std::make_shared<const EventInfo>(evttype, index, "", event->GetQuality(), event->GetTimestamp());
-			// Still have to set the payload (possibley with conversion)
-			std::unordered_set<EventType> s = { EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
-			if (s.count(event->GetEventType()))
-			{
-				// Turn the payload into double64, then convert to the target.
-				double value = 0;
-				CommandStatus status = CommandStatus::UNDEFINED;
-				switch (event->GetEventType())
-				{
-					case EventType::AnalogOutputInt16:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputInt16>();
-						value = pld.first; // Int16 to Double64
-						status = pld.second;
-						break;
-					}
-					case EventType::AnalogOutputInt32:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputInt32>();
-						value = pld.first; // Int32 to Double64
-						status = pld.second;
-						break;
-					}
-					case EventType::AnalogOutputFloat32:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputFloat32>();
-						value = pld.first; // Float32 to Double64
-						status = pld.second;
-						break;
-					}
-					case EventType::AnalogOutputDouble64:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputDouble64>();
-						value = pld.first; // Double64 to Double64
-						status = pld.second;
-						break;
-					}
-					default:
-						break;
 				}
-
-				// Now need to create the new payload, of the correct type
-				switch (evttype)
-				{
-					case EventType::AnalogOutputInt16:
-					{
-						if (value > std::numeric_limits<int16_t>::max())
-							value = std::numeric_limits<int16_t>::max();
-						if (value < std::numeric_limits<int16_t>::min())
-							value = std::numeric_limits<int16_t>::min();
-						opendnp3::AnalogOutputInt16 lCommand;
-						lCommand.value = static_cast<int16_t>(value);
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					case EventType::AnalogOutputInt32:
-					{
-						if (value > std::numeric_limits<int32_t>::max())
-							value = std::numeric_limits<int32_t>::max();
-						if (value < std::numeric_limits<int32_t>::min())
-							value = std::numeric_limits<int32_t>::min();
-						opendnp3::AnalogOutputInt32 lCommand;
-						lCommand.value = static_cast<int32_t>(value);
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					case EventType::AnalogOutputFloat32:
-					{
-						if (value > std::numeric_limits<float>::max())
-							value = std::numeric_limits<float>::max();
-						if (value < std::numeric_limits<float>::lowest())
-							value = std::numeric_limits<float>::lowest();
-						opendnp3::AnalogOutputFloat32 lCommand;
-						lCommand.value = static_cast<float>(value);
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					case EventType::AnalogOutputDouble64:
-					{
-						opendnp3::AnalogOutputDouble64 lCommand;
-						lCommand.value = value;
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					default:
-						break;
-				}
+				return;
 			}
-			else
-			{
-				(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-			}
-			return;
-		}
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("{}: Analog Control sent to invalid DNP3 index: {}", Name, index);
+			break;
+		default:
+			break;
 	}
-
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->warn("{}: Control sent to invalid DNP3 index: {}", Name, index);
-
-	(*pStatusCallback)(CommandStatus::UNDEFINED);
+	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
 
 //DataPort function for UI

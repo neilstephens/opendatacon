@@ -115,13 +115,13 @@ public:
 					size++;
 					if (head == nullptr)
 					{
-					      head = nodeptr;
-					      tail = head;
+						head = nodeptr;
+						tail = head;
 					}
 					else
 					{
-					      head->next = nodeptr;
-					      head = nodeptr;
+						head->next = nodeptr;
+						head = nodeptr;
 					}
 				});
 		}

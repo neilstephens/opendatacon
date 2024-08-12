@@ -319,8 +319,8 @@ void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
 				if((filter_is_regex && (!pLogRegex || std::regex_match(line_str.begin(),line_str.end(),*pLogRegex))) ||
 				   (!filter_is_regex && (line_str.find(filter) != std::string::npos)))
 				{
-				      log_queue.emplace_front(pBuffer,line_str);
-				      if(log_queue.size() > log_q_size)
+					log_queue.emplace_front(pBuffer,line_str);
+					if(log_queue.size() > log_q_size)
 						log_queue.pop_back();
 				}
 			});

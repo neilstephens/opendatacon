@@ -63,8 +63,8 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Enable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Enable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			},"Enables a DataPort and returns if the operation was succesful");
@@ -72,8 +72,8 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Disable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Disable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			},"Disables a DataPort and returns if the operation was succesful");
@@ -81,9 +81,9 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Disable();
-				      target->Enable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Disable();
+					target->Enable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			},"Disables then Enables a DataPort and returns if the operation was succesful");

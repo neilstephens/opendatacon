@@ -215,19 +215,19 @@ inline Json::Value GetTestConfigJSON()
   function     : TestSetup
   description  : this function is responsible for starting up the opendatacon
                  routines like logs, libraries etc.
-  param        : loglevel, log level
   return       : void
 */
-inline void TestSetup(spdlog::level::level_enum loglevel)
+extern spdlog::level::level_enum log_level;
+inline void TestSetup()
 {
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 	auto pLibLogger = std::make_shared<spdlog::logger>("SimPort", console_sink);
-	pLibLogger->set_level(loglevel);
+	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
 
 	// We need an opendatacon logger to catch config file parsing errors
 	auto pODCLogger = std::make_shared<spdlog::logger>("opendatacon", console_sink);
-	pODCLogger->set_level(loglevel);
+	pODCLogger->set_level(log_level);
 	odc::spdlog_register_logger(pODCLogger);
 
 	static std::once_flag once_flag;
@@ -356,7 +356,7 @@ inline int RandomNumber(int s, int e)
 */
 TEST_CASE("TestConfigLoad")
 {
-	TestSetup(spdlog::level::level_enum::warn);
+	TestSetup();
 
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
@@ -388,6 +388,7 @@ TEST_CASE("TestConfigLoad")
 */
 TEST_CASE("TestForcedPoint")
 {
+	TestSetup();
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -430,6 +431,8 @@ TEST_CASE("TestForcedPoint")
 */
 TEST_CASE("TestReleasePoint")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -469,6 +472,8 @@ TEST_CASE("TestReleasePoint")
 */
 TEST_CASE("TestAnalogEventToAll")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -512,6 +517,8 @@ TEST_CASE("TestAnalogEventToAll")
 */
 TEST_CASE("TestBinaryEventToAll")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -555,6 +562,8 @@ TEST_CASE("TestBinaryEventToAll")
 */
 TEST_CASE("TestBinaryEventQuality")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -598,6 +607,8 @@ TEST_CASE("TestBinaryEventQuality")
 */
 TEST_CASE("TestAnalogEventQuality")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -641,6 +652,8 @@ TEST_CASE("TestAnalogEventQuality")
 */
 TEST_CASE("TestBinaryEventTimestamp")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -700,6 +713,8 @@ TEST_CASE("TestBinaryEventTimestamp")
 */
 TEST_CASE("TestAnalogEventTimestamp")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -759,6 +774,8 @@ TEST_CASE("TestAnalogEventTimestamp")
 */
 TEST_CASE("TestLatchOn")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -794,6 +811,8 @@ TEST_CASE("TestLatchOn")
 */
 TEST_CASE("TestLatchOff")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -835,6 +854,8 @@ TEST_CASE("TestLatchOff")
 */
 TEST_CASE("PulseTestAnalogTapChangerRaise")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -890,6 +911,8 @@ TEST_CASE("PulseTestAnalogTapChangerRaise")
 */
 TEST_CASE("PulseTestAnalogTapChangerLower")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -945,6 +968,8 @@ TEST_CASE("PulseTestAnalogTapChangerLower")
 */
 TEST_CASE("PulseTestAnalogTapChangerRandom")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -997,6 +1022,8 @@ TEST_CASE("PulseTestAnalogTapChangerRandom")
 */
 TEST_CASE("PulseTestBinaryTapChangerRaise")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1056,6 +1083,8 @@ TEST_CASE("PulseTestBinaryTapChangerRaise")
 */
 TEST_CASE("PulseTestBinaryTapChangerLower")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1113,6 +1142,8 @@ TEST_CASE("PulseTestBinaryTapChangerLower")
 */
 TEST_CASE("PulseTestBinaryTapChangerRandom")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1167,6 +1198,8 @@ TEST_CASE("PulseTestBinaryTapChangerRandom")
 */
 TEST_CASE("PulseTestBCDTapChangerRaise")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1220,6 +1253,8 @@ TEST_CASE("PulseTestBCDTapChangerRaise")
 */
 TEST_CASE("PulseTestBCDTapChangerLower")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1273,6 +1308,8 @@ TEST_CASE("PulseTestBCDTapChangerLower")
 */
 TEST_CASE("PulseTestBCDTapChangerRandom")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1331,6 +1368,8 @@ TEST_CASE("PulseTestBCDTapChangerRandom")
 */
 TEST_CASE("OnOffTestAnalogTapChangerRaise")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1386,6 +1425,8 @@ TEST_CASE("OnOffTestAnalogTapChangerRaise")
 */
 TEST_CASE("OnOffTestAnalogTapChangerLower")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1434,6 +1475,8 @@ TEST_CASE("OnOffTestAnalogTapChangerLower")
 
 TEST_CASE("OnOffTestAnalogTapChangerStepRaiseLower")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1476,6 +1519,8 @@ TEST_CASE("OnOffTestAnalogTapChangerStepRaiseLower")
 */
 TEST_CASE("OnOffTestAnalogTapChangerRandom")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1526,6 +1571,8 @@ TEST_CASE("OnOffTestAnalogTapChangerRandom")
 */
 TEST_CASE("OnOffTestBinaryTapChangerRaise")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1585,6 +1632,8 @@ TEST_CASE("OnOffTestBinaryTapChangerRaise")
 */
 TEST_CASE("OnOffTestBinaryTapChangerLower")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1642,6 +1691,8 @@ TEST_CASE("OnOffTestBinaryTapChangerLower")
 */
 TEST_CASE("OnOffTestBinaryTapChangerRandom")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1696,6 +1747,8 @@ TEST_CASE("OnOffTestBinaryTapChangerRandom")
 */
 TEST_CASE("OnOffTestBCDTapChangerRaise")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1749,6 +1802,8 @@ TEST_CASE("OnOffTestBCDTapChangerRaise")
 */
 TEST_CASE("OnOffTestBCDTapChangerLower")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1802,6 +1857,8 @@ TEST_CASE("OnOffTestBCDTapChangerLower")
 */
 TEST_CASE("OnOffTestBCDTapChangerRandom")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1854,6 +1911,8 @@ TEST_CASE("OnOffTestBCDTapChangerRandom")
 */
 TEST_CASE("OnOffBCDTapChangerRaiseWithTrip")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1907,6 +1966,8 @@ TEST_CASE("OnOffBCDTapChangerRaiseWithTrip")
 */
 TEST_CASE("OnOffTestBCDTapChangerLowerWithClose")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -1960,6 +2021,8 @@ TEST_CASE("OnOffTestBCDTapChangerLowerWithClose")
 */
 TEST_CASE("OnOffTestBCDTapChangerRandomWithClose")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -2012,6 +2075,8 @@ TEST_CASE("OnOffTestBCDTapChangerRandomWithClose")
 */
 TEST_CASE("EmptyBinaryContol")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);
@@ -2047,6 +2112,8 @@ TEST_CASE("EmptyBinaryContol")
 */
 TEST_CASE("InvalidIndexForBinaryControl")
 {
+	TestSetup();
+
 	//Load the library
 	auto port_lib = LoadModule(GetLibFileName("SimPort"));
 	REQUIRE(port_lib);

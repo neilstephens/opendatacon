@@ -24,10 +24,8 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#include "ChannelStateSubscriber.h"
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
-#include "OpenDNP3Helpers.h"
 #include <opendatacon/util.h>
 #include <opendnp3/gen/Parity.h>
 #include <opendnp3/logging/LogLevels.h>
@@ -93,8 +91,7 @@ void DNP3Port::InitEventDB()
 	for (auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
 		// Need to work out which type of event we should be queuing - using the information from the configuration
-		// Get the dnp3 type for the point, then get the ODC event type, then create an event of that type
-		auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
+		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
 		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART, 0));
 	}
 	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
@@ -203,7 +200,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
 		// Get the dnp3 type for the point, then get the ODC event type, then create an event of that type
-		auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
+		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
 		auto event = pDB->Get(evttype, index);
 		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());

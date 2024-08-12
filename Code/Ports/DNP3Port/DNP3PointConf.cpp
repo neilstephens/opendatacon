@@ -26,6 +26,7 @@
 
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
+#include "opendatacon/IOTypes.h"
 #include <algorithm>
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
@@ -101,15 +102,19 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
 	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
-	EventAnalogControlResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var1), // 32 bit no time
 	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
 	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
+	// Default Analog Control Type
+	AnalogControlType(odc::EventType::AnalogOutputInt32),
+	// Timestamp Override Alternatives
 	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),
 	MaxCounterEvents(1000),
-	MaxOctetStringEvents(1000)
+	MaxOctetStringEvents(1000),
+	MaxAnalogOutputStatusEvents(1000),
+	MaxBinaryOutputStatusEvents(1000)
 {
 	ProcessFile();
 }
@@ -376,12 +381,22 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
 	if (JSONRoot.isMember("EventCounterResponse"))
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
-	if (JSONRoot.isMember("AnalogControlResponse"))
-		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["AnalogControlResponse"].asString());
 	if (JSONRoot.isMember("EventBinaryOutputStatusResponse"))
 		EventBinaryOutputStatusResponse = StringToEventBinaryOutputStatusResponse(JSONRoot["EventBinaryOutputStatusResponse"].asString());
 	if (JSONRoot.isMember("EventAnalogOutputStatusResponse"))
 		EventAnalogOutputStatusResponse = StringToEventAnalogOutputStatusResponse(JSONRoot["EventAnalogOutputStatusResponse"].asString());
+
+	//Default Analog Control Type
+	if (JSONRoot.isMember("AnalogControlType"))
+	{
+		AnalogControlType = odc::EventTypeFromString(JSONRoot["AnalogControlType"].asString());
+		if(AnalogControlType < odc::EventType::AnalogOutputInt16 || AnalogControlType > odc::EventType::AnalogOutputDouble64)
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to AnalogOutputInt32", JSONRoot["AnalogControlType"].asString());
+			AnalogControlType = odc::EventType::AnalogOutputInt32;
+		}
+	}
 
 	// Timestamp Override Alternatives
 	if (JSONRoot.isMember("TimestampOverride"))
@@ -420,6 +435,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MaxCounterEvents = cap_evenbuffer_size("MaxCounterEvents");
 	if (JSONRoot.isMember("MaxOctetStringEvents"))
 		MaxOctetStringEvents = cap_evenbuffer_size("MaxOctetStringEvents");
+	if (JSONRoot.isMember("MaxAnalogOutputStatusEvents"))
+		MaxAnalogOutputStatusEvents = cap_evenbuffer_size("MaxAnalogOutputStatusEvents");
+	if (JSONRoot.isMember("MaxBinaryOutputStatusEvents"))
+		MaxBinaryOutputStatusEvents = cap_evenbuffer_size("MaxBinaryOutputStatusEvents");
 
 	auto GetIndexRange = [](const auto& PointArrayElement) -> std::tuple<bool,size_t,size_t>
 				   {
@@ -707,7 +726,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("AnalogControls"))
 	{
-		//TODO: SJE Probably need to manage a payload type here to support the different options 16bit, 32bit, float, double.
 		const auto AnalogControls = JSONRoot["AnalogControls"];
 		for (Json::ArrayIndex n = 0; n < AnalogControls.size(); ++n)
 		{
@@ -716,13 +734,21 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				continue;
 			for (auto index = start; index <= stop; index++)
 			{
-				if (AnalogControls[n].isMember("AnalogControlResponse"))
-					ControlAnalogResponses[index] = StringToEventAnalogControlResponse(AnalogControls[n]["AnalogControlResponse"].asString());
+				if (AnalogControls[n].isMember("Type"))
+				{
+					AnalogControlTypes[index] = odc::EventTypeFromString(AnalogControls[n]["Type"].asString());
+					if(AnalogControlTypes[index] < odc::EventType::AnalogOutputInt16 || AnalogControlTypes[index] > odc::EventType::AnalogOutputDouble64)
+					{
+						if(auto log = odc::spdlog_get("DNP3Port"))
+							log->error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port default {}", AnalogControls[n]["Type"].asString(),ToString(AnalogControlType));
+						AnalogControlTypes[index] = AnalogControlType;
+					}
+				}
 				else
-					ControlAnalogResponses[index] = EventAnalogControlResponse;
+					AnalogControlTypes[index] = AnalogControlType;
 
 				if(!InsertOrDeleteIndex(AnalogControls[n], AnalogControlIndexes, index))
-					ControlAnalogResponses.erase(index);
+					AnalogControlTypes.erase(index);
 			}
 		}
 		std::sort(AnalogControlIndexes.begin(), AnalogControlIndexes.end());

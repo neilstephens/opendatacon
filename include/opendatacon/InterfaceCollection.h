@@ -41,8 +41,8 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Enable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Enable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			});
@@ -50,8 +50,8 @@ public:
 			{
 				if (auto target = GetTarget(params))
 				{
-				      target->Disable();
-				      return IUIResponder::GenerateResult("Success");
+					target->Disable();
+					return IUIResponder::GenerateResult("Success");
 				}
 				return IUIResponder::GenerateResult("Bad parameter");
 			});

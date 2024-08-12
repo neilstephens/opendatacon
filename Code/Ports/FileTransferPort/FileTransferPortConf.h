@@ -50,9 +50,11 @@ template <typename T, typename ... Rest>
 void hash_combine(std::size_t& seed, const T& v, const Rest& ... rest)
 {
 	if constexpr (sizeof(size_t) >= 8)
-		seed ^= std::hash<T>{} (v) + 0x517cc1b727220a95 + (seed << 6) + (seed >> 2);
+		seed ^= std::hash<T>{}
+	(v) + 0x517cc1b727220a95 + (seed << 6) + (seed >> 2);
 	else
-		seed ^= std::hash<T>{} (v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= std::hash<T>{}
+	(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	(hash_combine(seed, rest), ...);
 }
 

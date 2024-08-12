@@ -130,9 +130,10 @@ public:
 	opendnp3::EventBinaryVariation EventBinaryResponse;
 	opendnp3::EventAnalogVariation EventAnalogResponse;
 	opendnp3::EventCounterVariation EventCounterResponse;
-	opendnp3::EventAnalogOutputStatusVariation EventAnalogControlResponse;
 	opendnp3::EventAnalogOutputStatusVariation EventAnalogOutputStatusResponse;
 	opendnp3::EventBinaryOutputStatusVariation EventBinaryOutputStatusResponse;
+
+	odc::EventType AnalogControlType;
 
 	// Timestamp override options
 	enum class TimestampOverride_t { ALWAYS, ZERO, NEVER };
@@ -188,7 +189,7 @@ public:
 
 	std::vector<uint16_t> ControlIndexes;
 	std::vector<uint16_t> AnalogControlIndexes;
-	std::map<uint16_t, opendnp3::EventAnalogOutputStatusVariation> ControlAnalogResponses;
+	std::map<uint16_t, odc::EventType> AnalogControlTypes;
 };
 
 #endif /* DNP3POINTCONF_H_ */

@@ -35,7 +35,7 @@
 #include <functional>
 #include <unordered_map>
 
-typedef std::function<Json::Value(const ParamCollection& params)> UIFunction;
+typedef std::function<Json::Value (const ParamCollection& params)> UIFunction;
 
 class UICommand
 {

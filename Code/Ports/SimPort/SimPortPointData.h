@@ -43,7 +43,8 @@ struct Point
 		update_interval(0),
 		start_value(0.0f),
 		start_quality(odc::QualityFlags::ONLINE),
-		forced_state(false) {}
+		forced_state(false)
+	{}
 
 	std::shared_ptr<odc::EventInfo> event;
 	double std_dev;

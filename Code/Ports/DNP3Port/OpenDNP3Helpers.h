@@ -39,8 +39,6 @@ opendnp3::StaticBinaryOutputStatusVariation StringToStaticBinaryOutputStatusResp
 opendnp3::EventBinaryVariation StringToEventBinaryResponse(const std::string& str);
 opendnp3::EventAnalogVariation StringToEventAnalogResponse(const std::string& str);
 opendnp3::EventCounterVariation StringToEventCounterResponse(const std::string& str);
-opendnp3::EventAnalogOutputStatusVariation StringToEventAnalogControlResponse(const std::string& str);
-odc::EventType EventAnalogControlResponseToODCEvent(const opendnp3::EventAnalogOutputStatusVariation var);
 opendnp3::EventBinaryOutputStatusVariation StringToEventBinaryOutputStatusResponse(const std::string& str);
 opendnp3::EventAnalogOutputStatusVariation StringToEventAnalogOutputStatusResponse(const std::string& str);
 

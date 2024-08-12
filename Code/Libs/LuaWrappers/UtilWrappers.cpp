@@ -193,10 +193,10 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
 			if(!lua_isstring(L,1))
 			{
-			      if(auto log = odc::spdlog_get(logname))
+				if(auto log = odc::spdlog_get(logname))
 					log->error("{}: DecodeJSON() called by lua; Argument not string.",name);
-			      lua_pushnil(L);
-			      return 1;
+				lua_pushnil(L);
+				return 1;
 			}
 			std::istringstream json_ss(lua_tostring(L,1));
 			Json::CharReaderBuilder JSONReader;
@@ -205,10 +205,10 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 			bool parse_success = Json::parseFromStream(JSONReader,json_ss, &JSON, &err_str);
 			if (!parse_success)
 			{
-			      if(auto log = odc::spdlog_get(logname))
+				if(auto log = odc::spdlog_get(logname))
 					log->error("{}: Failed to parse JSON: '{}'.",name,err_str);
-			      lua_pushnil(L);
-			      return 1;
+				lua_pushnil(L);
+				return 1;
 			}
 			PushJSON(L,JSON);
 			return 1;
@@ -236,24 +236,24 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 		{
 			if(lua_isstring(L,1)) //there's a datetime string to convert
 			{
-			      try
-			      {
-			            if(lua_isstring(L,2)) //there's also a format string
-			            {
-			                  lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1),lua_tostring(L,2)));
-			                  return 1;
+				try
+				{
+					if(lua_isstring(L,2)) //there's also a format string
+					{
+						lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1),lua_tostring(L,2)));
+						return 1;
 					}
-			            lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1)));
-			            return 1;
+					lua_pushinteger(L, odc::datetime_to_since_epoch(lua_tostring(L,1)));
+					return 1;
 				}
-			      catch(const std::exception& e)
-			      {
-			            std::string name(lua_tostring(L, lua_upvalueindex(1)));
-			            std::string logname(lua_tostring(L, lua_upvalueindex(2)));
-			            if(auto log = odc::spdlog_get(logname))
+				catch(const std::exception& e)
+				{
+					std::string name(lua_tostring(L, lua_upvalueindex(1)));
+					std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+					if(auto log = odc::spdlog_get(logname))
 						log->error("{}: msSinceEpoch() called from lua; Exception: '{}'.",name,e.what());
-			            lua_pushnil(L);
-			            return 1;
+					lua_pushnil(L);
+					return 1;
 				}
 			}
 			lua_pushinteger(L, odc::msSinceEpoch());
@@ -270,23 +270,23 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
 			if(!lua_isinteger(L,1))
 			{
-			      if(auto log = odc::spdlog_get(logname))
+				if(auto log = odc::spdlog_get(logname))
 					log->error("{}: msSinceEpochToDateTime() called from lua; Argument not integer.",name);
-			      lua_pushnil(L);
-			      return 1;
+				lua_pushnil(L);
+				return 1;
 			}
 			try
 			{
-			      if(lua_isstring(L,2)) //there's a format string
+				if(lua_isstring(L,2)) //there's a format string
 					lua_pushstring(L, odc::since_epoch_to_datetime(lua_tointeger(L,1),lua_tostring(L,2)).c_str());
-			      else
+				else
 					lua_pushstring(L, odc::since_epoch_to_datetime(lua_tointeger(L,1)).c_str());
 			}
 			catch(const std::exception& e)
 			{
-			      if(auto log = odc::spdlog_get(logname))
+				if(auto log = odc::spdlog_get(logname))
 					log->error("{}: msSinceEpochToDateTime() called from lua; Exception '{}'.",name,e.what());
-			      lua_pushnil(L);
+				lua_pushnil(L);
 			}
 			return 1; //number of lua ret vals pushed onto the stack
 		},2);
@@ -344,22 +344,22 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 				lua_getinfo(L,"S",&ar);
 				if(ar.source[0] == '@')
 				{
-				      try
-				      {
+					try
+					{
 
-				            auto result = std::filesystem::canonical(std::string(ar.source).substr(1)).parent_path()/path_from_args(L);
-				            lua_pushstring(L, result.string().c_str());
-				            return 1;
+						auto result = std::filesystem::canonical(std::string(ar.source).substr(1)).parent_path()/path_from_args(L);
+						lua_pushstring(L, result.string().c_str());
+						return 1;
 					}
-				      catch(const std::exception& e)
-				      {
-				            if(auto log = odc::spdlog_get(logname))
+					catch(const std::exception& e)
+					{
+						if(auto log = odc::spdlog_get(logname))
 							log->error("{}: GetPath.ScriptDir() called from lua; Exception '{}'.",name,e.what());
 					}
 				}
 				else
 				{
-				      if(auto log = odc::spdlog_get(logname))
+					if(auto log = odc::spdlog_get(logname))
 						log->error("{}: GetPath.ScriptDir() called from lua without source file.",name);
 				}
 				lua_pushnil(L);
@@ -387,18 +387,18 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 			auto hex = lua_tostring(L,-1);
 			try
 			{
-			      auto buf = odc::hex2buf(hex);
-			      lua_pushlstring(L,(char*)buf.data(),buf.size());
-			      return 1;
+				auto buf = odc::hex2buf(hex);
+				lua_pushlstring(L,(char*)buf.data(),buf.size());
+				return 1;
 			}
 			catch(const std::exception& e)
 			{
-			      std::string name(lua_tostring(L, lua_upvalueindex(1)));
-			      std::string logname(lua_tostring(L, lua_upvalueindex(2)));
-			      if(auto log = odc::spdlog_get(logname))
+				std::string name(lua_tostring(L, lua_upvalueindex(1)));
+				std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+				if(auto log = odc::spdlog_get(logname))
 					log->error("{}: Hex2String() called from lua; Exception '{}'.",name,e.what());
-			      lua_pushnil(L);
-			      return 1;
+				lua_pushnil(L);
+				return 1;
 			}
 		},2);
 	lua_setfield(L,-2,"Hex2String");
@@ -422,8 +422,8 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 				   {
 					   if(lua_gettop(L) != 2 || !lua_isinteger(L,1) || !lua_isfunction(L,2))
 					   {
-					         lua_pushnil(L);
-					         return 1;
+						   lua_pushnil(L);
+						   return 1;
 					   }
 					   auto timer_ms = lua_tointeger(L,1);
 					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
@@ -435,10 +435,10 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 
 					   if(!tracker || !sync)
 					   {
-					         std::string msg("Something is terribly wrong. The Lua sync strand or the handler_tracker has been destroyed, while Lua is executing!");
-					         if(auto log = odc::spdlog_get(logname))
+						   std::string msg("Something is terribly wrong. The Lua sync strand or the handler_tracker has been destroyed, while Lua is executing!");
+						   if(auto log = odc::spdlog_get(logname))
 							   log->error("{}: {}",name);
-					         throw std::runtime_error(msg);
+						   throw std::runtime_error(msg);
 					   }
 
 					   //pop callback off the top of the stack - we checked it's there (above)
@@ -457,10 +457,10 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 							   auto ret = lua_pcall(L,argc,retc,0);
 							   if(ret != LUA_OK)
 							   {
-							         std::string call_err = lua_tostring(L, -1);
-							         if(auto log = odc::spdlog_get(logname))
+								   std::string call_err = lua_tostring(L, -1);
+								   if(auto log = odc::spdlog_get(logname))
 									   log->error("{}: Error calling timer lua callback: {}",name,call_err);
-							         lua_pop(L,1);
+								   lua_pop(L,1);
 							   }
 						   }));
 					   //return a cancel function
