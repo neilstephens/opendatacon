@@ -83,9 +83,12 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 	static auto TIMESTAMP = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(event->GetTimestamp()); };
 	static auto DATETIME = [](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp()); };
 	static auto QUALITY = [](const std::shared_ptr<const EventInfo>& event){ return ToString(event->GetQuality()); };
-	static auto RAWQUALITY = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(static_cast<std::underlying_type<QualityFlags>::type>(event->GetQuality())); };
-	static auto VALUE = [](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(); };
+	static auto PAYLOAD = [](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(); };
 	static auto SOURCEPORT = [](const std::shared_ptr<const EventInfo>& event){ return event->GetSourcePort(); };
+	static auto EVENTTYPE_RAW = [](const std::shared_ptr<const EventInfo>& event)
+					    { return std::to_string(static_cast<std::underlying_type<EventType>::type>(event->GetEventType())); };
+	static auto QUALITY_RAW = [](const std::shared_ptr<const EventInfo>& event)
+					  { return std::to_string(static_cast<std::underlying_type<QualityFlags>::type>(event->GetQuality())); };
 	auto SENDERNAME = [&](const std::shared_ptr<const EventInfo>& event){ return SenderName; };
 
 	find_and_replace("<EVENTTYPE>", EVENTTYPE);
@@ -93,9 +96,10 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 	find_and_replace("<TIMESTAMP>", TIMESTAMP);
 	find_and_replace("<DATETIME>", DATETIME);
 	find_and_replace("<QUALITY>", QUALITY);
-	find_and_replace("<RAWQUALITY>", RAWQUALITY);
-	find_and_replace("<VALUE>", VALUE);
+	find_and_replace("<PAYLOAD>", PAYLOAD);
 	find_and_replace("<SOURCEPORT>", SOURCEPORT);
+	find_and_replace("<EVENTTYPE_RAW>", EVENTTYPE_RAW);
+	find_and_replace("<QUALITY_RAW>", QUALITY_RAW);
 	find_and_replace("<SENDERNAME>", SENDERNAME);
 	for(const auto& kv : extra_fields)
 		find_and_replace("<POINT:"+kv.first+">", [&](std::shared_ptr<const EventInfo> event){ return kv.second; });
@@ -131,6 +135,11 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		const auto& template_str = VAL_OR(pTemplate,pConf->DefaultTemplate);
 		const auto& extra_fields = VAL_OR(pExtraFields,pConf->DefaultExtraFields);
 		val_buffer = FillTemplate(template_str, event, SenderName, extra_fields);
+	}
+	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
+	{
+		//TODO: Implement CBOR translation
+		val_buffer = std::string("CBOR translation not implemented");
 	}
 	else //Lua
 	{

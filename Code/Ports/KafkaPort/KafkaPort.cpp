@@ -26,6 +26,7 @@
 
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
+#include "CBORSerialiser.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
 #include <cstddef>
@@ -99,6 +100,8 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->TranslationMethod = EventTranslationMethod::Lua;
 		else if(JSONRoot["TranslationMethod"].asString() == "Template")
 			pConf->TranslationMethod = EventTranslationMethod::Template;
+		else if(JSONRoot["TranslationMethod"].asString() == "CBOR")
+			pConf->TranslationMethod = EventTranslationMethod::CBOR;
 		else
 		{
 			if(auto log = odc::spdlog_get("KafkaPort"))
@@ -198,6 +201,8 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 							pte.pKey = std::make_unique<odc::OctetStringBuffer>(entry["Key"].asString());
 						else if(pte_member == "Template")
 							pte.pTemplate = std::make_unique<std::string>(entry["Template"].asString());
+						else if(pte_member == "CBORStructure")
+							pte.pCBORer = std::make_unique<CBORSerialiser>(entry["CBORStructure"]);
 						else if(pte_member == "Source")
 							source = entry["Source"].asString();
 						else

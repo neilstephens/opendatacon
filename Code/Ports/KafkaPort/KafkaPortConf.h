@@ -36,7 +36,8 @@
 enum class EventTranslationMethod
 {
 	Lua,
-	Template
+	Template,
+	CBOR
 };
 
 enum class SourceLookupMethod
@@ -46,11 +47,13 @@ enum class SourceLookupMethod
 	None
 };
 
+class CBORSerialiser;
 struct PointTranslationEntry
 {
 	std::unique_ptr<kafka::Topic> pTopic = nullptr;
 	std::unique_ptr<odc::OctetStringBuffer> pKey = nullptr;
 	std::unique_ptr<std::string> pTemplate = nullptr;
+	std::unique_ptr<CBORSerialiser> pCBORer = nullptr;
 	std::unique_ptr<std::unordered_map<std::string, std::string>> pExtraFields;
 };
 
@@ -64,13 +67,14 @@ inline std::string JSONwPlaceholders()
 	return R"(
 {
 	"EventType": "<EVENTTYPE>",
+	"NumericEventType": "<EVENTTYPE_RAW>",
 	"Index": <INDEX>,
 	"Description": "<POINT:Name>",
 	"Timestamp": <TIMESTAMP>,
 	"DateTime": "<DATETIME>",
 	"Quality": "<QUALITY>",
-	"NumericQuality": <RAWQUALITY>,
-	"Value": <VALUE>,
+	"NumericQuality": <QUALITY_RAW>,
+	"Payload": <PAYLOAD>,
 	"SourcePort": "<SOURCEPORT>",
 	"SenderName": "<SENDERNAME>"
 }
