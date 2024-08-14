@@ -27,6 +27,7 @@
 #ifndef CBORSERIALISER_H
 #define CBORSERIALISER_H
 
+#include "jsoncons/byte_string.hpp"
 #include <cstdint>
 #include <opendatacon/IOTypes.h>
 #include <jsoncons/json.hpp>
@@ -45,6 +46,7 @@ enum class EncodeOps : uint8_t
 	DATETIME,
 	QUALITY,
 	PAYLOAD,
+	PAYLOAD_STRING,
 	SOURCEPORT,
 	EVENTTYPE_RAW,
 	QUALITY_RAW,
@@ -100,13 +102,13 @@ public:
 				case staj_event_type::end_object:
 					Ops.emplace_back(EncodeOps::END_MAP);
 					break;
-				case staj_event_type::key:
+				case staj_event_type::key: //TODO: check for placeholders
 					Ops.emplace_back(EncodeOps::KEY);
-					Strings.emplace_back(event.get<jsoncons::string_view>());
+					Strings.emplace_back(event.get<std::string_view>());
 					break;
-				case staj_event_type::string_value:
+				case staj_event_type::string_value: //TODO: check for placeholders
 					Ops.emplace_back(EncodeOps::STRING);
-					Strings.emplace_back(event.get<jsoncons::string_view>());
+					Strings.emplace_back(event.get<std::string_view>());
 					break;
 				case staj_event_type::null_value:
 					Ops.emplace_back(EncodeOps::NULL_VAL);
@@ -166,8 +168,11 @@ public:
 				case EncodeOps::QUALITY:
 					encoder.string_value(ToString(event->GetQuality()));
 					break;
-				case EncodeOps::PAYLOAD:
+				case EncodeOps::PAYLOAD_STRING:
 					encoder.string_value(event->GetPayloadString());
+					break;
+				case EncodeOps::PAYLOAD:
+					EncodePayload(event,encoder);
 					break;
 				case EncodeOps::SOURCEPORT:
 					encoder.string_value(event->GetSourcePort());
@@ -224,6 +229,164 @@ public:
 			}
 		}
 		return buffer;
+	}
+
+private:
+	void EncodePayload(std::shared_ptr<const EventInfo> event, cbor::cbor_bytes_encoder& encoder)
+	{
+		#define ENCODE_PAYLOAD_CASE(T)\
+			case T:\
+				{\
+					auto payload = event->GetPayload<T>();\
+					EncodePayload(encoder,payload);\
+					break;\
+				}
+		switch(event->GetEventType())
+		{
+			ENCODE_PAYLOAD_CASE(odc::EventType::Binary                   )
+			ENCODE_PAYLOAD_CASE(odc::EventType::DoubleBitBinary          )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Analog                   )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Counter                  )
+			ENCODE_PAYLOAD_CASE(odc::EventType::FrozenCounter            )
+			ENCODE_PAYLOAD_CASE(odc::EventType::BinaryOutputStatus       )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogOutputStatus       )
+			ENCODE_PAYLOAD_CASE(odc::EventType::BinaryCommandEvent       )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogCommandEvent       )
+			ENCODE_PAYLOAD_CASE(odc::EventType::OctetString              )
+			ENCODE_PAYLOAD_CASE(odc::EventType::TimeAndInterval          )
+			ENCODE_PAYLOAD_CASE(odc::EventType::SecurityStat             )
+			ENCODE_PAYLOAD_CASE(odc::EventType::ControlRelayOutputBlock  )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogOutputInt16        )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogOutputInt32        )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogOutputFloat32      )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogOutputDouble64     )
+			ENCODE_PAYLOAD_CASE(odc::EventType::BinaryQuality            )
+			ENCODE_PAYLOAD_CASE(odc::EventType::DoubleBitBinaryQuality   )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogQuality            )
+			ENCODE_PAYLOAD_CASE(odc::EventType::CounterQuality           )
+			ENCODE_PAYLOAD_CASE(odc::EventType::BinaryOutputStatusQuality)
+			ENCODE_PAYLOAD_CASE(odc::EventType::FrozenCounterQuality     )
+			ENCODE_PAYLOAD_CASE(odc::EventType::AnalogOutputStatusQuality)
+			ENCODE_PAYLOAD_CASE(odc::EventType::FileAuth                 )
+			ENCODE_PAYLOAD_CASE(odc::EventType::FileCommand              )
+			ENCODE_PAYLOAD_CASE(odc::EventType::FileCommandStatus        )
+			ENCODE_PAYLOAD_CASE(odc::EventType::FileTransport            )
+			ENCODE_PAYLOAD_CASE(odc::EventType::FileTransportStatus      )
+			ENCODE_PAYLOAD_CASE(odc::EventType::FileDescriptor           )
+			ENCODE_PAYLOAD_CASE(odc::EventType::FileSpecString           )
+			ENCODE_PAYLOAD_CASE(odc::EventType::ConnectState             )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved1                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved2                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved3                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved4                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved5                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved6                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved7                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved8                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved9                )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved10               )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved11               )
+			ENCODE_PAYLOAD_CASE(odc::EventType::Reserved12               )
+			default:
+				break;
+		}
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, bool payload)
+	{
+		encoder.bool_value(payload);
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::DBB payload)
+	{
+		encoder.begin_array(2);
+		encoder.bool_value(payload.first);
+		encoder.bool_value(payload.second);
+		encoder.end_array();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, double payload)
+	{
+		encoder.double_value(payload);
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, uint32_t payload)
+	{
+		encoder.uint64_value(payload);
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::CommandStatus payload)
+	{
+		encoder.string_value(ToString(payload));
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::OctetStringBuffer payload)
+	{
+		encoder.byte_string_value(byte_string_view((const uint8_t*)payload.data(),payload.size()));
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::TAI payload)
+	{
+		encoder.begin_array(3);
+		encoder.uint64_value(std::get<0>(payload));
+		encoder.uint64_value(std::get<1>(payload));
+		encoder.uint64_value(std::get<2>(payload));
+		encoder.end_array();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::SS payload)
+	{
+		encoder.begin_array(2);
+		encoder.uint64_value(std::get<0>(payload));
+		encoder.uint64_value(std::get<1>(payload));
+		encoder.end_array();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::ControlRelayOutputBlock payload)
+	{
+		encoder.begin_object(4);
+		encoder.key("Code");
+		encoder.string_value(ToString(payload.functionCode));
+		encoder.key("Count");
+		encoder.uint64_value(payload.count);
+		encoder.key("On");
+		encoder.uint64_value(payload.onTimeMS);
+		encoder.key("Off");
+		encoder.uint64_value(payload.offTimeMS);
+		encoder.key("Status");
+		encoder.string_value(ToString(payload.status));
+		encoder.end_object();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO16 payload)
+	{
+		encoder.begin_array(2);
+		encoder.int64_value(payload.first);
+		encoder.string_value(ToString(payload.second));
+		encoder.end_array();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO32 payload)
+	{
+		encoder.begin_array(2);
+		encoder.int64_value(payload.first);
+		encoder.string_value(ToString(payload.second));
+		encoder.end_array();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOF payload)
+	{
+		encoder.begin_array(2);
+		encoder.double_value(payload.first);
+		encoder.string_value(ToString(payload.second));
+		encoder.end_array();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOD payload)
+	{
+		encoder.begin_array(2);
+		encoder.double_value(payload.first);
+		encoder.string_value(ToString(payload.second));
+		encoder.end_array();
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::QualityFlags payload)
+	{
+		encoder.string_value(ToString(payload));
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, char payload)
+	{
+		encoder.string_value(std::string(1,payload));
+	}
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::ConnectState payload)
+	{
+		encoder.string_value(ToString(payload));
 	}
 };
 
