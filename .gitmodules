@@ -22,3 +22,6 @@
 [submodule "Code/submodules/librdkafka"]
 	path = Code/submodules/librdkafka
 	url = https://github.com/confluentinc/librdkafka.git
+[submodule "Code/submodules/jsoncons"]
+	path = Code/submodules/jsoncons
+	url = https://github.com/danielaparker/jsoncons.git

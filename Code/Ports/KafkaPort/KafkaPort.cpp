@@ -202,7 +202,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 						else if(pte_member == "Template")
 							pte.pTemplate = std::make_unique<std::string>(entry["Template"].asString());
 						else if(pte_member == "CBORStructure")
-							pte.pCBORer = std::make_unique<CBORSerialiser>(entry["CBORStructure"]);
+							pte.pCBORer = std::make_unique<CBORSerialiser>(entry["CBORStructure"].toStyledString());
 						else if(pte_member == "Source")
 							source = entry["Source"].asString();
 						else

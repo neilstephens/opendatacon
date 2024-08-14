@@ -26,6 +26,7 @@
 
 #ifndef KafkaPortConf_H_
 #define KafkaPortConf_H_
+#include "CBORSerialiser.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
 #include <cstddef>
@@ -47,7 +48,6 @@ enum class SourceLookupMethod
 	None
 };
 
-class CBORSerialiser;
 struct PointTranslationEntry
 {
 	std::unique_ptr<kafka::Topic> pTopic = nullptr;
