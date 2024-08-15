@@ -25,10 +25,6 @@ project(KafkaPort CXX)
 
 #script to download, build, install, and import librdkafka
 include(build_librdkafka.cmake)
-if(WIN32 AND ODC_ASIO_SSL)
-		# We have to tell the linker to ignore default libs that librdkafka hard coded with pragmas!
-		target_link_options(${PROJECT_NAME} PRIVATE "/NODEFAULTLIB:libssl.lib" "/NODEFAULTLIB:libcrypto.lib")
-endif()
 
 #and this is the modern C++ wrapper for librdkafka
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/.git")
@@ -45,6 +41,10 @@ endif()
 #this is the actual port
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+if(WIN32 AND ODC_ASIO_SSL)
+		# We have to tell the linker to ignore default libs that librdkafka hard coded with pragmas!
+		target_link_options(${PROJECT_NAME} PRIVATE "/NODEFAULTLIB:libssl.lib" "/NODEFAULTLIB:libcrypto.lib")
+endif()
 
 target_link_libraries(${PROJECT_NAME} ODC RdKafka::rdkafka)
 target_include_directories(${PROJECT_NAME} PRIVATE
