@@ -64,7 +64,7 @@ OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const 
 	return mapping;
 }
 
-static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const std::unordered_map<std::string, std::string>& extra_fields)
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields)
 {
 	std::string message = template_str;
 	auto find_and_replace = [&](const std::string& fnd, const auto& gen_replacement)
@@ -139,8 +139,7 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 	{
 		const auto& CBORer = VAL_OR(pCBORer,pConf->DefaultCBORSerialiser);
-		//TODO: handle extra_fields
-		auto buf = CBORer.Encode(event, SenderName);
+		auto buf = CBORer.Encode(event, SenderName, extra_fields);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else //Lua

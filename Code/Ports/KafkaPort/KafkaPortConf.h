@@ -27,40 +27,13 @@
 #ifndef KafkaPortConf_H_
 #define KafkaPortConf_H_
 #include "CBORSerialiser.h"
+#include "EventTranslation.h"
 #include <kafka/Types.h>
-#include <opendatacon/IOTypes.h>
-#include <cstddef>
-#include <opendatacon/DataPortConf.h>
 #include <kafka/Properties.h>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/DataPortConf.h>
 #include <string>
-
-enum class EventTranslationMethod
-{
-	Lua,
-	Template,
-	CBOR
-};
-
-enum class SourceLookupMethod
-{
-	SenderName,
-	SourcePort,
-	None
-};
-
-struct PointTranslationEntry
-{
-	std::unique_ptr<kafka::Topic> pTopic = nullptr;
-	std::unique_ptr<odc::OctetStringBuffer> pKey = nullptr;
-	std::unique_ptr<std::string> pTemplate = nullptr;
-	std::unique_ptr<CBORSerialiser> pCBORer = nullptr;
-	std::unique_ptr<std::unordered_map<std::string, std::string>> pExtraFields;
-};
-
-using SourceID = std::string;
-using PointIndex = size_t;
-using TranslationID = std::tuple<SourceID,PointIndex,odc::EventType>;
-using PointTranslationMap = std::map<TranslationID, PointTranslationEntry>;
+#include <cstddef>
 
 inline std::string JSONwPlaceholders()
 {
@@ -96,7 +69,7 @@ public:
 	odc::OctetStringBuffer DefaultKey;
 	std::string DefaultTemplate = JSONwPlaceholders();
 	CBORSerialiser DefaultCBORSerialiser = CBORStructure();
-	const std::unordered_map<std::string, std::string> DefaultExtraFields = {};
+	const ExtraPointFields DefaultExtraFields = {};
 	EventTranslationMethod TranslationMethod = EventTranslationMethod::Template;
 	bool BlockUnknownPoints = false;
 	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;

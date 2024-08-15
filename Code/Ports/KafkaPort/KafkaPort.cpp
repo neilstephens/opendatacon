@@ -27,6 +27,7 @@
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
 #include "CBORSerialiser.h"
+#include "EventTranslation.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
@@ -219,7 +220,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 						else
 						{
 							if(!pte.pExtraFields)
-								pte.pExtraFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+								pte.pExtraFields = std::make_unique<ExtraPointFields>();
 							pte.pExtraFields->insert_or_assign(pte_member, entry[pte_member].asString());
 						}
 					}
