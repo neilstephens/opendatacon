@@ -130,29 +130,29 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->PointTraslationSource = SourceLookupMethod::None;
 		}
 	}
+	if(JSONRoot.isMember("OverridesCreateNewPTMEntries"))
+	{
+		pConf->OverridesCreateNewPTMEntries = JSONRoot["OverridesCreateNewPTMEntries"].asBool();
+	}
 
 	//Process PointTranslationMap
-	//Looks like:
-	/*
-	"PointTranslationMap" :
-	{
-		"Analog" :
-		[
-			{
-				"Index" : 1234,
-				"Topic" : "non-default-topic",
-				"Template" : "non-default-template",
-				"Name" : "Some Desc."
-			},
-			{"Index" : 12345, "Name" : "Some Desc."},
-			{"Range" : {"Start" : 50, "Stop" : 60}, "Template" : "...", "AnythingYouWant" : "Some Desc."}
-		],
-		"Binary" : ...
-	}
-	*/
 	if(JSONRoot.isMember("PointTranslationMap"))
 	{
+		bool overriding = !!pConf->pPointMap;
 		PointTranslationMap ptm;
+		//Copy the contents of the existing map if there is one
+		if(overriding)
+		{
+			for(const auto& [tid,pte] : *pConf->pPointMap)
+			{
+				ptm[tid].pCBORer = pte.pCBORer ? std::make_unique<CBORSerialiser>(std::move(*pte.pCBORer)) : nullptr;
+				ptm[tid].pExtraFields = pte.pExtraFields ? std::make_unique<ExtraPointFields>(*pte.pExtraFields) : nullptr;
+				ptm[tid].pKey = pte.pKey ? std::make_unique<odc::OctetStringBuffer>(std::move(*pte.pKey)) : nullptr;
+				ptm[tid].pTemplate = pte.pTemplate ? std::make_unique<std::string>(std::move(*pte.pTemplate)) : nullptr;
+				ptm[tid].pTopic = pte.pTopic ? std::make_unique<kafka::Topic>(std::move(*pte.pTopic)) : nullptr;
+			}
+		}
+
 		auto& JSON_PTM = JSONRoot["PointTranslationMap"];
 		for(auto EventTypeStr : JSON_PTM.getMemberNames())
 		{
@@ -175,13 +175,15 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			}
 			for(auto& entry : JSON_PTM[EventTypeStr])
 			{
-				size_t start, stop;
+				size_t start, stop, inc=1;
 				if(entry.isMember("Index"))
 					start = stop = entry["Index"].asUInt();
-				else if(entry["Range"].isMember("Start") && entry["Range"].isMember("Stop"))
+				else if(entry.isMember("Range") && entry["Range"].isMember("Start") && entry["Range"].isMember("Stop"))
 				{
 					start = entry["Range"]["Start"].asUInt();
 					stop = entry["Range"]["Stop"].asUInt();
+					if(entry["Range"].isMember("Increment"))
+						inc = entry["Range"]["Increment"].asUInt();
 				}
 				else
 				{
@@ -189,14 +191,29 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 						log->error("A PointTranslationMap entry needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : skipping '{}'", entry.toStyledString());
 					continue;
 				}
-				for(size_t idx = start; idx <= stop; idx++)
+				for(size_t idx = start; idx <= stop; idx+=inc)
 				{
-					PointTranslationEntry pte;
+					//Work out the TranslationID
 					TranslationID tid; auto& [source,point_idx,evt_type] = tid;
-					source = ""; point_idx = idx; evt_type = eventType;
+					point_idx = idx; evt_type = eventType;
+					if(entry.isMember("Source"))
+						source = entry["Source"].asString();
+					else
+						source = "";
+
+					bool existing_point = ptm.find(tid) != ptm.end();
+					if(overriding && !existing_point && !pConf->OverridesCreateNewPTMEntries)
+						continue;
+
+					//Take a copy and update the existing entry, or create a new one
+					PointTranslationEntry pte = existing_point ? std::move(ptm.at(tid)) : PointTranslationEntry();
+
 					for(auto pte_member : entry.getMemberNames())
 					{
-						if(pte_member == "Index" || pte_member == "Range") continue;
+						//Skip members that are already processed
+						if(pte_member == "Index" || pte_member == "Range" || pte_member == "Source")
+							continue;
+
 						if(pte_member == "Topic")
 							pte.pTopic = std::make_unique<kafka::Topic>(entry["Topic"].asString());
 						else if(pte_member == "Key")
@@ -215,8 +232,6 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 									log->error("Failed to process 'CBORStructure': {}",e.what());
 							}
 						}
-						else if(pte_member == "Source")
-							source = entry["Source"].asString();
 						else
 						{
 							if(!pte.pExtraFields)
