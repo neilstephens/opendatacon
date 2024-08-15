@@ -32,6 +32,7 @@
 #include <opendatacon/IOTypes.h>
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/cbor/cbor.hpp>
+#include <sstream>
 #include <string>
 
 using namespace odc;
@@ -41,16 +42,22 @@ enum class EncodeOps : uint8_t
 {
 	//Serialising Ops
 	EVENTTYPE,
+	EVENTTYPE_KEY,
 	INDEX,
 	TIMESTAMP,
 	DATETIME,
+	DATETIME_KEY,
 	QUALITY,
+	QUALITY_KEY,
 	PAYLOAD,
 	PAYLOAD_STRING,
+	PAYLOAD_STRING_KEY,
 	SOURCEPORT,
+	SOURCEPORT_KEY,
 	EVENTTYPE_RAW,
 	QUALITY_RAW,
 	SENDERNAME,
+	SENDERNAME_KEY,
 	//Structure Ops
 	KEY,
 	NULL_VAL,
@@ -102,13 +109,11 @@ public:
 				case staj_event_type::end_object:
 					Ops.emplace_back(EncodeOps::END_MAP);
 					break;
-				case staj_event_type::key: //TODO: check for placeholders
-					Ops.emplace_back(EncodeOps::KEY);
-					Strings.emplace_back(event.get<std::string_view>());
+				case staj_event_type::key:
+					CheckForPlaceholder(event.get<std::string_view>(),/*isKey = */ true);
 					break;
-				case staj_event_type::string_value: //TODO: check for placeholders
-					Ops.emplace_back(EncodeOps::STRING);
-					Strings.emplace_back(event.get<std::string_view>());
+				case staj_event_type::string_value:
+					CheckForPlaceholder(event.get<std::string_view>());
 					break;
 				case staj_event_type::null_value:
 					Ops.emplace_back(EncodeOps::NULL_VAL);
@@ -130,14 +135,16 @@ public:
 					Doubles.emplace_back(event.get<double>());
 					break;
 				default:
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("Unknown CBORSerialiser EncodeOp");
-					throw std::runtime_error("Unknown CBORSerialiser EncodeOp");
+				{
+					std::stringstream ss;
+					ss << "Unhandled parse event: " << event.event_type();
+					throw std::runtime_error(ss.str());
+				}
 			}
 		}
 	}
 
-	const std::vector<uint8_t> Encode(std::shared_ptr<const EventInfo> event, const std::string& SenderName)
+	const std::vector<uint8_t> Encode(std::shared_ptr<const EventInfo> event, const std::string& SenderName) const
 	{
 		auto StringIt = Strings.begin();
 		auto UIntIt = UInts.begin();
@@ -232,7 +239,48 @@ public:
 	}
 
 private:
-	void EncodePayload(std::shared_ptr<const EventInfo> event, cbor::cbor_bytes_encoder& encoder)
+	void CheckForPlaceholder(const std::string_view& str, bool isKey = false)
+	{
+		auto KeyErr = [this,&str]()
+				  {
+					  if(auto log = odc::spdlog_get("KafkaPort"))
+						  log->error("Can't use placeholder '{}' for CBOR key (only string types allowed)",str);
+					  Strings.emplace_back(str);
+					  return Ops.emplace_back(EncodeOps::KEY);
+				  };
+
+		#define CHOOSE_KEY(X) isKey ? Ops.emplace_back(EncodeOps::X ## _KEY) : Ops.emplace_back(EncodeOps::X)
+		#define CHOOSE_KEY_ERR(X) isKey ? KeyErr() : Ops.emplace_back(EncodeOps::X)
+
+		if(str == "EVENTTYPE")
+			CHOOSE_KEY(EVENTTYPE);
+		else if(str == "INDEX")
+			CHOOSE_KEY_ERR(INDEX);
+		else if(str == "TIMESTAMP")
+			CHOOSE_KEY_ERR(TIMESTAMP);
+		else if(str == "DATETIME")
+			CHOOSE_KEY(DATETIME);
+		else if(str == "QUALITY")
+			CHOOSE_KEY(QUALITY);
+		else if(str == "PAYLOAD")
+			CHOOSE_KEY_ERR(PAYLOAD);
+		else if(str == "PAYLOAD_STRING")
+			CHOOSE_KEY(PAYLOAD_STRING);
+		else if(str == "SOURCEPORT")
+			CHOOSE_KEY(SOURCEPORT);
+		else if(str == "EVENTTYPE_RAW")
+			CHOOSE_KEY_ERR(EVENTTYPE_RAW);
+		else if(str == "QUALITY_RAW")
+			CHOOSE_KEY_ERR(QUALITY_RAW);
+		else if(str == "SENDERNAME")
+			CHOOSE_KEY(SENDERNAME);
+		else
+		{
+			isKey ? Ops.emplace_back(EncodeOps::KEY) : Ops.emplace_back(EncodeOps::STRING);
+			Strings.emplace_back(str);
+		}
+	}
+	void EncodePayload(std::shared_ptr<const EventInfo> event, cbor::cbor_bytes_encoder& encoder) const
 	{
 		#define ENCODE_PAYLOAD_CASE(T)\
 			case T:\
@@ -291,34 +339,34 @@ private:
 				break;
 		}
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, bool payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, bool payload) const
 	{
 		encoder.bool_value(payload);
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::DBB payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::DBB payload) const
 	{
 		encoder.begin_array(2);
 		encoder.bool_value(payload.first);
 		encoder.bool_value(payload.second);
 		encoder.end_array();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, double payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, double payload) const
 	{
 		encoder.double_value(payload);
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, uint32_t payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, uint32_t payload) const
 	{
 		encoder.uint64_value(payload);
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::CommandStatus payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::CommandStatus payload) const
 	{
 		encoder.string_value(ToString(payload));
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::OctetStringBuffer payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::OctetStringBuffer payload) const
 	{
 		encoder.byte_string_value(byte_string_view((const uint8_t*)payload.data(),payload.size()));
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::TAI payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::TAI payload) const
 	{
 		encoder.begin_array(3);
 		encoder.uint64_value(std::get<0>(payload));
@@ -326,14 +374,14 @@ private:
 		encoder.uint64_value(std::get<2>(payload));
 		encoder.end_array();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::SS payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::SS payload) const
 	{
 		encoder.begin_array(2);
 		encoder.uint64_value(std::get<0>(payload));
 		encoder.uint64_value(std::get<1>(payload));
 		encoder.end_array();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::ControlRelayOutputBlock payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::ControlRelayOutputBlock payload) const
 	{
 		encoder.begin_object(4);
 		encoder.key("Code");
@@ -348,43 +396,43 @@ private:
 		encoder.string_value(ToString(payload.status));
 		encoder.end_object();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO16 payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO16 payload) const
 	{
 		encoder.begin_array(2);
 		encoder.int64_value(payload.first);
 		encoder.string_value(ToString(payload.second));
 		encoder.end_array();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO32 payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO32 payload) const
 	{
 		encoder.begin_array(2);
 		encoder.int64_value(payload.first);
 		encoder.string_value(ToString(payload.second));
 		encoder.end_array();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOF payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOF payload) const
 	{
 		encoder.begin_array(2);
 		encoder.double_value(payload.first);
 		encoder.string_value(ToString(payload.second));
 		encoder.end_array();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOD payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOD payload) const
 	{
 		encoder.begin_array(2);
 		encoder.double_value(payload.first);
 		encoder.string_value(ToString(payload.second));
 		encoder.end_array();
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::QualityFlags payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::QualityFlags payload) const
 	{
 		encoder.string_value(ToString(payload));
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, char payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, char payload) const
 	{
 		encoder.string_value(std::string(1,payload));
 	}
-	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::ConnectState payload)
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::ConnectState payload) const
 	{
 		encoder.string_value(ToString(payload));
 	}

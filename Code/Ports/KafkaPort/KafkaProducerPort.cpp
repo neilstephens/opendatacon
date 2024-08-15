@@ -129,26 +129,33 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 
 	const auto& topic = VAL_OR(pTopic,pConf->DefaultTopic);
 	const auto& key_buffer = VAL_OR(pKey,pConf->DefaultKey);
-	OctetStringBuffer val_buffer;
+	const auto& extra_fields = VAL_OR(pExtraFields,pConf->DefaultExtraFields);
 	if(pConf->TranslationMethod == EventTranslationMethod::Template)
 	{
 		const auto& template_str = VAL_OR(pTemplate,pConf->DefaultTemplate);
-		const auto& extra_fields = VAL_OR(pExtraFields,pConf->DefaultExtraFields);
-		val_buffer = FillTemplate(template_str, event, SenderName, extra_fields);
+		auto buf = FillTemplate(template_str, event, SenderName, extra_fields);
+		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 	{
-		//TODO: Implement CBOR translation
-		val_buffer = std::string("CBOR translation not implemented");
+		const auto& CBORer = VAL_OR(pCBORer,pConf->DefaultCBORSerialiser);
+		//TODO: handle extra_fields
+		auto buf = CBORer.Encode(event, SenderName);
+		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else //Lua
 	{
 		//TODO: Implement Lua translation
-		val_buffer = std::string("Lua translation not implemented");
+		auto buf = std::string("Lua translation not implemented");
+		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
+}
+
+void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer& key_buffer, const OctetStringBuffer& val_buffer, SharedStatusCallback_t pStatusCallback)
+{
 	KCP::ProducerRecord record(topic, kafka::Key(key_buffer.data(),key_buffer.size()), kafka::Value(val_buffer.data(), val_buffer.size()));
 
-	auto deliveryCb = [this,event,key_buffer,val_buffer,pStatusCallback](const KCP::RecordMetadata& metadata, const kafka::Error& error)
+	auto deliveryCb = [this,key_buffer,val_buffer,pStatusCallback](const KCP::RecordMetadata& metadata, const kafka::Error& error)
 				{
 					auto log = odc::spdlog_get("KafkaPort");
 					if (!error)
@@ -160,9 +167,7 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 					else
 					{
 						if(log)
-							log->error("{}: Message failed to be delivered: {} {} {}: {}",
-								ToString(event->GetEventType()),event->GetIndex(),
-								event->GetPayloadString(), error.message());
+							log->error("{}: Message failed to be delivered: {}", metadata.toString());
 						(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
 					}
 				};

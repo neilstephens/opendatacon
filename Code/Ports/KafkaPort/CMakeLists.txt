@@ -19,8 +19,16 @@
  # 
 project(KafkaPort CXX)
 
+#TODO: make using the submodules optional (to use local copies of dependencies),
+#	similar to other ports that have optional submodule deps
+#		with USE_SUBMODULE option and DEP_HOME
+
 #script to download, build, install, and import librdkafka
 include(build_librdkafka.cmake)
+if(WIN32 AND ODC_ASIO_SSL)
+		# We have to tell the linker to ignore default libs that librdkafka hard coded with pragmas!
+		target_link_options(${PROJECT_NAME} PRIVATE "/NODEFAULTLIB:libssl.lib" "/NODEFAULTLIB:libcrypto.lib")
+endif()
 
 #and this is the modern C++ wrapper for librdkafka
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/.git")

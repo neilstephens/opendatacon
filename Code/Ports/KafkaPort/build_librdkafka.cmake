@@ -108,9 +108,5 @@ if(ODC_ASIO_SSL)
 	list(FILTER KAF_REQUIRED_LIBS EXCLUDE REGEX "OpenSSL.*")
 	message("KAF_REQUIRED_LIBS AFTER: ${KAF_REQUIRED_LIBS}")
 	set_target_properties(RdKafka::rdkafka PROPERTIES INTERFACE_LINK_LIBRARIES "${KAF_REQUIRED_LIBS}")
-	if(WIN32)
-		# and even worse, we have to tell the linker to ignore default libs that librdkafka hard coded with pragmas!
-		target_link_options(${PROJECT_NAME} PRIVATE "/NODEFAULTLIB:libssl.lib" "/NODEFAULTLIB:libcrypto.lib")
-	endif()
 endif()
 

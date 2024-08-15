@@ -80,6 +80,10 @@ inline std::string JSONwPlaceholders()
 }
 )";
 }
+inline std::string CBORStructure()
+{
+	return R"( ["TIMESTAMP","EVENTTYPE_RAW","INDEX","QUALITY_RAW","PAYLOAD"] )";
+}
 
 class KafkaPortConf: public DataPortConf
 {
@@ -91,6 +95,7 @@ public:
 	kafka::Topic DefaultTopic = "opendatacon";
 	odc::OctetStringBuffer DefaultKey;
 	std::string DefaultTemplate = JSONwPlaceholders();
+	CBORSerialiser DefaultCBORSerialiser = CBORStructure();
 	const std::unordered_map<std::string, std::string> DefaultExtraFields = {};
 	EventTranslationMethod TranslationMethod = EventTranslationMethod::Template;
 	bool BlockUnknownPoints = false;
@@ -102,6 +107,7 @@ public:
 
 	//TODO: Option for DateTime formatting string
 	//TODO: Option for OctetString formatting mode
+	//TODO: make key dynamic, like the value
 };
 
 #endif /* KafkaPortConf_H_ */

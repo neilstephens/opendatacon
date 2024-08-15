@@ -29,6 +29,7 @@
 #include "CBORSerialiser.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
 #include <cstddef>
 
 KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides):
@@ -202,7 +203,17 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 						else if(pte_member == "Template")
 							pte.pTemplate = std::make_unique<std::string>(entry["Template"].asString());
 						else if(pte_member == "CBORStructure")
-							pte.pCBORer = std::make_unique<CBORSerialiser>(entry["CBORStructure"].toStyledString());
+						{
+							try
+							{
+								pte.pCBORer = std::make_unique<CBORSerialiser>(entry["CBORStructure"].toStyledString());
+							}
+							catch(std::exception& e)
+							{
+								if(auto log = odc::spdlog_get("KafkaPort"))
+									log->error("Failed to process 'CBORStructure': {}",e.what());
+							}
+						}
 						else if(pte_member == "Source")
 							source = entry["Source"].asString();
 						else

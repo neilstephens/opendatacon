@@ -29,6 +29,7 @@
 
 #include "KafkaPort.h"
 #include <kafka/KafkaProducer.h>
+#include <opendatacon/IOTypes.h>
 
 using namespace odc;
 namespace KCP = kafka::clients::producer;
@@ -46,6 +47,8 @@ public:
 
 private:
 	OptionalPoint CheckPointTranslationMap(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
+	void Send(const kafka::Topic& topic, const OctetStringBuffer& key_buffer, const OctetStringBuffer& val_buffer, SharedStatusCallback_t pStatusCallback);
+
 	std::shared_ptr<KCP::KafkaProducer> pKafkaProducer;
 };
 
