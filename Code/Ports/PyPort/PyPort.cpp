@@ -798,6 +798,8 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		auto fmt = JSONRoot["OctetStringFormat"].asString();
 		if(fmt == "Hex")
 			MyConf->pyOctetStringFormat = DataToStringMethod::Hex;
+		else if(fmt == "Base64")
+			MyConf->pyOctetStringFormat = DataToStringMethod::Base64;
 		else if(fmt == "Raw")
 			MyConf->pyOctetStringFormat = DataToStringMethod::Raw;
 		else

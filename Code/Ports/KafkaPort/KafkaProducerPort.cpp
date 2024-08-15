@@ -64,7 +64,7 @@ OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const 
 	return mapping;
 }
 
-static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields)
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S)
 {
 	std::string message = template_str;
 	auto find_and_replace = [&](const std::string& fnd, const auto& gen_replacement)
@@ -81,15 +81,17 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 	static auto EVENTTYPE = [](const std::shared_ptr<const EventInfo>& event){ return ToString(event->GetEventType()); };
 	static auto INDEX = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(event->GetIndex()); };
 	static auto TIMESTAMP = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(event->GetTimestamp()); };
-	static auto DATETIME = [](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp()); };
 	static auto QUALITY = [](const std::shared_ptr<const EventInfo>& event){ return ToString(event->GetQuality()); };
-	static auto PAYLOAD = [](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(); };
 	static auto SOURCEPORT = [](const std::shared_ptr<const EventInfo>& event){ return event->GetSourcePort(); };
 	static auto EVENTTYPE_RAW = [](const std::shared_ptr<const EventInfo>& event)
 					    { return std::to_string(static_cast<std::underlying_type<EventType>::type>(event->GetEventType())); };
 	static auto QUALITY_RAW = [](const std::shared_ptr<const EventInfo>& event)
 					  { return std::to_string(static_cast<std::underlying_type<QualityFlags>::type>(event->GetQuality())); };
+
+	//these aren't static because they need to capture
 	auto SENDERNAME = [&](const std::shared_ptr<const EventInfo>& event){ return SenderName; };
+	auto DATETIME = [&](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp(),dt_fmt); };
+	auto PAYLOAD = [&](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(D2S); };
 
 	find_and_replace("<EVENTTYPE>", EVENTTYPE);
 	find_and_replace("<INDEX>", INDEX);
@@ -133,13 +135,13 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	if(pConf->TranslationMethod == EventTranslationMethod::Template)
 	{
 		const auto& template_str = VAL_OR(pTemplate,pConf->DefaultTemplate);
-		auto buf = FillTemplate(template_str, event, SenderName, extra_fields);
+		auto buf = FillTemplate(template_str, event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 	{
 		const auto& CBORer = VAL_OR(pCBORer,pConf->DefaultCBORSerialiser);
-		auto buf = CBORer.Encode(event, SenderName, extra_fields);
+		auto buf = CBORer.Encode(event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else //Lua

@@ -89,7 +89,7 @@ private:
 
 public:
 	CBORSerialiser(const std::string& json_string);
-	const std::vector<uint8_t> Encode(std::shared_ptr<const EventInfo> event, const std::string& SenderName, const ExtraPointFields& extra_fields = {}) const;
+	const std::vector<uint8_t> Encode(std::shared_ptr<const EventInfo> event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S) const;
 
 private:
 	void CheckForPlaceholder(const std::string_view& str, bool isKey = false);

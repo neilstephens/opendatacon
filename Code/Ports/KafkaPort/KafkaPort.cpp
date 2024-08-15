@@ -134,6 +134,22 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->OverridesCreateNewPTMEntries = JSONRoot["OverridesCreateNewPTMEntries"].asBool();
 	}
+	if (JSONRoot.isMember("OctetStringFormat"))
+	{
+		auto fmt = JSONRoot["OctetStringFormat"].asString();
+		if(fmt == "Hex")
+			pConf->OctetStringFormat = DataToStringMethod::Hex;
+		else if(fmt == "Raw")
+			pConf->OctetStringFormat = DataToStringMethod::Raw;
+		else if(fmt == "Base64")
+			pConf->OctetStringFormat = DataToStringMethod::Base64;
+		else if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("Unknown OctetStringFormat '{}', should be Raw or Hex. Defaulting to Hex", fmt);
+	}
+	if(JSONRoot.isMember("DateTimeFormat"))
+	{
+		pConf->DateTimeFormat = JSONRoot["DateTimeFormat"].asString();
+	}
 
 	//Process PointTranslationMap
 	if(JSONRoot.isMember("PointTranslationMap"))

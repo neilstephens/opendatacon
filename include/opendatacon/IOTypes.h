@@ -524,7 +524,7 @@ EVENTPAYLOAD(EventType::Reserved11               , char) //stub
 EVENTPAYLOAD(EventType::Reserved12               , char) //stub
 //TODO: map the rest
 
-enum class DataToStringMethod : uint8_t {Raw,Hex};
+enum class DataToStringMethod : uint8_t {Raw,Hex,Base64};
 //FIXME: format properly using specialisation https://fmt.dev/latest/api.html#udt
 inline auto format_as(DataToStringMethod dtsm) { return fmt::underlying(dtsm); }
 inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod method = DataToStringMethod::Hex)
@@ -537,6 +537,8 @@ inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod met
 			return std::string(chardata,OSB.size());
 		case DataToStringMethod::Hex:
 			return buf2hex(rawdata,OSB.size());
+		case DataToStringMethod::Base64:
+			return b64encode(rawdata,OSB.size());
 		default:
 			return fmt::format("Unsupported DataToStringMethod: {}",method);
 	}

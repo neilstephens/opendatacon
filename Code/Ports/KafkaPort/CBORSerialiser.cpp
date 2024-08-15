@@ -141,7 +141,7 @@ void CBORSerialiser::CheckForPlaceholder(const std::string_view& str, bool isKey
 	}
 }
 
-const std::vector<uint8_t> CBORSerialiser::Encode(std::shared_ptr<const EventInfo> event, const std::string& SenderName, const ExtraPointFields& extra_fields) const
+const std::vector<uint8_t> CBORSerialiser::Encode(std::shared_ptr<const EventInfo> event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S) const
 {
 	auto StringIt = Strings.begin();
 	auto UIntIt = UInts.begin();
@@ -168,13 +168,13 @@ const std::vector<uint8_t> CBORSerialiser::Encode(std::shared_ptr<const EventInf
 				encoder.uint64_value(event->GetTimestamp());
 				break;
 			case EncodeOps::DATETIME:
-				encoder.string_value(odc::since_epoch_to_datetime(event->GetTimestamp()));
+				encoder.string_value(odc::since_epoch_to_datetime(event->GetTimestamp(),dt_fmt));
 				break;
 			case EncodeOps::QUALITY:
 				encoder.string_value(ToString(event->GetQuality()));
 				break;
 			case EncodeOps::PAYLOAD_STRING:
-				encoder.string_value(event->GetPayloadString());
+				encoder.string_value(event->GetPayloadString(D2S));
 				break;
 			case EncodeOps::PAYLOAD:
 				EncodePayload(event,encoder);

@@ -73,19 +73,17 @@ public:
 	EventTranslationMethod TranslationMethod = EventTranslationMethod::Template;
 	bool BlockUnknownPoints = false;
 	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
+	DataToStringMethod OctetStringFormat = DataToStringMethod::Base64;
+	std::string DateTimeFormat = "%Y-%m-%d %H:%M:%S.%e";
 
 	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
 	//	then accessed by multiple threads in Event, so it needs to be const
 	std::unique_ptr<const PointTranslationMap> pPointMap = nullptr;
 	bool OverridesCreateNewPTMEntries = false;
 
-	//TODO: Option for DateTime formatting string
-	//TODO: Option for OctetString formatting mode
 	//TODO: make key dynamic, like the value
-	//TODO: Support Range incrementer in point translation map
 	//TODO: Support for Lua translation
 	//TODO: Support for Template {} vs <> for std::format specifiers
-	//TODO: Option for PTM overrides not create new entries
 };
 
 #endif /* KafkaPortConf_H_ */
