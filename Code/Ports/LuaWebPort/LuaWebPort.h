@@ -30,6 +30,12 @@
 #include <Lua/DynamicSymbols.h>
 #include <Lua/CLua.h>
 #include <opendatacon/DataPort.h>
+#include "WebHelpers.h"
+#include <opendatacon/TCPSocketManager.h>
+#include <regex>
+#include <shared_mutex>
+#include <queue>
+#include <string_view>
 
 using namespace odc;
 
@@ -59,6 +65,19 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 private:
+	void LoadRequestParams(std::shared_ptr<WebServer::Request> request);
+	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
+		std::shared_ptr<WebServer::Request> request);
+
+	WebServer *WebSrv;
+
+	/*Param Collection with POST from client side*/
+	ParamCollection params;
+	void HandleCommand(const std::string& url, std::function<void(const Json::Value&&)> result_cb);
+
+	//TODO: These could be per web session
+	void ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss);
+	bool IsCommand(const std::string& url);
 	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 
 	//copy this to posted handlers so we can manage lifetime

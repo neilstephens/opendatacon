@@ -135,6 +135,11 @@ LuaWebPort::LuaWebPort(const std::string& aName, const std::string& aConfFilenam
 {
 	pConf = std::make_unique<LuaWebPortConf>();
 	ProcessFile();
+
+	auto pConf = static_cast<LuaWebPortConf*>(this->pConf.get());
+	const std::string& web_crt = pConf->web_crt;
+	const std::string& web_key = pConf->web_key;
+	WebSrv = new ::WebServer(OPTIONAL_CERTS);
 }
 
 LuaWebPort::~LuaWebPort()
@@ -146,16 +151,33 @@ LuaWebPort::~LuaWebPort()
 		pIOS->poll_one();
 
 	lua_close(LuaState);
+	delete WebSrv;
 }
 
 //only called on Lua sync strand
 void LuaWebPort::Enable_()
 {
+	// Starts a thread for the webserver to process stuff on. See comment below.
+	std::thread server_thread([this]()
+		{
+			// Start server
+			WebSrv->start([](unsigned short port)
+				{
+					if (auto log = odc::spdlog_get("LuaWebPort"))
+						log->info("Simple Web Server listening on port {}.", port);
+				});
+		});
+
+	//TODO/FIXME: make thread a member, so we can join it on disable/shutdown
+	//detaching not so bad for the moment
+	server_thread.detach();
+
 	CallLuaGlobalVoidVoidFunc("Enable");
 }
 //only called on Lua sync strand
 void LuaWebPort::Disable_()
 {
+	WebSrv->stop();
 	CallLuaGlobalVoidVoidFunc("Disable");
 	//Force garbage collection now. Lingering shared_ptr finalizers can block shutdown etc
 	lua_gc(LuaState,LUA_GCCOLLECT);
@@ -197,6 +219,23 @@ void LuaWebPort::Build()
 		if(!lua_isfunction(LuaState, -1))
 			throw std::runtime_error(Name+": Lua code doesn't have '"+func_name+"' function.");
 	}
+
+	WebSrv->config.port = pConf->port;
+
+	//make a handler that simply posts the work and returns
+	// we don't want the web server thread doing any actual work
+	// because ODC needs full control via the main thread pool
+	auto request_handler = [this](std::shared_ptr<WebServer::Response> response,
+	                              std::shared_ptr<WebServer::Request> request)
+				     {
+					     pIOS->post([this, response, request]() {DefaultRequestHandler(response, request); });
+				     };
+
+	//TODO: we could use non-default resources to regex match the URL
+	// then we could get rid of the URL parsing code in the handler
+	// in favour of the regex match groups, and post the ultimate handlers directly
+	WebSrv->default_resource["GET"] = request_handler;
+	WebSrv->default_resource["POST"] = request_handler;
 
 	CallLuaGlobalVoidVoidFunc("Build");
 }
@@ -370,4 +409,130 @@ void LuaWebPort::CallLuaGlobalVoidVoidFunc(const std::string& FnName)
 			log->error("{}: Lua {}() call error: {}",Name,FnName,err);
 		lua_pop(LuaState,1);
 	}
+}
+// Can SimpleWebServer do this for us?
+void LuaWebPort::LoadRequestParams(std::shared_ptr<WebServer::Request> request)
+{
+	params.clear();
+	if (request->method == "POST" && request->content.size() > 0)
+	{
+		auto type_pair_it = request->header.find("Content-Type");
+		if (type_pair_it != request->header.end())
+		{
+			if (type_pair_it->second.find("application/x-www-form-urlencoded") != type_pair_it->second.npos)
+			{
+				auto content = SimpleWeb::QueryString::parse(request->content.string());
+				for (auto& content_pair : content)
+					params[content_pair.first] = content_pair.second;
+			}
+			else if (type_pair_it->second.find("application/json") != type_pair_it->second.npos)
+			{
+				Json::CharReaderBuilder JSONReader;
+				std::string err_str;
+				Json::Value Payload;
+				bool parse_success = Json::parseFromStream(JSONReader, request->content, &Payload, &err_str);
+				if (parse_success)
+				{
+					try
+					{
+						if (Payload.isObject())
+						{
+							for (auto& membername : Payload.getMemberNames())
+								params[membername] = Payload[membername].asString();
+						}
+						else
+							throw std::runtime_error("Payload isn't object");
+					}
+					catch (std::exception& e)
+					{
+						if (auto log = odc::spdlog_get("WebUI"))
+							log->error("JSON POST paylod not suitable: {} : '{}'", e.what(), Payload.toStyledString());
+					}
+				}
+				else if (auto log = odc::spdlog_get("WebUI"))
+					log->error("Failed to parse POST payload as JSON: {}", err_str);
+			}
+			else if (auto log = odc::spdlog_get("WebUI"))
+				log->error("unsupported POST 'Content-Type' : '{}'", type_pair_it->second);
+		}
+		else if (auto log = odc::spdlog_get("WebUI"))
+			log->error("POST has no 'Content-Type'");
+	}
+}
+
+void LuaWebPort::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
+	std::shared_ptr<WebServer::Request> request)
+{
+	LoadRequestParams(request);
+
+	auto raw_path = SimpleWeb::Percent::decode(request->path);
+	if (IsCommand(raw_path))
+	{
+		HandleCommand(raw_path, [response](const Json::Value&& json_resp)
+			{
+				SimpleWeb::CaseInsensitiveMultimap header;
+				header.emplace("Content-Type", "application/json");
+
+				Json::StreamWriterBuilder wbuilder;
+				wbuilder["commentStyle"] = "None";
+				auto str_resp = Json::writeString(wbuilder, json_resp);
+
+				response->write(str_resp, header);
+			});
+	}
+}
+
+void LuaWebPort::HandleCommand(const std::string& url, std::function<void(const Json::Value&&)> result_cb)
+{
+	std::stringstream iss;
+	std::string responder;
+	std::string command;
+	ParseURL(url, responder, command, iss);
+
+	//if (Responders.find(responder) != Responders.end())
+	//{
+	//	//ExecuteCommand(Responders[responder], command, iss, result_cb);
+	//	pass;
+	//}
+	//else
+	{
+		Json::Value value;
+		value["Result"] = "Responder not available.";
+		result_cb(std::move(value));
+	}
+}
+
+void LuaWebPort::ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss)
+{
+	std::stringstream iss(url);
+	iss.get(); //throw away leading '/'
+	iss >> responder;
+	iss >> command;
+	std::string params;
+	std::string w;
+	while (iss >> w)
+		params += w + " ";
+	if (!params.empty() && params[params.size() - 1] == ' ')
+	{
+		params = params.substr(0, params.size() - 1);
+	}
+	std::stringstream ss_temp(params);
+	ss << ss_temp.rdbuf();
+}
+
+bool LuaWebPort::IsCommand(const std::string& url)
+{
+	std::stringstream iss(url);
+	std::string responder;
+	std::string command;
+	iss.get(); //throw away leading '/'
+	iss >> responder >> command;
+	bool result = false;
+	//if ((Responders.find(responder) != Responders.end()) ||
+	//	(RootCommands.find(command) != RootCommands.end()) ||
+	//	responder == "WebUICommand")
+	//{
+	//	result = true;
+	//}
+	return result;
 }
