@@ -51,6 +51,10 @@ if(LUAPORT)
 add_subdirectory(LuaPort_tests)
 endif()
 
+if(LUAWEBPORT)
+add_subdirectory(LuaWebPort_tests)
+endif()
+
 if(FULL)
 add_subdirectory(Integration_tests)
 endif()

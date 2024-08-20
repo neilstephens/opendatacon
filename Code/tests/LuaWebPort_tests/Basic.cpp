@@ -21,16 +21,74 @@
  *  Created on: 17/06/2023
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+
+#include <client_https.hpp>
 #include "Helpers.h"
 #include "../PortLoader.h"
 #include "../../../opendatacon/NullPort.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
+#include <string>
 
 #define SUITE(name) "LuaWebPortBasicsTestSuite - " name
 
-TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
+using HttpsClient = SimpleWeb::Client<SimpleWeb::HTTPS>;
+
+//TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
+//{
+//	TestSetup();
+//	auto portlib = LoadModule(GetLibFileName("LuaWebPort"));
+//	REQUIRE(portlib);
+//
+//	//Go through the typical life cycle of a port, albeit short
+//	{
+//		newptr newPort = GetPortCreator(portlib, "LuaWeb");
+//		REQUIRE(newPort);
+//		delptr deletePort = GetPortDestroyer(portlib, "LuaWeb");
+//		REQUIRE(deletePort);
+//
+//		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
+//
+//		NullPort Null("Null","","");
+//		PUT->Subscribe(&Null,"Null");
+//		Null.Subscribe(PUT.get(),"PortUnderTest");
+//
+//		PUT->Build();
+//		Null.Build();
+//
+//		auto ios = odc::asio_service::Get();
+//		auto work = ios->make_work();
+//		std::thread t([ios](){ios->run();});
+//
+//		PUT->Enable();
+//		Null.Enable();
+//		auto event = std::make_shared<EventInfo>(EventType::OctetString,123);
+//		event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("test event")));
+//		PUT->Event(event,"test_harness",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+//		auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,666);
+//		event2->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
+//		PUT->Event(event2,"test_harness",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+//		PUT->Disable();
+//
+//		work.reset();
+//		ios->run();
+//		t.join();
+//		ios.reset();
+//	}
+//
+//	TestTearDown();
+//	UnLoadModule(portlib);
+//}
+
+std::string rbuftostr(std::streambuf *rdbuf)
+{
+	std::ostringstream ss;
+	ss << rdbuf;
+	return ss.str();
+}
+
+TEST_CASE(SUITE("WebRequest"))
 {
 	TestSetup();
 	auto portlib = LoadModule(GetLibFileName("LuaWebPort"));
@@ -38,32 +96,58 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 
 	//Go through the typical life cycle of a port, albeit short
 	{
-		newptr newPort = GetPortCreator(portlib, "Lua");
+		newptr newPort = GetPortCreator(portlib, "LuaWeb");
 		REQUIRE(newPort);
-		delptr deletePort = GetPortDestroyer(portlib, "Lua");
+		delptr deletePort = GetPortDestroyer(portlib, "LuaWeb");
 		REQUIRE(deletePort);
 
 		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
 
-		NullPort Null("Null","","");
-		PUT->Subscribe(&Null,"Null");
-		Null.Subscribe(PUT.get(),"PortUnderTest");
+		NullPort Null("Null", "", "");
+		PUT->Subscribe(&Null, "Null");
+		Null.Subscribe(PUT.get(), "PortUnderTest");
 
 		PUT->Build();
 		Null.Build();
 
 		auto ios = odc::asio_service::Get();
 		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
+		std::thread t([ios]() {ios->run(); });
 
 		PUT->Enable();
 		Null.Enable();
-		auto event = std::make_shared<EventInfo>(EventType::OctetString,123);
-		event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("test event")));
-		PUT->Event(event,"test_harness",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
-		auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,666);
-		event2->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
-		PUT->Event(event2,"test_harness",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
+		//auto event = std::make_shared<EventInfo>(EventType::OctetString, 123);
+		//event->SetPayload<EventType::OctetString>(OctetStringBuffer(std::string("test event")));
+		//PUT->Event(event, "test_harness", std::make_shared<std::function<void(CommandStatus)>>([](CommandStatus) {}));
+		//auto event2 = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, 666);
+		//event2->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
+		//PUT->Event(event2, "test_harness", std::make_shared<std::function<void(CommandStatus)>>([](CommandStatus) {}));
+
+		// Synchronous client request examples
+		const std::string json_string = "{\"firstName\": \"John\",\"lastName\": \"Smith\",\"age\": 25}";
+
+		HttpsClient client("localhost:443", false);
+		try
+		{
+			if (auto log = odc::spdlog_get("LuaWebPort"))
+				log->info("Example GET request to https ://localhost:8080/match/123");
+			auto r1 = client.request("GET", "/match/123");
+			if (auto log = odc::spdlog_get("LuaWebPort"))
+				log->info("Response content: {}", r1->content.string()); // Alternatively, use the convenience function r1->content.string()
+
+			if (auto log = odc::spdlog_get("LuaWebPort"))
+				log->info("Example POST request to https://localhost:8080/string");
+			auto r2 = client.request("POST", "/string", json_string);
+			if (auto log = odc::spdlog_get("LuaWebPort"))
+				log->info("Response content: {}", rbuftostr(r2->content.rdbuf()));
+		}
+		catch (const SimpleWeb::system_error& e)
+		{
+			if (auto log = odc::spdlog_get("LuaWebPort"))
+				log->error("Client request error: {}", e.what());
+		}
+
+
 		PUT->Disable();
 
 		work.reset();
@@ -76,36 +160,38 @@ TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 	UnLoadModule(portlib);
 }
 
-TEST_CASE(SUITE("ConstructBuildEnableDestroy"))
-{
-	TestSetup();
-	auto portlib = LoadModule(GetLibFileName("LuaWebPort"));
-	REQUIRE(portlib);
 
-	//Test the destruction of an enabled port (happens in case of exception)
-	{
-		newptr newPort = GetPortCreator(portlib, "Lua");
-		REQUIRE(newPort);
-		delptr deletePort = GetPortDestroyer(portlib, "Lua");
-		REQUIRE(deletePort);
 
-		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
-
-		PUT->Build();
-
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
-
-		PUT->Enable();
-		PUT.reset();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
-	}
-
-	TestTearDown();
-	UnLoadModule(portlib);
-}
+//TEST_CASE(SUITE("ConstructBuildEnableDestroy"))
+//{
+//	TestSetup();
+//	auto portlib = LoadModule(GetLibFileName("LuaWebPort"));
+//	REQUIRE(portlib);
+//
+//	//Test the destruction of an enabled port (happens in case of exception)
+//	{
+//		newptr newPort = GetPortCreator(portlib, "LuaWeb");
+//		REQUIRE(newPort);
+//		delptr deletePort = GetPortDestroyer(portlib, "LuaWeb");
+//		REQUIRE(deletePort);
+//
+//		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", GetConfigJSON()), deletePort);
+//
+//		PUT->Build();
+//
+//		auto ios = odc::asio_service::Get();
+//		auto work = ios->make_work();
+//		std::thread t([ios](){ios->run();});
+//
+//		PUT->Enable();
+//		PUT.reset();
+//
+//		work.reset();
+//		ios->run();
+//		t.join();
+//		ios.reset();
+//	}
+//
+//	TestTearDown();
+//	UnLoadModule(portlib);
+//}

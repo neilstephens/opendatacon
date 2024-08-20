@@ -136,14 +136,21 @@ LuaWebPort::LuaWebPort(const std::string& aName, const std::string& aConfFilenam
 	pConf = std::make_unique<LuaWebPortConf>();
 	ProcessFile();
 
+	// There are defaults for testing if the conf information is missing for the WebServer
 	auto pConf = static_cast<LuaWebPortConf*>(this->pConf.get());
 	const std::string& web_crt = pConf->web_crt;
 	const std::string& web_key = pConf->web_key;
-	WebSrv = new ::WebServer(OPTIONAL_CERTS);
+	WebSrv = make_shared<WebServer>(OPTIONAL_CERTS);
 }
 
 LuaWebPort::~LuaWebPort()
 {
+	// SJE: Need to ask Neil about this - test locks up if Disable is not called before the ptr is released
+	if (enabled)
+	{
+		Disable_();
+	}
+
 	//Wait for outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
@@ -151,7 +158,6 @@ LuaWebPort::~LuaWebPort()
 		pIOS->poll_one();
 
 	lua_close(LuaState);
-	delete WebSrv;
 }
 
 //only called on Lua sync strand
@@ -237,7 +243,31 @@ void LuaWebPort::Build()
 	WebSrv->default_resource["GET"] = request_handler;
 	WebSrv->default_resource["POST"] = request_handler;
 
-	CallLuaGlobalVoidVoidFunc("Build");
+	// GET-example for the path /match/[number], responds with the matched string in path (number)
+	// For instance a request GET /match/123 will receive: 123
+	// For Test Code
+	WebSrv->resource["^/match/([0-9]+)$"]["GET"] = [](std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
+								     {
+									     response->write(request->path_match[1].str());
+								     };
+
+	// Add resources using path-regex and method-string, and an anonymous function
+	// POST-example for the path /string, responds the posted string
+	WebSrv->resource["^/string$"]["POST"] = [](std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
+							    {
+								    // Retrieve string:
+								    auto content = request->content.string();
+								    // request->content.string() is a convenience function for:
+								    // stringstream ss;
+								    // ss << request->content.rdbuf();
+								    // auto content=ss.str();
+
+								    *response << "HTTP/1.1 200 OK\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
+								    // Alternatively, use one of the convenience functions, for instance:
+								    // response->write(content);
+							    };
+
+	CallLuaGlobalVoidVoidFunc("Build"); // In here the lua code will be able to add resources to the web server.
 }
 
 //only called on Lua sync strand

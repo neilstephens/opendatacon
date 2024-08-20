@@ -69,7 +69,7 @@ private:
 	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
 		std::shared_ptr<WebServer::Request> request);
 
-	WebServer *WebSrv;
+	std::shared_ptr <WebServer> WebSrv;
 
 	/*Param Collection with POST from client side*/
 	ParamCollection params;
