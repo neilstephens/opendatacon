@@ -137,7 +137,7 @@ TEST_CASE(SUITE("WebRequest"))
 
 			if (auto log = odc::spdlog_get("LuaWebPort"))
 				log->info("Example POST request to https://localhost:8080/string");
-			auto r2 = client.request("POST", "/string", json_string);
+			auto r2 = client.request("POST", "/string?arg=1&another=2", json_string);
 			if (auto log = odc::spdlog_get("LuaWebPort"))
 				log->info("Response content: {}", rbuftostr(r2->content.rdbuf()));
 		}

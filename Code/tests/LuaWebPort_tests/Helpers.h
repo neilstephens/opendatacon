@@ -68,7 +68,7 @@ inline void TestTearDown()
 inline Json::Value GetConfigJSON()
 {
 	Json::Value json_conf;
-	json_conf["LuaFile"] = "LuaPortDoco.lua";
+	json_conf["LuaFile"] = "LuaWebPortTests.lua";
 	return json_conf;
 }
 

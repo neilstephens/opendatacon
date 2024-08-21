@@ -19,8 +19,7 @@
  # 
 project(LuaWebPort_tests)
 
-# SJE Need a separate config file for this test
-set(CONF_FILE "${CMAKE_SOURCE_DIR}/ExampleConfig/SelfDocumentingLuaPort/LuaPortDoco.lua")
+set(CONF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/LuaWebPortTests.lua")
 get_filename_component(NOEXT ${CONF_FILE} NAME_WE)
 set(VAR_NAME ${NOEXT}_lua)
 message("Reading ${CONF_FILE} into ${VAR_NAME}")

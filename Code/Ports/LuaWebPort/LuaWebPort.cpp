@@ -253,19 +253,8 @@ void LuaWebPort::Build()
 
 	// Add resources using path-regex and method-string, and an anonymous function
 	// POST-example for the path /string, responds the posted string
-	WebSrv->resource["^/string$"]["POST"] = [](std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
-							    {
-								    // Retrieve string:
-								    auto content = request->content.string();
-								    // request->content.string() is a convenience function for:
-								    // stringstream ss;
-								    // ss << request->content.rdbuf();
-								    // auto content=ss.str();
-
-								    *response << "HTTP/1.1 200 OK\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
-								    // Alternatively, use one of the convenience functions, for instance:
-								    // response->write(content);
-							    };
+	// Testing the method that lua will call durign its build to add a handler
+	RegisterRequestHandler("^/string$", "POST", "TestLuaHandler");
 
 	CallLuaGlobalVoidVoidFunc("Build"); // In here the lua code will be able to add resources to the web server.
 }
@@ -347,6 +336,77 @@ void LuaWebPort::ProcessElements(const Json::Value& JSONRoot)
 		fout<<default_key_pem;
 		fout.flush();
 	}
+}
+
+typedef std::shared_ptr<std::function<void (std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)>> SharedRequestHandler;
+
+// So pass to this method the required parameters and a callback - how do we make the callback a lua function?
+void LuaWebPort::RegisterRequestHandler(const std::string urlpattern, const std::string method, const std::string LuaHandlerName)
+{
+	if (auto log = odc::spdlog_get("LuaWebPort"))
+		log->debug("Registering a lua web handler {} {} Lua Method {}", urlpattern, method, LuaHandlerName);
+
+	WebSrv->resource[urlpattern][method] = [this, urlpattern, method, LuaHandlerName](std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
+							   {
+								   // So set up everything necessary to call the lua method now. We cant type check it, just have to hope we are good.
+								   // We have to work out how to translate the request (could just be a string) and the response - has methods attached into a lua compatible method
+								   // The response needs to have stuff set.
+
+								   if (auto log = odc::spdlog_get("LuaWebPort"))
+									   log->debug("Calling a lua web handler {} {} Lua Method {}", urlpattern, method, LuaHandlerName);
+
+								   //Get ready to call the lua function
+								   lua_getglobal(LuaState, LuaHandlerName.c_str());
+
+								   auto path = request->path;
+								   auto query = request->query_string;
+								   auto content = request->content.string();
+								   auto contentlength = content.length();
+								   auto pathmatch = request->path_match;
+								   //first 3 string arguments
+								   // TestLuaHandler(method, path, query, contentlength, content)
+								   lua_pushstring(LuaState, method.c_str());
+								   lua_pushstring(LuaState, path.c_str());
+								   lua_pushstring(LuaState, query.c_str());
+								   lua_pushinteger(LuaState, contentlength);
+								   if (contentlength > 0)
+									   lua_pushlstring(LuaState, content.c_str(), contentlength); // Neil has a warning about 0 lentgh strings and this method
+								   else
+									   lua_pushstring(LuaState, content.c_str());
+
+								   //now call lua Event()
+								   const int argc = 5; const int retc = 0;
+								   auto ret = lua_pcall(LuaState, argc, retc, 0);
+								   if (ret != LUA_OK)
+								   {
+									   std::string err = lua_tostring(LuaState, -1);
+									   if (auto log = odc::spdlog_get("LuaWebPort"))
+										   log->error("{}: Lua Event() call error: {}", Name, err);
+									   lua_pop(LuaState, 1);
+								   }
+
+								   auto responsecontent = content;
+								   int ErrorCode = 0;
+								   auto responsecontenttype = "application/json";
+
+								   // So if we are just sending text with no need to specifiy type, just use the write(content)
+								   // However the type should probably always be specified, so make that the standard. default is application/octet-stream
+								   // We could also return an errorcode and an associated message
+								   // So the retun values from the lua code will be:
+								   // ErrorCode, ContentType, ContentLength, Content	// ErrorCode is in status_code.hpp from the SimpleWeb code - line 77 If it is 0, not error respond normally.
+								   // { "application/json", "application/xml", "text/html", "text/plain", "application/octet-stream" }
+								   if (ErrorCode == 0)
+								   {
+									   SimpleWeb::CaseInsensitiveMultimap header;
+									   header.emplace("Content-Length", std::to_string(responsecontent.length()));
+									   header.emplace("Content-Type", responsecontenttype);
+									   response->write(header);
+
+									   response->write(responsecontent); // Could be a http response - serving a web page, or xml or other.
+								   }
+								   else
+									   response->write(static_cast<SimpleWeb::StatusCode>(ErrorCode), responsecontent); // Write an error response...
+							   };
 }
 
 //This is only called from Build(), so no sync required.

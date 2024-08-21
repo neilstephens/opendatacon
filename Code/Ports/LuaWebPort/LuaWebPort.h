@@ -74,6 +74,7 @@ private:
 	/*Param Collection with POST from client side*/
 	ParamCollection params;
 	void HandleCommand(const std::string& url, std::function<void(const Json::Value&&)> result_cb);
+	void RegisterRequestHandler(const std::string urlpattern, const std::string method, const std::string LuaHandlerName);
 
 	//TODO: These could be per web session
 	void ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss);
@@ -84,7 +85,7 @@ private:
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	std::shared_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();
 
-	//synchronised versions of pubil counterparts above
+	//synchronised versions of public counterparts above
 	void Enable_();
 	void Disable_();
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
