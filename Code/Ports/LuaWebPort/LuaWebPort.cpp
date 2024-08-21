@@ -375,7 +375,7 @@ void LuaWebPort::RegisterRequestHandler(const std::string urlpattern, const std:
 									   lua_pushstring(LuaState, content.c_str());
 
 								   //now call lua Event()
-								   const int argc = 5; const int retc = 0;
+								   const int argc = 5; const int retc = 4;
 								   auto ret = lua_pcall(LuaState, argc, retc, 0);
 								   if (ret != LUA_OK)
 								   {
@@ -383,22 +383,59 @@ void LuaWebPort::RegisterRequestHandler(const std::string urlpattern, const std:
 									   if (auto log = odc::spdlog_get("LuaWebPort"))
 										   log->error("{}: Lua Event() call error: {}", Name, err);
 									   lua_pop(LuaState, 1);
+									   response->write(SimpleWeb::StatusCode::server_error_internal_server_error, err); // Write an error response...
+									   return;
 								   }
 
-								   auto responsecontent = content;
-								   int ErrorCode = 0;
-								   auto responsecontenttype = "application/json";
+								   // Now recover the return values from the stack
+								   // ErrorCode, ContentType, ContentLength, Content	// ErrorCode is in status_code.hpp from the SimpleWeb code - line 77 If it is 0, not error respond normally.
+								   if (!lua_isinteger(LuaState, -4))
+								   {
+									   lua_pop(LuaState, retc);
+									   lua_gc(LuaState, LUA_GCCOLLECT);
+									   response->write(SimpleWeb::StatusCode::server_error_internal_server_error, "Incorrect return type encountered -4"); // Write an error response...
+									   return;
+								   }
+								   int ErrorCode = lua_tointeger(LuaState, -4);
+								   //auto t = lua_typename(LuaState, lua_type(LuaState, -1));
+
+								   if (!lua_isstring(LuaState, -3))
+								   {
+									   lua_pop(LuaState, retc);
+									   lua_gc(LuaState, LUA_GCCOLLECT);
+									   response->write(SimpleWeb::StatusCode::server_error_internal_server_error, "Incorrect return type encountered -3"); // Write an error response...
+									   return;
+								   }
+								   std::string responsecontenttype = lua_tostring(LuaState, -3);
+
+								   if (!lua_isinteger(LuaState, -2))
+								   {
+									   lua_pop(LuaState, retc);
+									   lua_gc(LuaState, LUA_GCCOLLECT);
+									   response->write(SimpleWeb::StatusCode::server_error_internal_server_error, "Incorrect return type encountered -2"); // Write an error response...
+									   return;
+								   }
+								   int responsecontentlength = lua_tointeger(LuaState, -2);
+
+								   if (!lua_isstring(LuaState, -1))
+								   {
+									   lua_pop(LuaState, retc);
+									   lua_gc(LuaState, LUA_GCCOLLECT);
+									   response->write(SimpleWeb::StatusCode::server_error_internal_server_error, "Incorrect return type encountered -1"); // Write an error response...
+									   return;
+								   }
+								   size_t resplen = responsecontentlength;
+								   std::string responsecontent = lua_tolstring(LuaState, -1, &resplen);
+
+								   lua_pop(LuaState, retc);
 
 								   // So if we are just sending text with no need to specifiy type, just use the write(content)
 								   // However the type should probably always be specified, so make that the standard. default is application/octet-stream
-								   // We could also return an errorcode and an associated message
-								   // So the retun values from the lua code will be:
-								   // ErrorCode, ContentType, ContentLength, Content	// ErrorCode is in status_code.hpp from the SimpleWeb code - line 77 If it is 0, not error respond normally.
 								   // { "application/json", "application/xml", "text/html", "text/plain", "application/octet-stream" }
 								   if (ErrorCode == 0)
 								   {
 									   SimpleWeb::CaseInsensitiveMultimap header;
-									   header.emplace("Content-Length", std::to_string(responsecontent.length()));
+									   header.emplace("Content-Length", std::to_string(responsecontentlength));
 									   header.emplace("Content-Type", responsecontenttype);
 									   response->write(header);
 

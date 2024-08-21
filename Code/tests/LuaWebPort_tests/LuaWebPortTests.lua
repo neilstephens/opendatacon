@@ -47,6 +47,11 @@ end
 function TestLuaHandler(method, path, query, contentlength, content)
 
     odc.log.info("Made it into the TestLuaHandler : "..method.." - "..path.." - "..query.." - "..contentlength.." - "..content);
+    ErrorCode = 0;
+    ContentType = "application/json";
+    Content = content;
+    ContentLength = contentlength;
+    return ErrorCode, ContentType, ContentLength, Content;
 end
 
 function do_example_stuff()
