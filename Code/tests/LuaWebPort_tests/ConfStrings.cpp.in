@@ -24,7 +24,7 @@ void PrepConfFiles(bool init)
 {
 	static std::map<const char*,const char*> conf_map;
 
-	conf_map["LuaPortDoco.lua"] =  R"001(@LuaPortDoco_lua@)001";
+	conf_map["LuaWebPortTests.lua"] =  R"001(@LuaWebPortTests_lua@)001";
 
 	WriteConfMap(conf_map, init);
 }

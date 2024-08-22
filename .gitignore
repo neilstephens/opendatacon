@@ -12,3 +12,4 @@ build/*
 GPATH
 GRTAGS
 GTAGS
+Code/tests/LuaWebPort_tests/ConfStrings.cpp
