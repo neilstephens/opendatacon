@@ -140,6 +140,12 @@ TEST_CASE(SUITE("WebRequest"))
 			auto r2 = client.request("POST", "/string?arg=1&another=2", json_string);
 			if (auto log = odc::spdlog_get("LuaWebPort"))
 				log->info("Response content: {}", rbuftostr(r2->content.rdbuf()));
+
+			if (auto log = odc::spdlog_get("LuaWebPort"))
+				log->info("Example GET request to https ://localhost:8080/fail");
+			auto r3 = client.request("GET", "/fail");
+			if (auto log = odc::spdlog_get("LuaWebPort"))
+				log->info("Response content: {}", r3->content.string()); // Alternatively, use the convenience function r1->content.string()
 		}
 		catch (const SimpleWeb::system_error& e)
 		{

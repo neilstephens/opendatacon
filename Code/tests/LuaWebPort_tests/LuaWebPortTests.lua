@@ -18,6 +18,8 @@ end
 function Build()
   -- The port config from the opendatacon conf file is available as a Lua table
 	odc.log.info("Build()");
+    odc.RegisterRequestHandler("^/string$", "POST", "TestPOSTLuaHandler");
+	odc.RegisterRequestHandler("^/match/([0-9]+)$","GET", "TestGETLuaHandler");
     process_config_example();
 	return;
 end
@@ -44,9 +46,17 @@ end
 --------------------- Functions below are just for the purposes of this demo LuaPort
 --------------------- Only the four functions above are needed by the opendatacon port interface
 
-function TestLuaHandler(method, path, query, contentlength, content)
+function TestGETLuaHandler(method, path, query, contentlength, content)
+    odc.log.info("Made it into the TestGETLuaHandler : "..method.." - "..path.." - "..query.." - "..contentlength.." - "..content);
+    ErrorCode = 0;
+    ContentType = "text/plain";
+    Content = path;
+    ContentLength = string.len(path);
+    return ErrorCode, ContentType, ContentLength, Content;
+end
 
-    odc.log.info("Made it into the TestLuaHandler : "..method.." - "..path.." - "..query.." - "..contentlength.." - "..content);
+function TestPOSTLuaHandler(method, path, query, contentlength, content)
+    odc.log.info("Made it into the TestPOSTLuaHandler : "..method.." - "..path.." - "..query.." - "..contentlength.." - "..content);
     ErrorCode = 0;
     ContentType = "application/json";
     Content = content;

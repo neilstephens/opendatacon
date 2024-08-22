@@ -63,22 +63,12 @@ public:
 	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
+	void RegisterRequestHandler(const std::string& urlpattern, const std::string& method, const std::string& LuaHandlerName);
 
 private:
-	void LoadRequestParams(std::shared_ptr<WebServer::Request> request);
-	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
-		std::shared_ptr<WebServer::Request> request);
+	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request);
 
 	std::shared_ptr <WebServer> WebSrv;
-
-	/*Param Collection with POST from client side*/
-	ParamCollection params;
-	void HandleCommand(const std::string& url, std::function<void(const Json::Value&&)> result_cb);
-	void RegisterRequestHandler(const std::string urlpattern, const std::string method, const std::string LuaHandlerName);
-
-	//TODO: These could be per web session
-	void ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss);
-	bool IsCommand(const std::string& url);
 	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 
 	//copy this to posted handlers so we can manage lifetime
@@ -91,6 +81,7 @@ private:
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	void ExportLuaPublishEvent();
+	void ExportLuaRegisterRequestHandler();
 	void ExportLuaInDemand();
 	void CallLuaGlobalVoidVoidFunc(const std::string& FnName);
 

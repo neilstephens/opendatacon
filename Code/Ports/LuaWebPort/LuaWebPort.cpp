@@ -206,6 +206,7 @@ void LuaWebPort::Build()
 	lua_setglobal(LuaState,"odc");
 
 	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaWebPort");
+	ExportLuaRegisterRequestHandler();
 	ExportLuaPublishEvent();
 	ExportLuaInDemand();
 	luaL_openlibs(LuaState);
@@ -231,6 +232,7 @@ void LuaWebPort::Build()
 	//make a handler that simply posts the work and returns
 	// we don't want the web server thread doing any actual work
 	// because ODC needs full control via the main thread pool
+	// SJE: Do we need to do this for regsitered lua handlers?
 	auto request_handler = [this](std::shared_ptr<WebServer::Response> response,
 	                              std::shared_ptr<WebServer::Request> request)
 				     {
@@ -242,19 +244,6 @@ void LuaWebPort::Build()
 	// in favour of the regex match groups, and post the ultimate handlers directly
 	WebSrv->default_resource["GET"] = request_handler;
 	WebSrv->default_resource["POST"] = request_handler;
-
-	// GET-example for the path /match/[number], responds with the matched string in path (number)
-	// For instance a request GET /match/123 will receive: 123
-	// For Test Code
-	WebSrv->resource["^/match/([0-9]+)$"]["GET"] = [](std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
-								     {
-									     response->write(request->path_match[1].str());
-								     };
-
-	// Add resources using path-regex and method-string, and an anonymous function
-	// POST-example for the path /string, responds the posted string
-	// Testing the method that lua will call durign its build to add a handler
-	RegisterRequestHandler("^/string$", "POST", "TestLuaHandler");
 
 	CallLuaGlobalVoidVoidFunc("Build"); // In here the lua code will be able to add resources to the web server.
 }
@@ -341,7 +330,7 @@ void LuaWebPort::ProcessElements(const Json::Value& JSONRoot)
 typedef std::shared_ptr<std::function<void (std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)>> SharedRequestHandler;
 
 // So pass to this method the required parameters and a callback - how do we make the callback a lua function?
-void LuaWebPort::RegisterRequestHandler(const std::string urlpattern, const std::string method, const std::string LuaHandlerName)
+void LuaWebPort::RegisterRequestHandler(const std::string &urlpattern, const std::string &method, const std::string &LuaHandlerName)
 {
 	if (auto log = odc::spdlog_get("LuaWebPort"))
 		log->debug("Registering a lua web handler {} {} Lua Method {}", urlpattern, method, LuaHandlerName);
@@ -363,7 +352,7 @@ void LuaWebPort::RegisterRequestHandler(const std::string urlpattern, const std:
 								   auto content = request->content.string();
 								   auto contentlength = content.length();
 								   auto pathmatch = request->path_match;
-								   //first 3 string arguments
+
 								   // TestLuaHandler(method, path, query, contentlength, content)
 								   lua_pushstring(LuaState, method.c_str());
 								   lua_pushstring(LuaState, path.c_str());
@@ -397,7 +386,7 @@ void LuaWebPort::RegisterRequestHandler(const std::string urlpattern, const std:
 									   return;
 								   }
 								   int ErrorCode = lua_tointeger(LuaState, -4);
-								   //auto t = lua_typename(LuaState, lua_type(LuaState, -1));
+								   //auto t = lua_typename(LuaState, lua_type(LuaState, -1));	// Useful for checking what is going on
 
 								   if (!lua_isstring(LuaState, -3))
 								   {
@@ -444,6 +433,54 @@ void LuaWebPort::RegisterRequestHandler(const std::string urlpattern, const std:
 								   else
 									   response->write(static_cast<SimpleWeb::StatusCode>(ErrorCode), responsecontent); // Write an error response...
 							   };
+}
+
+//This is only called from Build(), so no sync required. Will return true or false is we fail
+void LuaWebPort::ExportLuaRegisterRequestHandler()
+{
+	lua_getglobal(LuaState, "odc");
+	//push closure with one upvalue (to capture 'this')
+	lua_pushlightuserdata(LuaState, this);
+	lua_pushcclosure(LuaState, [](lua_State* const L) -> int
+		{
+			//retrieve 'this'
+			auto self = static_cast<LuaWebPort*>(lua_touserdata(L, lua_upvalueindex(1)));
+			std::string urlpattern, method, LuaHandlerName;
+
+			// Arguments: const std::string urlpattern, const std::string method, const std::string LuaHandlerName
+			if (lua_isstring(L, 1))
+			{
+				urlpattern = lua_tostring(L, 1);
+			}
+			else
+			{
+				lua_pushboolean(L, false); // Return false...
+				return 1;
+			}
+			if (lua_isstring(L, 2))
+			{
+				method = lua_tostring(L, 2);
+			}
+			else
+			{
+				lua_pushboolean(L, false);
+				return 1;
+			}
+			if (lua_isstring(L, 3))
+			{
+				LuaHandlerName = lua_tostring(L, 3);
+			}
+			else
+			{
+				lua_pushboolean(L, false);
+				return 1;
+			}
+			self->RegisterRequestHandler(urlpattern, method, LuaHandlerName); // SJE: Has to be const to get it complie, but is it really???
+
+			lua_pushboolean(L, true);
+			return 1; //number of lua ret vals pushed onto the stack
+		}, 1);
+	lua_setfield(LuaState, -2, "RegisterRequestHandler");
 }
 
 //This is only called from Build(), so no sync required.
@@ -537,129 +574,14 @@ void LuaWebPort::CallLuaGlobalVoidVoidFunc(const std::string& FnName)
 		lua_pop(LuaState,1);
 	}
 }
-// Can SimpleWebServer do this for us?
-void LuaWebPort::LoadRequestParams(std::shared_ptr<WebServer::Request> request)
+
+void LuaWebPort::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
 {
-	params.clear();
-	if (request->method == "POST" && request->content.size() > 0)
-	{
-		auto type_pair_it = request->header.find("Content-Type");
-		if (type_pair_it != request->header.end())
-		{
-			if (type_pair_it->second.find("application/x-www-form-urlencoded") != type_pair_it->second.npos)
-			{
-				auto content = SimpleWeb::QueryString::parse(request->content.string());
-				for (auto& content_pair : content)
-					params[content_pair.first] = content_pair.second;
-			}
-			else if (type_pair_it->second.find("application/json") != type_pair_it->second.npos)
-			{
-				Json::CharReaderBuilder JSONReader;
-				std::string err_str;
-				Json::Value Payload;
-				bool parse_success = Json::parseFromStream(JSONReader, request->content, &Payload, &err_str);
-				if (parse_success)
-				{
-					try
-					{
-						if (Payload.isObject())
-						{
-							for (auto& membername : Payload.getMemberNames())
-								params[membername] = Payload[membername].asString();
-						}
-						else
-							throw std::runtime_error("Payload isn't object");
-					}
-					catch (std::exception& e)
-					{
-						if (auto log = odc::spdlog_get("WebUI"))
-							log->error("JSON POST paylod not suitable: {} : '{}'", e.what(), Payload.toStyledString());
-					}
-				}
-				else if (auto log = odc::spdlog_get("WebUI"))
-					log->error("Failed to parse POST payload as JSON: {}", err_str);
-			}
-			else if (auto log = odc::spdlog_get("WebUI"))
-				log->error("unsupported POST 'Content-Type' : '{}'", type_pair_it->second);
-		}
-		else if (auto log = odc::spdlog_get("WebUI"))
-			log->error("POST has no 'Content-Type'");
-	}
+	std::string responsestr("This call has fallen through to the default handler, no action has been taken");
+	SimpleWeb::CaseInsensitiveMultimap header;
+	header.emplace("Content-Length", std::to_string(responsestr.length()));
+	header.emplace("Content-Type", "text/plain");
+	response->write(header);
+	response->write(responsestr);
 }
 
-void LuaWebPort::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
-	std::shared_ptr<WebServer::Request> request)
-{
-	LoadRequestParams(request);
-
-	auto raw_path = SimpleWeb::Percent::decode(request->path);
-	if (IsCommand(raw_path))
-	{
-		HandleCommand(raw_path, [response](const Json::Value&& json_resp)
-			{
-				SimpleWeb::CaseInsensitiveMultimap header;
-				header.emplace("Content-Type", "application/json");
-
-				Json::StreamWriterBuilder wbuilder;
-				wbuilder["commentStyle"] = "None";
-				auto str_resp = Json::writeString(wbuilder, json_resp);
-
-				response->write(str_resp, header);
-			});
-	}
-}
-
-void LuaWebPort::HandleCommand(const std::string& url, std::function<void(const Json::Value&&)> result_cb)
-{
-	std::stringstream iss;
-	std::string responder;
-	std::string command;
-	ParseURL(url, responder, command, iss);
-
-	//if (Responders.find(responder) != Responders.end())
-	//{
-	//	//ExecuteCommand(Responders[responder], command, iss, result_cb);
-	//	pass;
-	//}
-	//else
-	{
-		Json::Value value;
-		value["Result"] = "Responder not available.";
-		result_cb(std::move(value));
-	}
-}
-
-void LuaWebPort::ParseURL(const std::string& url, std::string& responder, std::string& command, std::stringstream& ss)
-{
-	std::stringstream iss(url);
-	iss.get(); //throw away leading '/'
-	iss >> responder;
-	iss >> command;
-	std::string params;
-	std::string w;
-	while (iss >> w)
-		params += w + " ";
-	if (!params.empty() && params[params.size() - 1] == ' ')
-	{
-		params = params.substr(0, params.size() - 1);
-	}
-	std::stringstream ss_temp(params);
-	ss << ss_temp.rdbuf();
-}
-
-bool LuaWebPort::IsCommand(const std::string& url)
-{
-	std::stringstream iss(url);
-	std::string responder;
-	std::string command;
-	iss.get(); //throw away leading '/'
-	iss >> responder >> command;
-	bool result = false;
-	//if ((Responders.find(responder) != Responders.end()) ||
-	//	(RootCommands.find(command) != RootCommands.end()) ||
-	//	responder == "WebUICommand")
-	//{
-	//	result = true;
-	//}
-	return result;
-}
