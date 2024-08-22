@@ -133,19 +133,19 @@ TEST_CASE(SUITE("WebRequest"))
 				log->info("Example GET request to https ://localhost:8080/match/123");
 			auto r1 = client.request("GET", "/match/123");
 			if (auto log = odc::spdlog_get("LuaWebPort"))
-				log->info("Response content: {}", r1->content.string()); // Alternatively, use the convenience function r1->content.string()
+				log->info("Response code {} header {} content: {}", r1->status_code, r1->header.size(), r1->content.string()); // Alternatively, use the convenience function r1->content.string()
 
 			if (auto log = odc::spdlog_get("LuaWebPort"))
 				log->info("Example POST request to https://localhost:8080/string");
 			auto r2 = client.request("POST", "/string?arg=1&another=2", json_string);
 			if (auto log = odc::spdlog_get("LuaWebPort"))
-				log->info("Response content: {}", rbuftostr(r2->content.rdbuf()));
+				log->info("Response code {} header {} content: {}", r2->status_code, r2->header.size(), rbuftostr(r2->content.rdbuf()));
 
 			if (auto log = odc::spdlog_get("LuaWebPort"))
 				log->info("Example GET request to https ://localhost:8080/fail");
 			auto r3 = client.request("GET", "/fail");
 			if (auto log = odc::spdlog_get("LuaWebPort"))
-				log->info("Response content: {}", r3->content.string()); // Alternatively, use the convenience function r1->content.string()
+				log->info("Response code {} header {} content: {}", r3->status_code, r3->header.size(), r3->content.string()); // Alternatively, use the convenience function r1->content.string()
 		}
 		catch (const SimpleWeb::system_error& e)
 		{
