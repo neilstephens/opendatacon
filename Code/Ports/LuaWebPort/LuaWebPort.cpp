@@ -192,6 +192,9 @@ void LuaWebPort::Disable_()
 //Build is called while there's only one active thread, so we don't need to sync access to LuaState here
 void LuaWebPort::Build()
 {
+	if (auto log = odc::spdlog_get("LuaWebPort"))
+		log->debug("LuaWebPortBuild entered");
+
 	//top level table "odc"
 	lua_newtable(LuaState);
 	{
@@ -421,15 +424,20 @@ void LuaWebPort::RegisterRequestHandler(const std::string &urlpattern, const std
 										   // { "application/json", "application/xml", "text/html", "text/plain", "application/octet-stream" }
 										   if (ErrorCode == 0)
 										   {
+											   if (auto log = odc::spdlog_get("LuaWebPort"))
+												   log->debug("Lua Web Handler {} Response: {}", urlpattern, responsecontent);
 											   SimpleWeb::CaseInsensitiveMultimap header;
 											   header.emplace("Content-Length", std::to_string(responsecontentlength));
 											   header.emplace("Content-Type", responsecontenttype);
-											   response->write(header);
 
-											   response->write(responsecontent); // Could be a http response - serving a web page, or xml or other.
+											   response->write(responsecontent, header); // Could be a http response - serving a web page, or xml or other.
 										   }
 										   else
+										   {
+											   if (auto log = odc::spdlog_get("LuaWebPort"))
+												   log->debug("Lua Web Handler {} Error Response: {} - {}", urlpattern, ErrorCode, responsecontent);
 											   response->write(static_cast<SimpleWeb::StatusCode>(ErrorCode), responsecontent); // Write an error response...
+										   }
 									   });
 							   };
 }
@@ -437,6 +445,8 @@ void LuaWebPort::RegisterRequestHandler(const std::string &urlpattern, const std
 //This is only called from Build(), so no sync required. Will return true or false is we fail
 void LuaWebPort::ExportLuaRegisterRequestHandler()
 {
+	if (auto log = odc::spdlog_get("LuaWebPort"))
+		log->debug("Exporting the lua web handler");
 	lua_getglobal(LuaState, "odc");
 	//push closure with one upvalue (to capture 'this')
 	lua_pushlightuserdata(LuaState, this);
@@ -453,6 +463,8 @@ void LuaWebPort::ExportLuaRegisterRequestHandler()
 			}
 			else
 			{
+				if (auto log = odc::spdlog_get("LuaWebPort"))
+					log->debug("Exporting the lua web handler - ERROR 1");
 				lua_pushboolean(L, false); // Return false...
 				return 1;
 			}
@@ -462,6 +474,8 @@ void LuaWebPort::ExportLuaRegisterRequestHandler()
 			}
 			else
 			{
+				if (auto log = odc::spdlog_get("LuaWebPort"))
+					log->debug("Exporting the lua web handler - ERROR 2");
 				lua_pushboolean(L, false);
 				return 1;
 			}
@@ -471,6 +485,8 @@ void LuaWebPort::ExportLuaRegisterRequestHandler()
 			}
 			else
 			{
+				if (auto log = odc::spdlog_get("LuaWebPort"))
+					log->debug("Exporting the lua web handler - ERROR 3");
 				lua_pushboolean(L, false);
 				return 1;
 			}
@@ -480,6 +496,8 @@ void LuaWebPort::ExportLuaRegisterRequestHandler()
 			return 1; //number of lua ret vals pushed onto the stack
 		}, 1);
 	lua_setfield(LuaState, -2, "RegisterRequestHandler");
+	if (auto log = odc::spdlog_get("LuaWebPort"))
+		log->debug("Exporting the lua web handler - Completed");
 }
 
 //This is only called from Build(), so no sync required.
@@ -580,8 +598,7 @@ void LuaWebPort::DefaultRequestHandler(std::shared_ptr<WebServer::Response> resp
 	//SimpleWeb::CaseInsensitiveMultimap header;
 	//header.emplace("Content-Length", std::to_string(responsestr.length()));
 	//header.emplace("Content-Type", "text/plain");
-	//response->write(header);
-	//response->write(responsestr);
+	//response->write(responsestr, header);
 	response->write(SimpleWeb::StatusCode::server_error_not_implemented, responsestr); // Write an error response...
 }
 
