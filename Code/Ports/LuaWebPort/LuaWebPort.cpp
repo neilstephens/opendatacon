@@ -140,7 +140,7 @@ LuaWebPort::LuaWebPort(const std::string& aName, const std::string& aConfFilenam
 	auto pConf = static_cast<LuaWebPortConf*>(this->pConf.get());
 	const std::string& web_crt = pConf->web_crt;
 	const std::string& web_key = pConf->web_key;
-	WebSrv = make_shared<WebServer>(OPTIONAL_CERTS);
+	WebSrv = std::make_shared<WebServer>(OPTIONAL_CERTS);
 }
 
 LuaWebPort::~LuaWebPort()

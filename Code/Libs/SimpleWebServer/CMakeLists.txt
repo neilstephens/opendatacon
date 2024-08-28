@@ -58,3 +58,5 @@ mark_as_advanced(FORCE BUILD_FUZZING)
 mark_as_advanced(FORCE BUILD_TESTING)
 mark_as_advanced(FORCE USE_OPENSSL)
 mark_as_advanced(FORCE USE_STANDALONE_ASIO)
+
+target_include_directories(simple-web-server INTERFACE include)

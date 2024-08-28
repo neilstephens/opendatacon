@@ -20,8 +20,8 @@
 /*
  * main.cpp
  *
- *  Created on: 05/08/2023
- *      Author: Neil Stephens
+ *  Created on: 13/08/2024
+ *      Author: Scott Ellis
  */
 
 #include "LuaWebPort.h"
@@ -31,8 +31,8 @@ extern "C" LuaWebPort* new_LuaWebPort(const std::string& Name, const std::string
 	return new LuaWebPort(Name,File,Overrides);
 }
 
-extern "C" void delete_LuaWebPort(LuaWebPort* aLuaPort_ptr)
+extern "C" void delete_LuaWebPort(LuaWebPort* aLuaWebPort_ptr)
 {
-	delete aLuaPort_ptr;
+	delete aLuaWebPort_ptr;
 	return;
 }

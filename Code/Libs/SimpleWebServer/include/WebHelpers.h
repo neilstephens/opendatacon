@@ -18,16 +18,33 @@
  *	limitations under the License.
  */
 //
-//  MhdWrapper.cpp
+//  WebHelpers.h
 //  opendatacon
 //
 //  Created by Alan Murray on 14/09/2014.
 //
 //
 
-#include "WebHelpers.h"
+#ifndef __opendatacon__WebHelpers__
+#define __opendatacon__WebHelpers__
 
-const std::unordered_map<std::string, const std::string> MimeTypeMap {
+#include <opendatacon/asio.h>
+#include <opendatacon/util.h>
+#include <opendatacon/ParamCollection.h>
+#ifdef USE_HTTPS
+#include <server_https.hpp>
+using WebServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
+#define OPTIONAL_CERTS web_crt, web_key
+#else
+#include <server_http.hpp>
+using WebServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+#define OPTIONAL_CERTS
+#endif
+
+#include <string>
+#include <unordered_map>
+
+inline const std::unordered_map<std::string, const std::string> MimeTypeMap {
 	{ "json", "application/json" },
 	{ "js", "text/javascript" },
 	{ "html", "text/html"},
@@ -38,7 +55,7 @@ const std::unordered_map<std::string, const std::string> MimeTypeMap {
 	{ "default", "application/octet-stream"}
 };
 
-const std::string& GetMimeType(const std::string& rUrl)
+inline const std::string& GetMimeType(const std::string& rUrl)
 {
 	auto last = rUrl.find_last_of("/\\.");
 	if (last == std::string::npos) return MimeTypeMap.at("default");
@@ -51,7 +68,7 @@ const std::string& GetMimeType(const std::string& rUrl)
 	return MimeTypeMap.at("default");
 }
 
-void read_and_send(const std::shared_ptr<WebServer::Response> response, const std::shared_ptr<std::ifstream> ifs, const std::shared_ptr<std::vector<char>> buffer)
+inline void read_and_send(const std::shared_ptr<WebServer::Response> response, const std::shared_ptr<std::ifstream> ifs, const std::shared_ptr<std::vector<char>> buffer)
 {
 	std::streamsize read_length;
 	if((read_length = ifs->read(buffer->data(), static_cast<std::streamsize>(buffer->size())).gcount()) > 0)
@@ -69,3 +86,5 @@ void read_and_send(const std::shared_ptr<WebServer::Response> response, const st
 		}
 	}
 }
+
+#endif /* defined(__opendatacon__WebHelpers__) */

@@ -20,17 +20,17 @@
 /*
  * LuaWebPort.h
  *
- *  Created on: 05/08/2023
- *      Author: Neil Stephens
+ *  Created on: 13/08/2024
+ *      Author: Scott Ellis
  */
 
-#ifndef LuaPort_H_
-#define LuaPort_H_
+#ifndef LuaWebPort_H_
+#define LuaWebPort_H_
 
 #include <Lua/DynamicSymbols.h>
 #include <Lua/CLua.h>
 #include <opendatacon/DataPort.h>
-#include "WebHelpers.h"
+#include <WebHelpers.h>
 #include <opendatacon/TCPSocketManager.h>
 #include <regex>
 #include <shared_mutex>
@@ -89,4 +89,4 @@ private:
 	Json::Value JSONConf;
 };
 
-#endif /* LuaPort_H_ */
+#endif /* LuaWebPort_H_ */

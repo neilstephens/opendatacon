@@ -21,25 +21,6 @@ project(LuaWebPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-# Locate Simple Web Server
-option(USE_SIMPLEWEB_SUBMODULE "Use git submodule to download Simple-Web-Server source" ON)
-
-if(SIMPLEWEB_SSL)
-	if(NOT ODC_ASIO_SSL)
-		message(FATAL_ERROR "SIMPLEWEB_SSL requires ODC_ASIO_SSL. Enable that option first")
-	endif()
-	add_definitions(-DUSE_HTTPS)
-endif()
-
-if(USE_SIMPLEWEB_SUBMODULE)
-	set(SIMPLEWEB_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/Simple-Web-Server")
-	if(NOT EXISTS "${SIMPLEWEB_HOME}/.git")
-		execute_process(COMMAND git submodule update --init -- Code/submodules/Simple-Web-Server
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-	endif()
-endif()
-
-
 add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} LuaWrappers)
 target_link_libraries(${PROJECT_NAME} simple-web-server)
