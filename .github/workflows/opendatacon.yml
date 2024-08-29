@@ -367,7 +367,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   opendatacon-clean:
-    if: always()
+    if: github.event_name != 'pull_request'
     needs: [opendatacon-native,opendatacon-docker]
     runs-on: ubuntu-latest
     steps:
