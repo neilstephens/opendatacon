@@ -207,6 +207,7 @@ jobs:
         name: installer_${{env.JOB_NAME}}
         retention-days: 7
         path: |
+          !**/sysroot/**
           **/opendatacon-*.*.*-*-*-*-*-*.sh
           **/opendatacon-*.*.*-*-*-*-*-*.exe
           tag_annotation.txt
@@ -286,6 +287,11 @@ jobs:
         git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/Simple-Web-Server
         git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/python-cmake-buildsystem 
     
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+    - run: npm ci
+    - run: npm test
     - uses: actions/checkout@v4
     - run: git fetch --force --tags
 
