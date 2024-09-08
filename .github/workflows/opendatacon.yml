@@ -56,14 +56,14 @@ jobs:
       run: |
         ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - run: git fetch --force --tags
     
     - if: matrix.cross == 'rpi'
       name: Setup QEMU
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v3
     
     - if: matrix.bits == 32 && contains(matrix.os,'windows') #FIXME: openssl version pinned to 1.1.1 because 3.x choco doesn't support 32bit
       name: Set 32-bit env
@@ -286,7 +286,7 @@ jobs:
         git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/Simple-Web-Server
         git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/python-cmake-buildsystem 
     
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - run: git fetch --force --tags
 
     - name: Configure CMake
