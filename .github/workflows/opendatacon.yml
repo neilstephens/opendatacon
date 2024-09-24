@@ -56,14 +56,14 @@ jobs:
       run: |
         ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - run: git fetch --force --tags
     
     - if: matrix.cross == 'rpi'
       name: Setup QEMU
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v3
     
     - if: matrix.bits == 32 && contains(matrix.os,'windows') #FIXME: openssl version pinned to 1.1.1 because 3.x choco doesn't support 32bit
       name: Set 32-bit env
@@ -192,22 +192,24 @@ jobs:
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
       
     - if: always()
-      name: Upload ODC_Log
-      uses: actions/upload-artifact@v2
+      name: Upload Logs
+      uses: actions/upload-artifact@v4
       with:
         name: ODC_Log_${{env.JOB_NAME}}
         retention-days: 7
-        path: ODC_Log*
+        path: |
+          **/ODC_Log*
     
     - if: always()
       name: Upload Installer
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
-        name: installers
+        name: installer_${{env.JOB_NAME}}
         retention-days: 7
         path: |
-          ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.sh
-          ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.exe
+          !**/sysroot/**
+          **/opendatacon-*.*.*-*-*-*-*-*.sh
+          **/opendatacon-*.*.*-*-*-*-*-*.exe
           tag_annotation.txt
 
   opendatacon-docker:
@@ -285,7 +287,12 @@ jobs:
         git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/Simple-Web-Server
         git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/python-cmake-buildsystem 
     
-    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - run: npm ci
+    - run: npm test
+    - uses: actions/checkout@v4
     - run: git fetch --force --tags
 
     - name: Configure CMake
@@ -332,17 +339,24 @@ jobs:
       run: /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
 
     - if: always()
-      name: Find Installer Name
-      run: |
-        echo "INSTALLER_NAME=$(find /github/workspace/build -name "opendatacon-*.*.*-*-*-*-*-*.sh" -printf "%f" -quit)" >> $GITHUB_ENV
-        cp /github/workspace/build/opendatacon-*.*.*-*-*-*-*-*.sh /github/home/
-        
+      name: Upload Logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: ODC_Log_${{env.JOB_NAME}}
+        retention-days: 7
+        path: |
+          **/ODC_Log*
+    
     - if: always()
       name: Upload Installer
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
-        name: installers
-        path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}
+        name: installer_${{env.JOB_NAME}}
+        retention-days: 7
+        path: |
+          **/opendatacon-*.*.*-*-*-*-*-*.sh
+          **/opendatacon-*.*.*-*-*-*-*-*.exe
+          tag_annotation.txt
         
             
   opendatacon-deploy:
@@ -351,29 +365,19 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Download Installers
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: installers
+          path: installers
+          pattern: installer_*
+          merge-multiple: true
           
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           draft: false
-          body_path: tag_annotation.txt
+          body_path: installers/tag_annotation.txt
           files: |
             **/opendatacon-*.*.*-*-*-*-*-*.sh
             **/opendatacon-*.*.*-*-*-*-*-*.exe
           fail_on_unmatched_files: false
           token: ${{ secrets.GITHUB_TOKEN }}
-
-  opendatacon-clean:
-    if: github.event_name != 'pull_request'
-    needs: [opendatacon-native,opendatacon-docker]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Remove old artifacts
-        uses: c-hive/gha-remove-artifacts@v1
-        with:
-          age: '1 week'
-          skip-recent: 5
-          skip-tags: false
