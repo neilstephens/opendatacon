@@ -72,7 +72,7 @@ public:
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 	void RestHandler(const std::string& url, const std::string& content, const ResponseCallback_t& pResponseCallback);
-	void PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr);
+	void PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex, const std::string &QualityStr, const std::string &PayloadStr, const std::string &SourcePort);
 
 	static std::shared_ptr<odc::EventInfo> CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string &Name);
 
