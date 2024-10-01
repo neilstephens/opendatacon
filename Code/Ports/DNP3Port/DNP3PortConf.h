@@ -79,6 +79,7 @@ struct DNP3AddrConf
 
 	//IP
 	std::string IP;
+	std::string BindIP;
 	uint16_t Port;
 	uint16_t UDPListenPort;
 	TCPClientServer ClientServer;
@@ -97,6 +98,7 @@ struct DNP3AddrConf
 	DNP3AddrConf(bool isMaster):
 		SerialSettings(),
 		IP("127.0.0.1"),
+		BindIP(""),
 		Port(20000),
 		UDPListenPort(0),
 		ClientServer(TCPClientServer::DEFAULT),

@@ -451,6 +451,9 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("Port"))
 		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Port = JSONRoot["Port"].asUInt();
 
+	if(JSONRoot.isMember("BindIP"))
+		static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.BindIP = JSONRoot["BindIP"].asString();
+
 	if(JSONRoot.isMember("TCPClientServer"))
 	{
 		if(JSONRoot["TCPClientServer"].asString() == "CLIENT")
