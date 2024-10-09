@@ -85,7 +85,11 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 
 	std::string ChannelID;
 	bool isSerial;
-	auto udp_listen_port = (pConf->mAddrConf.UDPListenPort == 0) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
+
+	std::string remote_host = "";
+	uint16_t remote_port = 0;
+	std::string local_interface = "";
+	auto local_port = 0;
 
 	if(pConf->mAddrConf.IP.empty())
 	{
@@ -94,11 +98,36 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	}
 	else
 	{
-		if(pConf->mAddrConf.Transport == IPTransport::UDP)
-			ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+std::to_string(udp_listen_port);
-		else
-			ChannelID = pConf->mAddrConf.IP +":"+ std::to_string(pConf->mAddrConf.Port)+":"+to_string(pPort->ClientOrServer());
 		isSerial = false;
+		if(pConf->mAddrConf.Transport == IPTransport::UDP)
+		{
+			local_interface = pConf->mAddrConf.BindIP.empty() ? "0.0.0.0" : pConf->mAddrConf.BindIP;
+			local_port = (pConf->mAddrConf.UDPListenPort == 0) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
+			remote_host = pConf->mAddrConf.IP;
+			remote_port = pConf->mAddrConf.Port;
+			ChannelID = std::to_string(local_port)+":"+local_interface+":"+remote_host+":"+std::to_string(remote_port);
+		}
+		else
+		{
+			if(pPort->ClientOrServer() == TCPClientServer::SERVER)
+			{
+				local_interface = pConf->mAddrConf.IP;
+				if(!pConf->mAddrConf.BindIP.empty() && pConf->mAddrConf.BindIP != pConf->mAddrConf.IP)
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->warn("{}: Ignoring 'BindIP' for TCP server. 'IP' is used as bind addr for servers.", pPort->Name);
+				}
+				local_port = pConf->mAddrConf.Port;
+				ChannelID = "TCPSERVER:"+local_interface +":"+ std::to_string(local_port);
+			}
+			else //tcp/tls client
+			{
+				local_interface = pConf->mAddrConf.BindIP.empty() ? "0.0.0.0" : pConf->mAddrConf.BindIP;
+				remote_host = pConf->mAddrConf.IP;
+				remote_port = pConf->mAddrConf.Port;
+				ChannelID = "TCPCLIENT:"+local_interface+":"+remote_host+":"+std::to_string(remote_port);
+			}
+		}
 	}
 
 	//Create a channel listener that will subscribe this port to channel updates
@@ -137,8 +166,8 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
 					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms),
 					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms)),
-				opendnp3::IPEndpoint("0.0.0.0",udp_listen_port),
-				opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
+				opendnp3::IPEndpoint(local_interface,local_port),
+				opendnp3::IPEndpoint(remote_host,remote_port),
 				listener);
 			if(watchdog_mode == WatchdogBark::DEFAULT)
 				watchdog_mode = WatchdogBark::NEVER;
@@ -153,7 +182,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 					{
 						pChannel = pPort->IOMgr->AddTLSServer(ChannelID, pConf->LOG_LEVEL,
 							pConf->pPointConf->ServerAcceptMode,
-							opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port),
+							opendnp3::IPEndpoint(local_interface,local_port),
 							opendnp3::TLSConfig(pConf->mAddrConf.TLSConf.PeerCertFile,pConf->mAddrConf.TLSConf.LocalCertFile,pConf->mAddrConf.TLSConf.PrivateKeyFile),
 							listener);
 					}
@@ -161,7 +190,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 					{
 						pChannel = pPort->IOMgr->AddTCPServer(ChannelID, pConf->LOG_LEVEL,
 							pConf->pPointConf->ServerAcceptMode,
-							opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)
+							opendnp3::IPEndpoint(local_interface,local_port)
 							,listener);
 					}
 					break;
@@ -176,7 +205,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms),
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms)),
-							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),"0.0.0.0",
+							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(remote_host,remote_port)}),local_interface,
 							opendnp3::TLSConfig(pConf->mAddrConf.TLSConf.PeerCertFile,pConf->mAddrConf.TLSConf.LocalCertFile,pConf->mAddrConf.TLSConf.PrivateKeyFile,
 								pConf->mAddrConf.TLSConf.allowTLSv10,pConf->mAddrConf.TLSConf.allowTLSv11,pConf->mAddrConf.TLSConf.allowTLSv12,
 								pConf->mAddrConf.TLSConf.allowTLSv13,pConf->mAddrConf.TLSConf.cipherList),
@@ -189,8 +218,8 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms),
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMaxms),
 								opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms)),
-							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(pConf->mAddrConf.IP,pConf->mAddrConf.Port)}),
-							"0.0.0.0",listener);
+							std::vector<opendnp3::IPEndpoint>({opendnp3::IPEndpoint(remote_host,remote_port)}),
+							local_interface,listener);
 					}
 					break;
 				}
