@@ -167,10 +167,12 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 		const char* EventType;
 		const char* Payload;
 		const char* Quality;
+		const char* SourcePort = "";
 		uint64_t guid;
 
 		// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
-		if (!PyArg_ParseTuple(args, "LsIss:PublishEvent", &guid, &EventType, &ODCIndex, &Quality, &Payload))
+		// The parameters after | are optional - in this case the SourcePort
+		if (!PyArg_ParseTuple(args, "LsIss|s:PublishEvent", &guid, &EventType, &ODCIndex, &Quality, &Payload, &SourcePort))
 		{
 			PythonWrapper::PyErrOutput();
 			Py_RETURN_NONE; // This will throw an execption in the python code.
@@ -184,9 +186,9 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			LOGDEBUG("Python Publish Event {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload);
+			LOGDEBUG("Python Publish Event {}, {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload, SourcePort);
 			auto fn = thisPyWrapper->GetPythonPortPublishEventCallFn();
-			fn(EventType, ODCIndex, Quality, Payload);
+			fn(EventType, ODCIndex, Quality, Payload, SourcePort);
 		}
 		else
 		{
@@ -210,7 +212,7 @@ static PyObject* odc_GetEventQueueSize(PyObject* self, PyObject* args)
 		uint64_t guid;
 
 		// Now parse the arguments provided, three Unsigned ints (I) and a pyObject (O) and the function name.
-		if (!PyArg_ParseTuple(args, "L:PublishEvent", &guid))
+		if (!PyArg_ParseTuple(args, "L:GetEventQueueSize", &guid))
 		{
 			PythonWrapper::PyErrOutput();
 			Py_RETURN_NONE; // This will throw an execption in the python code.

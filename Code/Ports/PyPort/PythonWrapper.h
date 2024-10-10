@@ -39,7 +39,7 @@
 using namespace odc;
 
 typedef std::function<void (uint32_t, uint32_t)> SetTimerFnType;
-typedef std::function<void ( const char*, uint32_t, const char*, const char*)> PublishEventCallFnType;
+typedef std::function<void ( const char*, uint32_t, const char*, const char*, const char*)> PublishEventCallFnType;
 
 // Class to store the evnt as a stringified version, mainly so that when Python is retreving these records, it does minimal processing.
 /*class EventQueueType

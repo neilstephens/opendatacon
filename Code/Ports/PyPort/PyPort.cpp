@@ -155,7 +155,7 @@ void PyPort::Build()
 	// Pass in a pointer to our SetTimer method, so it can be called from Python code - bit circular - I know!
 	// Also pass in a PublishEventCall method, so Python can send us Events to Publish.
 	pWrapper = std::make_unique<PythonWrapper>(this->Name, pIOS, std::bind(&PyPort::SetTimer, this, std::placeholders::_1, std::placeholders::_2),
-		std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+		std::bind(&PyPort::PublishEventCall, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 	LOGDEBUG("pWrapper Created #####");
 	try
 	{
@@ -333,7 +333,7 @@ void PyPort::RemoveHTTPHandlers()
 	}
 }
 
-std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& Name)
+std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::string& EventTypeStr, size_t& ODCIndex, const std::string& QualityStr, const std::string& PayloadStr, const std::string& SourcePort)
 {
 	EventType EventTypeResult = EventTypeFromString(EventTypeStr);
 	if (EventTypeResult >= EventType::AfterRange)
@@ -360,14 +360,14 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 				LOGERROR("Invalid Connection State passed from Python Code to ODC - {}", PayloadStr);
 				return nullptr;
 			}
-			pubevent = std::make_shared<EventInfo>(EventType::ConnectState, 0, Name);
+			pubevent = std::make_shared<EventInfo>(EventType::ConnectState, 0, SourcePort);
 			pubevent->SetPayload<EventType::ConnectState>(std::move(state));
 		}
 		break;
 
 		case EventType::Binary:
 		{
-			pubevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, Name, QualityResult);
+			pubevent = std::make_shared<EventInfo>(EventType::Binary, ODCIndex, SourcePort, QualityResult);
 			bool val = (PayloadStr.find('1') != std::string::npos);
 			pubevent->SetPayload<EventType::Binary>(std::move(val));
 		}
@@ -376,7 +376,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::Analog:
 			try
 			{
-				pubevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, Name, QualityResult);
+				pubevent = std::make_shared<EventInfo>(EventType::Analog, ODCIndex, SourcePort, QualityResult);
 				double dval = std::stod(PayloadStr);
 				pubevent->SetPayload<EventType::Analog>(std::move(dval));
 			}
@@ -400,7 +400,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::ControlRelayOutputBlock:
 			try
 			{
-				pubevent = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, Name, QualityResult);
+				pubevent = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, ODCIndex, SourcePort, QualityResult);
 				// Payload String looks like: "|LATCH_ON|Count 1|ON 100ms|OFF 100ms|"
 				EventTypePayload<EventType::ControlRelayOutputBlock>::type val;
 				auto Parts = split(PayloadStr, '|');
@@ -429,7 +429,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::AnalogOutputInt16:
 			try
 			{
-				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, Name, QualityResult);
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, SourcePort, QualityResult);
 				EventTypePayload<EventType::AnalogOutputInt16>::type val;
 				int16_t ival = std::stoi(PayloadStr);
 				val.first = ival;
@@ -444,7 +444,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::AnalogOutputInt32:
 			try
 			{
-				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, Name, QualityResult);
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputInt32, ODCIndex, SourcePort, QualityResult);
 				EventTypePayload<EventType::AnalogOutputInt32>::type val;
 				int32_t ival = std::stoi(PayloadStr);
 				val.first = ival;
@@ -458,7 +458,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::AnalogOutputFloat32:
 			try
 			{
-				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputFloat32, ODCIndex, Name, QualityResult);
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputFloat32, ODCIndex, SourcePort, QualityResult);
 				EventTypePayload<EventType::AnalogOutputFloat32>::type val;
 				float fval = std::stof(PayloadStr);
 				val.first = fval;
@@ -472,7 +472,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 		case EventType::AnalogOutputDouble64:
 			try
 			{
-				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, Name, QualityResult);
+				pubevent = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, ODCIndex, SourcePort, QualityResult);
 				EventTypePayload<EventType::AnalogOutputDouble64>::type val;
 				double dval = std::stod(PayloadStr);
 				val.first = dval;
@@ -485,7 +485,7 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 			break;
 		case EventType::OctetString:
 		{
-			pubevent = std::make_shared<EventInfo>(EventType::OctetString, ODCIndex, Name, QualityResult);
+			pubevent = std::make_shared<EventInfo>(EventType::OctetString, ODCIndex, SourcePort, QualityResult);
 			pubevent->SetPayload<EventType::OctetString>(std::string(PayloadStr));
 		}
 		break;
@@ -520,12 +520,16 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 // We pass this method string values for fields (from Python) parse them and create the ODC event then send it.
 // A pointer to this method is passed to the Wrapper class so it can be called when we get information from the Python code.
 // We are not passing a callback - just nullstr. So dont expect feedback.
-void PyPort::PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex,  const std::string &QualityStr, const std::string &PayloadStr )
+void PyPort::PublishEventCall(const std::string &EventTypeStr, size_t ODCIndex,  const std::string &QualityStr, const std::string &PayloadStr, const std::string &SourcePort )
 {
 	//LOGDEBUG("PyPort Publish Event {}, {}, {}, {}", EventTypeStr, ODCIndex, QualityStr, PayloadStr);
-
+	std::string SrcPort = SourcePort;
+	if (SourcePort.length() == 0)
+	{
+		SrcPort = Name; // If not provided, use default
+	}
 	// Separate call to allow testing
-	std::shared_ptr<EventInfo> pubevent = CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, Name);
+	std::shared_ptr<EventInfo> pubevent = CreateEventFromStrParams(EventTypeStr, ODCIndex, QualityStr, PayloadStr, SrcPort);
 	if (pubevent)
 	{
 		if(MyConf->pyEnablePublishCallbackHandler)

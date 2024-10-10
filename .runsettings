@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <RunSettings>
+        <Catch2Adapter>
+			<!-- Only want to target the LuaWebPort as this is what we are working on -->
+            <FilenameFilter>^LuaWebPort_tests</FilenameFilter>
+        </Catch2Adapter>
+    </RunSettings>
