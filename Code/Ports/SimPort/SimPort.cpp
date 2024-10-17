@@ -379,6 +379,8 @@ void SimPort::ResetPoints()
 
 void SimPort::PortUp()
 {
+	PublishEvent(ConnectState::PORT_UP);
+	PublishEvent(ConnectState::CONNECTED);
 	auto now = msSinceEpoch();
 
 	for(const auto& type : {odc::EventType::Analog,odc::EventType::Binary})
@@ -420,6 +422,8 @@ void SimPort::PortUp()
 void SimPort::PortDown()
 {
 	pSimConf->CancelTimers();
+	PublishEvent(ConnectState::DISCONNECTED);
+	PublishEvent(ConnectState::PORT_DOWN);
 }
 
 bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, const msSinceEpoch_t now, const ptimer_t ptimer)
