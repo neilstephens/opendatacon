@@ -451,17 +451,24 @@ std::shared_ptr<odc::EventInfo> EventInfoFromLua(lua_State* const L, const std::
 	if(idx < 0)
 		idx = lua_gettop(L) + (idx+1);
 
+	if(lua_isnil(L,idx))
+		return nullptr;
+
 	if(!lua_istable(L,idx))
 	{
 		if(auto log = odc::spdlog_get(LogName))
-			log->error("{}: EventInfo table argument not found.",Name);
+			log->error("{}: EventInfo argument is not a table.",Name);
 		return nullptr;
 	}
 
 	//EventType
 	lua_getfield(L, idx, "EventType");
 	if(!lua_isinteger(L,-1))
+	{
+		if(auto log = odc::spdlog_get(LogName))
+			log->error("{}: EventInfo has invalid EventType.",Name);
 		return nullptr;
+	}
 	auto et = static_cast<odc::EventType>(lua_tointeger(L,-1));
 	auto event = std::make_shared<odc::EventInfo>(et);
 
