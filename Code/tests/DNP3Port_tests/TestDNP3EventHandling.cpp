@@ -64,7 +64,7 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	conf["UnsolClass1"] = true;
 	conf["UnsolClass2"] = true;
 	conf["UnsolClass3"] = true;
-	conf["DoUnsolOnStartup"] = true;
+	conf["DisableUnsolOnStartup"] = true;
 	conf["IntegrityScanRatems"] = Json::UInt(0);
 	conf["EventClass1ScanRatems"] = Json::UInt(0);
 	conf["EventClass2ScanRatems"] = Json::UInt(0);
