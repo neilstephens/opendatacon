@@ -415,7 +415,7 @@ void DNP3MasterPort::Build()
 	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ?
 	                                  (pConf->pPointConf->LANModeTimeSync ? opendnp3::TimeSyncMode::LAN : opendnp3::TimeSyncMode::NonLAN)
 	                                  : opendnp3::TimeSyncMode::None;
-	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
+	StackConfig.master.disableUnsolOnStartup = pConf->pPointConf->DisableUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 
 	//set the internal sizes of the ADPU buffers - we make it symetric by using MaxTxFragSize for both

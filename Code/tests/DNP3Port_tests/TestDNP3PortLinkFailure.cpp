@@ -81,7 +81,7 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	conf["UnsolClass1"] = true;
 	conf["UnsolClass2"] = true;
 	conf["UnsolClass3"] = true;
-	conf["DoUnsolOnStartup"] = true;
+	conf["DisableUnsolOnStartup"] = true;
 
 	//make an outstation port
 	auto OPUT = std::shared_ptr<DataPort>(newOutstation("Outstation"+std::to_string(os_addr), "", conf), delOutstation);

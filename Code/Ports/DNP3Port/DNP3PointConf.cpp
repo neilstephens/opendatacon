@@ -51,7 +51,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	LANModeTimeSync(false),        /// If true, the master will use the LAN time sync mode
-	DoUnsolOnStartup(true),
+	DisableUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
 	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
@@ -229,7 +229,13 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("LANModeTimeSync"))
 		LANModeTimeSync = JSONRoot["LANModeTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
-		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("DoUnsolOnStartup is deprecated because it had a non-compliant default, use DisableUnsolOnStartup=false if you really want non-compliant behaviour");
+	}
+	/// If true, the master will disable unsol on startup (warning: setting false produces non-compliant behaviour)
+	if (JSONRoot.isMember("DisableUnsolOnStartup"))
+		DisableUnsolOnStartup = JSONRoot["DisableUnsolOnStartup"].asBool();
 	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
 		SetQualityOnLinkStatus = JSONRoot["SetQualityOnLinkStatus"].asBool();
 	if (JSONRoot.isMember("FlagsToSetOnLinkStatus"))

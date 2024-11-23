@@ -69,7 +69,7 @@ public:
 	uint32_t MasterResponseTimeoutms;           /// Application layer response timeout
 	bool MasterRespondTimeSync;                 /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	bool LANModeTimeSync;                       /// If true, the master will use the LAN time sync mode
-	bool DoUnsolOnStartup;                      /// If true, the master will enable unsol on startup
+	bool DisableUnsolOnStartup;                 /// If true, the master will disable unsol on startup (warning: setting false produces non-compliant behaviour)
 	bool SetQualityOnLinkStatus;                /// Whether to set point quality when link down
 	odc::QualityFlags FlagsToSetOnLinkStatus;   /// The flags to Set when SetQualityOnLinkStatus is true
 	odc::QualityFlags FlagsToClearOnLinkStatus; /// The flags to Clear when SetQualityOnLinkStatus is true

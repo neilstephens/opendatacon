@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1.2
+   
+FROM 2000cubits/raspbian:bookworm as builder
+
+RUN apt-get update
+RUN apt-get install -y g++ make cmake git libmodbus-dev libc6-dev openssl libssl-dev python3 python3-dev
+
+RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
+ARG BUILD_COMMIT=develop
+RUN git -C opendatacon checkout $BUILD_COMMIT
+
+ARG BUILD_TYPE=Release
+ARG CMAKE_OPTIONS=
+
+RUN mkdir opendatacon-build
+
+RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=RaspbianBookworm -S opendatacon -B opendatacon-build
+RUN cmake --build opendatacon-build --parallel 8
+RUN cmake --build opendatacon-build --target install
+RUN cmake --build opendatacon-build --target package
+
+FROM scratch AS export-stage
+COPY --from=builder opendatacon-build/opendatacon*.sh /
