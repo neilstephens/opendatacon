@@ -24,56 +24,48 @@ jobs:
             docker-file: Debian12Bookworm
             build-type: Release
             docker-args:
-            setup-cmds:
             
           - name: Debian 12 Bookworm Debug
             run-os: ubuntu-latest
             docker-file: Debian12Bookworm
             build-type: Debug
             docker-args:
-            setup-cmds:
             
           - name: Debian 12 Bookworm 32bit Release
             run-os: ubuntu-latest
             docker-file: Debian12Bookworm
             build-type: Release
             docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
-            setup-cmds:
             
           - name: Debian 12 Bookworm 32bit Debug
             run-os: ubuntu-latest
             docker-file: Debian12Bookworm
             build-type: Debug
             docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
-            setup-cmds:
-          
-          - name: Raspbian Bookworm Release
-            run-os: ubuntu-latest
-            docker-file: RaspbianBookworm
-            build-type: Release
-            docker-args:
-            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-            
-          - name: Raspbian Bookworm Debug
-            run-os: ubuntu-latest
-            docker-file: RaspbianBookworm
-            build-type: Debug
-            docker-args:
-            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           
           - name: Oracle Enterprise Linux 7 Release
             run-os: ubuntu-latest
             docker-file: OEL7
             build-type: Release
             docker-args:
-            setup-cmds:
             
           - name: Oracle Enterprise Linux 7 Debug
             run-os: ubuntu-latest
             docker-file: OEL7
             build-type: Debug
             docker-args:
-            setup-cmds:
+            
+          - name: Redhat Enterprise Linux 9 Release
+            run-os: ubuntu-latest
+            docker-file: RHEL9
+            build-type: Release
+            docker-args:
+            
+          - name: Redhat Enterprise Linux 9 Debug
+            run-os: ubuntu-latest
+            docker-file: RHEL9
+            build-type: Debug
+            docker-args:
             
     runs-on: ${{ matrix.run-os }}
     
@@ -270,7 +262,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           draft: false
-          body_path: tag_annotation.txt
+          body_path: installers/tag_annotation.txt
           files: |
             **/opendatacon-*.*.*-*-*-*-*-*.sh
             **/opendatacon-*.*.*-*-*-*-*-*.exe

@@ -1,0 +1,72 @@
+name: opendatacon rpi workflow
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  opendatacon-rpi-builds:
+    name: ${{matrix.name}}
+    
+    strategy:
+      fail-fast: false
+      
+      matrix:
+        include:
+          - name: Raspbian Bookworm Release
+            docker-file: RaspbianBookworm
+            build-type: Release
+            
+          - name: Raspbian Bookworm Debug
+            docker-file: RaspbianBookworm
+            build-type: Debug
+            
+    runs-on: ubuntu-latest
+    
+    steps:
+    
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - run: git fetch --force --tags
+      
+    - name: Run Setup Commands
+      run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      
+    - name: Dockerfile Build
+      run: |
+        docker build \
+        --build-arg BUILD_TYPE=${{ matrix.build-type }} \
+        --build-arg BUILD_COMMIT=${{ github.sha }} \
+        --output type=local,dest=./ \
+        -t opendatacon-builder -f DockerFiles/${{ matrix.docker-file }} .
+        
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.name }} Installer
+        retention-days: 7
+        path: |
+          opendatacon-*.sh 
+  
+  opendatacon-rpi-deploy:
+    needs: [opendatacon-rpi-builds]
+    runs-on: macos-latest
+    steps:
+      - name: Download Installers
+        uses: actions/download-artifact@v4
+        with:
+          path: installers
+          pattern: 'Raspbian*Installer'
+          merge-multiple: true
+          
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            **/opendatacon-*.*.*-*-*-*-*-*.sh
+          fail_on_unmatched_files: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  
