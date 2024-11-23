@@ -241,9 +241,9 @@ jobs:
       with:
         name: ${{env.JOB_NAME}} Installer
         retention-days: 7
-        path: |
-          **/opendatacon-*.sh
-          **/opendatacon-*.exe
+        path:
+          ${{github.workspace}}/build/opendatacon-*.sh
+          ${{github.workspace}}/build/opendatacon-*.exe
           tag_annotation.txt
           
     - name: Upload Logs
@@ -251,8 +251,8 @@ jobs:
       with:
         name: ${{env.JOB_NAME}} Logs
         retention-days: 7
-        path: |
-          **/ODC_Log*
+        path:
+          ODC_Log*
          
   opendatacon-deploy:
     if: always() && contains(github.ref, 'tag')
