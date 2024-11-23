@@ -1,4 +1,19 @@
-# opendatacon version 1.9.3
+# opendatacon version 1.9.4
+
+## 1.9.4
+  * DNP3Port
+    * "BindIP" option to make it possible to bind to a specified interface instead of 0.0.0.0
+    * Support for Analog/Binary Output Statuses
+    * opendnp3 bugfixes
+      * proper fix for IIN triggered integrity scans
+      * fixed priority inversion of startup tasks
+      * fixed logic race where multiple link sessions could call BeginChannelAccept on the same channel
+      * removed link layer transmit wait states that aren't in spec
+    * opendnp3 optional retries for IIN integrity
+  * LuaPort
+    * garbage collection optimisation
+    * minor bugfixes
+  * Misc bugfixes
 
 ## 1.9.3
   * DNP3Port
