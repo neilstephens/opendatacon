@@ -55,6 +55,18 @@ jobs:
             build-type: Debug
             docker-args:
             
+          - name: Redhat Enterprise Linux 9 Release
+            run-os: ubuntu-latest
+            docker-file: RHEL9
+            build-type: Release
+            docker-args:
+            
+          - name: Redhat Enterprise Linux 9 Debug
+            run-os: ubuntu-latest
+            docker-file: RHEL9
+            build-type: Debug
+            docker-args:
+            
     runs-on: ${{ matrix.run-os }}
     
     steps:
