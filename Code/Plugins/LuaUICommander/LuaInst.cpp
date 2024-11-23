@@ -161,11 +161,13 @@ void LuaInst::Runner(const std::string& args)
 		//should have a sleep time in ms on the stack (return value)
 		if(!lua_isinteger(L,-1))
 		{
+			lua_pop(L,retc);
 			completed = true;
 			lua_gc(L,LUA_GCCOLLECT);
 			return;
 		}
 		auto sleep_time_ms = lua_tointeger(L,-1);
+		lua_pop(L,retc);
 		if(sleep_time_ms < 0)
 		{
 			completed = true;

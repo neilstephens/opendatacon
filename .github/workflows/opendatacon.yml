@@ -11,17 +11,122 @@ on:
       - '**'
 
 jobs:
+  opendatacon-dockerfile-builds:
+    name: ${{matrix.name}}
+    
+    strategy:
+      fail-fast: false
+      
+      matrix:
+        include:
+          - name: Debian 12 Bookworm Release
+            run-os: ubuntu-latest
+            docker-file: Debian12Bookworm
+            build-type: Release
+            docker-args:
+            setup-cmds:
+            
+          - name: Debian 12 Bookworm Debug
+            run-os: ubuntu-latest
+            docker-file: Debian12Bookworm
+            build-type: Debug
+            docker-args:
+            setup-cmds:
+            
+          - name: Debian 12 Bookworm 32bit Release
+            run-os: ubuntu-latest
+            docker-file: Debian12Bookworm
+            build-type: Release
+            docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            setup-cmds:
+            
+          - name: Debian 12 Bookworm 32bit Debug
+            run-os: ubuntu-latest
+            docker-file: Debian12Bookworm
+            build-type: Debug
+            docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            setup-cmds:
+          
+          - name: Raspbian Bookworm Release
+            run-os: ubuntu-latest
+            docker-file: RaspbianBookworm
+            build-type: Release
+            docker-args:
+            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+            
+          - name: Raspbian Bookworm Debug
+            run-os: ubuntu-latest
+            docker-file: RaspbianBookworm
+            build-type: Debug
+            docker-args:
+            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          
+          - name: Oracle Enterprise Linux 7 Release
+            run-os: ubuntu-latest
+            docker-file: OEL7
+            build-type: Release
+            docker-args:
+            setup-cmds:
+            
+          - name: Oracle Enterprise Linux 7 Debug
+            run-os: ubuntu-latest
+            docker-file: OEL7
+            build-type: Debug
+            docker-args:
+            setup-cmds:
+            
+    runs-on: ${{ matrix.run-os }}
+    
+    steps:
+    
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - run: git fetch --force --tags
+    
+    - name: Upload release text
+      run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
+      
+    - name: Run Setup Commands
+      run: ${{ matrix.setup-cmds }}
+      
+    - name: Dockerfile Build
+      run: |
+        docker build \
+        --build-arg BUILD_TYPE=${{ matrix.build-type }} \
+        --build-arg BUILD_COMMIT=${{ github.sha }} \
+        ${{ matrix.docker-args }} \
+        --output type=local,dest=./ \
+        -t opendatacon-builder -f DockerFiles/${{ matrix.docker-file }} .
+        
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.name }} Installer
+        retention-days: 7
+        path: |
+          opendatacon-*.sh
+          opendatacon-*.exe
+          tag_annotation.txt
+          
+    - name: Upload Logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.run-os }} Logs
+        retention-days: 7
+        path: |
+          ODC_Log*
+    
   opendatacon-native:
-    name: ${{matrix.os}} ${{matrix.build-type}} ${{matrix.cross}} ${{matrix.bits}} 
+    name: ${{matrix.os}} ${{matrix.build-type}} ${{matrix.bits}} 
   
     strategy:
       fail-fast: false
       
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
         build-type: [Release,Debug]
         bits: [64]
-        cross: ['none']
             
         include:
           - os: windows-latest
@@ -32,38 +137,20 @@ jobs:
             build-type: Debug
             bits: 32
             cross: 'none'
-          - os: ubuntu-latest
-            build-type: Release
-            bits: 32
-            cross: 'rpi'
-          - os: ubuntu-latest
-            build-type: Debug
-            bits: 32
-            cross: 'rpi'
 
     runs-on: ${{ matrix.os }}
 
     env:
       BUILD_TYPE: ${{ matrix.build-type }}
       INSTALL_PREFIX: ${{github.workspace}}/build/install
-      JOB_NAME: ${{matrix.os}}_${{matrix.build-type}}_${{matrix.cross}}_${{matrix.bits}}
+      JOB_NAME: ${{matrix.os}}_${{matrix.build-type}}_${{matrix.bits}}
 
     steps:
-    
-    - if: always()
-      name: Set log level
-      shell: bash
-      run: |
-        ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - run: git fetch --force --tags
-    
-    - if: matrix.cross == 'rpi'
-      name: Setup QEMU
-      uses: docker/setup-qemu-action@v1
     
     - if: matrix.bits == 32 && contains(matrix.os,'windows') #FIXME: openssl version pinned to 1.1.1 because 3.x choco doesn't support 32bit
       name: Set 32-bit env
@@ -99,55 +186,13 @@ jobs:
     - if: contains(matrix.os,'macos')
       name: Setup MacOS Environment
       run: |
-        brew install libmodbus socat openssl python
+        brew install libmodbus socat
         echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt/homebrew' >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
-
-    - if: contains(matrix.os,'ubuntu') && matrix.cross == 'none'
-      name: Setup Ubuntu Environment
-      run: |
-        sudo apt-get install -y libmodbus-dev libssl-dev socat
-        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic' >> $GITHUB_ENV
-        echo 'BINDIR=bin/' >> $GITHUB_ENV
     
-    - if: contains(matrix.os,'ubuntu') && matrix.cross == 'none' && matrix.build-type == 'Release'
-      name: Upload release text
+    - name: Upload release text
       run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
-        
-    - if: matrix.cross == 'rpi'
-      name: Rpi Setup Script
-      run: |
-        echo '#!/bin/bash
-        apt-get update
-        apt-get install -y libmodbus-dev libc6-dev openssl libssl-dev python3.7 python3.7-dev
-        mkdir -p /github/workspace/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
-        chmod a+rwx /github/workspace/build
-        rm /usr/lib/python3.7/sitecustomize.py
-        cp /etc/python3.7/sitecustomize.py /usr/lib/python3.7/sitecustomize.py
-        cp -a /usr/include/*/*/pyconfig.h /github/workspace/build/sysroot$(dirname /usr/include/*/*/pyconfig.h)
-        cp -a /usr/include/modbus /github/workspace/build/sysroot/usr/include/
-        cp -a /usr/include/python* /github/workspace/build/sysroot/usr/include/
-        cp -a /usr/include/openssl /github/workspace/build/sysroot/usr/include/
-        cp -a /usr/include/*/*/opensslconf.h /github/workspace/build/sysroot/usr/include/openssl/
-        cp -a /usr/lib /github/workspace/build/sysroot/usr/
-        cp -a /lib* /github/workspace/build/sysroot/
-        ' > ${{github.workspace}}/install_rpi_deps.sh
-        chmod +x ${{github.workspace}}/install_rpi_deps.sh
-    
-    - if: matrix.cross == 'rpi'
-      name: Setup Rpi Environment
-      uses: docker://2000cubits/raspbian:buster
-      with:
-        entrypoint: /github/workspace/install_rpi_deps.sh
-    
-    - if: matrix.cross == 'rpi'
-      name: Setup cross compilation for Rpi
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y g++-arm-linux-gnueabihf
-        echo 'SYSROOT=${{github.workspace}}/build/sysroot/' >> $GITHUB_ENV
-        echo 'TOOLCHAIN_OPT=-DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/Code/cmake/rpi-toolchain.cmake -DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF' >> $GITHUB_ENV
-
+      
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON
 
@@ -161,205 +206,68 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
 
     - name: ODC_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: libLua_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}libLua_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
-    - name: KafkaPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
-      run: ${{github.workspace}}/build/install/${{env.BINDIR}}KafkaPort_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
+    - name: KafkaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}KafkaPort_tests ${{env.LOG_LVL}} -d yes
     - name: MD3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
     - name: CBPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
     - name: PyPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
     - name: FileTransferPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
     - name: LuaPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && matrix.cross == 'none' }}
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
       
-    - if: always()
-      name: Upload ODC_Log
-      uses: actions/upload-artifact@v2
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
       with:
-        name: ODC_Log_${{env.JOB_NAME}}
-        retention-days: 7
-        path: ODC_Log*
-    
-    - if: always()
-      name: Upload Installer
-      uses: actions/upload-artifact@v2
-      with:
-        name: installers
+        name: ${{env.JOB_NAME}} Installer
         retention-days: 7
         path: |
-          ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.sh
-          ${{github.workspace}}/build/opendatacon-*.*.*-*-*-*-*-*.exe
+          build/opendatacon-*.sh
+          build/opendatacon-*.exe
           tag_annotation.txt
-
-  opendatacon-docker:
-    name: ${{matrix.docker}} ${{matrix.build-type}}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        build-type: [Release,Debug]
-        docker: ['library/oraclelinux:7.6','i386/debian:bookworm-slim']
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.docker }}
-
-    env:
-      BUILD_TYPE: ${{ matrix.build-type }}
-      INSTALL_PREFIX: /github/workspace/build/install
-      BINDIR: bin/
-      JOB_NAME: ${{matrix.os}}_${{matrix.build-type}}_${{matrix.cross}}_${{matrix.bits}}
-
-    steps:
-    
-    - if: always()
-      name: Set log level
-      shell: bash
-      run: |
-        ([ ${{ runner.debug }} ] && echo 'LOG_LVL=debug' || echo 'LOG_LVL=error') >> $GITHUB_ENV
-        
-    - name: Start run wrapper
-      run: echo '#!/bin/bash' >> $HOME/run.sh
-
-    - if: contains(matrix.docker, 'oracle')
-      name: Setup OEL7 Environment
-      continue-on-error: true
-      run: |
-        yum install -y oracle-softwarecollection-release-el7
-        /usr/bin/ol_yum_configure.sh
-        yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat psmisc make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static libmodbus libmodbus-devel
-        ln -s /usr/bin/cmake3 /bin/cmake
-        mkdir -p /opt/openssl-root
-        ln -s /usr/include/openssl11 /opt/openssl-root/include
-        ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
-        # To get Python3.6 we need scl-util-build tools
-        curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
-        rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
-        yum install -y rh-python36 rh-python36-python-devel rh-git218
-        echo 'TOOLCHAIN_OPT=-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root -DADD_LIBS=z' >> $GITHUB_ENV
-        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=oel7' >> $GITHUB_ENV
-        echo 'source scl_source enable devtoolset-8' >> $HOME/run.sh
-        echo 'source scl_source enable rh-git218' >> $HOME/run.sh
-        echo '#!/bin/bash' >> /bin/git
-        echo "$HOME/run.sh git \"\$@\"" >> /bin/git
-        chmod +x /bin/git
-        
-    - if: contains(matrix.docker, 'i386')
-      name: Setup i386 Environment
-      run: |
-        apt-get update
-        apt-get install -y libmodbus-dev socat psmisc openssl libssl-dev g++ git cmake file make binutils python3 python3-dev
-        echo 'SYSVER_OPT=-DCMAKE_SYSTEM_VERSION=generic -DARCH_DESC=x86' >> $GITHUB_ENV
-
-    - name: Finish run wrapper
-      run: |
-        echo 'exec "$@"' >> $HOME/run.sh
-        chmod +x $HOME/run.sh
-
-    # see https://github.com/actions/checkout/issues/760
-    - name: Work-around perms
-      run: |
-        git config --global --add safe.directory /__w/opendatacon/opendatacon
-        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/tclap
-        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/dnp3
-        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/asio
-        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/spdlog
-        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/Simple-Web-Server
-        git config --global --add safe.directory /__w/opendatacon/opendatacon/Code/submodules/python-cmake-buildsystem 
-    
-    - uses: actions/checkout@v1
-    - run: git fetch --force --tags
-
-    - name: Configure CMake
-      run: $HOME/run.sh cmake -B /github/workspace/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON
-
-    - name: Build
-      run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --parallel 8
-
-    - name: Package
-      run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --target package
-
-    - name: Install
-      run: $HOME/run.sh cmake --build /github/workspace/build --config ${{env.BUILD_TYPE}} --target install
-
-    - name: ODC_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
-    - name: libLua_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}libLua_tests ${{env.LOG_LVL}} -d yes
-    - name: DNP3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
-    - name: KafkaPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}KafkaPort_tests ${{env.LOG_LVL}} -d yes
-    - name: SimPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}SimPort_tests -d yes
-    - name: MD3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
-    - name: CBPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
-    - name: PyPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
-    - name: FileTransferPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
-    - name: LuaPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
-    - name: Integration_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
-      run: /github/workspace/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
-
-    - if: always()
-      name: Find Installer Name
-      run: |
-        echo "INSTALLER_NAME=$(find /github/workspace/build -name "opendatacon-*.*.*-*-*-*-*-*.sh" -printf "%f" -quit)" >> $GITHUB_ENV
-        cp /github/workspace/build/opendatacon-*.*.*-*-*-*-*-*.sh /github/home/
-        
-    - if: always()
-      name: Upload Installer
-      uses: actions/upload-artifact@v1
+          
+    - name: Upload Logs
+      uses: actions/upload-artifact@v4
       with:
-        name: installers
-        path: /home/runner/work/_temp/_github_home/${{env.INSTALLER_NAME}}
-        
-            
+        name: ${{env.JOB_NAME}} Logs
+        retention-days: 7
+        path: |
+          ODC_Log*
+         
   opendatacon-deploy:
     if: always() && contains(github.ref, 'tag')
-    needs: [opendatacon-native,opendatacon-docker]
+    needs: [opendatacon-native,opendatacon-dockerfile-builds]
     runs-on: macos-latest
     steps:
       - name: Download Installers
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: installers
+          path: installers
+          pattern: '*Installer'
+          merge-multiple: true
           
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -373,8 +281,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   opendatacon-clean:
-    if: always()
-    needs: [opendatacon-native,opendatacon-docker]
+    if: github.event_name != 'pull_request'
+    needs: [opendatacon-native,opendatacon-dockerfile-builds]
     runs-on: ubuntu-latest
     steps:
       - name: Remove old artifacts

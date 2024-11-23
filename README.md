@@ -533,7 +533,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
     //-------Master Stack conf--------#
     "MasterResponseTimeoutms" : 30000,
     "MasterRespondTimeSync" : true,
-    "DoUnsolOnStartup" : true,
+    "DisableUnsolOnStartup" : true,
     "StartupIntegrityClass0" : true,
     "StartupIntegrityClass1" : true,
     "StartupIntegrityClass2" : true,
@@ -561,7 +561,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 |-----|------------|-------------|-----------|---------------|
 | MasterResponseTimeoutms | number | Application layer response timeout. | No | 5000 |
 | MasterRespondTimeSync | boolean | If true, the master will do time syncs when it sees the time IIN bit from the outstation. | No | true |
-| DoUnsolOnStartup | boolean | If true, the master will enable unsol on startup. | No | true |
+| DisableUnsolOnStartup | boolean | If true, the master will disable unsol on startup (warning: setting false produces non-compliant behaviour) | No | true |
 | StartupIntegrityClass0 | boolean | If true, the master will perform a Class 0 scan on startup. | No | true |
 | StartupIntegrityClass1 | boolean | If true, the master will perform a Class 1 scan on startup. | No | true |
 | StartupIntegrityClass2 | boolean | If true, the master will perform a Class 2 scan on startup. | No | true |
