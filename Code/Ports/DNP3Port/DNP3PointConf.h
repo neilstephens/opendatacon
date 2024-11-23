@@ -69,7 +69,7 @@ public:
 	uint32_t MasterResponseTimeoutms;           /// Application layer response timeout
 	bool MasterRespondTimeSync;                 /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	bool LANModeTimeSync;                       /// If true, the master will use the LAN time sync mode
-	bool DoUnsolOnStartup;                      /// If true, the master will enable unsol on startup
+	bool DisableUnsolOnStartup;                 /// If true, the master will disable unsol on startup (warning: setting false produces non-compliant behaviour)
 	bool SetQualityOnLinkStatus;                /// Whether to set point quality when link down
 	odc::QualityFlags FlagsToSetOnLinkStatus;   /// The flags to Set when SetQualityOnLinkStatus is true
 	odc::QualityFlags FlagsToClearOnLinkStatus; /// The flags to Clear when SetQualityOnLinkStatus is true
@@ -84,10 +84,19 @@ public:
 	/// When will the startup integrity scan be triggered
 	enum class LinkUpIntegrityTrigger_t { NEVER, ON_FIRST, ON_EVERY };
 	LinkUpIntegrityTrigger_t LinkUpIntegrityTrigger;
-	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
+	/// Which classes should be requested for forced integrity scans
+	opendnp3::ClassField GetForcedIntegrityClassMask();
+	bool ForcedIntegrityClass0;
+	bool ForcedIntegrityClass1;
+	bool ForcedIntegrityClass2;
+	bool ForcedIntegrityClass3;
+	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected.
+	/// Warning: non compliant behaviour if set to false
 	bool IntegrityOnEventOverflowIIN;
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
 	bool IgnoreRestartIIN;
+	/// Whether to retry a integrity scan that is forced by IIN
+	bool RetryForcedIntegrity;
 	/// Time delay beforce retrying a failed task
 	uint32_t TaskRetryPeriodms;
 
@@ -114,45 +123,73 @@ public:
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;
 	opendnp3::StaticAnalogVariation StaticAnalogResponse;
 	opendnp3::StaticCounterVariation StaticCounterResponse;
+	opendnp3::StaticAnalogOutputStatusVariation StaticAnalogOutputStatusResponse;
+	opendnp3::StaticBinaryOutputStatusVariation StaticBinaryOutputStatusResponse;
 
 	// Default Event Variations
 	opendnp3::EventBinaryVariation EventBinaryResponse;
 	opendnp3::EventAnalogVariation EventAnalogResponse;
 	opendnp3::EventCounterVariation EventCounterResponse;
+	opendnp3::EventAnalogOutputStatusVariation EventAnalogOutputStatusResponse;
+	opendnp3::EventBinaryOutputStatusVariation EventBinaryOutputStatusResponse;
 
-	opendnp3::EventAnalogOutputStatusVariation EventAnalogControlResponse;
+	odc::EventType AnalogControlType;
 
 	// Timestamp override options
 	enum class TimestampOverride_t { ALWAYS, ZERO, NEVER };
 	TimestampOverride_t TimestampOverride;
 
 	// Event buffer limits
-	uint16_t MaxBinaryEvents;      /// The number of binary events the outstation will buffer before overflowing
-	uint16_t MaxAnalogEvents;      /// The number of analog events the outstation will buffer before overflowing
-	uint16_t MaxCounterEvents;     /// The number of counter events the outstation will buffer before overflowing
-	uint16_t MaxOctetStringEvents; /// The number of octet string events the outstation will buffer before overflowing
+	uint16_t MaxBinaryEvents;             /// The number of binary events the outstation will buffer before overflowing
+	uint16_t MaxAnalogEvents;             /// The number of analog events the outstation will buffer before overflowing
+	uint16_t MaxCounterEvents;            /// The number of counter events the outstation will buffer before overflowing
+	uint16_t MaxOctetStringEvents;        /// The number of octet string events the outstation will buffer before overflowing
+	uint16_t MaxAnalogOutputStatusEvents; /// The number of analog output status events the outstation will buffer before overflowing
+	uint16_t MaxBinaryOutputStatusEvents; /// The number of binary output status events the outstation will buffer before overflowing
+
 
 	// Point Configuration
 	// TODO: use struct or class for point configuration
 	std::pair<opendnp3::Binary, size_t> mCommsPoint;
+
+	// Binary Point Configuration
 	std::vector<uint16_t> BinaryIndexes;
 	std::map<uint16_t, opendnp3::Binary> BinaryStartVals;
 	std::map<uint16_t, opendnp3::PointClass> BinaryClasses;
 	std::map<uint16_t, opendnp3::StaticBinaryVariation> StaticBinaryResponses;
 	std::map<uint16_t, opendnp3::EventBinaryVariation> EventBinaryResponses;
 
+	// Octet String Point Configuration
 	std::vector<uint16_t> OctetStringIndexes;
 	std::map<uint16_t, opendnp3::PointClass> OctetStringClasses;
 
-	std::vector<uint32_t> AnalogIndexes;
+	// Analog Point Configuration
+	std::vector<uint16_t> AnalogIndexes;
 	std::map<uint16_t, opendnp3::Analog> AnalogStartVals;
 	std::map<uint16_t, opendnp3::StaticAnalogVariation> StaticAnalogResponses;
 	std::map<uint16_t, opendnp3::EventAnalogVariation> EventAnalogResponses;
 	std::map<uint16_t, opendnp3::PointClass> AnalogClasses;
 	std::map<uint16_t, double> AnalogDeadbands;
+
+	//Analog Output Status Point Configuration
+	std::vector<uint16_t> AnalogOutputStatusIndexes;
+	std::map<uint16_t, opendnp3::AnalogOutputStatus> AnalogOutputStatusStartVals;
+	std::map<uint16_t, opendnp3::PointClass> AnalogOutputStatusClasses;
+	std::map<uint16_t, opendnp3::StaticAnalogOutputStatusVariation> StaticAnalogOutputStatusResponses;
+	std::map<uint16_t, opendnp3::EventAnalogOutputStatusVariation> EventAnalogOutputStatusResponses;
+	std::map<uint16_t, double> AnalogOutputStatusDeadbands;
+
+	// Binary Output Status Point Configuration
+	std::vector<uint16_t> BinaryOutputStatusIndexes;
+	std::map<uint16_t, opendnp3::BinaryOutputStatus> BinaryOutputStatusStartVals;
+	std::map<uint16_t, opendnp3::PointClass> BinaryOutputStatusClasses;
+	std::map<uint16_t, opendnp3::StaticBinaryOutputStatusVariation> StaticBinaryOutputStatusResponses;
+	std::map<uint16_t, opendnp3::EventBinaryOutputStatusVariation> EventBinaryOutputStatusResponses;
+
+
 	std::vector<uint16_t> ControlIndexes;
 	std::vector<uint16_t> AnalogControlIndexes;
-	std::map<uint16_t, opendnp3::EventAnalogOutputStatusVariation> ControlAnalogResponses;
+	std::map<uint16_t, odc::EventType> AnalogControlTypes;
 };
 
 #endif /* DNP3POINTCONF_H_ */

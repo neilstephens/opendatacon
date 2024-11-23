@@ -92,9 +92,9 @@ void SimPort::Enable()
 		{
 			if(!enabled)
 			{
-			      enabled = true;
-			      PortUp();
-			      if(!httpServerToken.ServerID.empty())
+				enabled = true;
+				PortUp();
+				if(!httpServerToken.ServerID.empty())
 					HttpServerManager::StartConnection(httpServerToken);
 			}
 		});
@@ -106,10 +106,10 @@ void SimPort::Disable()
 		{
 			if(enabled)
 			{
-			      PortDown();
-			      if(!httpServerToken.ServerID.empty())
+				PortDown();
+				if(!httpServerToken.ServerID.empty())
 					HttpServerManager::StopConnection(httpServerToken);
-			      enabled = false;
+				enabled = false;
 			}
 		});
 }
@@ -311,9 +311,9 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 						{
 							if(enabled && !err_code)
 							{
-							      if (type == EventType::Binary)
+								if (type == EventType::Binary)
 									StartBinaryEvents(index);
-							      if (type == EventType::Analog)
+								if (type == EventType::Analog)
 									StartAnalogEvents(index);
 							}
 						});
@@ -379,6 +379,8 @@ void SimPort::ResetPoints()
 
 void SimPort::PortUp()
 {
+	PublishEvent(ConnectState::PORT_UP);
+	PublishEvent(ConnectState::CONNECTED);
 	auto now = msSinceEpoch();
 
 	for(const auto& type : {odc::EventType::Analog,odc::EventType::Binary})
@@ -406,9 +408,9 @@ void SimPort::PortUp()
 					{
 						if (enabled && !err_code)
 						{
-						      if(type == odc::EventType::Analog)
+							if(type == odc::EventType::Analog)
 								StartAnalogEvents(index);
-						      else if(type == odc::EventType::Binary)
+							else if(type == odc::EventType::Binary)
 								StartBinaryEvents(index, !event->GetPayload<odc::EventType::Binary>());
 						}
 					});
@@ -420,6 +422,8 @@ void SimPort::PortUp()
 void SimPort::PortDown()
 {
 	pSimConf->CancelTimers();
+	PublishEvent(ConnectState::DISCONNECTED);
+	PublishEvent(ConnectState::PORT_DOWN);
 }
 
 bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, const msSinceEpoch_t now, const ptimer_t ptimer)
@@ -658,32 +662,32 @@ void SimPort::Build()
 
 				if (error.length() == 0)
 				{
-				      if (to_lower(type) == "binary")
-				      {
-				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
-				            result = pSimConf->CurrentState(EventType::Binary, indexes);
+					if (to_lower(type) == "binary")
+					{
+						std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Binary);
+						result = pSimConf->CurrentState(EventType::Binary, indexes);
 					}
-				      if (to_lower(type) == "analog")
-				      {
-				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Analog);
-				            result = pSimConf->CurrentState(EventType::Analog, indexes);
+					if (to_lower(type) == "analog")
+					{
+						std::vector<std::size_t> indexes = IndexesFromString(index, EventType::Analog);
+						result = pSimConf->CurrentState(EventType::Analog, indexes);
 					}
-				      if (to_lower(type) == "control")
-				      {
-				            std::vector<std::size_t> indexes = IndexesFromString(index, EventType::ControlRelayOutputBlock);
-				            result = pSimConf->CurrentState(EventType::ControlRelayOutputBlock, indexes);
+					if (to_lower(type) == "control")
+					{
+						std::vector<std::size_t> indexes = IndexesFromString(index, EventType::ControlRelayOutputBlock);
+						result = pSimConf->CurrentState(EventType::ControlRelayOutputBlock, indexes);
 					}
 				}
 				if (result.length() != 0)
 				{
-				      rep.status = http::reply::ok;
-				      rep.content.append(result);
+					rep.status = http::reply::ok;
+					rep.content.append(result);
 				}
 				else
 				{
-				      rep.status = http::reply::not_found;
-				      contenttype = "text/html";
-				      rep.content.append("ERROR - You have reached the SimPort Instance with GET on " + Name + " Invalid Request " + type + ", " + index + " - " + error);
+					rep.status = http::reply::not_found;
+					contenttype = "text/html";
+					rep.content.append("ERROR - You have reached the SimPort Instance with GET on " + Name + " Invalid Request " + type + ", " + index + " - " + error);
 				}
 				rep.headers.resize(2);
 				rep.headers[0].name = "Content-Length";
@@ -708,7 +712,7 @@ void SimPort::Build()
 				std::string error = "";
 
 				if (parameters.count("type") != 0)
-					type = ToEventType(parameters.at("type"));
+					type = EventTypeFromString(parameters.at("type"));
 				else
 					error = "No 'type' parameter found";
 
@@ -724,22 +728,22 @@ void SimPort::Build()
 
 				if (parameters.count("force") != 0)
 				{
-				      bool result = false;
-				      if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
-				      {
-				            result = SetForcedState(index, type, true);
+					bool result = false;
+					if (((to_lower(parameters.at("force")) == "true") || (parameters.at("force") == "1")))
+					{
+						result = SetForcedState(index, type, true);
 					}
-				      if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
-				      {
-				            result = SetForcedState(index, type, false);
+					if (((to_lower(parameters.at("force")) == "false") || (parameters.at("force") == "0")))
+					{
+						result = SetForcedState(index, type, false);
 					}
-				      if (result == false)
-				      {
-				            error += "  Unable to set forced";
+					if (result == false)
+					{
+						error += "  Unable to set forced";
 					}
-				      else
-				      {
-				            rep.content.append("Set Period Command Accepted\n");
+					else
+					{
+						rep.content.append("Set Period Command Accepted\n");
 					}
 				}
 
@@ -750,35 +754,35 @@ void SimPort::Build()
 
 				if ((error.length() == 0) && (value.length() != 0)) // Forced set above
 				{
-				      if (UILoad(type, index, value, quality, timestamp, false))
-				      {
-				            rep.status = http::reply::ok;
-				            rep.content.append("Set Value Command Accepted\n");
+					if (UILoad(type, index, value, quality, timestamp, false))
+					{
+						rep.status = http::reply::ok;
+						rep.content.append("Set Value Command Accepted\n");
 					}
-				      else
+					else
 						error += " Unable to set value (invalid index?) ";
 				}
 
 				if ((error.length() == 0) && (period.length() != 0) )
 				{
-				      if (UISetUpdateInterval(type, index, period))
-				      {
-				            rep.status = http::reply::ok;
-				            rep.content.append("Set Period Command Accepted\n");
+					if (UISetUpdateInterval(type, index, period))
+					{
+						rep.status = http::reply::ok;
+						rep.content.append("Set Period Command Accepted\n");
 					}
-				      else
+					else
 						error += " Unable to set Period (invalid index?) ";
 				}
 
 				if (!((value.length() > 0) || (period.length() > 0)))
 				{
-				      error += " Missing a value or period (or both) parameter(s). Must have at least one.";
+					error += " Missing a value or period (or both) parameter(s). Must have at least one.";
 				}
 
 				if (error.length() != 0)
 				{
-				      rep.status = http::reply::not_found;
-				      rep.content.assign("ERROR - You have reached the SimPort Instance with POST on " + Name + " POST Command Failed - " + error);
+					rep.status = http::reply::not_found;
+					rep.content.assign("ERROR - You have reached the SimPort Instance with POST on " + Name + " POST Command Failed - " + error);
 				}
 				rep.headers.resize(2);
 				rep.headers[0].name = "Content-Length";
@@ -877,9 +881,9 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 					{
 						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
 						{
-						      auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
-						      event->SetTimestamp();
-						      PostPublishEvent(event);
+							auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
+							event->SetTimestamp();
+							PostPublishEvent(event);
 						}
 					});
 				//TODO: (maybe) implement multiple pulses - command has count and offTimeMS

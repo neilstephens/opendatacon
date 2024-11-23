@@ -63,9 +63,9 @@ class ModbusPort: public DataPort
 public:
 	ModbusPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides);
 
-	void Enable() override =0;
-	void Disable() override =0;
-	void Build() override =0;
+	void Enable() override = 0;
+	void Disable() override = 0;
+	void Build() override = 0;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); }
 

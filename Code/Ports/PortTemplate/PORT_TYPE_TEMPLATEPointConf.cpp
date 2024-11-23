@@ -42,8 +42,7 @@ void <PORT_TYPE_TEMPLATE>PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if(!JSONRoot.isObject()) return;
 
 	if(JSONRoot.isMember("PollGroups"))
-	{
-	}
+	{}
 }
 
 

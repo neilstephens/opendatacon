@@ -165,12 +165,12 @@ void MD3MasterPort::QueueMD3Command(const MD3Message_t &CompleteMD3Message, cons
 		{
 			if (MasterCommandProtectedData.MasterCommandQueue.size() < MasterCommandProtectedData.MaxCommandQueueSize)
 			{
-			      MasterCommandProtectedData.MasterCommandQueue.push(MasterCommandQueueItem(CompleteMD3Message, pStatusCallback)); // async
+				MasterCommandProtectedData.MasterCommandQueue.push(MasterCommandQueueItem(CompleteMD3Message, pStatusCallback)); // async
 			}
 			else
 			{
-			      LOGDEBUG("{} Tried to queue another MD3 Master Command when the command queue is full",Name);
-			      PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
+				LOGDEBUG("{} Tried to queue another MD3 Master Command when the command queue is full",Name);
+				PostCallbackCall(pStatusCallback, CommandStatus::UNDEFINED); // Failed...
 			}
 
 			// Will only send if we can - i.e. not currently processing a command
@@ -275,20 +275,20 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 				{
 					if (err_code != asio::error::operation_aborted)
 					{
-					// We need strand protection for the variables, so this will queue another chunk of work below.
-					// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
-					      MasterCommandStrand->dispatch([this,endtime]()
+						// We need strand protection for the variables, so this will queue another chunk of work below.
+						// If we get an answer in the delay this causes, no big deal - the length of the timeout will kind of jitter.
+						MasterCommandStrand->dispatch([this,endtime]()
 							{
 								// The checking of the expire time is another way to make sure that we have not cancelled the timer. We really need to make sure that if
 								// we have cancelled the timer and this callback is called, that we do NOT take any action!
 
 								if (endtime == MasterCommandProtectedData.TimerExpireTime)
 								{
-								      LOGDEBUG("{} MD3 Master Timeout valid - MD3 Function {}",Name,std::to_string(MasterCommandProtectedData.CurrentFunctionCode));
+									LOGDEBUG("{} MD3 Master Timeout valid - MD3 Function {}",Name,std::to_string(MasterCommandProtectedData.CurrentFunctionCode));
 
-								      MasterCommandProtectedData.ProcessingMD3Command = false; // Only gets reset on success or timeout.
+									MasterCommandProtectedData.ProcessingMD3Command = false; // Only gets reset on success or timeout.
 
-								      UnprotectedSendNextMasterCommand(true); // We already have the strand, so don't need the wrapper here
+									UnprotectedSendNextMasterCommand(true); // We already have the strand, so don't need the wrapper here
 								}
 								else
 									LOGDEBUG("{} MD3 Master Timeout callback called, when we had already moved on to the next command",Name);
@@ -296,7 +296,7 @@ void MD3MasterPort::UnprotectedSendNextMasterCommand(bool timeoutoccured)
 					}
 					else
 					{
-					      LOGDEBUG("{} MD3 Master Timeout callback cancelled",Name);
+						LOGDEBUG("{} MD3 Master Timeout callback cancelled",Name);
 					}
 				});
 		}
@@ -314,7 +314,7 @@ void MD3MasterPort::ClearMD3CommandQueue()
 			MD3Message_t NextCommand;
 			while (!MasterCommandProtectedData.MasterCommandQueue.empty())
 			{
-			      MasterCommandProtectedData.MasterCommandQueue.pop();
+				MasterCommandProtectedData.MasterCommandQueue.pop();
 			}
 			MasterCommandProtectedData.CurrentFunctionCode = 0;
 			MasterCommandProtectedData.ProcessingMD3Command = false;
@@ -349,8 +349,8 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t&& CompleteMD3Message)
 
 			if (CompleteMD3Message.size() == 0)
 			{
-			      LOGERROR("{} Received a Master to Station message with zero length!!! ",Name);
-			      return;
+				LOGERROR("{} Received a Master to Station message with zero length!!! ",Name);
+				return;
 			}
 
 			MD3BlockFormatted Header = MD3BlockFormatted(CompleteMD3Message[0]);
@@ -359,18 +359,18 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t&& CompleteMD3Message)
 
 			if (Header.IsMasterToStationMessage() != false)
 			{
-			      LOGERROR("{} Received a Master to Station message at the Master - ignoring - {} On Station Address - {}",Name, Header.GetFunctionCode() ,Header.GetStationAddress());
-			      return;
+				LOGERROR("{} Received a Master to Station message at the Master - ignoring - {} On Station Address - {}",Name, Header.GetFunctionCode() ,Header.GetStationAddress());
+				return;
 			}
 			if (Header.GetStationAddress() == 0)
 			{
-			      LOGERROR("{} Received broadcast return message - address 0 - ignoring - {} On Station Address - {}",Name, Header.GetFunctionCode(), Header.GetStationAddress());
-			      return;
+				LOGERROR("{} Received broadcast return message - address 0 - ignoring - {} On Station Address - {}",Name, Header.GetFunctionCode(), Header.GetStationAddress());
+				return;
 			}
 			if (Header.GetStationAddress() != MyConf->mAddrConf.OutstationAddr)
 			{
-			      LOGERROR("{} Received a message from the wrong address - ignoring - {} On Station Address - {}", Name, Header.GetFunctionCode(),Header.GetStationAddress());
-			      return;
+				LOGERROR("{} Received a message from the wrong address - ignoring - {} On Station Address - {}", Name, Header.GetFunctionCode(),Header.GetStationAddress());
+				return;
 			}
 
 			LOGDEBUG("{} MD3 Master received a response to sending cmd {} of {}",Name, MasterCommandProtectedData.CurrentFunctionCode, Header.GetFunctionCode());
@@ -415,15 +415,15 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t&& CompleteMD3Message)
 						success = ProcessDigitalNoChangeReturn(Header, CompleteMD3Message);
 					else if (Header.GetFunctionCode() == DIGITAL_CHANGE_OF_STATE_TIME_TAGGED)
 					{
-					      success = ProcessDigitalScan(Header, CompleteMD3Message);
-					      if (success)
-					      {
-					// We should trigger another scan command. Will continue until we get a DIGITAL_NO_CHANGE_REPLY or an error
+						success = ProcessDigitalScan(Header, CompleteMD3Message);
+						if (success)
+						{
+							// We should trigger another scan command. Will continue until we get a DIGITAL_NO_CHANGE_REPLY or an error
 
-					            uint8_t TaggedEventCount = 15; // Assuming there are. Will not send if there are not!
-					            uint8_t Modules = 15;          // Get as many as we can...
-					            auto commandblock = MD3BlockFn11MtoS(Header.GetStationAddress(), TaggedEventCount, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
-					            QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
+							uint8_t TaggedEventCount = 15; // Assuming there are. Will not send if there are not!
+							uint8_t Modules = 15;          // Get as many as we can...
+							auto commandblock = MD3BlockFn11MtoS(Header.GetStationAddress(), TaggedEventCount, GetAndIncrementDigitalCommandSequenceNumber(), Modules);
+							QueueMD3Command(commandblock, nullptr); // No callback, does not originate from ODC
 						}
 					}
 					break;
@@ -432,8 +432,8 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t&& CompleteMD3Message)
 						success = ProcessDigitalNoChangeReturn(Header, CompleteMD3Message);
 					else if ((Header.GetFunctionCode() == DIGITAL_UNCONDITIONAL) || (Header.GetFunctionCode() == DIGITAL_CHANGE_OF_STATE_TIME_TAGGED))
 					{
-					      LOGDEBUG("Doing Digital Unconditional (new) processing - which is the same as Digital Scan");
-					      success = ProcessDigitalScan(Header, CompleteMD3Message);
+						LOGDEBUG("Doing Digital Unconditional (new) processing - which is the same as Digital Scan");
+						success = ProcessDigitalScan(Header, CompleteMD3Message);
 					}
 					break;
 				case ANALOG_NO_CHANGE_REPLY:
@@ -512,16 +512,16 @@ void MD3MasterPort::ProcessMD3Message(MD3Message_t&& CompleteMD3Message)
 
 			if (success) // Move to the next command. Only other place we do this is in the timeout.
 			{
-			      MasterCommandProtectedData.CurrentCommandTimeoutTimer->cancel(); // Have to be careful the handler still might do something?
-			      MasterCommandProtectedData.ProcessingMD3Command = false;         // Only gets reset on success or timeout.
+				MasterCommandProtectedData.CurrentCommandTimeoutTimer->cancel(); // Have to be careful the handler still might do something?
+				MasterCommandProtectedData.ProcessingMD3Command = false;         // Only gets reset on success or timeout.
 
-			      // Execute the callback with a success code.
-			      PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::SUCCESS); // Does null check
-			      UnprotectedSendNextMasterCommand(false);                                                    // We already have the strand, so don't need the wrapper here. Pass in that this is not a retry.
+				// Execute the callback with a success code.
+				PostCallbackCall(MasterCommandProtectedData.CurrentCommand.second, CommandStatus::SUCCESS); // Does null check
+				UnprotectedSendNextMasterCommand(false);                                                    // We already have the strand, so don't need the wrapper here. Pass in that this is not a retry.
 			}
 			else
 			{
-			      LOGERROR("Command Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
+				LOGERROR("Command Response failed - Received - " + std::to_string(Header.GetFunctionCode()) +
 					" Expecting " + std::to_string(MasterCommandProtectedData.CurrentFunctionCode) + " On Station Address - " + std::to_string(Header.GetStationAddress()));
 			}
 			#ifdef _MSC_VER

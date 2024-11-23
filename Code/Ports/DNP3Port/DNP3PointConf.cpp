@@ -26,6 +26,7 @@
 
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
+#include "opendatacon/IOTypes.h"
 #include <algorithm>
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
@@ -50,22 +51,29 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MasterResponseTimeoutms(5000), /// Application layer response timeout
 	MasterRespondTimeSync(true),   /// If true, the master will do time syncs when it sees the time IIN bit from the outstation
 	LANModeTimeSync(false),        /// If true, the master will use the LAN time sync mode
-	DoUnsolOnStartup(true),
+	DisableUnsolOnStartup(true),
 	SetQualityOnLinkStatus(true),
 	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
 	CommsPointHeartBeatTimems(0),
-	/// Which classes should be requested in a startup integrity scan
+	/// Which classes should be requested in a startup integrity scans
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
 	StartupIntegrityClass2(true),
 	StartupIntegrityClass3(true),
 	LinkUpIntegrityTrigger(LinkUpIntegrityTrigger_t::ON_FIRST),
+	/// Which classes should be requested for forced integrity scans
+	ForcedIntegrityClass0(true),
+	ForcedIntegrityClass1(true),
+	ForcedIntegrityClass2(true),
+	ForcedIntegrityClass3(true),
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	IntegrityOnEventOverflowIIN(true),
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
 	IgnoreRestartIIN(false),
+	/// Whether to retry a integrity scan that is forced by IIN
+	RetryForcedIntegrity(false),
 	/// Time delay beforce retrying a failed task
 	TaskRetryPeriodms(5000),
 	// Master Station scanning configuration
@@ -88,17 +96,25 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
 	StaticCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
+	StaticAnalogOutputStatusResponse(opendnp3::StaticAnalogOutputStatusVariation::Group40Var1),
+	StaticBinaryOutputStatusResponse(opendnp3::StaticBinaryOutputStatusVariation::Group10Var2),
 	// Default Event Variations
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
 	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
-	EventAnalogControlResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var1), // 32 bit no time
+	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
+	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
+	// Default Analog Control Type
+	AnalogControlType(odc::EventType::AnalogOutputInt32),
+	// Timestamp Override Alternatives
 	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),
 	MaxCounterEvents(1000),
-	MaxOctetStringEvents(1000)
+	MaxOctetStringEvents(1000),
+	MaxAnalogOutputStatusEvents(1000),
+	MaxBinaryOutputStatusEvents(1000)
 {
 	ProcessFile();
 }
@@ -112,6 +128,12 @@ opendnp3::ClassField DNP3PointConf::GetStartupIntegrityClassMask()
 {
 	return opendnp3::ClassField(StartupIntegrityClass0,StartupIntegrityClass1,
 		StartupIntegrityClass2,StartupIntegrityClass3);
+}
+
+opendnp3::ClassField DNP3PointConf::GetForcedIntegrityClassMask()
+{
+	return opendnp3::ClassField(ForcedIntegrityClass0,ForcedIntegrityClass1,
+		ForcedIntegrityClass2,ForcedIntegrityClass3);
 }
 
 opendnp3::PointClass GetClass(Json::Value JPoint)
@@ -207,7 +229,13 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("LANModeTimeSync"))
 		LANModeTimeSync = JSONRoot["LANModeTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
-		DoUnsolOnStartup = JSONRoot["DoUnsolOnStartup"].asBool();
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("DoUnsolOnStartup is deprecated because it had a non-compliant default, use DisableUnsolOnStartup=false if you really want non-compliant behaviour");
+	}
+	/// If true, the master will disable unsol on startup (warning: setting false produces non-compliant behaviour)
+	if (JSONRoot.isMember("DisableUnsolOnStartup"))
+		DisableUnsolOnStartup = JSONRoot["DisableUnsolOnStartup"].asBool();
 	if (JSONRoot.isMember("SetQualityOnLinkStatus"))
 		SetQualityOnLinkStatus = JSONRoot["SetQualityOnLinkStatus"].asBool();
 	if (JSONRoot.isMember("FlagsToSetOnLinkStatus"))
@@ -239,12 +267,24 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				log->error("Invalid LinkUpIntegrityTrigger: {}, should be NEVER, ON_FIRST, or ON_EVERY - defaulting to ON_FIRST", trig_str);
 		}
 	}
+	/// Which classes should be requested for forced integrity scans
+	if (JSONRoot.isMember("ForcedIntegrityClass0"))
+		ForcedIntegrityClass0 = JSONRoot["ForcedIntegrityClass0"].asBool();
+	if (JSONRoot.isMember("ForcedIntegrityClass1"))
+		ForcedIntegrityClass1 = JSONRoot["ForcedIntegrityClass1"].asBool();
+	if (JSONRoot.isMember("ForcedIntegrityClass2"))
+		ForcedIntegrityClass2 = JSONRoot["ForcedIntegrityClass2"].asBool();
+	if (JSONRoot.isMember("ForcedIntegrityClass3"))
+		ForcedIntegrityClass3 = JSONRoot["ForcedIntegrityClass3"].asBool();
 	/// Defines whether an integrity scan will be performed when the EventBufferOverflow IIN is detected
 	if (JSONRoot.isMember("IntegrityOnEventOverflowIIN"))
 		IntegrityOnEventOverflowIIN = JSONRoot["IntegrityOnEventOverflowIIN"].asBool();
 	/// Choose to ignore DEVICE_RESTART IIN flag. Warning: non compliant behaviour if set to true
 	if (JSONRoot.isMember("IgnoreRestartIIN"))
 		IgnoreRestartIIN = JSONRoot["IgnoreRestartIIN"].asBool();
+	/// Whether to retry a integrity scan that is forced by IIN
+	if (JSONRoot.isMember("RetryForcedIntegrity"))
+		RetryForcedIntegrity = JSONRoot["RetryForcedIntegrity"].asBool();
 	/// Time delay beforce retrying a failed task
 	if (JSONRoot.isMember("TaskRetryPeriodms"))
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
@@ -335,6 +375,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		StaticAnalogResponse = StringToStaticAnalogResponse(JSONRoot["StaticAnalogResponse"].asString());
 	if (JSONRoot.isMember("StaticCounterResponse"))
 		StaticCounterResponse = StringToStaticCounterResponse(JSONRoot["StaticCounterResponse"].asString());
+	if (JSONRoot.isMember("StaticAnalogOutputStatusResponse"))
+		StaticAnalogOutputStatusResponse = StringToStaticAnalogOutputStatusResponse(JSONRoot["StaticAnalogOutputStatusResponse"].asString());
+	if (JSONRoot.isMember("StaticBinaryOutputStatusResponse"))
+		StaticBinaryOutputStatusResponse = StringToStaticBinaryOutputStatusResponse(JSONRoot["StaticBinaryOutputStatusResponse"].asString());
 
 	// Default Event Variations
 	if (JSONRoot.isMember("EventBinaryResponse"))
@@ -343,8 +387,22 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		EventAnalogResponse = StringToEventAnalogResponse(JSONRoot["EventAnalogResponse"].asString());
 	if (JSONRoot.isMember("EventCounterResponse"))
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
-	if (JSONRoot.isMember("AnalogControlResponse"))
-		EventAnalogControlResponse = StringToEventAnalogControlResponse(JSONRoot["AnalogControlResponse"].asString());
+	if (JSONRoot.isMember("EventBinaryOutputStatusResponse"))
+		EventBinaryOutputStatusResponse = StringToEventBinaryOutputStatusResponse(JSONRoot["EventBinaryOutputStatusResponse"].asString());
+	if (JSONRoot.isMember("EventAnalogOutputStatusResponse"))
+		EventAnalogOutputStatusResponse = StringToEventAnalogOutputStatusResponse(JSONRoot["EventAnalogOutputStatusResponse"].asString());
+
+	//Default Analog Control Type
+	if (JSONRoot.isMember("AnalogControlType"))
+	{
+		AnalogControlType = odc::EventTypeFromString(JSONRoot["AnalogControlType"].asString());
+		if(AnalogControlType < odc::EventType::AnalogOutputInt16 || AnalogControlType > odc::EventType::AnalogOutputDouble64)
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to AnalogOutputInt32", JSONRoot["AnalogControlType"].asString());
+			AnalogControlType = odc::EventType::AnalogOutputInt32;
+		}
+	}
 
 	// Timestamp Override Alternatives
 	if (JSONRoot.isMember("TimestampOverride"))
@@ -383,6 +441,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MaxCounterEvents = cap_evenbuffer_size("MaxCounterEvents");
 	if (JSONRoot.isMember("MaxOctetStringEvents"))
 		MaxOctetStringEvents = cap_evenbuffer_size("MaxOctetStringEvents");
+	if (JSONRoot.isMember("MaxAnalogOutputStatusEvents"))
+		MaxAnalogOutputStatusEvents = cap_evenbuffer_size("MaxAnalogOutputStatusEvents");
+	if (JSONRoot.isMember("MaxBinaryOutputStatusEvents"))
+		MaxBinaryOutputStatusEvents = cap_evenbuffer_size("MaxBinaryOutputStatusEvents");
 
 	auto GetIndexRange = [](const auto& PointArrayElement) -> std::tuple<bool,size_t,size_t>
 				   {
@@ -403,6 +465,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					   return {true,start,stop};
 				   };
 
+	//TODO: remove stale code from way back when removing a point on-the-fly was a thing
 	auto InsertOrDeleteIndex = [](const auto& PointArrayElement, auto& IndexVec, auto index) -> bool
 					   {
 						   if (std::find(IndexVec.begin(),IndexVec.end(),index) == IndexVec.end())
@@ -535,6 +598,106 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		std::sort(BinaryIndexes.begin(),BinaryIndexes.end());
 	}
 
+	if(JSONRoot.isMember("AnalogOutputStatuses"))
+	{
+		const auto AnalogOutputStatuses = JSONRoot["AnalogOutputStatuses"];
+		for(Json::ArrayIndex n = 0; n < AnalogOutputStatuses.size(); ++n)
+		{
+			auto [success, start, stop] = GetIndexRange(AnalogOutputStatuses[n]);
+			if(!success)
+				continue;
+
+			double deadband = 0;
+			if(AnalogOutputStatuses[n].isMember("Deadband"))
+			{
+				deadband = AnalogOutputStatuses[n]["Deadband"].asDouble();
+			}
+
+			for(auto index = start; index <= stop; index++)
+			{
+				AnalogOutputStatusClasses[index] = GetClass(AnalogOutputStatuses[n]);
+				if (AnalogOutputStatuses[n].isMember("StaticAnalogOutputStatusResponse"))
+					StaticAnalogOutputStatusResponses[index] = StringToStaticAnalogOutputStatusResponse(AnalogOutputStatuses[n]["StaticAnalogOutputStatusResponse"].asString());
+				else
+					StaticAnalogOutputStatusResponses[index] = StaticAnalogOutputStatusResponse;
+				if (AnalogOutputStatuses[n].isMember("EventAnalogOutputStatusResponse"))
+					EventAnalogOutputStatusResponses[index] = StringToEventAnalogOutputStatusResponse(AnalogOutputStatuses[n]["EventAnalogOutputStatusResponse"].asString());
+				else
+					EventAnalogOutputStatusResponses[index] = EventAnalogOutputStatusResponse;
+
+				//TODO: make deadbands per point
+				AnalogOutputStatusDeadbands[index] = deadband;
+
+				if (std::find(AnalogOutputStatusIndexes.begin(),AnalogOutputStatusIndexes.end(),index) == AnalogOutputStatusIndexes.end())
+					AnalogOutputStatusIndexes.push_back(index);
+
+				if(AnalogOutputStatuses[n].isMember("StartVal"))
+				{
+					opendnp3::Flags flags;
+					std::string start_val = AnalogOutputStatuses[n]["StartVal"].asString();
+					if(start_val == "X")
+					{
+						flags.Set(opendnp3::AnalogOutputStatusQuality::COMM_LOST);
+						AnalogOutputStatusStartVals[index] = opendnp3::AnalogOutputStatus(0,flags);
+					}
+					else
+					{
+						flags.Set(opendnp3::AnalogOutputStatusQuality::ONLINE);
+						AnalogOutputStatusStartVals[index] = opendnp3::AnalogOutputStatus(std::stod(start_val),flags);
+					}
+				}
+				else if(AnalogOutputStatusStartVals.count(index))
+					AnalogOutputStatusStartVals.erase(index);
+			}
+		}
+		std::sort(AnalogOutputStatusIndexes.begin(),AnalogOutputStatusIndexes.end());
+	}
+
+	if(JSONRoot.isMember("BinaryOutputStatuses"))
+	{
+		const auto BinaryOutputStatuses = JSONRoot["BinaryOutputStatuses"];
+		for(Json::ArrayIndex n = 0; n < BinaryOutputStatuses.size(); ++n)
+		{
+			auto [success, start, stop] = GetIndexRange(BinaryOutputStatuses[n]);
+			if(!success)
+				continue;
+			for(auto index = start; index <= stop; index++)
+			{
+				BinaryOutputStatusClasses[index] = GetClass(BinaryOutputStatuses[n]);
+				if (BinaryOutputStatuses[n].isMember("StaticBinaryOutputStatusResponse"))
+					StaticBinaryOutputStatusResponses[index] = StringToStaticBinaryOutputStatusResponse(BinaryOutputStatuses[n]["StaticBinaryOutputStatusResponse"].asString());
+				else
+					StaticBinaryOutputStatusResponses[index] = StaticBinaryOutputStatusResponse;
+				if (BinaryOutputStatuses[n].isMember("EventBinaryOutputStatusResponse"))
+					EventBinaryOutputStatusResponses[index] = StringToEventBinaryOutputStatusResponse(BinaryOutputStatuses[n]["EventBinaryOutputStatusResponse"].asString());
+				else
+					EventBinaryOutputStatusResponses[index] = EventBinaryOutputStatusResponse;
+
+				if (std::find(BinaryOutputStatusIndexes.begin(),BinaryOutputStatusIndexes.end(),index) == BinaryOutputStatusIndexes.end())
+					BinaryOutputStatusIndexes.push_back(index);
+
+				if(BinaryOutputStatuses[n].isMember("StartVal"))
+				{
+					opendnp3::Flags flags;
+					std::string start_val = BinaryOutputStatuses[n]["StartVal"].asString();
+					if(start_val == "X")
+					{
+						flags.Set(opendnp3::BinaryQuality::COMM_LOST);
+						BinaryOutputStatusStartVals[index] = opendnp3::BinaryOutputStatus(false,flags);
+					}
+					else
+					{
+						flags.Set(opendnp3::BinaryQuality::ONLINE);
+						BinaryOutputStatusStartVals[index] = opendnp3::BinaryOutputStatus(BinaryOutputStatuses[n]["StartVal"].asBool(),flags);
+					}
+				}
+				else if(BinaryOutputStatusStartVals.count(index))
+					BinaryOutputStatusStartVals.erase(index);
+			}
+		}
+		std::sort(BinaryOutputStatusIndexes.begin(),BinaryOutputStatusIndexes.end());
+	}
+
 	if (JSONRoot.isMember("OctetStrings"))
 	{
 		const auto OctetStrings = JSONRoot["OctetStrings"];
@@ -569,7 +732,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	if (JSONRoot.isMember("AnalogControls"))
 	{
-		//TODO: SJE Probably need to manage a payload type here to support the different options 16bit, 32bit, float, double.
 		const auto AnalogControls = JSONRoot["AnalogControls"];
 		for (Json::ArrayIndex n = 0; n < AnalogControls.size(); ++n)
 		{
@@ -578,13 +740,21 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				continue;
 			for (auto index = start; index <= stop; index++)
 			{
-				if (AnalogControls[n].isMember("AnalogControlResponse"))
-					ControlAnalogResponses[index] = StringToEventAnalogControlResponse(AnalogControls[n]["AnalogControlResponse"].asString());
+				if (AnalogControls[n].isMember("Type"))
+				{
+					AnalogControlTypes[index] = odc::EventTypeFromString(AnalogControls[n]["Type"].asString());
+					if(AnalogControlTypes[index] < odc::EventType::AnalogOutputInt16 || AnalogControlTypes[index] > odc::EventType::AnalogOutputDouble64)
+					{
+						if(auto log = odc::spdlog_get("DNP3Port"))
+							log->error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port default {}", AnalogControls[n]["Type"].asString(),ToString(AnalogControlType));
+						AnalogControlTypes[index] = AnalogControlType;
+					}
+				}
 				else
-					ControlAnalogResponses[index] = EventAnalogControlResponse;
+					AnalogControlTypes[index] = AnalogControlType;
 
 				if(!InsertOrDeleteIndex(AnalogControls[n], AnalogControlIndexes, index))
-					ControlAnalogResponses.erase(index);
+					AnalogControlTypes.erase(index);
 			}
 		}
 		std::sort(AnalogControlIndexes.begin(), AnalogControlIndexes.end());

@@ -114,7 +114,7 @@ TEST_CASE(SUITE("StatusCallback"))
 		Source.PublicPublishEvent(event,StatusCallback);
 		while(!executed)
 		{
-			ios->run_one();
+			ios->run_one_for(std::chrono::milliseconds(10));
 		}
 		if(mask == 0x00)
 			REQUIRE(cb_status == CommandStatus::BLOCKED);

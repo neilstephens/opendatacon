@@ -74,6 +74,13 @@ public:
 		pSyncStrand->post([this,state,h{handler_tracker}](){StateListener_(state);});
 	}
 
+	//Facility to post actions that need to be sync'd with the link state
+	template<typename T>
+	inline void Post(T&& handler)
+	{
+		pSyncStrand->post([handler,h{handler_tracker}](){handler();});
+	}
+
 	//Factory function for the Channel
 	std::shared_ptr<opendnp3::IChannel> SetChannel();
 	//inline Getters, to ensure readonly atomic access outside synchronisation

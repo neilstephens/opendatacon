@@ -28,7 +28,7 @@
 #include "ChannelStateSubscriber.h"
 #include "ChannelHandler.h"
 #include "TypeConversion.h"
-#include "OpenDNP3Helpers.h"
+#include <opendatacon/EventConversion.h>
 #include <array>
 #include <limits>
 #include <opendnp3/master/IUTCTimeSource.h>
@@ -40,8 +40,6 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
-	if(IntegrityScan)
-		IntegrityScan.reset();
 	if(pMaster)
 	{
 		pMaster->Shutdown();
@@ -164,6 +162,18 @@ void DNP3MasterPort::RePublishEvents()
 		if(ev->HasPayload())
 			PublishEvent(ev);
 	}
+	for (auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
+	{
+		auto ev = pDB->Get(EventType::AnalogOutputStatus,index);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
+	for (auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
+	{
+		auto ev = pDB->Get(EventType::BinaryOutputStatus,index);
+		if(ev->HasPayload())
+			PublishEvent(ev);
+	}
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
 		auto ev = pDB->Get(EventType::Binary,pConf->pPointConf->mCommsPoint.second);
@@ -177,13 +187,20 @@ void DNP3MasterPort::SetCommsGood()
 	UpdateCommsPoint(false);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->pPointConf->SetQualityOnLinkStatus && pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
+	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
 		// Trigger integrity scan to get point quality
 		// Only way to get true state upstream
 		// Can't just reset quality, because it would make new events for old values
-		if(IntegrityScan)
-			IntegrityScan->Demand();
+		pChanH->Post([this]()
+			{
+				if(!IntegrityScanDone && pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp)
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
+					IntegrityScanNeeded = true;
+				}
+			});
 	}
 }
 
@@ -197,34 +214,30 @@ void DNP3MasterPort::SetCommsFailed()
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
 
-		for (auto index : pConf->pPointConf->BinaryIndexes)
-		{
-			auto last_event = pDB->Get(EventType::Binary,index);
-			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
+		SetCommsFailedQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes);
+		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
+		SetCommsFailedQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes);
+		SetCommsFailedQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes);
+	}
+}
 
-			auto event = std::make_shared<EventInfo>(EventType::BinaryQuality,index,Name);
-			event->SetPayload<EventType::BinaryQuality>(QualityFlags(new_qual));
-			PublishEvent(event);
+template <EventType etype, EventType qtype>
+void DNP3MasterPort::SetCommsFailedQuality(std::vector<uint16_t>& indexes)
+{
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	for (auto index : indexes)
+	{
+		auto last_event = pDB->Get(etype,index);
+		auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
 
-			//update the EventDB event with the quality as well
-			auto new_event = std::make_shared<EventInfo>(*last_event);
-			new_event->SetQuality(std::move(new_qual));
-			pDB->Set(new_event);
-		}
-		for (auto index : pConf->pPointConf->AnalogIndexes)
-		{
-			auto last_event = pDB->Get(EventType::Analog,index);
-			auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
+		auto event = std::make_shared<EventInfo>(qtype,index,Name);
+		event->SetPayload<qtype>(QualityFlags(new_qual));
+		PublishEvent(event);
 
-			auto event = std::make_shared<EventInfo>(EventType::AnalogQuality,index,Name);
-			event->SetPayload<EventType::AnalogQuality>(QualityFlags(new_qual));
-			PublishEvent(event);
-
-			//update the EventDB event with the quality as well
-			auto new_event = std::make_shared<EventInfo>(*last_event);
-			new_event->SetQuality(std::move(new_qual));
-			pDB->Set(new_event);
-		}
+		//update the EventDB event with the quality as well
+		auto new_event = std::make_shared<EventInfo>(*last_event);
+		new_event->SetQuality(std::move(new_qual));
+		pDB->Set(new_event);
 	}
 }
 
@@ -264,11 +277,11 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Update the comms state point
 		PortUp();
 
-		if(IntegrityOnNextLinkUp || pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
+		if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
 		{
-			IntegrityOnNextLinkUp = false;
-			if(IntegrityScan)
-				IntegrityScan->Demand();
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->debug("{}: Setting IntegrityScanNeeded for Link-up.",Name);
+			IntegrityScanNeeded = true;
 		}
 
 		// Notify subscribers that a connect event has occured
@@ -295,6 +308,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 					DisableStack();
 				});
 		}
+		IntegrityScanDone = false;
 		return;
 	}
 }
@@ -308,7 +322,7 @@ void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
 		if(on)                    //don't mark the stack as disabled, because this is just a restart
 			pMaster->Disable(); //it will be enabled again shortly when the trigger is off
 		else
-			EnableStack();
+			pMaster->Enable();
 	}
 }
 
@@ -331,18 +345,34 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 	if(auto log = odc::spdlog_get("DNP3Port"))
 		log->trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
 	pChanH->LinkUp();
-
-	//Work-around for the fact DEVICE_RESTART and EVENT_BUFFER_OVERFLOW don't trigger
-	//	an integrity scan in opendnp3 unless a startup integrity scan is configured.
-	//We don't configure a startup integ because opendnp3 does that on EVERY LowerLayerUp call!
-	//So we'll do it here until I get around to fixing opendnp3
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if((iin.IsSet(opendnp3::IINBit::EVENT_BUFFER_OVERFLOW) && pConf->pPointConf->IntegrityOnEventOverflowIIN) ||
-	   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
-	{
-		if(IntegrityScan)
-			IntegrityScan->Demand();
-	}
+	pChanH->Post([this,iin]()
+		{
+			if(pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp)
+			{
+				auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+				if((iin.IsSet(opendnp3::IINBit::EVENT_BUFFER_OVERFLOW) && pConf->pPointConf->IntegrityOnEventOverflowIIN) ||
+				   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: Stack executed integrity scan for this link session.",Name);
+					IntegrityScanDone = true;
+				}
+				if(IntegrityScanNeeded)
+				{
+					IntegrityScanNeeded = false;
+					if(IntegrityScanDone)
+					{
+						if(auto log = odc::spdlog_get("DNP3Port"))
+							log->debug("{}: Skipping startup integrity scan (stack already did one).",Name);
+						return;
+					}
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: Executing startup integrity scan.",Name);
+					pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
+					IntegrityScanDone = true;
+				}
+			}
+		});
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
@@ -385,7 +415,7 @@ void DNP3MasterPort::Build()
 	StackConfig.master.timeSyncMode = pConf->pPointConf->MasterRespondTimeSync ?
 	                                  (pConf->pPointConf->LANModeTimeSync ? opendnp3::TimeSyncMode::LAN : opendnp3::TimeSyncMode::NonLAN)
 	                                  : opendnp3::TimeSyncMode::None;
-	StackConfig.master.disableUnsolOnStartup = !pConf->pPointConf->DoUnsolOnStartup;
+	StackConfig.master.disableUnsolOnStartup = pConf->pPointConf->DisableUnsolOnStartup;
 	StackConfig.master.unsolClassMask = pConf->pPointConf->GetUnsolClassMask();
 
 	//set the internal sizes of the ADPU buffers - we make it symetric by using MaxTxFragSize for both
@@ -396,16 +426,22 @@ void DNP3MasterPort::Build()
 	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
 	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
 
+	//Configure mandatory integrity scans separately to the disabled startup scan
+	StackConfig.master.useAlternateMaskForForcedIntegrity = true;
+	StackConfig.master.alternateIntegrityClassMask = pConf->pPointConf->GetForcedIntegrityClassMask();
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;
 	StackConfig.master.ignoreRestartIIN = pConf->pPointConf->IgnoreRestartIIN;
+	StackConfig.master.retryForcedIntegrity = pConf->pPointConf->RetryForcedIntegrity;
 
+	//TODO?: have a separate max retry time to pass to opendnp3
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
+	StackConfig.master.maxTaskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
 	auto wont_free = std::shared_ptr<DNP3MasterPort>(this,[](void*){});
-	auto ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
-	auto MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
+	ISOEHandle = std::dynamic_pointer_cast<opendnp3::ISOEHandler>(wont_free);
+	MasterApp = std::dynamic_pointer_cast<opendnp3::IMasterApplication>(wont_free);
 
 	pMaster = pChanH->GetChannel()->AddMaster(Name, ISOEHandle, MasterApp, StackConfig);
 
@@ -418,9 +454,7 @@ void DNP3MasterPort::Build()
 
 	// Master Station scanning configuration
 	if(pConf->pPointConf->IntegrityScanRatems > 0)
-		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
-	else
-		IntegrityScan = pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Minutes(600000000),ISOEHandle); //ten million hours
+		pMaster->AddClassScan(pConf->pPointConf->GetStartupIntegrityClassMask(), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IntegrityScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass1ScanRatems > 0)
 		pMaster->AddClassScan(opendnp3::ClassField(opendnp3::PointClass::Class1), opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->EventClass1ScanRatems),ISOEHandle);
 	if(pConf->pPointConf->EventClass2ScanRatems > 0)
@@ -438,11 +472,7 @@ void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::I
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::FrozenCounter> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryOutputStatus> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogOutputStatus> >& meas){ LoadT(meas); }
-void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	if(info.gv == opendnp3::GroupVariation::Group111Var0) //TODO: implement another ODC type for static data if there's any use for it
-		LoadT(meas);
-}
+void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas){ LoadT(meas); }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::TimeAndInterval> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::BinaryCommandEvent> >& meas){ /*LoadT(meas);*/ }
 void DNP3MasterPort::Process(const opendnp3::HeaderInfo& info, const opendnp3::ICollection<opendnp3::Indexed<opendnp3::AnalogCommandEvent> >& meas){ /*LoadT(meas);*/ }
@@ -453,23 +483,12 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	meas.ForeachItem([this,pConf](const opendnp3::Indexed<T>&pair)
 		{
+			auto TSO = pConf->pPointConf->TimestampOverride;
 			auto event = ToODC(pair.value, pair.index, Name);
-			if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS) ||
-			    ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (pair.value.time.value == 0)))
-			{
-				event->SetTimestamp();
-			}
-			PublishEvent(event);
-			pDB->Set(event);
-		});
-}
-
-template<>
-inline void DNP3MasterPort::LoadT<opendnp3::OctetString>(const opendnp3::ICollection<opendnp3::Indexed<opendnp3::OctetString> >& meas)
-{
-	meas.ForeachItem([this](const opendnp3::Indexed<opendnp3::OctetString>&pair)
-		{
-			auto event = ToODC(pair.value, pair.index, Name);
+			if constexpr(!std::is_same<decltype(pair.value),opendnp3::OctetString>()) //OctetString has no time
+				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
+				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
+					event->SetTimestamp();
 			PublishEvent(event);
 			pDB->Set(event);
 		});
@@ -543,193 +562,92 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 	auto index = event->GetIndex();
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	// TODO: SJE Need to process the analogcontrols in a separate loop.
-	for (auto i : pConf->pPointConf->ControlIndexes)
+
+	auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
+				  {
+					  auto status = CommandStatus::UNDEFINED;
+					  switch (response.summary)
+					  {
+						  case opendnp3::TaskCompletion::SUCCESS:
+							  status = CommandStatus::SUCCESS;
+							  break;
+						  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
+							  status = CommandStatus::TIMEOUT;
+							  break;
+						  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
+						  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
+						  default:
+							  status = CommandStatus::UNDEFINED;
+							  break;
+					  }
+					  (*pStatusCallback)(status);
+					  return;
+				  };
+
+	switch(event->GetEventType())
 	{
-		if (i == index)
-		{
-			if (auto log = odc::spdlog_get("DNP3Port"))
-				log->debug("{}: Executing direct operate to index: {}", Name, index);
-
-			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
-						  {
-							  auto status = CommandStatus::UNDEFINED;
-							  switch (response.summary)
-							  {
-								  case opendnp3::TaskCompletion::SUCCESS:
-									  status = CommandStatus::SUCCESS;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
-									  status = CommandStatus::TIMEOUT;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
-								  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
-								  default:
-									  status = CommandStatus::UNDEFINED;
-									  break;
-							  }
-							  (*pStatusCallback)(status);
-							  return;
-						  };
-
-			switch (event->GetEventType())
+		case odc::EventType::ControlRelayOutputBlock:
+			if(std::find(pConf->pPointConf->ControlIndexes.begin(), pConf->pPointConf->ControlIndexes.end(), index) != pConf->pPointConf->ControlIndexes.end())
 			{
-				case EventType::ControlRelayOutputBlock:
+				if (auto log = odc::spdlog_get("DNP3Port"))
+					log->debug("{}: Executing direct operate to index: {}", Name, index);
+
+				auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
+				DoOverrideControlCode(lCommand);
+				this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
+				return;
+			}
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("{}: CROB Control sent to invalid DNP3 index: {}", Name, index);
+			break;
+		case odc::EventType::AnalogOutputInt16:
+		case odc::EventType::AnalogOutputInt32:
+		case odc::EventType::AnalogOutputFloat32:
+		case odc::EventType::AnalogOutputDouble64:
+			if(std::find(pConf->pPointConf->AnalogControlIndexes.begin(), pConf->pPointConf->AnalogControlIndexes.end(), index) != pConf->pPointConf->AnalogControlIndexes.end())
+			{
+				if (auto log = odc::spdlog_get("DNP3Port"))
+					log->debug("{}: Executing analog control to index: {}", Name, index);
+
+				// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command, for example
+				// We need to convert the event to the correct type
+				auto new_event_type = pConf->pPointConf->AnalogControlTypes[index];
+				try
 				{
-					auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
-					DoOverrideControlCode(lCommand);
-					this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-					break;
+					auto newevent = ConvertEvent(event, new_event_type);
+					switch(new_event_type)
+					{
+						case EventType::AnalogOutputInt16:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt16>(newevent), index, DNP3Callback);
+							break;
+						case EventType::AnalogOutputInt32:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputInt32>(newevent), index, DNP3Callback);
+							break;
+						case EventType::AnalogOutputFloat32:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputFloat32>(newevent), index, DNP3Callback);
+							break;
+						case EventType::AnalogOutputDouble64:
+							this->pMaster->DirectOperate(FromODC<EventType::AnalogOutputDouble64>(newevent), index, DNP3Callback);
+							break;
+						default:
+							(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+					}
 				}
-				default:
+				catch(const std::exception& e)
+				{
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->error("{}: Error converting event for analog control: {}", Name, e.what());
 					(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-					break;
-			}
-			return;
-		}
-	}
-	for (auto i : pConf->pPointConf->AnalogControlIndexes)
-	{
-		if (i == index)
-		{
-			if (auto log = odc::spdlog_get("DNP3Port"))
-				log->debug("{}: Executing analog control to index: {}", Name, index);
-
-			auto DNP3Callback = [=](const opendnp3::ICommandTaskResult& response)
-						  {
-							  auto status = CommandStatus::UNDEFINED;
-							  switch (response.summary)
-							  {
-								  case opendnp3::TaskCompletion::SUCCESS:
-									  status = CommandStatus::SUCCESS;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_RESPONSE_TIMEOUT:
-									  status = CommandStatus::TIMEOUT;
-									  break;
-								  case opendnp3::TaskCompletion::FAILURE_BAD_RESPONSE:
-								  case opendnp3::TaskCompletion::FAILURE_NO_COMMS:
-								  default:
-									  status = CommandStatus::UNDEFINED;
-									  break;
-							  }
-							  (*pStatusCallback)(status);
-							  return;
-						  };
-
-			// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command.
-			// So we need to do the translation (without triggering any exceptions)
-			// Create the basis of the target event
-			auto evttype = EventAnalogControlResponseToODCEvent(pConf->pPointConf->ControlAnalogResponses[index]);
-			// Now create an event of this type and copy the quality and time from the source event
-			auto newevent = std::make_shared<const EventInfo>(evttype, index, "", event->GetQuality(), event->GetTimestamp());
-			// Still have to set the payload (possibley with conversion)
-			std::unordered_set<EventType> s = { EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
-			if (s.count(event->GetEventType()))
-			{
-				// Turn the payload into double64, then convert to the target.
-				double value = 0;
-				CommandStatus status = CommandStatus::UNDEFINED;
-				switch (event->GetEventType())
-				{
-					case EventType::AnalogOutputInt16:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputInt16>();
-						value = pld.first; // Int16 to Double64
-						status = pld.second;
-						break;
-					}
-					case EventType::AnalogOutputInt32:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputInt32>();
-						value = pld.first; // Int32 to Double64
-						status = pld.second;
-						break;
-					}
-					case EventType::AnalogOutputFloat32:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputFloat32>();
-						value = pld.first; // Float32 to Double64
-						status = pld.second;
-						break;
-					}
-					case EventType::AnalogOutputDouble64:
-					{
-						auto pld = event->GetPayload<EventType::AnalogOutputDouble64>();
-						value = pld.first; // Double64 to Double64
-						status = pld.second;
-						break;
-					}
-					default:
-						break;
 				}
-
-				// Now need to create the new payload, of the correct type
-				switch (evttype)
-				{
-					case EventType::AnalogOutputInt16:
-					{
-						if (value > std::numeric_limits<int16_t>::max())
-							value = std::numeric_limits<int16_t>::max();
-						if (value < std::numeric_limits<int16_t>::min())
-							value = std::numeric_limits<int16_t>::min();
-						opendnp3::AnalogOutputInt16 lCommand;
-						lCommand.value = static_cast<int16_t>(value);
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					case EventType::AnalogOutputInt32:
-					{
-						if (value > std::numeric_limits<int32_t>::max())
-							value = std::numeric_limits<int32_t>::max();
-						if (value < std::numeric_limits<int32_t>::min())
-							value = std::numeric_limits<int32_t>::min();
-						opendnp3::AnalogOutputInt32 lCommand;
-						lCommand.value = static_cast<int32_t>(value);
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					case EventType::AnalogOutputFloat32:
-					{
-						if (value > std::numeric_limits<float>::max())
-							value = std::numeric_limits<float>::max();
-						if (value < std::numeric_limits<float>::lowest())
-							value = std::numeric_limits<float>::lowest();
-						opendnp3::AnalogOutputFloat32 lCommand;
-						lCommand.value = static_cast<float>(value);
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					case EventType::AnalogOutputDouble64:
-					{
-						opendnp3::AnalogOutputDouble64 lCommand;
-						lCommand.value = value;
-						lCommand.status = FromODC(status);
-						DoOverrideControlCode(lCommand);
-						this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
-						break;
-					}
-					default:
-						break;
-				}
+				return;
 			}
-			else
-			{
-				(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
-			}
-			return;
-		}
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("{}: Analog Control sent to invalid DNP3 index: {}", Name, index);
+			break;
+		default:
+			break;
 	}
-
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->warn("{}: Control sent to invalid DNP3 index: {}", Name, index);
-
-	(*pStatusCallback)(CommandStatus::UNDEFINED);
+	(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 }
 
 //DataPort function for UI

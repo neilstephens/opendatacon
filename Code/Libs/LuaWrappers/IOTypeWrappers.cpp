@@ -223,12 +223,12 @@ void ExportToStringFunctions(lua_State* const L)
 
 #define PUSH_PAYLOAD_CASE(T)\
 	case T:\
-	{\
-		auto payload = event ? event->GetPayload<T>()\
-		               : typename odc::EventTypePayload<T>::type();\
-		PushPayload(L,payload);\
-		break;\
-	}
+		{\
+			auto payload = event ? event->GetPayload<T>()\
+				   : typename odc::EventTypePayload<T>::type();\
+			PushPayload(L,payload);\
+			break;\
+		}
 void PushPayload(lua_State* const L, odc::EventType evt_type, std::shared_ptr<const odc::EventInfo> event)
 {
 	switch(evt_type)
@@ -451,17 +451,24 @@ std::shared_ptr<odc::EventInfo> EventInfoFromLua(lua_State* const L, const std::
 	if(idx < 0)
 		idx = lua_gettop(L) + (idx+1);
 
+	if(lua_isnil(L,idx))
+		return nullptr;
+
 	if(!lua_istable(L,idx))
 	{
 		if(auto log = odc::spdlog_get(LogName))
-			log->error("{}: EventInfo table argument not found.",Name);
+			log->error("{}: EventInfo argument is not a table.",Name);
 		return nullptr;
 	}
 
 	//EventType
 	lua_getfield(L, idx, "EventType");
 	if(!lua_isinteger(L,-1))
+	{
+		if(auto log = odc::spdlog_get(LogName))
+			log->error("{}: EventInfo has invalid EventType.",Name);
 		return nullptr;
+	}
 	auto et = static_cast<odc::EventType>(lua_tointeger(L,-1));
 	auto event = std::make_shared<odc::EventInfo>(et);
 
@@ -714,10 +721,10 @@ template<> odc::ConnectState PopPayload(lua_State* const L)
 
 #define POP_PAYLOAD_CASE(T)\
 	case T:\
-	{\
-		event->SetPayload<T>(PopPayload<typename odc::EventTypePayload<T>::type>(L));\
-		break;\
-	}
+		{\
+			event->SetPayload<T>(PopPayload<typename odc::EventTypePayload<T>::type>(L));\
+			break;\
+		}
 void PopPayload(lua_State* const L, std::shared_ptr<odc::EventInfo> event)
 {
 	switch(event->GetEventType())

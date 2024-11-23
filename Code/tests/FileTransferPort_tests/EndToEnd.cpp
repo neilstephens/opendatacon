@@ -207,6 +207,7 @@ TEST_CASE(SUITE("CorruptConnector"))
 		//turn them off
 		RX->Disable();
 		TX->Disable();
+		nasty.Disable();
 	}
 	//Unload the library
 	UnLoadModule(portlib);
@@ -235,8 +236,8 @@ TEST_CASE(SUITE("SequenceReset"))
 		TXconf["UseConfirms"] = true;
 		TXconf["ConfirmControlIndex"] = 10;
 		TXconf["UseCRCs"]= true;
-		TXconf["TransferTimeoutms"] = 1100;
-		TXconf["SequenceResetIdleTimems"] = 1300;
+		TXconf["TransferTimeoutms"] = 1400;
+		TXconf["SequenceResetIdleTimems"] = 1700;
 		TXconf["ThrottleBaudrate"] = 64000; //8kB per s
 		std::shared_ptr<DataPort> TX(newPort("TX", "", TXconf), deletePort);
 		REQUIRE(TX);
@@ -249,7 +250,7 @@ TEST_CASE(SUITE("SequenceReset"))
 		RXconf["ConfirmControlIndex"] = 10;
 		RXconf["UseCRCs"]= true;
 		RXconf["TransferTimeoutms"] = 800;
-		RXconf["SequenceResetIdleTimems"] = 1000;
+		RXconf["SequenceResetIdleTimems"] = 1100;
 		std::shared_ptr<DataPort> RX(newPort("RX", "", RXconf), deletePort);
 		REQUIRE(RX);
 
@@ -274,9 +275,9 @@ TEST_CASE(SUITE("SequenceReset"))
 
 		//reset the TX side to make sure everything re-syncs again
 		TX->Disable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
 		auto files_done_on_restart = RX->GetStatistics()["FilesTransferred"].asUInt();
 		CHECK(files_done_on_restart >= 1);
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		TX->Enable();
 
 		//wait for another file
@@ -286,9 +287,9 @@ TEST_CASE(SUITE("SequenceReset"))
 
 		//and reset the RX side too
 		RX->Disable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
 		auto files_done_on_second_restart = RX->GetStatistics()["FilesTransferred"].asUInt();
 		CHECK(files_done_on_second_restart > files_done_on_restart);
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		RX->Enable();
 
 		count = 0;
@@ -301,7 +302,7 @@ TEST_CASE(SUITE("SequenceReset"))
 		}
 
 		//make sure writing is finished
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		std::this_thread::sleep_for(std::chrono::milliseconds(400));
 		count = 0; short resets = 0;
 		while((!stats["IsReset"].asBool() || resets < 5) && (count+=10) < test_timeout)
 		{

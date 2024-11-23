@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1.2
+   
+FROM library/oraclelinux:7.6 as builder
+
+RUN yum install -y oracle-softwarecollection-release-el7
+RUN /usr/bin/ol_yum_configure.sh
+RUN yum install -y scl-utils glibc-devel iso-codes redhat-rpm-config socat psmisc make devtoolset-8-gcc-c++ cmake3 file openssl11 openssl11-devel openssl11-static libmodbus libmodbus-devel
+RUN ln -s /usr/bin/cmake3 /bin/cmake
+RUN mkdir -p /opt/openssl-root
+RUN ln -s /usr/include/openssl11 /opt/openssl-root/include
+RUN ln -s /usr/lib64/openssl11 /opt/openssl-root/lib
+# To get Python3.6 we need scl-util-build tools
+RUN curl -O https://public-yum.oracle.com/repo/OracleLinux/OL7/optional/developer/x86_64/getPackage/scl-utils-build-20130529-19.el7.x86_64.rpm
+RUN rpm -i scl-utils-build-20130529-19.el7.x86_64.rpm
+RUN yum install -y rh-python36 rh-python36-python-devel rh-git218
+RUN echo '#!/bin/bash' > $HOME/run.sh
+RUN echo 'source scl_source enable devtoolset-8' >> $HOME/run.sh
+RUN echo 'source scl_source enable rh-git218' >> $HOME/run.sh
+RUN echo '#!/bin/bash' >> /bin/git
+RUN echo "$HOME/run.sh git \"\$@\"" >> /bin/git
+RUN chmod +x /bin/git
+RUN echo 'exec "$@"' >> $HOME/run.sh
+RUN chmod +x $HOME/run.sh
+
+RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
+ARG BUILD_COMMIT=develop
+RUN git -C opendatacon checkout $BUILD_COMMIT
+
+ARG BUILD_TYPE=Release
+ARG CMAKE_OPTIONS=
+RUN mkdir opendatacon-build
+
+RUN $HOME/run.sh cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=oel7 \
+-DPYTHON_HOME=/opt/rh/rh-python36/root/usr -DOPENSSL_ROOT_DIR=/opt/openssl-root -DADD_LIBS=z \
+-S opendatacon -B opendatacon-build
+
+RUN $HOME/run.sh cmake --build opendatacon-build --parallel 8
+RUN $HOME/run.sh cmake --build opendatacon-build --target install
+RUN $HOME/run.sh cmake --build opendatacon-build --target package
+
+FROM scratch AS export-stage
+COPY --from=builder opendatacon-build/opendatacon*.sh /

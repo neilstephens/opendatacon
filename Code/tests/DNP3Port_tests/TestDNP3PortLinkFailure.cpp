@@ -32,7 +32,7 @@
 
 using port_pair_t = std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>>;
 
-const unsigned int link_ka_period = 100;
+const unsigned int link_ka_period = 200;
 const unsigned int test_timeout = 30000;
 
 inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr = 0, MITMConfig direction = MITMConfig::CLIENT_SERVER, unsigned int ms_port = 20000, unsigned int os_port = 20000, bool comms = false)
@@ -81,7 +81,7 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	conf["UnsolClass1"] = true;
 	conf["UnsolClass2"] = true;
 	conf["UnsolClass3"] = true;
-	conf["DoUnsolOnStartup"] = true;
+	conf["DisableUnsolOnStartup"] = true;
 
 	//make an outstation port
 	auto OPUT = std::shared_ptr<DataPort>(newOutstation("Outstation"+std::to_string(os_addr), "", conf), delOutstation);
@@ -432,6 +432,9 @@ TEST_CASE(SUITE("Single Drop"))
 			auto new_open1 = require_connection_increase(pMITM,true,start_open1);
 			auto new_open2 = require_connection_increase(pMITM,false,start_open2);
 			odc::spdlog_get("DNP3Port")->info("New connection count: {},{}",new_open1,new_open2);
+
+			port_pair.first->Disable();
+			port_pair.second->Disable();
 		}
 
 		work.reset();

@@ -34,6 +34,18 @@ using namespace odc;
 
 #define SUITE(name) "EventInfoTestSuite - " name
 
+auto set_watchdog(std::atomic_bool& hasTimedOut, size_t msTimeOut)
+{
+	auto watchdog_timer = odc::asio_service::Get()->make_steady_timer();
+	watchdog_timer->expires_from_now(std::chrono::milliseconds(msTimeOut));
+	watchdog_timer->async_wait([&hasTimedOut](const asio::error_code& err)
+		{
+			if(!err)
+				hasTimedOut = true;
+		});
+	return watchdog_timer;
+}
+
 TEST_CASE(SUITE("EventTypes"))
 {
 	TestSetup();
@@ -91,7 +103,8 @@ TEST_CASE(SUITE("PayloadTransport"))
 	std::atomic<uint16_t> cb_count(0);
 	auto StatusCallback = std::make_shared<std::function<void (CommandStatus status)>>([&cb_count](CommandStatus status)
 		{
-			REQUIRE(status == CommandStatus::SUCCESS);
+			if(status != CommandStatus::SUCCESS) //avoid calling REQUIRE multi-threaded
+				REQUIRE(status == CommandStatus::SUCCESS);
 			cb_count++;
 		});
 
@@ -115,14 +128,27 @@ TEST_CASE(SUITE("PayloadTransport"))
 	std::vector<std::thread> threads;
 	for (size_t i = 0; i < std::thread::hardware_concurrency(); ++i)
 		threads.emplace_back([ios]() {ios->run(); });
-	while(cb_count < 1000)
+
+	std::atomic_bool hasTimedOut = false;
+	auto watchdog = set_watchdog(hasTimedOut,5000);
+
+	while(cb_count < 1000 && !hasTimedOut)
 		ios->poll_one();
+
+	watchdog->cancel();
+	Source.Disable();
+	Sink.Disable();
+	Conn.Disable();
 	work.reset();
 	ios->run();
+
 	for(auto& t : threads)
 		t.join();
 
 	TestTearDown();
+
+	REQUIRE_FALSE(hasTimedOut);
+	REQUIRE(cb_count == 1000);
 }
 
 //TODO: add tests for EventInfoFromJson()

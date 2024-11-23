@@ -47,7 +47,8 @@ std::string tinyGetLine();
 std::string tinyGetPassword();
 
 
-class tinyConsole {
+class tinyConsole
+{
 protected:
 	~tinyConsole();
 	bool _quit;

@@ -77,17 +77,17 @@ void ModbusOutstationPort::Connect()
 			int s = modbus_tcp_pi_listen(mb, 1);
 			if (s == -1)
 			{
-			      if(auto log = odc::spdlog_get("ModbusPort"))
+				if(auto log = odc::spdlog_get("ModbusPort"))
 					log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
-			      return;
+				return;
 			}
 
 			int r = modbus_tcp_pi_accept(mb, &s);
 			if (r == -1)
 			{
-			      if(auto log = odc::spdlog_get("ModbusPort"))
+				if(auto log = odc::spdlog_get("ModbusPort"))
 					log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
-			      return;
+				return;
 			}
 			PublishEvent(ConnectState::CONNECTED);
 		});
@@ -151,10 +151,10 @@ void ModbusOutstationPort::Build()
 			{
 				if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
 				{
-				      if(auto log = odc::spdlog_get("ModbusPort"))
+					if(auto log = odc::spdlog_get("ModbusPort"))
 						log->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
-				//TODO: should this throw an exception instead of return?
-				      return;
+					//TODO: should this throw an exception instead of return?
+					return;
 				}
 			});
 	}

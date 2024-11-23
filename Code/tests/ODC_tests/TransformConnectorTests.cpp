@@ -98,7 +98,7 @@ TEST_CASE("TransformTests")
 	P1.PublicPublishEvent(event,StatusCallback);
 	while(!executed)
 	{
-		ios->run_one();
+		ios->run_one_for(std::chrono::milliseconds(10));
 	}
 	REQUIRE(cb_status == CommandStatus::SUCCESS);
 

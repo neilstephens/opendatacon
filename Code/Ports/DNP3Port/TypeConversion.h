@@ -96,4 +96,10 @@ EVENTDNP3(EventType::AnalogOutputStatusQuality, opendnp3::AnalogQuality)
 template<typename T> T FromODC(const QualityFlags& qual);
 template<typename T> T FromODC(const std::shared_ptr<const EventInfo>& event);
 
+template<EventType ET>
+typename EventTypeDNP3<ET>::type FromODC(const std::shared_ptr<const EventInfo>& event)
+{
+	return FromODC<typename EventTypeDNP3<ET>::type>(event);
+}
+
 } //namespace odc

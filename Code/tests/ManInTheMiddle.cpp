@@ -36,8 +36,8 @@ ManInTheMiddle::ManInTheMiddle(MITMConfig conf, unsigned int port1, unsigned int
 		{
 			if(auto log = odc::spdlog_get(a_log_name))
 			{
-			      auto lvl = spdlog::level::from_str(level);
-			      log->log(lvl,"ManInTheMiddle port {}: {}",port1,msg);
+				auto lvl = spdlog::level::from_str(level);
+				log->log(lvl,"ManInTheMiddle port {}: {}",port1,msg);
 			}
 		}),
 	SockMan2(odc::asio_service::Get(),
@@ -48,8 +48,8 @@ ManInTheMiddle::ManInTheMiddle(MITMConfig conf, unsigned int port1, unsigned int
 		{
 			if(auto log = odc::spdlog_get(a_log_name))
 			{
-			      auto lvl = spdlog::level::from_str(level);
-			      log->log(lvl,"ManInTheMiddle port {}: {}",port2,msg);
+				auto lvl = spdlog::level::from_str(level);
+				log->log(lvl,"ManInTheMiddle port {}: {}",port2,msg);
 			}
 		})
 {

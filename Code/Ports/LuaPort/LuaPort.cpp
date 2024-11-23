@@ -57,6 +57,8 @@ void LuaPort::Enable_()
 void LuaPort::Disable_()
 {
 	CallLuaGlobalVoidVoidFunc("Disable");
+	//Force garbage collection now. Lingering shared_ptr finalizers can block shutdown etc
+	lua_gc(LuaState,LUA_GCCOLLECT);
 }
 
 //Build is called while there's only one active thread, so we don't need to sync access to LuaState here
@@ -102,7 +104,7 @@ void LuaPort::Build()
 //only called on Lua sync strand
 void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	if(auto log = spdlog::get("LuaPort"))
+	if(auto log = odc::spdlog_get("LuaPort"))
 		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 
 	//Get ready to call the lua function
