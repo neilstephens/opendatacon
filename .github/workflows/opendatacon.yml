@@ -104,7 +104,7 @@ jobs:
       with:
         name: ${{ matrix.name }} Installer
         retention-days: 7
-        path:
+        path: |
           opendatacon-*.sh
           opendatacon-*.exe
           tag_annotation.txt
@@ -114,7 +114,7 @@ jobs:
       with:
         name: ${{ matrix.run-os }} Logs
         retention-days: 7
-        path:
+        path: |
           ODC_Log*
     
   opendatacon-native:
@@ -186,7 +186,7 @@ jobs:
     - if: contains(matrix.os,'macos')
       name: Setup MacOS Environment
       run: |
-        brew install libmodbus socat openssl python
+        brew install libmodbus socat
         echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt/homebrew' >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
     
@@ -251,7 +251,7 @@ jobs:
       with:
         name: ${{env.JOB_NAME}} Logs
         retention-days: 7
-        path:
+        path: |
           ODC_Log*
          
   opendatacon-deploy:
