@@ -242,8 +242,8 @@ jobs:
         name: ${{env.JOB_NAME}} Installer
         retention-days: 7
         path: |
-          **/opendatacon-*.sh
-          **/opendatacon-*.exe
+          build/opendatacon-*.sh
+          build/opendatacon-*.exe
           tag_annotation.txt
           
     - name: Upload Logs
