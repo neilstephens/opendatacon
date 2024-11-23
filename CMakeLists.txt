@@ -248,6 +248,10 @@ else()
 		endif()
 	endif()
 
+	if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+	    link_libraries(atomic)
+	endif()
+
 	# different release and debug flags
 	set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 	set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
