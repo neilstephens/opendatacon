@@ -21,56 +21,56 @@ jobs:
         include:
           - name: Debian 12 Bookworm Release
             run-os: ubuntu-latest
-            doker-file: Debian12Bookworm
+            docker-file: Debian12Bookworm
             build-type: Release
             docker-args:
             setup-cmds:
             
           - name: Debian 12 Bookworm Debug
             run-os: ubuntu-latest
-            doker-file: Debian12Bookworm
+            docker-file: Debian12Bookworm
             build-type: Debug
             docker-args:
             setup-cmds:
             
           - name: Debian 12 Bookworm 32bit Release
             run-os: ubuntu-latest
-            doker-file: Debian12Bookworm
+            docker-file: Debian12Bookworm
             build-type: Release
             docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
             setup-cmds:
             
           - name: Debian 12 Bookworm 32bit Debug
             run-os: ubuntu-latest
-            doker-file: Debian12Bookworm
+            docker-file: Debian12Bookworm
             build-type: Debug
             docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
             setup-cmds:
           
           - name: Raspbian Bookworm Release
             run-os: ubuntu-latest
-            doker-file: RaspbianBookworm
+            docker-file: RaspbianBookworm
             build-type: Release
             docker-args:
             setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
             
           - name: Raspbian Bookworm Debug
             run-os: ubuntu-latest
-            doker-file: RaspbianBookworm
+            docker-file: RaspbianBookworm
             build-type: Debug
             docker-args:
             setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           
           - name: Oracle Enterprise Linux 7 Release
             run-os: ubuntu-latest
-            doker-file: OEL7
+            docker-file: OEL7
             build-type: Release
             docker-args:
             setup-cmds:
             
           - name: Oracle Enterprise Linux 7 Debug
             run-os: ubuntu-latest
-            doker-file: OEL7
+            docker-file: OEL7
             build-type: Debug
             docker-args:
             setup-cmds:
@@ -206,34 +206,34 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
 
     - name: ODC_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: libLua_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}libLua_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
     - name: MD3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
     - name: CBPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
     - name: PyPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
     - name: FileTransferPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
     - name: LuaPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
-      if: ${{ always() && !contains(github.ref, 'tag')
+      if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
       
     - name: Upload Installer
@@ -241,9 +241,9 @@ jobs:
       with:
         name: ${{env.JOB_NAME}} Installer
         retention-days: 7
-        path:
-          ${{github.workspace}}/build/opendatacon-*.sh
-          ${{github.workspace}}/build/opendatacon-*.exe
+        path: |
+          **/opendatacon-*.sh
+          **/opendatacon-*.exe
           tag_annotation.txt
           
     - name: Upload Logs
@@ -256,14 +256,14 @@ jobs:
          
   opendatacon-deploy:
     if: always() && contains(github.ref, 'tag')
-    needs: [opendatacon-mac,opendatacon-dockerfile-builds]
+    needs: [opendatacon-native,opendatacon-dockerfile-builds]
     runs-on: macos-latest
     steps:
       - name: Download Installers
         uses: actions/download-artifact@v4
         with:
           path: installers
-          pattern: *Installer
+          pattern: '*Installer'
           merge-multiple: true
           
       - name: Release
@@ -279,7 +279,7 @@ jobs:
 
   opendatacon-clean:
     if: github.event_name != 'pull_request'
-    needs: [opendatacon-native,opendatacon-docker]
+    needs: [opendatacon-native,opendatacon-dockerfile-builds]
     runs-on: ubuntu-latest
     steps:
       - name: Remove old artifacts
