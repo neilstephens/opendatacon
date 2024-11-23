@@ -14,8 +14,7 @@ ARG CMAKE_OPTIONS=
 
 RUN mkdir opendatacon-build
 
-#TODO: add back -DFULL=ON when proved to work
-RUN cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=RaspbianBookworm -S opendatacon -B opendatacon-build
+RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=RaspbianBookworm -S opendatacon -B opendatacon-build
 RUN cmake --build opendatacon-build --parallel 8
 RUN cmake --build opendatacon-build --target install
 RUN cmake --build opendatacon-build --target package
