@@ -34,27 +34,107 @@
 
 void KafkaConsumerPort::Build()
 {
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+
+	//TODO:
+	//check the translation method
+	//  and in the case of template/cbor
+	//    check the template/cbor structure to make sure it's valid for de-serialisation
+
+	if(!pConf->NativeKafkaProperties.contains("client.id"))
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->warn("{}: Consumer client.id is not set in the properties, this may cause issues when reloading/restarting (can't resume from the same offset)", Name);
+	}
+
 	pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
 	if(!pKafkaConsumer)
 		throw std::runtime_error(Name+": Failed to create Kafka Consumer");
 
-	//TODO: set up the consumer
-	//warn if the client id isn't set in the properties,
-	//	so that the consumer can be restarted without losing its place (kafka takes care of this I think)
-	//manually commitAsync() offsets in event callbacks - depending on "enable.auto.commit=true" in the config
-	//	provide a rebalance callback to commit offsets before rebalancing (if in a group and manual commit is enabled)
+	//subscribe to topics
+	std::set<kafka::Topic> topics;
+	topics.insert(pConf->DefaultTopic);
+	//TODO: add all topics from the point translation map
 
-	//Two options for what the consumer consumes:
-	//	1. "subscribe" to whole topics (optionally as part of a consumer group)
-	//	2. "assign" partitions to consume from manually (not compatible with consumer groups)
-
-	//Pause on start - resume on Enable()
-
-	//Set up polling timer chain
-	//	poll() should be called even when paused
-	//	re-call immediately fill events returned, otherwise exponentially back off to MaxPollIntervalms
-	pKafkaConsumer->poll(std::chrono::milliseconds::zero());
+	pKafkaConsumer->subscribe(topics);
+	pKafkaConsumer->pause(); //pause on start, resume on Enable()
+	Poll();
 }
 
 //TODO: override Disable/Enable methods to "pause"/"continue" the consumer, or destroy/recreate it (depending on group config)
 //	Option to fast forward to the end offset on enable, if not in group (minus 1 to get latest value, or configurable buffer)
+
+void KafkaConsumerPort::Poll()
+{
+	//poll() should be called even when paused (to handle rebalances, etc)
+	//  only bail out if we're being destroyed (which resets pPollTimer)
+	if(!pPollTimer)
+		return;
+
+	//Polling timer chain
+	//	fires immediately if events returned, otherwise exponentially back off to MaxPollIntervalms
+	auto Records = pKafkaConsumer->poll(std::chrono::milliseconds::zero());
+	pKafkaConsumer->commitAsync();
+
+	auto poll_delay = std::chrono::milliseconds(PollBackoff_ms);
+	if(Records.size() == 0)
+	{
+		PollBackoff_ms *= 2;
+		auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+		if(PollBackoff_ms > pConf->MaxPollIntervalms)
+			PollBackoff_ms = pConf->MaxPollIntervalms;
+	}
+	else
+	{
+		poll_delay = std::chrono::milliseconds(0);
+		PollBackoff_ms = 1;
+	}
+
+	pPollTimer->expires_from_now(poll_delay);
+	pPollTimer->async_wait([this](asio::error_code err)
+		{
+			if(!err)
+				Poll();
+		});
+
+	for(const auto& record : Records)
+		ProcessRecord(record);
+}
+
+void KafkaConsumerPort::ProcessRecord(const KCC::ConsumerRecord& record)
+{
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	//TODO:
+	//  check the translation method
+	//  translate the record
+	//  post the event
+	//  manually commitAsync() offsets in event callbacks - depending on "enable.auto.commit=true" in the config
+
+	std::shared_ptr<EventInfo> event = nullptr;
+	if(pConf->TranslationMethod == EventTranslationMethod::Template)
+	{
+		//TODO: Implement TemplateDeserialiser
+	}
+	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
+	{
+		//TODO: Implement CBORDeserialiser
+	}
+	else if(pConf->TranslationMethod == EventTranslationMethod::Lua)
+	{
+		//TODO: Implement LuaDeserialiser
+	}
+	else
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("{}: Translation method {} not implemented", Name, static_cast<std::underlying_type_t<EventTranslationMethod>>(pConf->TranslationMethod));
+	}
+
+	if(!event)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("{}: Failed to translate kafka record to EventInfo: '{}'", Name, record.toString());
+		return;
+	}
+
+	PublishEvent(event);
+}

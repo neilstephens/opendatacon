@@ -38,12 +38,20 @@ class KafkaConsumerPort: public KafkaPort
 public:
 	KafkaConsumerPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides)
 		:KafkaPort(Name,Filename,Overrides){};
-	virtual ~KafkaConsumerPort(){};
+	virtual ~KafkaConsumerPort()
+	{
+		pPollTimer->cancel();
+		pPollTimer.reset();
+	};
 
 	virtual void Build() override;
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override {}
 private:
 	std::shared_ptr<KCC::KafkaConsumer> pKafkaConsumer;
+	size_t PollBackoff_ms = 1;
+	std::shared_ptr<asio::steady_timer> pPollTimer = odc::asio_service::Get()->make_steady_timer();
+	void Poll();
+	void ProcessRecord(const KCC::ConsumerRecord& record);
 };
 
 #endif // KAFKACONSUMERPORT_H
