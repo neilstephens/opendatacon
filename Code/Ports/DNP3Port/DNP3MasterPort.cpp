@@ -354,7 +354,7 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 				   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
 				{
 					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: Stack executed integrity scan for this link session.",Name);
+						log->debug("{}: Stack executed IIN triggered integrity scan for this link session.",Name);
 					IntegrityScanDone = true;
 				}
 				if(IntegrityScanNeeded)
@@ -423,10 +423,12 @@ void DNP3MasterPort::Build()
 	StackConfig.master.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;
 	StackConfig.master.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;
 
-	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
-	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
+	if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
+		StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
+	else
+		StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask();
 
-	//Configure mandatory integrity scans separately to the disabled startup scan
+	//Configure mandatory integrity scans separately to the startup scan
 	StackConfig.master.useAlternateMaskForForcedIntegrity = true;
 	StackConfig.master.alternateIntegrityClassMask = pConf->pPointConf->GetForcedIntegrityClassMask();
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;

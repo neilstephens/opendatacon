@@ -42,7 +42,7 @@ public:
 		pMaster(nullptr),
 		stack_enabled(false),
 		IntegrityScanNeeded(false),
-		IntegrityScanDone(false),
+		IntegrityScanDone(true), //init true because the stack does an initial integrity scan
 		pCommsRideThroughTimer(nullptr)
 	{}
 	~DNP3MasterPort() override;
