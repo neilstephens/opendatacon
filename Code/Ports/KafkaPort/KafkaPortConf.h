@@ -75,6 +75,7 @@ public:
 	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
 	DataToStringMethod OctetStringFormat = DataToStringMethod::Base64;
 	std::string DateTimeFormat = "%Y-%m-%d %H:%M:%S.%e";
+	size_t ConsumerFastForwardOffset = 0;
 
 	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
 	//	then accessed by multiple threads in Event, so it needs to be const

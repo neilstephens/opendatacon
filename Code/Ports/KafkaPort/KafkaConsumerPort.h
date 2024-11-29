@@ -44,14 +44,19 @@ public:
 		pPollTimer.reset();
 	};
 
-	virtual void Build() override;
-	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override {}
+	void Build() override;
+	void Enable() override;
+	void Disable() override;
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override {}
+
 private:
 	std::shared_ptr<KCC::KafkaConsumer> pKafkaConsumer;
+	std::set<kafka::Topic> mTopics;
 	size_t PollBackoff_ms = 1;
 	std::shared_ptr<asio::steady_timer> pPollTimer = odc::asio_service::Get()->make_steady_timer();
 	void Poll();
 	void ProcessRecord(const KCC::ConsumerRecord& record);
+	std::shared_ptr<EventInfo> TemplateDeserialise(const KCC::ConsumerRecord& record);
 };
 
 #endif // KAFKACONSUMERPORT_H

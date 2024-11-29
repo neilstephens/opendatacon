@@ -150,6 +150,10 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->DateTimeFormat = JSONRoot["DateTimeFormat"].asString();
 	}
+	if(JSONRoot.isMember("ConsumerFastForwardOffset"))
+	{
+		pConf->ConsumerFastForwardOffset = JSONRoot["ConsumerFastForwardOffset"].asUInt();
+	}
 
 	//Process PointTranslationMap
 	if(JSONRoot.isMember("PointTranslationMap"))

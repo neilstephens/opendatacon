@@ -26,11 +26,36 @@
 
 #include "KafkaConsumerPort.h"
 #include "KafkaPort.h"
+#include "kafka/Types.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/spdlog.h>
 #include <kafka/KafkaConsumer.h>
 #include <chrono>
 #include <memory>
+
+//function to find all positions of a string in a string
+std::vector<size_t> FindAll(const std::string& data, const std::string& toSearch)
+{
+	std::vector<size_t> positions;
+	size_t pos = data.find(toSearch);
+	while(pos != std::string::npos)
+	{
+		positions.push_back(pos);
+		pos = data.find(toSearch, pos + toSearch.size());
+	}
+	return positions;
+}
+
+//function to find and replace all instances of a string in a string
+void ReplaceAll(std::string& data, const std::string& toSearch, const std::string& replaceStr)
+{
+	size_t pos = data.find(toSearch);
+	while(pos != std::string::npos)
+	{
+		data.replace(pos, toSearch.size(), replaceStr);
+		pos = data.find(toSearch, pos + replaceStr.size());
+	}
+}
 
 void KafkaConsumerPort::Build()
 {
@@ -40,6 +65,22 @@ void KafkaConsumerPort::Build()
 	//check the translation method
 	//  and in the case of template/cbor
 	//    check the template/cbor structure to make sure it's valid for de-serialisation
+
+	if(pConf->TranslationMethod == EventTranslationMethod::Template)
+	{
+		//turn the template into a regex pattern
+
+		std::map<size_t,std::string> positions;
+		for(const auto& place_holder : {"<EVENTTYPE>", "<EVENTTYPE_RAW>", "<INDEX>", "<TIMESTAMP>", "<DATETIME>", "<QUALITY>", "<QUALITY_RAW>", "<PAYLOAD>", "<SOURCEPORT>", "<SENDERNAME>"})
+		{
+			for(const auto& pos : FindAll(pConf->DefaultTemplate, place_holder))
+				positions[pos] = place_holder;
+
+			//TODO
+
+			//TODO: handle "<POINT:...>"
+		}
+	}
 
 	if(!pConf->NativeKafkaProperties.contains("client.id"))
 	{
@@ -52,17 +93,47 @@ void KafkaConsumerPort::Build()
 		throw std::runtime_error(Name+": Failed to create Kafka Consumer");
 
 	//subscribe to topics
-	std::set<kafka::Topic> topics;
-	topics.insert(pConf->DefaultTopic);
-	//TODO: add all topics from the point translation map
+	mTopics.insert(pConf->DefaultTopic);
+	if(pConf->pPointMap)
+	{
+		for(const auto& [key, trans_entry] : *pConf->pPointMap)
+		{
+			if(trans_entry.pTopic)
+				mTopics.insert(*trans_entry.pTopic);
+		}
+	}
+	pKafkaConsumer->subscribe(mTopics);
 
-	pKafkaConsumer->subscribe(topics);
 	pKafkaConsumer->pause(); //pause on start, resume on Enable()
-	Poll();
+	Poll();                  //Need to poll whether paused or not
 }
 
-//TODO: override Disable/Enable methods to "pause"/"continue" the consumer, or destroy/recreate it (depending on group config)
-//	Option to fast forward to the end offset on enable, if not in group (minus 1 to get latest value, or configurable buffer)
+void KafkaConsumerPort::Enable()
+{
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	if(pConf->ConsumerFastForwardOffset != 0)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->info("{}: Fast forwarding consumer by {} records", Name, pConf->ConsumerFastForwardOffset);
+
+		//TODO: check what happens if the we seek past the end/beginning
+
+		std::map<kafka::TopicPartition,kafka::Offset> offsets;
+		if(pConf->ConsumerFastForwardOffset < 0)
+			pKafkaConsumer->endOffsets(pKafkaConsumer->assignment());
+		else
+			pKafkaConsumer->beginningOffsets(pKafkaConsumer->assignment());
+
+		for(const auto& [tp, offset] : offsets)
+			pKafkaConsumer->seek(tp, offset+pConf->ConsumerFastForwardOffset);
+	}
+	pKafkaConsumer->resume();
+}
+
+void KafkaConsumerPort::Disable()
+{
+	pKafkaConsumer->pause();
+}
 
 void KafkaConsumerPort::Poll()
 {
@@ -104,16 +175,11 @@ void KafkaConsumerPort::Poll()
 void KafkaConsumerPort::ProcessRecord(const KCC::ConsumerRecord& record)
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
-	//TODO:
-	//  check the translation method
-	//  translate the record
-	//  post the event
-	//  manually commitAsync() offsets in event callbacks - depending on "enable.auto.commit=true" in the config
 
 	std::shared_ptr<EventInfo> event = nullptr;
 	if(pConf->TranslationMethod == EventTranslationMethod::Template)
 	{
-		//TODO: Implement TemplateDeserialiser
+		event = TemplateDeserialise(record);
 	}
 	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 	{
@@ -137,4 +203,11 @@ void KafkaConsumerPort::ProcessRecord(const KCC::ConsumerRecord& record)
 	}
 
 	PublishEvent(event);
+}
+
+std::shared_ptr<EventInfo> KafkaConsumerPort::TemplateDeserialise(const KCC::ConsumerRecord& record)
+{
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+
+	//TODO
 }
