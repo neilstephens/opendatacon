@@ -185,23 +185,6 @@ void DNP3MasterPort::RePublishEvents()
 void DNP3MasterPort::SetCommsGood()
 {
 	UpdateCommsPoint(false);
-
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->pPointConf->SetQualityOnLinkStatus)
-	{
-		// Trigger integrity scan to get point quality
-		// Only way to get true state upstream
-		// Can't just reset quality, because it would make new events for old values
-		pChanH->Post([this]()
-			{
-				if(!IntegrityScanDone && pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp)
-				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
-					IntegrityScanNeeded = true;
-				}
-			});
-	}
 }
 
 void DNP3MasterPort::SetCommsFailed()
@@ -218,6 +201,16 @@ void DNP3MasterPort::SetCommsFailed()
 		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
 		SetCommsFailedQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes);
 		SetCommsFailedQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes);
+
+		// An integrity scan will be needed when/if the link comes back
+		// It's the only way to get the true state upstream
+		// Can't just reset quality, because it would make new events for old values
+		pChanH->Post([this]()
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
+				IntegrityScanNeeded = true;
+			});
 	}
 }
 
