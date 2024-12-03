@@ -416,6 +416,8 @@ void DNP3MasterPort::Build()
 	StackConfig.master.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;
 	StackConfig.master.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;
 
+	StackConfig.master.eventScanOnEventsAvailableClassMask = pConf->pPointConf->GetEventScanOnEventsAvailableClassMask();
+
 	if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
 		StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
 	else
