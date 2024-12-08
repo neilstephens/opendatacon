@@ -26,61 +26,44 @@
 
 #include "KafkaConsumerPort.h"
 #include "KafkaPort.h"
+#include "TemplateDeserialiser.h"
+#include "CBORDeserialiser.h"
+#include "LuaDeserialiser.h"
 #include "kafka/Types.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/spdlog.h>
 #include <kafka/KafkaConsumer.h>
 #include <chrono>
 #include <memory>
-
-//function to find all positions of a string in a string
-std::vector<size_t> FindAll(const std::string& data, const std::string& toSearch)
-{
-	std::vector<size_t> positions;
-	size_t pos = data.find(toSearch);
-	while(pos != std::string::npos)
-	{
-		positions.push_back(pos);
-		pos = data.find(toSearch, pos + toSearch.size());
-	}
-	return positions;
-}
-
-//function to find and replace all instances of a string in a string
-void ReplaceAll(std::string& data, const std::string& toSearch, const std::string& replaceStr)
-{
-	size_t pos = data.find(toSearch);
-	while(pos != std::string::npos)
-	{
-		data.replace(pos, toSearch.size(), replaceStr);
-		pos = data.find(toSearch, pos + replaceStr.size());
-	}
-}
+#include <cstddef>
 
 void KafkaConsumerPort::Build()
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
-	//TODO:
-	//check the translation method
-	//  and in the case of template/cbor
-	//    check the template/cbor structure to make sure it's valid for de-serialisation
-
-	if(pConf->TranslationMethod == EventTranslationMethod::Template)
+	//iterate over the PointTranslationMap and build a ConsumerTranslationMap
+	ConsumerTranslationMap CTM;
+	for(const auto& [tid, pte] : *pConf->pPointMap)
 	{
-		//turn the template into a regex pattern
+		auto key_buffer = pte.pKey ? *pte.pKey : pConf->DefaultKey;
+		ConsumptionID cid(pte.pTopic ? *pte.pTopic : pConf->DefaultTopic, kafka::Key(key_buffer.data(),key_buffer.size()));
+		ConsumerTranslationEntry cte;
 
-		std::map<size_t,std::string> positions;
-		for(const auto& place_holder : {"<EVENTTYPE>", "<EVENTTYPE_RAW>", "<INDEX>", "<TIMESTAMP>", "<DATETIME>", "<QUALITY>", "<QUALITY_RAW>", "<PAYLOAD>", "<SOURCEPORT>", "<SENDERNAME>"})
-		{
-			for(const auto& pos : FindAll(pConf->DefaultTemplate, place_holder))
-				positions[pos] = place_holder;
+		//TODO: check the template/cbor structure to make sure it's valid for de-serialisation
+		//  or leave it to the deserialisers to throw exceptions
 
-			//TODO
+		if(pte.pTemplate)
+			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(*pte.pTemplate, pConf->DateTimeFormat);
 
-			//TODO: handle "<POINT:...>"
-		}
+		if(pte.pCBORer)
+			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(/*FIXME*/ "", pConf->DateTimeFormat);
+
+		if(pConf->TranslationMethod == EventTranslationMethod::Lua)
+			cte.pLuaDeserialiser = std::make_unique<LuaDeserialiser>(/*FIXME*/ "","", pConf->DateTimeFormat);
+
+		CTM.emplace(std::move(cid), std::move(cte));
 	}
+	pConf->pKafkaMap = std::make_unique<ConsumerTranslationMap>(std::move(CTM));
 
 	if(!pConf->NativeKafkaProperties.contains("client.id"))
 	{
@@ -209,5 +192,20 @@ std::shared_ptr<EventInfo> KafkaConsumerPort::TemplateDeserialise(const KCC::Con
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
-	//TODO
+	//build a consumer key and look up the deserialiser
+	ConsumptionID cid(record.topic(), kafka::Key(record.key().data(),record.key().size()));
+	auto it = pConf->pKafkaMap->find(cid);
+	if(it == pConf->pKafkaMap->end())
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->warn("{}: No deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
+		return nullptr;
+	}
+	if(!it->second.pTemplateDeserialiser)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->warn("{}: Null template deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
+		return nullptr;
+	}
+	return it->second.pTemplateDeserialiser->Deserialise(record);
 }

@@ -28,6 +28,7 @@
 #define KafkaPortConf_H_
 #include "CBORSerialiser.h"
 #include "EventTranslation.h"
+#include "ConsumerTranslation.h"
 #include <kafka/Types.h>
 #include <kafka/Properties.h>
 #include <opendatacon/IOTypes.h>
@@ -66,25 +67,30 @@ public:
 	kafka::Properties NativeKafkaProperties;
 	size_t MaxPollIntervalms = 100;
 	kafka::Topic DefaultTopic = "opendatacon";
-	odc::OctetStringBuffer DefaultKey;
-	std::string DefaultTemplate = JSONwPlaceholders();
-	CBORSerialiser DefaultCBORSerialiser = CBORStructure();
-	const ExtraPointFields DefaultExtraFields = {};
 	EventTranslationMethod TranslationMethod = EventTranslationMethod::Template;
-	bool BlockUnknownPoints = false;
-	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
+	std::string DefaultTemplate = JSONwPlaceholders();
 	DataToStringMethod OctetStringFormat = DataToStringMethod::Base64;
 	std::string DateTimeFormat = "%Y-%m-%d %H:%M:%S.%e";
-	size_t ConsumerFastForwardOffset = 0;
 
+	//Producer
+	odc::OctetStringBuffer DefaultKey;
+	CBORSerialiser DefaultCBORSerialiser = CBORStructure();
+	const ExtraPointFields DefaultExtraFields = {};
+	bool BlockUnknownPoints = false;
+	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
 	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
 	//	then accessed by multiple threads in Event, so it needs to be const
 	std::unique_ptr<const PointTranslationMap> pPointMap = nullptr;
 	bool OverridesCreateNewPTMEntries = false;
-
 	//TODO: make key dynamic, like the value
 	//TODO: Support for Lua translation
 	//TODO: Support for Template {} vs <> for std::format specifiers
+
+	//Consumer
+	size_t ConsumerFastForwardOffset = 0;
+	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
+	//	then accessed by multiple threads in Event, so it needs to be const
+	std::unique_ptr<const ConsumerTranslationMap> pKafkaMap = nullptr;
 };
 
 #endif /* KafkaPortConf_H_ */
