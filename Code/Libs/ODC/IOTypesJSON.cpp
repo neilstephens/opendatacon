@@ -176,7 +176,10 @@ template<> CommandStatus PayloadFromJson(const Json::Value& JLoad)
 {
 	if(JLoad.isUInt())
 	{
-		return static_cast<CommandStatus>(JLoad.asUInt());
+		auto cs = CommandStatusFromInt(JLoad.asUInt());
+		if(cs == CommandStatus::UNDEFINED && JLoad.asUInt() != static_cast<unsigned int>(CommandStatus::UNDEFINED))
+			throw std::invalid_argument("Can't convert unsigned integer to odc::CommandStatus.");
+		return cs;
 	}
 	if(JLoad.isString())
 	{

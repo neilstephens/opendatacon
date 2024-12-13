@@ -363,6 +363,8 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					case DataToStringMethod::Base64:
 						try
 						{
+							//FIXME: b64decode doesn't check validity and throw. It likely just crashes.
+							// do the check here instead of try/catch
 							event->SetPayload<EventType::OctetString>(b64decode(unmodified_string));
 						}
 						catch(const std::exception& e)

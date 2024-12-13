@@ -211,8 +211,7 @@ public:
 		{
 			try
 			{
-				//TODO: event->SetPayloadFromString(captured_values["<PAYLOAD>"]);
-				event->SetPayload();
+				event->SetPayload(captured_values["<PAYLOAD>"]);
 			}
 			catch(const std::exception& e)
 			{

@@ -38,6 +38,7 @@ public:
 
 	std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) override
 	{
+		//TODO: implement CBOR deserialisation
 		auto val_str = record.value().toString();
 		return nullptr;
 	}

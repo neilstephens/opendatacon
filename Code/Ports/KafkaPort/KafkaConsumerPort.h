@@ -56,7 +56,9 @@ private:
 	std::shared_ptr<asio::steady_timer> pPollTimer = odc::asio_service::Get()->make_steady_timer();
 	void Poll();
 	void ProcessRecord(const KCC::ConsumerRecord& record);
-	std::shared_ptr<EventInfo> TemplateDeserialise(const KCC::ConsumerRecord& record);
+	std::shared_ptr<EventInfo> TemplateDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<TemplateDeserialiser>& pTemplateDeserialiser);
+	std::shared_ptr<EventInfo> CBORDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<CBORDeserialiser>& pCBORDeserialiser);
+	std::shared_ptr<EventInfo> LuaDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<LuaDeserialiser>& pLuaDeserialiser);
 };
 
 #endif // KAFKACONSUMERPORT_H
