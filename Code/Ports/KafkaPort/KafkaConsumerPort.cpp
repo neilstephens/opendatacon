@@ -225,3 +225,6 @@ std::shared_ptr<EventInfo> KafkaConsumerPort::LuaDeserialise(const KCC::Consumer
 	}
 	return pLuaDeserialiser->Deserialise(record);
 }
+
+//TODO: support "ServerType", eg. ONDEMAND, PERSISTENT, MANUAL
+//ONDEMAND should be default (ie. only consume when there are upstream connected ports)

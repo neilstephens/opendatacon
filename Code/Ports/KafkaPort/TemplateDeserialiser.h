@@ -69,6 +69,7 @@ public:
 	{
 		std::string regex_str = template_str;
 
+		//FIXME: SOURCEPORT should be deserialised
 		//first just replace <POINT:...>, <SOURCEPORT>, or <SENDERNAME>
 		//  with .*? (ungrouped lazy match), because they're not applicable to consuming
 		std::regex point_regex(R"(<POINT:[^>]*>|<SOURCEPORT>|<SENDERNAME>)", std::regex::extended);
