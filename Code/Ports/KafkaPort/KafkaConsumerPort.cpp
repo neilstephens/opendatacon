@@ -41,6 +41,10 @@ void KafkaConsumerPort::Build()
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
+	pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
+	if(!pKafkaConsumer)
+		throw std::runtime_error(Name+": Failed to create Kafka Consumer");
+
 	//iterate over the PointTranslationMap and build a ConsumerTranslationMap
 	ConsumerTranslationMap CTM;
 	for(const auto& [tid, pte] : *pConf->pPointMap)
@@ -52,10 +56,13 @@ void KafkaConsumerPort::Build()
 		//TODO: check the template/cbor structure to make sure it's valid for de-serialisation
 		//  or leave it to the deserialisers to throw exceptions
 
-		if(pte.pTemplate)
-			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(*pte.pTemplate, pConf->DateTimeFormat);
+		if(pConf->TranslationMethod == EventTranslationMethod::Template)
+		{
+			const auto& Template = pte.pTemplate ? *pte.pTemplate : pConf->DefaultTemplate;
+			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(Template, pConf->DateTimeFormat);
+		}
 
-		if(pte.pCBORer)
+		if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(/*FIXME*/ "", pConf->DateTimeFormat);
 
 		if(pConf->TranslationMethod == EventTranslationMethod::Lua)
@@ -70,10 +77,6 @@ void KafkaConsumerPort::Build()
 		if(auto log = odc::spdlog_get("KafkaPort"))
 			log->warn("{}: Consumer client.id is not set in the properties, this may cause issues when reloading/restarting (can't resume from the same offset)", Name);
 	}
-
-	pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
-	if(!pKafkaConsumer)
-		throw std::runtime_error(Name+": Failed to create Kafka Consumer");
 
 	//subscribe to topics
 	mTopics.insert(pConf->DefaultTopic);

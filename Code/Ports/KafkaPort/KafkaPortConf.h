@@ -41,7 +41,7 @@ inline std::string JSONwPlaceholders()
 	return R"(
 {
 	"EventType": "<EVENTTYPE>",
-	"NumericEventType": "<EVENTTYPE_RAW>",
+	"NumericEventType": <EVENTTYPE_RAW>,
 	"Index": <INDEX>,
 	"Description": "<POINT:Name>",
 	"Timestamp": <TIMESTAMP>,

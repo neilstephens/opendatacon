@@ -61,13 +61,28 @@ inline void ReplaceAll(std::string& data, const std::string& toSearch, const std
 	}
 }
 
+//function to escape special regex chars
+inline std::string EscapeRegexLiteral(const std::string &lit)
+{
+	static const char metacharacters[] = R"(\.^$+()[]{}|?*)";
+	std::string ret;
+	ret.reserve(lit.size());
+	for(const auto& ch : lit)
+	{
+		if(std::strchr(metacharacters, ch))
+			ret.push_back('\\');
+		ret.push_back(ch);
+	}
+	return ret;
+}
+
 class TemplateDeserialiser: public Deserialiser
 {
 public:
 	TemplateDeserialiser(const std::string& template_str, const std::string& datetime_format):
 		Deserialiser(datetime_format)
 	{
-		std::string regex_str = template_str;
+		std::string regex_str = EscapeRegexLiteral(template_str);
 
 		//FIXME: SOURCEPORT should be deserialised
 		//first just replace <POINT:...>, <SOURCEPORT>, or <SENDERNAME>
@@ -96,13 +111,29 @@ public:
 				ReplaceAll(regex_str, place_holder, ".*?");
 			}
 		}
-		template_regex = std::regex(regex_str, std::regex::extended);
+		//and finally add start/end anchors
+		regex_str = "^"+regex_str+"$";
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->debug("TemplateDeserialiser regex: '{}'", regex_str);
+		try
+		{
+			//FIXME: why doesn't std::regex::extended work? Always throws 'unmatched ( or )'
+			template_regex = std::regex(regex_str); //, std::regex::extended);
+		}
+		catch(const std::exception& e)
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("Failed to compile regex '{}', for template '{}': {}", regex_str, template_str, e.what());
+		}
 	}
 	virtual ~TemplateDeserialiser() = default;
 
 	std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) override
 	{
 		auto val_str = record.value().toString();
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->trace("Deserialising record value: '{}'", val_str);
+
 		std::smatch matches;
 		if(!std::regex_search(val_str, matches, template_regex))
 		{
@@ -118,7 +149,11 @@ public:
 		}
 		std::map<std::string,std::string> captured_values;
 		for(const auto& [place_holder, group_num] : capture_groups)
+		{
 			captured_values[place_holder] = matches[group_num].str();
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->trace("Captured '{}'(grp{}): '{}'", place_holder, group_num, captured_values[place_holder]);
+		}
 
 		EventType event_type;
 		try
