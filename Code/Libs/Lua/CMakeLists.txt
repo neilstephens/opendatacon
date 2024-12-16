@@ -29,10 +29,7 @@ FetchContent_Declare(
 	URL_HASH ${LUA_HASH}
 )
 
-FetchContent_GetProperties(lua)
-if(NOT lua_POPULATED)
-	FetchContent_Populate(lua)
-endif()
+FetchContent_MakeAvailable(lua)
 
 #TODO: generate this from LUA_VERSION
 set(LUA_LIBNAME lua54)

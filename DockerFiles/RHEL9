@@ -1,20 +1,20 @@
 # syntax=docker/dockerfile:1.2
-
-ARG DOCKER_ARCH=
    
-FROM ${DOCKER_ARCH}debian:bookworm as builder
+FROM redhat/ubi9 as builder
 
-RUN apt-get update
-RUN apt-get install -y g++ make cmake git libmodbus-dev libssl-dev socat python3-dev file
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+RUN yum install -y socat g++ libstdc++-static cmake git openssl-devel python3-devel file libmodbus libmodbus-devel
 
 RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
 ARG BUILD_COMMIT=develop
 RUN git -C opendatacon checkout $BUILD_COMMIT
 
 ARG BUILD_TYPE=Release
-ARG CMAKE_OPTIONS=
 RUN mkdir opendatacon-build
-RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=Debian12 $CMAKE_OPTIONS -S opendatacon -B opendatacon-build
+
+RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=rhel9 \
+-DOPENSSL_ROOT_DIR=/usr/ -S opendatacon -B opendatacon-build
+ 
 RUN cmake --build opendatacon-build --parallel 8
 RUN cmake --build opendatacon-build --target install
 RUN cmake --build opendatacon-build --target package
