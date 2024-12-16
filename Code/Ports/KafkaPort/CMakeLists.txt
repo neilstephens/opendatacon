@@ -47,7 +47,7 @@ if(WIN32 AND ODC_ASIO_SSL)
 endif()
 
 target_link_libraries(${PROJECT_NAME} ODC RdKafka::rdkafka)
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
 	${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/include
 	${CMAKE_SOURCE_DIR}/Code/submodules/jsoncons/include)
 

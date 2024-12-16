@@ -22,6 +22,14 @@ if(NOT ODC_ASIO_SSL)
 	message(WARNING "KafkaPort requires ODC_ASIO_SSL to be enabled for librdkafka SSL support.")
 endif()
 
+#don't want external warnings from librdkafka
+#prep a variable to use in CMAKE_CXX_FLAGS for whatever platform we're on
+if(MSVC)
+	set(NOWARN_CXX_FLAGS "/W0")
+else()
+	set(NOWARN_CXX_FLAGS "-Wundef")
+endif()
+
 set(RDKAFKA_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/librdkafka")
 set(RDKAFKA_BUILD "${CMAKE_BINARY_DIR}/Code/submodules/librdkafka")
 mark_as_advanced(FORCE RDKAFKA_SOURCE)
@@ -29,6 +37,7 @@ mark_as_advanced(FORCE RDKAFKA_BUILD)
 set(RDKAFKA_HOME "${RDKAFKA_BUILD}/install")
 set(
 	RDKAFKA_CMAKE_OPTS
+		-DCMAKE_CXX_FLAGS=${NOWARN_CXX_FLAGS}
 		-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 		-DRDKAFKA_BUILD_STATIC=ON
 		-DENABLE_LZ4_EXT=OFF
@@ -57,7 +66,7 @@ elseif(CMAKE_VS_PLATFORM_NAME)
 else()
 	set(PLATFORM_OPT "")
 endif()
-message("${CMAKE_COMMAND} ${RDKAFKA_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} -S ${RDKAFKA_SOURCE}")
+message("${CMAKE_COMMAND} ${RDKAFKA_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} -S ${RDKAFKA_SOURCE} -Wno-dev")
 execute_process(
 	COMMAND ${CMAKE_COMMAND} ${RDKAFKA_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} -S ${RDKAFKA_SOURCE}
 	WORKING_DIRECTORY "${RDKAFKA_BUILD}"
@@ -109,4 +118,10 @@ if(ODC_ASIO_SSL)
 	message("KAF_REQUIRED_LIBS AFTER: ${KAF_REQUIRED_LIBS}")
 	set_target_properties(RdKafka::rdkafka PROPERTIES INTERFACE_LINK_LIBRARIES "${KAF_REQUIRED_LIBS}")
 endif()
+
+#another hack to mark the librdkafka include directory as a system directory
+# so that we don't get warnings about it
+get_target_property(KAF_INCLUDE_DIRS RdKafka::rdkafka INTERFACE_INCLUDE_DIRECTORIES)
+message("Setting include dirs as 'SYSTEM' to supress 3rd party warnings: ${KAF_INCLUDE_DIRS}")
+set_target_properties(RdKafka::rdkafka PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${KAF_INCLUDE_DIRS}")
 
