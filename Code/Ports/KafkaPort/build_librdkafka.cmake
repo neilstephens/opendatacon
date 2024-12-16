@@ -25,9 +25,9 @@ endif()
 #don't want external warnings from librdkafka
 #prep a variable to use in CMAKE_CXX_FLAGS for whatever platform we're on
 if(MSVC)
-	set(NOWARN_CXX_FLAGS "/W0")
+	set(NOWARN_C_FLAGS "/W0")
 else()
-	set(NOWARN_CXX_FLAGS "-Wundef")
+	set(NOWARN_C_FLAGS "-w")
 endif()
 
 set(RDKAFKA_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/librdkafka")
@@ -37,7 +37,7 @@ mark_as_advanced(FORCE RDKAFKA_BUILD)
 set(RDKAFKA_HOME "${RDKAFKA_BUILD}/install")
 set(
 	RDKAFKA_CMAKE_OPTS
-		-DCMAKE_CXX_FLAGS=${NOWARN_CXX_FLAGS}
+		-DCMAKE_C_FLAGS=${NOWARN_C_FLAGS}
 		-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 		-DRDKAFKA_BUILD_STATIC=ON
 		-DENABLE_LZ4_EXT=OFF
