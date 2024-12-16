@@ -22,12 +22,11 @@ if(NOT ODC_ASIO_SSL)
 	message(WARNING "KafkaPort requires ODC_ASIO_SSL to be enabled for librdkafka SSL support.")
 endif()
 
-#don't want external warnings from librdkafka
-#prep a variable to use in CMAKE_CXX_FLAGS for whatever platform we're on
 if(MSVC)
-	set(NOWARN_C_FLAGS "/W0")
+	set(NOWARN_C_FLAGS "/W0") #don't want warnings from external librdkafka code
+	set(MSVC_OPTS "-DOPENSSL_MSVC_STATIC_RT=TRUE")
 else()
-	set(NOWARN_C_FLAGS "-w")
+	set(NOWARN_C_FLAGS "-w") #don't want warnings from external librdkafka code
 endif()
 
 set(RDKAFKA_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/librdkafka")
@@ -44,7 +43,7 @@ set(
 		-DRDKAFKA_BUILD_EXAMPLES=OFF
 		-DRDKAFKA_BUILD_TESTS=OFF
 		-DOPENSSL_USE_STATIC_LIBS=TRUE
-		-DOPENSSL_MSVC_STATIC_RT=TRUE
+		${MSVC_OPTS}
 		-DWITH_SSL=${ODC_ASIO_SSL}
 		-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 		-DCMAKE_INSTALL_PREFIX=${RDKAFKA_HOME}/
