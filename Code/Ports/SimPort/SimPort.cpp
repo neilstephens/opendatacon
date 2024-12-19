@@ -187,7 +187,7 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 	{//use it as a regex
 		try
 		{
-			std::regex ind_regex(index_str,std::regex::extended);
+			std::regex ind_regex(index_str);
 			const std::vector<std::size_t> allowed_indexes = pSimConf->Indexes(type);
 			for(auto allowed : allowed_indexes)
 			{

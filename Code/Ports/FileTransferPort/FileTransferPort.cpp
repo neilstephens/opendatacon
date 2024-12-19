@@ -264,7 +264,7 @@ void FileTransferPort::Build()
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->warn("{}: FilenameRegex defaulting to '.*'", Name);
-			pConf->pFilenameRegex = std::make_unique<std::regex>(".*",std::regex::extended);
+			pConf->pFilenameRegex = std::make_unique<std::regex>(".*");
 		}
 
 		if(pConf->UseCRCs && pConf->SequenceIndexEOF >= 0)
@@ -1275,7 +1275,7 @@ void FileTransferPort::ProcessElements(const Json::Value& JSONRoot)
 		auto regx_string = JSONRoot["FilenameRegex"].asString();
 		try
 		{
-			pConf->pFilenameRegex = std::make_unique<std::regex>(regx_string,std::regex::extended);
+			pConf->pFilenameRegex = std::make_unique<std::regex>(regx_string);
 		}
 		catch (std::exception& e)
 		{
