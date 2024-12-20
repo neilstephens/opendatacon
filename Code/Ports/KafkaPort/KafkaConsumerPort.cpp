@@ -43,10 +43,6 @@ void KafkaConsumerPort::Build()
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
-	pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
-	if(!pKafkaConsumer)
-		throw std::runtime_error(Name+": Failed to create Kafka Consumer");
-
 	//iterate over the PointTranslationMap and build a ConsumerTranslationMap
 	ConsumerTranslationMap CTM;
 	for(const auto& [tid, pte] : *pConf->pPointMap)
@@ -61,7 +57,7 @@ void KafkaConsumerPort::Build()
 		if(pConf->TranslationMethod == EventTranslationMethod::Template)
 		{
 			const auto& Template = pte.pTemplate ? *pte.pTemplate : pConf->DefaultTemplate;
-			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(Template, pConf->DateTimeFormat);
+			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(Template, pConf->DateTimeFormat, !pConf->RegexEscapeTemplates);
 		}
 
 		if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
@@ -80,6 +76,19 @@ void KafkaConsumerPort::Build()
 			log->warn("{}: Consumer client.id is not set in the properties, this may cause issues when reloading/restarting (can't resume from the same offset)", Name);
 	}
 
+	pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
+	if(!pKafkaConsumer)
+		throw std::runtime_error(Name+": Failed to create Kafka Consumer");
+
+	auto rebalanceCb = [log{odc::spdlog_get("KafkaPort")}](kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps)
+				 {
+					 if(log)
+					 {
+						 const auto action_str = et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned ? "assigned" : "revoked";
+						 log->debug("Partitions {}: {}", action_str, kafka::toString(tps));
+					 }
+				 };
+
 	//subscribe to topics
 	mTopics.insert(pConf->DefaultTopic);
 	if(pConf->pPointMap)
@@ -90,7 +99,9 @@ void KafkaConsumerPort::Build()
 				mTopics.insert(*trans_entry.pTopic);
 		}
 	}
-	pKafkaConsumer->subscribe(mTopics);
+	//FIXME: this is blocking and throws on timeout! - is there a non-blocking/throwing version?
+	//  passing in std::chrono::milliseconds::zero() just times out immediately
+	pKafkaConsumer->subscribe(mTopics,rebalanceCb);
 
 	pKafkaConsumer->pause(); //pause on start, resume on Enable()
 	Poll();                  //Need to poll whether paused or not
@@ -194,6 +205,10 @@ void KafkaConsumerPort::ProcessRecord(const KCC::ConsumerRecord& record)
 			log->error("{}: Failed to translate kafka record to EventInfo: '{}'", Name, record.toString());
 		return;
 	}
+
+	//if the source port is not set, claim it
+	if(event->GetSourcePort().empty())
+		event->SetSource(Name);
 
 	PublishEvent(event);
 }

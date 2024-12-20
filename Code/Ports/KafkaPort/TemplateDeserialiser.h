@@ -79,25 +79,32 @@ inline std::string EscapeRegexLiteral(const std::string &lit)
 class TemplateDeserialiser: public Deserialiser
 {
 public:
-	TemplateDeserialiser(const std::string& template_str, const std::string& datetime_format):
+	TemplateDeserialiser(const std::string& template_str, const std::string& datetime_format, const bool regexEnabled):
 		Deserialiser(datetime_format)
 	{
-		std::string regex_str = EscapeRegexLiteral(template_str);
+		std::string regex_str = regexEnabled ? template_str : EscapeRegexLiteral(template_str);
 
-		//FIXME: SOURCEPORT should be deserialised
-		//first just replace <POINT:...>, <SOURCEPORT>, or <SENDERNAME>
+		//TODO: check for matching groups in the template if it's regex enabled
+		// warn (or throw if the check is robust)
+
+		//make whitespace optional an interchangable with other whitespace
+		//  ,by replacing all whitespace with \s*
+		std::regex whitespace_regex(R"(\s+)");
+		regex_str = std::regex_replace(regex_str, whitespace_regex, R"(\s*)");
+
+		//replace <POINT:...> or <SENDERNAME>
 		//  with .*? (ungrouped lazy match), because they're not applicable to consuming
-		std::regex point_regex(R"(<POINT:[^>]*>|<SOURCEPORT>|<SENDERNAME>)", std::regex::extended);
-		regex_str = std::regex_replace(regex_str, point_regex, ".*?");
+		std::regex point_regex(R"(<POINT:[^>]*>|<SENDERNAME>)");
+		regex_str = std::regex_replace(regex_str, point_regex, "(?:.*?)");
 
 		//now get the order that the placeholders appear in the template
 		//  ,by storing in an ordered map by position
 		std::map<size_t,std::string> positions;
-		for(const auto& place_holder : {"<EVENTTYPE>", "<EVENTTYPE_RAW>", "<INDEX>", "<TIMESTAMP>", "<DATETIME>", "<QUALITY>", "<QUALITY_RAW>", "<PAYLOAD>"})
+		for(const auto& place_holder : {"<SOURCEPORT>", "<EVENTTYPE>", "<EVENTTYPE_RAW>", "<INDEX>", "<TIMESTAMP>", "<DATETIME>", "<QUALITY>", "<QUALITY_RAW>", "<PAYLOAD>"})
 			for(const auto& pos : FindAll(regex_str, place_holder))
 				positions[pos] = place_holder;
 
-		//now replace the rest of the placeholders, and map them to a capture group number
+		//now replace the placeholders with capturing groups, and store the group number
 		size_t group_num = 1;
 		for(const auto& [_, place_holder] : positions)
 		{
@@ -108,17 +115,17 @@ public:
 				size_t pos = regex_str.find(place_holder);
 				regex_str.replace(pos, place_holder.size(), "(.*?)");
 				//replace all other instances of the same placeholder with a non-capturing lazy match
-				ReplaceAll(regex_str, place_holder, ".*?");
+				ReplaceAll(regex_str, place_holder, "(?:.*?)");
 			}
 		}
 		//and finally add start/end anchors
 		regex_str = "^"+regex_str+"$";
 		if(auto log = odc::spdlog_get("KafkaPort"))
 			log->debug("TemplateDeserialiser regex: '{}'", regex_str);
+
 		try
 		{
-			//FIXME: why doesn't std::regex::extended work? Always throws 'unmatched ( or )'
-			template_regex = std::regex(regex_str); //, std::regex::extended);
+			template_regex = std::regex(regex_str);
 		}
 		catch(const std::exception& e)
 		{
@@ -130,7 +137,7 @@ public:
 
 	std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) override
 	{
-		auto val_str = record.value().toString();
+		std::string val_str(static_cast<const char*>(record.value().data()), record.value().size());
 		if(auto log = odc::spdlog_get("KafkaPort"))
 			log->trace("Deserialising record value: '{}'", val_str);
 
@@ -138,7 +145,7 @@ public:
 		if(!std::regex_search(val_str, matches, template_regex))
 		{
 			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->warn("Failed to deserialise record: {}", record.toString());
+				log->warn("Failed to deserialise record (regex_search failed to match): {}", record.toString());
 			return nullptr;
 		}
 		if(matches.size() != capture_groups.size()+1)
@@ -255,6 +262,12 @@ public:
 					log->error("Failed to deserialise Payload: {}", e.what());
 				return nullptr;
 			}
+		}
+
+		//use SOURCEPORT if available
+		if(captured_values.find("<SOURCEPORT>") != captured_values.end())
+		{
+			event->SetSource(captured_values["<SOURCEPORT>"]);
 		}
 
 		return event;
