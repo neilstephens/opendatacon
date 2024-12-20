@@ -24,6 +24,8 @@
  *      Author: Neil Stephens
  */
 
+//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
+
 #ifndef KAFKAPRODUCERPORT_H
 #define KAFKAPRODUCERPORT_H
 

@@ -24,6 +24,8 @@
  *      Author: Neil Stephens
  */
 
+//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
+
 #ifndef KafkaPortConf_H_
 #define KafkaPortConf_H_
 #include "CBORSerialiser.h"
