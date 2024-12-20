@@ -42,21 +42,26 @@ public:
 		:KafkaPort(Name,Filename,Overrides){};
 	virtual ~KafkaConsumerPort()
 	{
-		pPollTimer->cancel();
-		pPollTimer.reset();
+		if(pPollTimer)
+		{
+			pPollTimer->cancel();
+			pPollTimer.reset();
+		}
 	};
 
 	void Build() override;
 	void Enable() override;
 	void Disable() override;
-	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override {}
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
 private:
-	std::shared_ptr<KCC::KafkaConsumer> pKafkaConsumer;
+	std::shared_ptr<KCC::KafkaConsumer> pKafkaConsumer = nullptr;
 	std::set<kafka::Topic> mTopics;
 	size_t PollBackoff_ms = 1;
-	std::shared_ptr<asio::steady_timer> pPollTimer = odc::asio_service::Get()->make_steady_timer();
-	void Poll();
+	std::shared_ptr<asio::steady_timer> pPollTimer = nullptr;
+	void PortUp();
+	void PortDown();
+	void Poll(std::weak_ptr<asio::steady_timer> wTimer);
 	void ProcessRecord(const KCC::ConsumerRecord& record);
 	std::shared_ptr<EventInfo> TemplateDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<TemplateDeserialiser>& pTemplateDeserialiser);
 	std::shared_ptr<EventInfo> CBORDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<CBORDeserialiser>& pCBORDeserialiser);
