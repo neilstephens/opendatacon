@@ -150,9 +150,8 @@ jobs:
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
         echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
         choco install openssl --version=1.1.1.2100 --x86
-        Remove-Item 'C:\hostedtoolcache\windows\Python\3.7.9\x64' -Recurse
-        echo "C:\hostedtoolcache\windows\Python\3.7.9\x86" >> $env:GITHUB_PATH
-        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x86/python37_d.dll -Destination C:\Windows\sysWOW64\
+        Remove-Item 'C:\hostedtoolcache\windows\Python\3.9.13\x64' -Recurse
+        echo "C:\hostedtoolcache\windows\Python\3.9.13\x86" >> $env:GITHUB_PATH
         
     - if: matrix.bits == 64 && contains(matrix.os,'windows')
       name: Set 64-bit env
@@ -160,7 +159,6 @@ jobs:
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
         echo 'BITGEN=-Ax64' >> $env:GITHUB_ENV
         choco install openssl
-        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x64/python37_d.dll -Destination C:\Windows\system32\
     
     - if: contains(matrix.os,'windows')
       name: Setup Windows Environment
@@ -171,9 +169,7 @@ jobs:
           New-Item C:\libmodbus -ItemType Directory
           Move-Item .\libmodbus C:\libmodbus\libmodbus
         }
-        #hack because debug lib aint available!
-        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/${{env.BITPLAT}}/python37_d.lib -Destination C:/hostedtoolcache/windows/Python/3.7.9/${{env.BITPLAT}}/libs/
-        echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.7.9\${{env.BITPLAT}}' >> $env:GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
 
     - if: contains(matrix.os,'macos')
       name: Setup MacOS Environment
