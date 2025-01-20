@@ -54,7 +54,7 @@ public:
 	void AddFilter(const std::string& regx_str, bool whitelist) override
 	{
 		std::lock_guard<Mutex> lock(spdlog::sinks::base_sink<Mutex>::mutex_);
-		std::regex filt(regx_str,std::regex::extended);
+		std::regex filt(regx_str);
 		auto& List = whitelist ? WhiteList : BlackList;
 		List[regx_str] = std::move(filt);
 	}

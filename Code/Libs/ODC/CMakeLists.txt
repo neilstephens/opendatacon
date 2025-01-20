@@ -35,9 +35,20 @@ endif()
 
 if(ODC_ASIO_SSL)
 	message("OpenSSL root dir: ${OPENSSL_ROOT_DIR}")
+
+	# First try with static libs
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
 	set(OPENSSL_MSVC_STATIC_RT TRUE)
-	find_package(OpenSSL 1.1.1 REQUIRED)
+	find_package(OpenSSL 1.1.1 QUIET)
+
+	if(NOT OpenSSL_FOUND)
+	    message(STATUS "Static OpenSSL libraries not found, falling back to dynamic...")
+	    set(OPENSSL_USE_STATIC_LIBS FALSE)
+	    set(OPENSSL_MSVC_STATIC_RT FALSE)
+	    find_package(OpenSSL 1.1.1 REQUIRED)
+	    set(PACK_NAMES ssl crypto zlib z)
+	endif()
+
 	add_definitions(-DODC_ASIO_SSL)
 	message("OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
 	message("OpenSSL libraries: ${OPENSSL_LIBRARIES}")
@@ -55,5 +66,8 @@ install(CODE
 "
 	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
 		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_LIBRARY_SUFFIX}
+	)
+	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
+		${PACK_NAMES}
 	)
 ")

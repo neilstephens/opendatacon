@@ -185,23 +185,6 @@ void DNP3MasterPort::RePublishEvents()
 void DNP3MasterPort::SetCommsGood()
 {
 	UpdateCommsPoint(false);
-
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->pPointConf->SetQualityOnLinkStatus)
-	{
-		// Trigger integrity scan to get point quality
-		// Only way to get true state upstream
-		// Can't just reset quality, because it would make new events for old values
-		pChanH->Post([this]()
-			{
-				if(!IntegrityScanDone && pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp)
-				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
-					IntegrityScanNeeded = true;
-				}
-			});
-	}
 }
 
 void DNP3MasterPort::SetCommsFailed()
@@ -218,6 +201,16 @@ void DNP3MasterPort::SetCommsFailed()
 		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
 		SetCommsFailedQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes);
 		SetCommsFailedQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes);
+
+		// An integrity scan will be needed when/if the link comes back
+		// It's the only way to get the true state upstream
+		// Can't just reset quality, because it would make new events for old values
+		pChanH->Post([this]()
+			{
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
+				IntegrityScanNeeded = true;
+			});
 	}
 }
 
@@ -354,7 +347,7 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 				   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
 				{
 					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: Stack executed integrity scan for this link session.",Name);
+						log->debug("{}: Stack executed IIN triggered integrity scan for this link session.",Name);
 					IntegrityScanDone = true;
 				}
 				if(IntegrityScanNeeded)
@@ -423,10 +416,14 @@ void DNP3MasterPort::Build()
 	StackConfig.master.maxTxFragSize = pConf->pPointConf->MaxTxFragSize;
 	StackConfig.master.maxRxFragSize = pConf->pPointConf->MaxTxFragSize;
 
-	//Don't set a startup integ scan here, because we handle it ourselves in the link state machine
-	StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
+	StackConfig.master.eventScanOnEventsAvailableClassMask = pConf->pPointConf->GetEventScanOnEventsAvailableClassMask();
 
-	//Configure mandatory integrity scans separately to the disabled startup scan
+	if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
+		StackConfig.master.startupIntegrityClassMask = opendnp3::ClassField::None();
+	else
+		StackConfig.master.startupIntegrityClassMask = pConf->pPointConf->GetStartupIntegrityClassMask();
+
+	//Configure mandatory integrity scans separately to the startup scan
 	StackConfig.master.useAlternateMaskForForcedIntegrity = true;
 	StackConfig.master.alternateIntegrityClassMask = pConf->pPointConf->GetForcedIntegrityClassMask();
 	StackConfig.master.integrityOnEventOverflowIIN = pConf->pPointConf->IntegrityOnEventOverflowIIN;

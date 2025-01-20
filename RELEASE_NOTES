@@ -1,4 +1,11 @@
-# opendatacon version 1.9.4
+# opendatacon version 1.9.5
+
+## 1.9.5
+  * ECMAScript regex syntax everywhere regexes are used
+  * DNP3Port
+    * IIN triggered integrity scan sequence fix
+    * Fix unreliable quality-on-link-status integrity scan
+    * New EventScanOnEventsAvailableClass<1|2|3> config options
 
 ## 1.9.4
   * DNP3Port

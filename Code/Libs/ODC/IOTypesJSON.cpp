@@ -192,7 +192,7 @@ template<> OctetStringBuffer PayloadFromJson(const Json::Value& JLoad)
 	if(!JLoad.isString())
 		throw std::invalid_argument("Payload is not a string.");
 
-	static const std::regex base64_data_uri_rgx("data:([^;]+;)?base64,([a-zA-Z0-9=/]*[=]{1,2})",std::regex::extended);
+	static const std::regex base64_data_uri_rgx("data:([^;]+;)?base64,([a-zA-Z0-9=/]*[=]{1,2})");
 	std::smatch match_results;
 	auto str = JLoad.asString();
 	if(std::regex_match(str, match_results, base64_data_uri_rgx))

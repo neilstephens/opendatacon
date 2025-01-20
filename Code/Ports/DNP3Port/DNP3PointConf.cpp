@@ -57,6 +57,10 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
 	CommsPointHeartBeatTimems(0),
+	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
+	EventScanOnEventsAvailableClass1(false),
+	EventScanOnEventsAvailableClass2(false),
+	EventScanOnEventsAvailableClass3(false),
 	/// Which classes should be requested in a startup integrity scans
 	StartupIntegrityClass0(true),
 	StartupIntegrityClass1(true),
@@ -122,6 +126,12 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 opendnp3::ClassField DNP3PointConf::GetUnsolClassMask()
 {
 	return opendnp3::ClassField(true,UnsolClass1,UnsolClass2,UnsolClass3);
+}
+
+opendnp3::ClassField DNP3PointConf::GetEventScanOnEventsAvailableClassMask()
+{
+	return opendnp3::ClassField(false,EventScanOnEventsAvailableClass1,
+		EventScanOnEventsAvailableClass2,EventScanOnEventsAvailableClass3);
 }
 
 opendnp3::ClassField DNP3PointConf::GetStartupIntegrityClassMask()
@@ -242,6 +252,14 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		FlagsToSetOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToSetOnLinkStatus"].asString());
 	if (JSONRoot.isMember("FlagsToClearOnLinkStatus"))
 		FlagsToClearOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToClearOnLinkStatus"].asString());
+
+	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
+	if (JSONRoot.isMember("EventScanOnEventsAvailableClass1"))
+		EventScanOnEventsAvailableClass1 = JSONRoot["EventScanOnEventsAvailableClass1"].asBool();
+	if (JSONRoot.isMember("EventScanOnEventsAvailableClass2"))
+		EventScanOnEventsAvailableClass2 = JSONRoot["EventScanOnEventsAvailableClass2"].asBool();
+	if (JSONRoot.isMember("EventScanOnEventsAvailableClass3"))
+		EventScanOnEventsAvailableClass3 = JSONRoot["EventScanOnEventsAvailableClass3"].asBool();
 
 	/// Which classes should be requested in a startup integrity scan
 	if (JSONRoot.isMember("StartupIntegrityClass0"))
