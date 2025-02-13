@@ -359,7 +359,7 @@ Json::Value WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
 		{
 			try
 			{
-				pLogRegex = std::make_unique<std::regex>(new_filter,std::regex::extended);
+				pLogRegex = std::make_unique<std::regex>(new_filter);
 				filter = new_filter;
 				filter_is_regex = true;
 			}
