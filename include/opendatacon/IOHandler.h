@@ -27,13 +27,14 @@
 #ifndef IOHANDLER_H_
 #define IOHANDLER_H_
 
+#include <opendatacon/asio.h>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
+#include <opendatacon/OneShotFunc.h>
 #include <functional>
 #include <unordered_map>
 #include <map>
 #include <atomic>
-#include <opendatacon/asio.h>
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/util.h>
 
 namespace odc
 {
@@ -128,9 +129,9 @@ protected:
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);
 			if(shouldPost)
-				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, multi_callback);});
+				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, OneShotFunc<void(CommandStatus)>::Wrap(multi_callback));});
 			else
-				IOHandler_pair.second->Event(event, Name, multi_callback);
+				IOHandler_pair.second->Event(event, Name, OneShotFunc<void(CommandStatus)>::Wrap(multi_callback));
 		}
 	}
 
