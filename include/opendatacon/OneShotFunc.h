@@ -43,24 +43,35 @@ namespace odc
 //		because PublishEvent, DataConnector, and the Transform base class use this wrapper
 
 template <typename FnT> class OneShotFunc; //FnT is the same style template param as a std::function. Eg OneShotFunc<void(CommandStatus)>
+
 template <typename FnR, typename ... FnArgs>
 class OneShotFunc<FnR(FnArgs...)> //Use an explicit specialisation to break down into return and arg types
 {
-private:
-
 	using FnT = FnR(FnArgs...);
+
+public:
+	//the only public interface is the static wrapping factory function
+	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
+	{
+		//forgo the use of make_shared so that the ctor/dtor can remain private
+		auto pOneShot = std::shared_ptr<OneShotFunc<FnT>>(new OneShotFunc<FnT>(wrapee),[](OneShotFunc<FnT>* p){delete p;});
+		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs... args) -> auto
+			{
+				return (*pOneShot)(std::forward<FnArgs>(args)...);
+			});
+	}
+
+private:
 
 	std::shared_ptr<std::function<FnT>> pFn;
 	std::atomic_bool called = false;
 
-public:
-
-	//ctor
+	//private ctor for Wrap to use
 	explicit OneShotFunc(const std::shared_ptr<std::function<FnT>>& wrapee)
 		:pFn(wrapee)
 	{}
 
-	//call operator - the whole reason for this class - warn if it's called more than once
+	//call operator - calls the wrapped fn after checking if it's been called before
 	template <typename ... Args>
 	auto operator()(Args&&... args)
 	{
@@ -75,16 +86,7 @@ public:
 		return (*pFn)(std::forward<Args>(args)...);
 	}
 
-	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
-	{
-		auto pOneShot = std::make_shared<OneShotFunc<FnT>>(wrapee);
-		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs... args) -> auto
-			{
-				return (*pOneShot)(std::forward<FnArgs>(args)...);
-			});
-	}
-
-	//dtor - also warn if it wasn't called
+	//dtor also logs if the fn was never called
 	~OneShotFunc()
 	{
 		if(!called.load())
