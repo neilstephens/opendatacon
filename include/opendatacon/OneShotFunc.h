@@ -27,37 +27,31 @@
 #ifndef ONESHOTFUNC_H
 #define ONESHOTFUNC_H
 
-#include <opendatacon/IOTypes.h>
+#include <opendatacon/util.h>
 #include <memory>
 #include <utility>
 #include <atomic>
 #include <functional>
-#include <tuple>
 
 namespace odc
 {
 
-// class that simply wraps a shared_ptr to a callable object and warns if it doesn't get called exactly once
+// class that simply wraps a shared_ptr to a std::function and warns if it doesn't get called exactly once
 //
 //	Main use case is for callbacks that are designed to be called once and only once
 //	Highlights cases where user-defined Ports/Transforms neglect to call an Event callback,
 //		because PublishEvent, DataConnector, and the Transform base class use this wrapper
 
-template <typename FnT>
-class OneShotFunc
+template <typename FnT> class OneShotFunc; //FnT is the same style template param as a std::function. Eg OneShotFunc<void(CommandStatus)>
+template <typename FnR, typename ... FnArgs>
+class OneShotFunc<FnR(FnArgs...)> //Use an explicit specialisation to break down into return and arg types
 {
 private:
 
+	using FnT = FnR(FnArgs...);
+
 	std::shared_ptr<std::function<FnT>> pFn;
 	std::atomic_bool called = false;
-
-	//extract the args that the function expects to a tuple type
-	template <typename T> struct ArgsTuple;
-
-	template <typename R, typename ... Args>
-	struct ArgsTuple<std::function<R(Args...)>> { using type = std::tuple<Args...>; };
-
-	using FnArgs = typename ArgsTuple<std::function<FnT>>::type;
 
 public:
 
@@ -84,9 +78,9 @@ public:
 	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
 	{
 		auto pOneShot = std::make_shared<OneShotFunc<FnT>>(wrapee);
-		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs args) -> auto
+		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs... args) -> auto
 			{
-				return std::apply((*pOneShot),args);
+				return (*pOneShot)(std::forward<FnArgs>(args)...);
 			});
 	}
 
