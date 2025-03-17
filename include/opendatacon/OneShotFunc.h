@@ -57,11 +57,24 @@ public:
 	//the only public interface is the static wrapping factory function
 	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
 	{
+		if(!wrapee) return nullptr;
+
+		//static custom deleter for use as a 'tag' to indicate a shared_ptr was created by us
+		static auto oneshot_was_here = [](std::function<FnT>* p){ delete p; };
+
+		auto tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
+		if(tag == &oneshot_was_here)
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->debug("One-shot function; attempted re-wrap detected; leaving as-is");
+			return wrapee;
+		}
+
 		auto pOneShot = std::make_shared<OneShotFuncBuilder<FnT>>(wrapee);
-		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs... args) -> FnR
+		return std::shared_ptr<std::function<FnT>>(new std::function<FnT>([pOneShot](FnArgs... args) -> FnR
 			{
 				return (*pOneShot)(std::forward<FnArgs>(args)...);
-			});
+			}), oneshot_was_here);
 	}
 
 	//explicitly delete any default ctors
@@ -85,7 +98,7 @@ protected:
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 			{
-				log->error("Callback not called before destruction. Dumping trace backlog if configured.");
+				log->error("One-shot function not called before destruction. Dumping trace backlog if configured.");
 				log->dump_backtrace();
 			}
 		}
@@ -100,7 +113,7 @@ private:
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 			{
-				log->error("Callback called more than once. Dumping trace backlog if configured.");
+				log->error("One-shot function called more than once. Dumping trace backlog if configured.");
 				log->dump_backtrace();
 			}
 		}
