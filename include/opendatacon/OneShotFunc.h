@@ -47,7 +47,10 @@ template <typename FnT> class OneShotFunc; //FnT is the same style template para
 template <typename FnR, typename ... FnArgs>
 class OneShotFunc<FnR(FnArgs...)> //Use an explicit specialisation to break down into return and arg types
 {
+private:
 	using FnT = FnR(FnArgs...);
+	std::shared_ptr<std::function<FnT>> pFn;
+	std::atomic_bool called = false;
 
 public:
 
@@ -61,9 +64,16 @@ public:
 			});
 	}
 
+	//explicitly delete any default ctors
+	OneShotFunc() = delete;
+	OneShotFunc(const OneShotFunc&) = delete;
+	OneShotFunc(OneShotFunc&&) = delete;
+	OneShotFunc& operator=(const OneShotFunc&) = delete;
+	OneShotFunc& operator=(OneShotFunc&&) = delete;
+
 protected:
 
-	//protect the ctor/dtor so only the wrapper can use
+	//protected ctor/dtor so only the factory can use
 	explicit OneShotFunc(const std::shared_ptr<std::function<FnT>>& wrapee)
 		:pFn(wrapee)
 	{}
@@ -98,17 +108,14 @@ private:
 		return (*pFn)(std::forward<Args>(args)...);
 	}
 
+	//otherwise useless derrived class for the sole purpose of enabling make_shared to access protected ctor/dtor from within the factory
 	template <typename T>
-	//otherwise useless derrived class for the sole purpose of enabling make_shared to access protected ctor/dtor
 	struct OneShotFuncBuilder: public OneShotFunc<T>
 	{
 		OneShotFuncBuilder(const std::shared_ptr<std::function<T>>& wrapee)
 			: OneShotFunc<T>(wrapee)
 		{};
 	};
-
-	std::shared_ptr<std::function<FnT>> pFn;
-	std::atomic_bool called = false;
 };
 
 } //namespace odc
