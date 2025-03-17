@@ -50,26 +50,38 @@ class OneShotFunc<FnR(FnArgs...)> //Use an explicit specialisation to break down
 	using FnT = FnR(FnArgs...);
 
 public:
+
 	//the only public interface is the static wrapping factory function
 	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
 	{
-		//forgo the use of make_shared so that the ctor/dtor can remain private
-		auto pOneShot = std::shared_ptr<OneShotFunc<FnT>>(new OneShotFunc<FnT>(wrapee),[](OneShotFunc<FnT>* p){delete p;});
+		auto pOneShot = std::make_shared<OneShotFuncBuilder<FnT>>(wrapee);
 		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs... args) -> auto
 			{
 				return (*pOneShot)(std::forward<FnArgs>(args)...);
 			});
 	}
 
-private:
+protected:
 
-	std::shared_ptr<std::function<FnT>> pFn;
-	std::atomic_bool called = false;
-
-	//private ctor for Wrap to use
+	//protect the ctor/dtor so only the wrapper can use
 	explicit OneShotFunc(const std::shared_ptr<std::function<FnT>>& wrapee)
 		:pFn(wrapee)
 	{}
+
+	//dtor also logs if the fn was never called
+	~OneShotFunc()
+	{
+		if(!called.load())
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+			{
+				log->error("Callback not called before destruction. Dumping trace backlog if configured.");
+				log->dump_backtrace();
+			}
+		}
+	}
+
+private:
 
 	//call operator - calls the wrapped fn after checking if it's been called before
 	template <typename ... Args>
@@ -86,18 +98,17 @@ private:
 		return (*pFn)(std::forward<Args>(args)...);
 	}
 
-	//dtor also logs if the fn was never called
-	~OneShotFunc()
+	template <typename T>
+	//otherwise useless derrived class for the sole purpose of enabling make_shared to access protected ctor/dtor
+	struct OneShotFuncBuilder: public OneShotFunc<T>
 	{
-		if(!called.load())
-		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-			{
-				log->error("Callback not called before destruction. Dumping trace backlog if configured.");
-				log->dump_backtrace();
-			}
-		}
-	}
+		OneShotFuncBuilder(const std::shared_ptr<std::function<T>>& wrapee)
+			: OneShotFunc<T>(wrapee)
+		{};
+	};
+
+	std::shared_ptr<std::function<FnT>> pFn;
+	std::atomic_bool called = false;
 };
 
 } //namespace odc
