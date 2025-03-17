@@ -58,7 +58,7 @@ public:
 	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
 	{
 		auto pOneShot = std::make_shared<OneShotFuncBuilder<FnT>>(wrapee);
-		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs... args) -> auto
+		return std::make_shared<std::function<FnT>>([pOneShot](FnArgs... args) -> FnR
 			{
 				return (*pOneShot)(std::forward<FnArgs>(args)...);
 			});
@@ -94,8 +94,7 @@ protected:
 private:
 
 	//call operator - calls the wrapped fn after checking if it's been called before
-	template <typename ... Args>
-	auto operator()(Args&&... args)
+	FnR operator()(FnArgs&&... args)
 	{
 		if(called.exchange(true))
 		{
@@ -105,7 +104,7 @@ private:
 				log->dump_backtrace();
 			}
 		}
-		return (*pFn)(std::forward<Args>(args)...);
+		return (*pFn)(std::forward<FnArgs>(args)...);
 	}
 
 	//otherwise useless derrived class for the sole purpose of enabling make_shared to access protected ctor/dtor from within the factory
