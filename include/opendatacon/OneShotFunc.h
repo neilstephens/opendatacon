@@ -63,7 +63,7 @@ public:
 		static auto oneshot_was_here = [](std::function<FnT>* p){ delete p; };
 
 		auto tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
-		if(tag == &oneshot_was_here)
+		if(tag && *tag == oneshot_was_here)
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->debug("One-shot function; attempted re-wrap detected; leaving as-is");
