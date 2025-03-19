@@ -87,6 +87,21 @@ private:
 	const double check;
 };
 
+class CustomEventHandlerPort: public NullPort
+{
+private:
+	std::function<void(std::shared_ptr<const EventInfo>, const std::string&, SharedStatusCallback_t)> CustomEvent;
+public:
+	explicit CustomEventHandlerPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, decltype(CustomEvent) CEvent):
+		NullPort(aName, aConfFilename, aConfOverrides),
+		CustomEvent(CEvent)
+	{}
+	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
+	{
+		return CustomEvent(event,SenderName,pStatusCallback);
+	}
+};
+
 }
 
 #endif /* TESTPORTS_H_ */

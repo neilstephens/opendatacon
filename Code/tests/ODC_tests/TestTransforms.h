@@ -50,6 +50,34 @@ public:
 	}
 };
 
+class NopTransform: public Transform
+{
+public:
+	NopTransform(const std::string& Name, const Json::Value& params):
+		Transform(Name,params)
+	{}
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow)
+	{
+		return (*pAllow)(event);
+	}
+};
+
+class BadTransform: public Transform
+{
+public:
+	BadTransform(const std::string& Name, const Json::Value& params):
+		Transform(Name,params)
+	{}
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow)
+	{
+		//BAD behaviour!
+		//	call the callback to 'drop' the event
+		//	but then call it again and 'allow'
+		(*pAllow)(nullptr);
+		return (*pAllow)(event);
+	}
+};
+
 } //namespace odc
 
 #endif // TESTTRANSFORMS_H
