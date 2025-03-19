@@ -62,7 +62,18 @@ TEST_CASE(SUITE("Call Once"))
 	(*wrapped_callback)();
 	odc::spdlog_flush_all();
 
-	//TODO: check the log for errors
+	std::ifstream log_file("oneshottest.log");
+	std::string line;
+	bool log_line_found = false;
+	while (std::getline(log_file, line))
+	{
+		if (line.find("error") != std::string::npos)
+		{
+			log_line_found = true;
+			break;
+		}
+	}
+	REQUIRE_FALSE(log_line_found);
 
 	odc::spdlog_drop_all();
 }
@@ -77,7 +88,18 @@ TEST_CASE(SUITE("Call Twice"))
 	(*wrapped_callback)();
 	odc::spdlog_flush_all();
 
-	//TODO: check the log for errors
+	std::ifstream log_file("oneshottest.log");
+	std::string line;
+	bool log_line_found = false;
+	while (std::getline(log_file, line))
+	{
+		if (line.find("One-shot function called more than once.") != std::string::npos)
+		{
+			log_line_found = true;
+			break;
+		}
+	}
+	REQUIRE(log_line_found);
 
 	odc::spdlog_drop_all();
 }
@@ -96,7 +118,18 @@ TEST_CASE(SUITE("Wrap Twice"))
 	(*rewrapped)();
 	odc::spdlog_flush_all();
 
-	//TODO: check the log for errors
+	std::ifstream log_file("oneshottest.log");
+	std::string line;
+	bool log_line_found = false;
+	while (std::getline(log_file, line))
+	{
+		if (line.find("One-shot function called more than once.") != std::string::npos)
+		{
+			log_line_found = true;
+			break;
+		}
+	}
+	REQUIRE(log_line_found);
 
 	odc::spdlog_drop_all();
 }
