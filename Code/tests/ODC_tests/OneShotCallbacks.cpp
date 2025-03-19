@@ -100,3 +100,29 @@ TEST_CASE(SUITE("Wrap Twice"))
 
 	odc::spdlog_drop_all();
 }
+
+TEST_CASE(SUITE("Test IOHandler::PublishEvent"))
+{
+	SetupLogging();
+
+	//TODO: Test IOHandler::PublishEvent
+
+	odc::spdlog_flush_all();
+
+	//TODO: check the log for errors
+
+	odc::spdlog_drop_all();
+}
+
+TEST_CASE(SUITE("Test DataConnector::Event"))
+{
+	SetupLogging();
+
+	//TODO: Test DataConnector::Event (including Transform::Event)
+
+	odc::spdlog_flush_all();
+
+	//TODO: check the log for errors
+
+	odc::spdlog_drop_all();
+}
