@@ -131,6 +131,12 @@ private:
 	};
 };
 
+template <typename T>
+static inline std::shared_ptr<std::function<T>> OneShotWrap(const std::shared_ptr<std::function<T>>& wrapee)
+{
+	return OneShotFunc<T>::Wrap(std::move(wrapee));
+}
+
 } //namespace odc
 
 #endif // ONESHOTFUNC_H

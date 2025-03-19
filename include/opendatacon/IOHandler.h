@@ -129,9 +129,9 @@ protected:
 			if(auto log = odc::spdlog_get("opendatacon"))
 				log->trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);
 			if(shouldPost)
-				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, OneShotFunc<void(CommandStatus)>::Wrap(multi_callback));});
+				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, OneShotWrap(multi_callback));});
 			else
-				IOHandler_pair.second->Event(event, Name, OneShotFunc<void(CommandStatus)>::Wrap(multi_callback));
+				IOHandler_pair.second->Event(event, Name, OneShotWrap(multi_callback));
 		}
 	}
 

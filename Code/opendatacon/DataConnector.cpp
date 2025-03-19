@@ -276,10 +276,10 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 							aMatch_it->second.second->Event(state, Name);
 					}
 
-					aMatch_it->second.second->Event(evt, this->Name, OneShotFunc<void(CommandStatus)>::Wrap(multi_callback));
+					aMatch_it->second.second->Event(evt, this->Name, OneShotWrap(multi_callback));
 				}
 			});
-		ToDestination = OneShotFunc<void(std::shared_ptr<EventInfo>)>::Wrap(ToDestination);
+		ToDestination = OneShotWrap(ToDestination);
 		if(SenderTransforms.find(SenderName) != SenderTransforms.end())
 		{
 			//create a chain of callbacks to the destination
@@ -297,7 +297,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 						}
 						(*Tx_it)->Event(evt,ToDestination);
 					});
-				ToDestination = OneShotFunc<void(std::shared_ptr<EventInfo>)>::Wrap(ToDestination);
+				ToDestination = OneShotWrap(ToDestination);
 				Tx_it++;
 			}
 		}
