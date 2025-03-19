@@ -62,11 +62,12 @@ public:
 		//static custom deleter for use as a 'tag' to indicate a shared_ptr was created by us
 		static auto oneshot_was_here = [](std::function<FnT>* p){ delete p; };
 
-		auto tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
-		if(tag && *tag == oneshot_was_here)
+		//std::get_deleter returns a pointer, and lambda types are unique, so non-null means it's our 'tag', so convert direct to bool
+		bool has_oneshot_tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
+		if(has_oneshot_tag)
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->debug("One-shot function; attempted re-wrap detected; leaving as-is");
+				log->debug("Attempted re-wrap of one-shot function detected; returning it as-is.");
 			return wrapee;
 		}
 
