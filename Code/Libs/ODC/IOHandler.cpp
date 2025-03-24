@@ -107,7 +107,8 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
 	std::shared_ptr<asio::io_service::strand> pCB_sync = pIOS->make_strand();
-	auto multi_cb = [work, pCB_sync, pCombinedStatus, pExecCount, cb_number, pStatusCallback](CommandStatus status)
+	auto pOneShotCb = OneShotWrap(pStatusCallback);
+	auto multi_cb = [work, pCB_sync, pCombinedStatus, pExecCount, cb_number, pOneShotCb](CommandStatus status)
 			    {
 				    if(*pCombinedStatus == CommandStatus::UNDEFINED)
 					    return;
@@ -117,20 +118,20 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 					    *pCombinedStatus = status;
 					    if(*pCombinedStatus == CommandStatus::UNDEFINED)
 					    {
-						    (*pStatusCallback)(*pCombinedStatus);
+						    (*pOneShotCb)(*pCombinedStatus);
 						    return;
 					    }
 				    }
 				    else if(status != *pCombinedStatus)
 				    {
 					    *pCombinedStatus = CommandStatus::UNDEFINED;
-					    (*pStatusCallback)(*pCombinedStatus);
+					    (*pOneShotCb)(*pCombinedStatus);
 					    return;
 				    }
 
 				    if(*pExecCount >= cb_number)
 				    {
-					    (*pStatusCallback)(*pCombinedStatus);
+					    (*pOneShotCb)(*pCombinedStatus);
 				    }
 			    };
 	return std::make_shared<std::function<void (CommandStatus status)>>(pCB_sync->wrap(std::move(multi_cb)));
