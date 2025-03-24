@@ -107,7 +107,7 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
 	std::shared_ptr<asio::io_service::strand> pCB_sync = pIOS->make_strand();
-	auto pOneShotCb = OneShotFunc<void(CommandStatus)>::Wrap(pStatusCallback);
+	auto pOneShotCb = OneShotWrap(pStatusCallback);
 	auto multi_cb = [work, pCB_sync, pCombinedStatus, pExecCount, cb_number, pOneShotCb](CommandStatus status)
 			    {
 				    if(*pCombinedStatus == CommandStatus::UNDEFINED)

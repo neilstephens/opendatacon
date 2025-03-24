@@ -54,29 +54,9 @@ private:
 
 public:
 
-	//the only public interface is the static wrapping factory function
-	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
-	{
-		if(!wrapee) return nullptr;
-
-		//static custom deleter for use as a 'tag' to indicate a shared_ptr was created by us
-		static auto oneshot_was_here = [](std::function<FnT>* p){ delete p; };
-
-		//std::get_deleter returns a pointer, and lambda types are unique, so non-null means it's our 'tag', so convert direct to bool
-		bool has_oneshot_tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
-		if(has_oneshot_tag)
-		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->debug("Attempted re-wrap of one-shot function detected; returning it as-is.");
-			return wrapee;
-		}
-
-		auto pOneShot = std::make_shared<OneShotFuncBuilder<FnT>>(wrapee);
-		return std::shared_ptr<std::function<FnT>>(new std::function<FnT>([pOneShot](FnArgs... args) -> FnR
-			{
-				return (*pOneShot)(std::forward<FnArgs>(args)...);
-			}), oneshot_was_here);
-	}
+	//the only public interface is this friend function, that calls the static wrapping factory function
+	template <typename T>
+	friend inline std::shared_ptr<std::function<T>> OneShotWrap(const std::shared_ptr<std::function<T>>& wrapee);
 
 	//explicitly delete any default ctors
 	OneShotFunc() = delete;
@@ -107,6 +87,29 @@ protected:
 
 private:
 
+	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
+	{
+		if(!wrapee) return nullptr;
+
+		//static custom deleter for use as a 'tag' to indicate a shared_ptr was created by us
+		static auto oneshot_was_here = [](std::function<FnT>* p){ delete p; };
+
+		//std::get_deleter returns a pointer, and lambda types are unique, so non-null means it's our 'tag', so convert direct to bool
+		bool has_oneshot_tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
+		if(has_oneshot_tag)
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->debug("Attempted re-wrap of one-shot function detected; returning it as-is.");
+			return wrapee;
+		}
+
+		auto pOneShot = std::make_shared<OneShotFuncBuilder<FnT>>(wrapee);
+		return std::shared_ptr<std::function<FnT>>(new std::function<FnT>([pOneShot](FnArgs... args) -> FnR
+			{
+				return (*pOneShot)(std::forward<FnArgs>(args)...);
+			}), oneshot_was_here);
+	}
+
 	//call operator - calls the wrapped fn after checking if it's been called before
 	FnR operator()(FnArgs&&... args)
 	{
@@ -131,6 +134,9 @@ private:
 	};
 };
 
+//Free function template for parameter deduction
+//Couldn't work out how to (or if it was possible to) get OneShotFunc<>::Wrap to auto-deduce
+//So this is the public interface (friended in the class)
 template <typename T>
 static inline std::shared_ptr<std::function<T>> OneShotWrap(const std::shared_ptr<std::function<T>>& wrapee)
 {
