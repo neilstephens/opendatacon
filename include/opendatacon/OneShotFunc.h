@@ -99,7 +99,7 @@ private:
 		if(has_oneshot_tag)
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->debug("Attempted re-wrap of one-shot function detected; returning it as-is.");
+				log->trace("Attempted re-wrap of one-shot function detected; returning it as-is.");
 			return wrapee;
 		}
 
