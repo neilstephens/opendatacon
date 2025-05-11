@@ -246,7 +246,7 @@ else()
 		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static-libstdc++")
 
-		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT APPLE)
 			#need to add static libc++ to the link libraries manually
 			# Find the static lib (.a) files explicitly, because find_library insists on finding dynamic libs
 			set(SEARCH_PATHS
@@ -256,6 +256,7 @@ else()
 			    ${CMAKE_SYSTEM_LIBRARY_PATH}
 			    ${CMAKE_SYSTEM_PREFIX_PATH}
 			    /usr/lib/llvm*/lib
+			    /usr/lib
 			)
 			message("linking libc++ statically. Searching ${SEARCH_PATHS}")
 
