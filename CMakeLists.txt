@@ -257,6 +257,7 @@ else()
 			    ${CMAKE_SYSTEM_PREFIX_PATH}
 			    /usr/lib/llvm*/lib
 			    /usr/lib
+			    /usr/lib64
 			)
 			message("linking libc++ statically. Searching ${SEARCH_PATHS}")
 
