@@ -47,6 +47,10 @@ public:
 	virtual void Build() override;
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override;
 
+protected:
+	void PortUp() override;
+	void PortDown() override;
+
 private:
 	OptionalPoint CheckPointTranslationMap(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
 	void Send(const kafka::Topic& topic, const OctetStringBuffer& key_buffer, const OctetStringBuffer& val_buffer, SharedStatusCallback_t pStatusCallback);

@@ -83,19 +83,6 @@ void KafkaConsumerPort::Build()
 		pConf->ShareKafkaClient = false;
 	}
 
-	try
-	{
-		pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
-		if(!pKafkaConsumer)
-			throw std::runtime_error("Build<KCC::KafkaConsumer> returned nullptr");
-	}
-	catch(const std::exception& e)
-	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to create Kafka Consumer: {}", Name, e.what());
-		return;
-	}
-
 	//find all the topics we need to subscribe to
 	mTopics.insert(pConf->DefaultTopic);
 	if(pConf->pPointMap)
@@ -108,21 +95,11 @@ void KafkaConsumerPort::Build()
 	}
 }
 
-void KafkaConsumerPort::Enable()
-{
-	//TODO: support "ServerType", eg. ONDEMAND, PERSISTENT, MANUAL
-	//ONDEMAND should be default (ie. only consume when there are upstream connected ports)
-	if(InDemand())
-		PortUp();
-}
-
-void KafkaConsumerPort::Disable()
-{
-	PortDown();
-}
-
 void KafkaConsumerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
+	if(!enabled)
+		return;
+
 	if(event->GetEventType() == EventType::ConnectState)
 	{
 		if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
@@ -132,12 +109,30 @@ void KafkaConsumerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	}
 }
 
+void KafkaConsumerPort::BuildConsumer()
+{
+	try
+	{
+		pKafkaConsumer = KafkaPort::Build<KCC::KafkaConsumer>("Consumer");
+		if(!pKafkaConsumer)
+			throw std::runtime_error("Build<KCC::KafkaConsumer> returned nullptr");
+	}
+	catch(const std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("{}: Failed to create Kafka Consumer: {}", Name, e.what());
+		return;
+	}
+}
+
 void KafkaConsumerPort::PortUp()
 {
 	//TODO: use a strand to sync port up/down
 	//  or use a dedicated thread if there are blocking calls (ie subscribe)
-	if(pPollTimer)
+	if(pPollTimer || pKafkaConsumer)
 		return;
+
+	BuildConsumer();
 
 	auto rebalanceCb = [this](kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps)
 				 {
@@ -188,11 +183,12 @@ void KafkaConsumerPort::PortUp()
 
 void KafkaConsumerPort::PortDown()
 {
-	if(pPollTimer)
-	{
-		pPollTimer->cancel();
-		pPollTimer.reset();
-	}
+	if(!pPollTimer || !pKafkaConsumer)
+		return;
+
+	pPollTimer->cancel();
+	pPollTimer.reset();
+
 	try
 	{
 		//pausing before unsubscribing seems to avoid a crash in the kafka library
@@ -205,6 +201,9 @@ void KafkaConsumerPort::PortDown()
 		if(auto log = odc::spdlog_get("KafkaPort"))
 			log->error("{}: Failed to unsubscribe from topics: {}", Name, e.what());
 	}
+
+	pKafkaConsumer->close();
+	pKafkaConsumer.reset();
 }
 
 void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)

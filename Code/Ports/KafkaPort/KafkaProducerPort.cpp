@@ -40,11 +40,7 @@
 #include <string>
 
 void KafkaProducerPort::Build()
-{
-	pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
-	if(!pKafkaProducer)
-		throw std::runtime_error(Name+": Failed to build KafkaProducer.");
-}
+{}
 
 OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const EventInfo> event, const std::string& SenderName)
 {
@@ -111,9 +107,36 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 	return message;
 }
 
+void KafkaProducerPort::PortUp()
+{
+	//TODO: use a strand to sync port up/down
+	//  or use a dedicated thread if there are blocking calls (ie subscribe)
+	if(pKafkaProducer) return;
+
+	pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
+	if(!pKafkaProducer)
+		throw std::runtime_error(Name+": Failed to build KafkaProducer.");
+}
+
+void KafkaProducerPort::PortDown()
+{
+	if(!pKafkaProducer) return;
+	pKafkaProducer.reset();
+}
+
+
 void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled) return;
+
+	if(event->GetEventType() == EventType::ConnectState)
+	{
+		if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+			PortUp();
+		else if(!InDemand())
+			PortDown();
+	}
+
 	if(!pKafkaProducer) return;
 
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());

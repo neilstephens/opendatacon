@@ -44,11 +44,16 @@ KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const
 
 void KafkaPort::Enable()
 {
+	//TODO: support "ServerType", eg. ONDEMAND, PERSISTENT, MANUAL
+	//ONDEMAND should be default (ie. only consume when there are upstream connected ports)
+	if(InDemand())
+		PortUp();
 	enabled = true;
 }
 
 void KafkaPort::Disable()
 {
+	PortDown();
 	enabled = false;
 }
 

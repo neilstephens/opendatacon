@@ -43,9 +43,11 @@ public:
 	virtual ~KafkaPort(){};
 
 	virtual void ProcessElements(const Json::Value& JSONRoot) override;
-	virtual void Enable() override;
-	virtual void Disable() override;
+	virtual void Enable() override final;
+	virtual void Disable() override final;
 
+	virtual void PortUp() = 0;
+	virtual void PortDown() = 0;
 	virtual void Build() override = 0;
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
