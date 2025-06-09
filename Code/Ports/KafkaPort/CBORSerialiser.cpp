@@ -33,7 +33,8 @@
 #include <cstdint>
 #include <string_view>
 
-CBORSerialiser::CBORSerialiser(const std::string& json_string)
+CBORSerialiser::CBORSerialiser(const std::string& json_string):
+	JSONString(json_string)
 {
 	//the json value has the same structure as the CBOR will.
 	//store a sequence of encoder operations that will serialise an EventInfo into the CBOR format
@@ -88,6 +89,11 @@ CBORSerialiser::CBORSerialiser(const std::string& json_string)
 			}
 		}
 	}
+}
+
+const std::string& CBORSerialiser::Structure()
+{
+	return JSONString;
 }
 
 void CBORSerialiser::CheckForPlaceholder(const std::string_view& str, bool isKey)

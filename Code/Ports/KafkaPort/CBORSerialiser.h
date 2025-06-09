@@ -78,6 +78,7 @@ using EncoderSequence = std::vector<EncodeOps>;
 class CBORSerialiser
 {
 private:
+	const std::string JSONString;
 	EncoderSequence Ops;
 	std::vector<std::string> Strings;
 	std::vector<uint64_t> UInts;
@@ -89,6 +90,7 @@ private:
 
 public:
 	CBORSerialiser(const std::string& json_string);
+	const std::string& Structure();
 	const std::vector<uint8_t> Encode(std::shared_ptr<const EventInfo> event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S) const;
 
 private:

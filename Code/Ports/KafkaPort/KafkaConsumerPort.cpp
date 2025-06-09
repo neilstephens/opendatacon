@@ -61,7 +61,10 @@ void KafkaConsumerPort::Build()
 		}
 
 		if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
-			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(/*FIXME*/ "", pConf->DateTimeFormat);
+		{
+			const auto& CBORStructure = pte.pCBORer ? pte.pCBORer->Structure() : pConf->DefaultCBORSerialiser.Structure();
+			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(CBORStructure, pConf->DateTimeFormat);
+		}
 
 		if(pConf->TranslationMethod == EventTranslationMethod::Lua)
 			cte.pLuaDeserialiser = std::make_unique<LuaDeserialiser>(/*FIXME*/ "","", pConf->DateTimeFormat);
