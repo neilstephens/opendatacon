@@ -27,21 +27,22 @@
 #define CBOR_DESERIALISER_H
 
 #include "Deserialiser.h"
+#include "CBORSerialiser.h"
 
 class CBORDeserialiser: public Deserialiser
 {
-public:
-	CBORDeserialiser(const std::string& cbor_structure, const std::string& datetime_format):
-		Deserialiser(datetime_format)
-	{}
-	virtual ~CBORDeserialiser() = default;
+private:
+	const CBORSerialiser* const pSerialiser;
 
-	std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) override
-	{
-		//TODO: implement CBOR deserialisation
-		auto val_str = record.value().toString();
-		return nullptr;
-	}
+public:
+	CBORDeserialiser(const CBORSerialiser* const serialiser, const std::string& datetime_format);
+	virtual ~CBORDeserialiser() = default;
+	std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) override;
+
+private:
+	bool ParseMatchOp(const EncodeOps& Op, const staj_event &cbor_event);
+	void PopPayload(cbor::cbor_bytes_cursor& cursor, std::shared_ptr<odc::EventInfo> event);
+	template <typename T> T PopPayload(cbor::cbor_bytes_cursor& cursor);
 };
 
 #endif // CBOR_DESERIALISER_H

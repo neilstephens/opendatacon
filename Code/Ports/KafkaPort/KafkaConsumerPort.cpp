@@ -62,8 +62,8 @@ void KafkaConsumerPort::Build()
 
 		if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 		{
-			const auto& CBORStructure = pte.pCBORer ? pte.pCBORer->Structure() : pConf->DefaultCBORSerialiser.Structure();
-			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(CBORStructure, pConf->DateTimeFormat);
+			auto pSerialiser = pte.pCBORer ? pte.pCBORer.get() : &pConf->DefaultCBORSerialiser;
+			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(pSerialiser, pConf->DateTimeFormat);
 		}
 
 		if(pConf->TranslationMethod == EventTranslationMethod::Lua)

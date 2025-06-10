@@ -33,8 +33,7 @@
 #include <cstdint>
 #include <string_view>
 
-CBORSerialiser::CBORSerialiser(const std::string& json_string):
-	JSONString(json_string)
+CBORSerialiser::CBORSerialiser(const std::string& json_string)
 {
 	//the json value has the same structure as the CBOR will.
 	//store a sequence of encoder operations that will serialise an EventInfo into the CBOR format
@@ -89,11 +88,6 @@ CBORSerialiser::CBORSerialiser(const std::string& json_string):
 			}
 		}
 	}
-}
-
-const std::string& CBORSerialiser::Structure()
-{
-	return JSONString;
 }
 
 void CBORSerialiser::CheckForPlaceholder(const std::string_view& str, bool isKey)
@@ -340,7 +334,7 @@ void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, uint32_t p
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::CommandStatus payload) const
 {
-	encoder.string_value(ToString(payload));
+	encoder.uint64_value(static_cast<uint64_t>(payload));
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::OctetStringBuffer payload) const
 {
@@ -363,50 +357,45 @@ void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::SS pa
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::ControlRelayOutputBlock payload) const
 {
-	encoder.begin_object(4);
-	encoder.key("Code");
-	encoder.string_value(ToString(payload.functionCode));
-	encoder.key("Count");
-	encoder.uint64_value(payload.count);
-	encoder.key("On");
-	encoder.uint64_value(payload.onTimeMS);
-	encoder.key("Off");
-	encoder.uint64_value(payload.offTimeMS);
-	encoder.key("Status");
-	encoder.string_value(ToString(payload.status));
-	encoder.end_object();
+	encoder.begin_array(5);
+	encoder.uint64_value(static_cast<uint64_t>(payload.functionCode));
+	encoder.uint64_value(static_cast<uint64_t>(payload.count));
+	encoder.uint64_value(static_cast<uint64_t>(payload.onTimeMS));
+	encoder.uint64_value(static_cast<uint64_t>(payload.offTimeMS));
+	encoder.uint64_value(static_cast<uint64_t>(payload.status));
+	encoder.end_array();
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO16 payload) const
 {
 	encoder.begin_array(2);
 	encoder.int64_value(payload.first);
-	encoder.string_value(ToString(payload.second));
+	encoder.uint64_value(static_cast<uint64_t>(payload.second));
 	encoder.end_array();
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AO32 payload) const
 {
 	encoder.begin_array(2);
 	encoder.int64_value(payload.first);
-	encoder.string_value(ToString(payload.second));
+	encoder.uint64_value(static_cast<uint64_t>(payload.second));
 	encoder.end_array();
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOF payload) const
 {
 	encoder.begin_array(2);
 	encoder.double_value(payload.first);
-	encoder.string_value(ToString(payload.second));
+	encoder.uint64_value(static_cast<uint64_t>(payload.second));
 	encoder.end_array();
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AOD payload) const
 {
 	encoder.begin_array(2);
 	encoder.double_value(payload.first);
-	encoder.string_value(ToString(payload.second));
+	encoder.uint64_value(static_cast<uint64_t>(payload.second));
 	encoder.end_array();
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::QualityFlags payload) const
 {
-	encoder.string_value(ToString(payload));
+	encoder.uint64_value(static_cast<uint64_t>(payload));
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, char payload) const
 {
