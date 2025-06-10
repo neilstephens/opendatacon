@@ -24,7 +24,7 @@ endif()
 
 if(MSVC)
 	set(NOWARN_C_FLAGS "/W0") #don't want warnings from external librdkafka code
-	set(MSVC_OPTS "-DOPENSSL_MSVC_STATIC_RT=TRUE")
+	set(MSVC_OPTS "-DOPENSSL_MSVC_STATIC_RT=${OPENSSL_MSVC_STATIC_RT}")
 else()
 	set(NOWARN_C_FLAGS "-w") #don't want warnings from external librdkafka code
 endif()
@@ -42,7 +42,7 @@ set(
 		-DENABLE_LZ4_EXT=OFF
 		-DRDKAFKA_BUILD_EXAMPLES=OFF
 		-DRDKAFKA_BUILD_TESTS=OFF
-		-DOPENSSL_USE_STATIC_LIBS=TRUE
+		-DOPENSSL_USE_STATIC_LIBS=${OPENSSL_USE_STATIC_LIBS}
 		${MSVC_OPTS}
 		-DWITH_SSL=${ODC_ASIO_SSL}
 		-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
@@ -103,9 +103,6 @@ message("RDKAFKA_HOME: ${RDKAFKA_HOME}")
 message("RdKafka_CMAKE_MODULES: ${RdKafka_CMAKE_MODULES}")
 list(APPEND CMAKE_MODULE_PATH "${RdKafka_CMAKE_MODULES}")
 set(RdKafka_DIR "${RdKafka_CMAKE_MODULES}")
-#set these here for consistent dependency discovery, since we set them in the librdkafka build
-set(OPENSSL_USE_STATIC_LIBS TRUE)
-set(OPENSSL_MSVC_STATIC_RT TRUE)
 find_package(RdKafka REQUIRED PATHS ${RDKAFKA_HOME} NO_DEFAULT_PATH)
 
 if(ODC_ASIO_SSL)
