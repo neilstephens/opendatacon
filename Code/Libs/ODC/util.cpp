@@ -105,7 +105,7 @@ bool getline_noncomment(std::istream& is, std::string& line)
 	do
 	{
 		std::getline(is, line);
-	} while(std::regex_match(line,std::regex("^[:space:]*#.*|^[^_[:alnum:]]*$",std::regex::extended)) && !is.eof());
+	} while(std::regex_match(line,std::regex("^[:space:]*#.*|^[^_[:alnum:]]*$")) && !is.eof());
 
 	//fail if we hit the end
 	if(is.eof())

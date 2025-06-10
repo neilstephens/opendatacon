@@ -9,7 +9,6 @@ Type=forking
 PIDFile=/var/run/opendatacon.pid
 ExecStart=/opt/ODC/bin/opendatacon -d --pidfile /var/run/opendatacon.pid -p /etc/opendatacon/ 
 ExecReload=/bin/kill -s HUP $MAINPID
-ExecStop=/bin/kill -s TERM $MAINPID
 Restart=always
 RestartSec=30
 

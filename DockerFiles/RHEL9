@@ -1,9 +1,28 @@
 # syntax=docker/dockerfile:1.2
-   
+
 FROM redhat/ubi9 as builder
 
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-RUN yum install -y socat g++ libstdc++-static cmake git openssl-devel python3-devel file libmodbus libmodbus-devel
+RUN /usr/bin/crb enable
+
+RUN dnf install -y wget socat llvm-toolset cmake git openssl-devel python3-devel file libmodbus libmodbus-devel
+
+ENV CC=/usr/bin/clang
+ENV CXX=/usr/bin/clang++
+
+#get libc++ that's not in the repos
+RUN wget https://github.com/luscent/libcxx-el9/releases/download/libcxx-17.0.6/libcxx-devel-17.0.6-1.el9.x86_64.rpm
+RUN wget https://github.com/luscent/libcxx-el9/releases/download/libcxx-17.0.6/libcxx-static-17.0.6-1.el9.x86_64.rpm
+RUN wget https://github.com/luscent/libcxx-el9/releases/download/libcxx-17.0.6/libcxxabi-devel-17.0.6-1.el9.x86_64.rpm
+RUN wget https://github.com/luscent/libcxx-el9/releases/download/libcxx-17.0.6/libcxxabi-static-17.0.6-1.el9.x86_64.rpm
+RUN wget https://github.com/luscent/libcxx-el9/releases/download/libcxx-17.0.6/libcxx-17.0.6-1.el9.x86_64.rpm
+RUN wget https://github.com/luscent/libcxx-el9/releases/download/libcxx-17.0.6/libcxxabi-17.0.6-1.el9.x86_64.rpm
+RUN rpm -i libcxxabi-17.0.6-1.el9.x86_64.rpm
+RUN rpm -i libcxx-17.0.6-1.el9.x86_64.rpm
+RUN rpm -i libcxxabi-devel-17.0.6-1.el9.x86_64.rpm
+RUN rpm -i libcxx-devel-17.0.6-1.el9.x86_64.rpm
+RUN rpm -i libcxxabi-static-17.0.6-1.el9.x86_64.rpm
+RUN rpm -i libcxx-static-17.0.6-1.el9.x86_64.rpm
 
 RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
 ARG BUILD_COMMIT=develop
@@ -14,7 +33,7 @@ RUN mkdir opendatacon-build
 
 RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=rhel9 \
 -DOPENSSL_ROOT_DIR=/usr/ -S opendatacon -B opendatacon-build
- 
+
 RUN cmake --build opendatacon-build --parallel 8
 RUN cmake --build opendatacon-build --target install
 RUN cmake --build opendatacon-build --target package

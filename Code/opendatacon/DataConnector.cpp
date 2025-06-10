@@ -236,13 +236,7 @@ void DataConnector::ReplaceAddress(std::string PortName, IOHandler* Addr)
 
 void DataConnector::Event(ConnectState state, const std::string& SenderName)
 {
-	auto bounds = SenderConnections.equal_range(SenderName);
-	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
-	{
-		auto& ReceiverName = aMatch_it->second.second->GetName();
-		if(MuxConnectionEvents(state, SenderName,ReceiverName))
-			aMatch_it->second.second->Event(state, Name);
-	}
+	//handled in the main Event()
 }
 
 void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -262,7 +256,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 				if(!evt)
 				{
 					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} Payload {} Event {} => Dropped by transform", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+						log->trace("{} {} {} Payload {} Event {} => DROPPED by transform", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
 					(*pStatusCallback)(CommandStatus::UNDEFINED);
 					return;
 				}
@@ -272,11 +266,20 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 				for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 				{
 					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} Payload {} Event {} => {}", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), Name, aMatch_it->second.second->GetName());
+						log->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), Name, aMatch_it->second.second->GetName());
 
-					aMatch_it->second.second->Event(evt, this->Name, multi_callback);
+					if(evt->GetEventType() == EventType::ConnectState)
+					{
+						auto state = evt->GetPayload<EventType::ConnectState>();
+						auto& ReceiverName = aMatch_it->second.second->GetName();
+						if(MuxConnectionEvents(state, SenderName,ReceiverName))
+							aMatch_it->second.second->Event(state, Name);
+					}
+
+					aMatch_it->second.second->Event(evt, this->Name, OneShotWrap(multi_callback));
 				}
 			});
+		ToDestination = OneShotWrap(ToDestination);
 		if(SenderTransforms.find(SenderName) != SenderTransforms.end())
 		{
 			//create a chain of callbacks to the destination
@@ -290,10 +293,11 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 						if(evt)
 						{
 							if(auto log = odc::spdlog_get("opendatacon"))
-								log->trace("{} {} Payload {} Event {} => {}", ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), src, (*Tx_it)->Name);
+								log->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), src, (*Tx_it)->Name);
 						}
 						(*Tx_it)->Event(evt,ToDestination);
 					});
+				ToDestination = OneShotWrap(ToDestination);
 				Tx_it++;
 			}
 		}
