@@ -39,7 +39,7 @@ class KafkaProducerPort: public KafkaPort
 {
 public:
 	KafkaProducerPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides)
-		:KafkaPort(Name,Filename,Overrides){};
+		:KafkaPort(Name,Filename,Overrides,true){};
 	virtual ~KafkaProducerPort(){};
 
 	virtual void Build() override;

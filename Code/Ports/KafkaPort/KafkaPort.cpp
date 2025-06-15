@@ -33,10 +33,10 @@
 #include <opendatacon/util.h>
 #include <cstddef>
 
-KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides):
+KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides, const bool isProducer):
 	DataPort(Name, Filename, Overrides)
 {
-	pConf = std::make_unique<KafkaPortConf>();
+	pConf = std::make_unique<KafkaPortConf>(isProducer);
 	ProcessFile();
 }
 
@@ -49,11 +49,11 @@ void KafkaPort::Enable()
 			{
 				if(self->enabled)
 					return;
-				//TODO: support "ServerType", eg. ONDEMAND, PERSISTENT, MANUAL
-				//ONDEMAND should be default (ie. only consume/produce when there are upstream connected ports)
-				if(self->InDemand())
+				auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
+				if(pConf->ServerType == server_type_t::PERSISTENT || (pConf->ServerType == server_type_t::ONDEMAND && self->InDemand()))
 					self->PortUp();
 				self->enabled = true;
+				self->PublishEvent(ConnectState::PORT_UP);
 			}
 		});
 }
@@ -69,6 +69,7 @@ void KafkaPort::Disable()
 					return;
 				self->enabled = false;
 				self->PortDown();
+				self->PublishEvent(ConnectState::PORT_DOWN);
 			}
 		});
 }
@@ -98,6 +99,20 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("ShareKafkaClient"))
 	{
 		pConf->ShareKafkaClient = JSONRoot["ShareKafkaClient"].asBool();
+	}
+	if(JSONRoot.isMember("ServerType"))
+	{
+		if(JSONRoot["ServerType"].asString() == "ONDEMAND")
+			pConf->ServerType = server_type_t::ONDEMAND;
+		else if(JSONRoot["ServerType"].asString() == "PERSISTENT")
+			pConf->ServerType = server_type_t::PERSISTENT;
+		else if(JSONRoot["ServerType"].asString() == "MANUAL")
+			pConf->ServerType = server_type_t::MANUAL;
+		else
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->warn("Invalid KafkaPort server type: '{}'.", JSONRoot["ServerType"].asString());
+		}
 	}
 	if(JSONRoot.isMember("SharedKafkaClientKey"))
 	{

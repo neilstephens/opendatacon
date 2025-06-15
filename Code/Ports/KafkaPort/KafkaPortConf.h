@@ -58,11 +58,18 @@ inline std::string CBORStructure()
 {
 	return R"( ["TIMESTAMP","EVENTTYPE_RAW","INDEX","QUALITY_RAW","PAYLOAD"] )";
 }
+enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 
 class KafkaPortConf: public DataPortConf
 {
 public:
-	bool ShareKafkaClient = true;
+	explicit KafkaPortConf(const bool isProducer):
+		isProducer(isProducer)
+	{}
+	bool isProducer;
+
+	bool ShareKafkaClient = isProducer;
+	server_type_t ServerType = isProducer ? server_type_t::PERSISTENT : server_type_t::ONDEMAND;
 	std::string SharedKafkaClientKey = "";
 	kafka::Properties NativeKafkaProperties;
 	size_t MaxPollIntervalms = 100;

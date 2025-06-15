@@ -37,7 +37,7 @@ class KafkaConsumerPort: public KafkaPort
 {
 public:
 	KafkaConsumerPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides)
-		:KafkaPort(Name,Filename,Overrides){};
+		:KafkaPort(Name,Filename,Overrides,false){};
 	virtual ~KafkaConsumerPort()
 	{
 		if(pPollTimer)

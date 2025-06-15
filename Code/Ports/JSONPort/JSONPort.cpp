@@ -680,6 +680,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	if(!enabled)
 	{
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 	pDB->Set(event);
 

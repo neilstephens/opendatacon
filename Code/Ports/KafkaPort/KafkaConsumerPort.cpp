@@ -50,7 +50,7 @@ void KafkaConsumerPort::Build()
 		ConsumerTranslationEntry cte;
 
 		//TODO: check the template/cbor structure to make sure it's valid for de-serialisation
-		//  or leave it to the deserialisers to throw exceptions
+		//  or leave it to the deserialisers to throw errors/exceptions
 
 		if(pConf->TranslationMethod == EventTranslationMethod::Template)
 		{
@@ -99,21 +99,33 @@ void KafkaConsumerPort::Build()
 void KafkaConsumerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if(!enabled)
+	{
+		(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
 		return;
+	}
 
 	std::weak_ptr<KafkaConsumerPort> weak_self = std::static_pointer_cast<KafkaConsumerPort>(shared_from_this());
-	pStateSync->post([weak_self,event]()
+	pStateSync->post([weak_self,event,pStatusCallback]()
 		{
 			if(auto self = weak_self.lock())
 			{
 				if(event->GetEventType() == EventType::ConnectState)
 				{
-					if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-						self->PortUp();
-					else if(!self->InDemand())
-						self->PortDown();
+					auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
+					if(pConf->ServerType == server_type_t::ONDEMAND)
+					{
+						if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+							self->PortUp();
+						else if(!self->InDemand())
+							self->PortDown();
+					}
+					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
 				}
+				else
+					(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
 			}
+			else
+				(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
 		});
 }
 
@@ -174,6 +186,7 @@ void KafkaConsumerPort::Subscribe()
 		//FIXME: this is blocking and throws on timeout!
 		pKafkaConsumer->subscribe(mTopics,[this](kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps){RebalanceCallback(et,tps);});
 		subscribed = true;
+		PublishEvent(ConnectState::CONNECTED);
 		pKafkaConsumer->resume();
 	}
 	catch(const std::exception& e)
@@ -187,6 +200,7 @@ void KafkaConsumerPort::Unsubscribe()
 {
 	if(!subscribed) return;
 	subscribed = false;
+	PublishEvent(ConnectState::DISCONNECTED);
 	try
 	{
 		//pausing before unsubscribing seems to avoid a crash in the kafka library

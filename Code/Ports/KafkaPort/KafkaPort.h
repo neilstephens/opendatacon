@@ -37,7 +37,7 @@ using namespace odc;
 class KafkaPort: public DataPort
 {
 public:
-	KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides);
+	KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides, const bool isProducer);
 	virtual ~KafkaPort(){};
 
 	virtual void ProcessElements(const Json::Value& JSONRoot) override;

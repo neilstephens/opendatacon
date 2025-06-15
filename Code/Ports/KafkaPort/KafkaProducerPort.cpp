@@ -109,7 +109,7 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 void KafkaProducerPort::PortUp()
 {
 	if(pKafkaProducer) return;
-
+	PublishEvent(ConnectState::CONNECTED);
 	try
 	{
 		pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
@@ -128,13 +128,18 @@ void KafkaProducerPort::PortUp()
 void KafkaProducerPort::PortDown()
 {
 	if(!pKafkaProducer) return;
+	PublishEvent(ConnectState::DISCONNECTED);
 	pKafkaProducer.reset();
 }
 
 
 void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	if(!enabled) return;
+	if(!enabled)
+	{
+		(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
+		return;
+	}
 
 	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(shared_from_this());
 	pStateSync->post([weak_self,event]()
@@ -143,15 +148,23 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			{
 				if(event->GetEventType() == EventType::ConnectState)
 				{
-					if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-						self->PortUp();
-					else if(!self->InDemand())
-						self->PortDown();
+					auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
+					if(pConf->ServerType == server_type_t::ONDEMAND)
+					{
+						if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+							self->PortUp();
+						else if(!self->InDemand())
+							self->PortDown();
+					}
 				}
 			}
 		});
 
-	if(!pKafkaProducer) return;
+	if(!pKafkaProducer)
+	{
+		(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
+		return;
+	}
 
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
