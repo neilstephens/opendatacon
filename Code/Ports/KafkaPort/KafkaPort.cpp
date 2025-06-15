@@ -134,6 +134,10 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->DefaultTemplate = JSONRoot["DefaultTemplate"].asString();
 	}
+	if(JSONRoot.isMember("DefaultCBORStructure"))
+	{
+		pConf->DefaultCBORSerialiser = JSONRoot["DefaultCBORStructure"].asString();
+	}
 	if(JSONRoot.isMember("TranslationMethod"))
 	{
 		if(JSONRoot["TranslationMethod"].asString() == "Lua")

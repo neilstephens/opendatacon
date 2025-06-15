@@ -56,7 +56,7 @@ inline std::string JSONwPlaceholders()
 }
 inline std::string CBORStructure()
 {
-	return R"( ["TIMESTAMP","EVENTTYPE_RAW","INDEX","QUALITY_RAW","PAYLOAD"] )";
+	return R"( ["TIMESTAMP","EVENTTYPE_RAW","SOURCEPORT","INDEX","QUALITY_RAW","PAYLOAD"] )";
 }
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 
