@@ -195,6 +195,8 @@ DataToStringMethod GetOctetStringFormat(const Json::Value& point_json)
 	{
 		if(point_json["Format"].asString() == "Hex")
 			format = DataToStringMethod::Hex;
+		else if(point_json["Format"].asString() == "Base64")
+			format = DataToStringMethod::Base64;
 		else if(point_json["Format"].asString() != "Raw")
 		{
 			if(auto log = odc::spdlog_get("JSONPort"))
@@ -358,6 +360,20 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							event->SetPayload<EventType::OctetString>(std::move(msg));
 						}
 						break;
+					case DataToStringMethod::Base64:
+						try
+						{
+							//FIXME: b64decode doesn't check validity and throw. It likely just crashes.
+							// do the check here instead of try/catch
+							event->SetPayload<EventType::OctetString>(b64decode(unmodified_string));
+						}
+						catch(const std::exception& e)
+						{
+							auto msg = fmt::format("Invalid base64 string '{}': {}", unmodified_string, e.what());
+							if(auto log = odc::spdlog_get("JSONPort"))
+								log->warn(msg);
+							event->SetPayload<EventType::OctetString>(std::move(msg));
+						}
 					default:
 						if(auto log = odc::spdlog_get("JSONPort"))
 							log->warn("Unsupported string to data method {}",format);
@@ -664,6 +680,7 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 	if(!enabled)
 	{
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
+		return;
 	}
 	pDB->Set(event);
 

@@ -27,12 +27,11 @@
 #ifndef IOTYPES_H_
 #define IOTYPES_H_
 
-#include <chrono>
-#include <string>
-#include <tuple>
 #include <opendatacon/EnumClassFlags.h>
 #include <opendatacon/util.h>
 #include <opendatacon/asio.h>
+#include <string>
+#include <tuple>
 
 namespace odc
 {
@@ -154,29 +153,29 @@ enum class ControlCode : uint8_t
 //	use hash map cache
 #define ENUMSTRING(A,E,B) if(A == E::B) return #B;
 
-inline std::string ToString(const CommandStatus cc)
+inline std::string ToString(const CommandStatus cs)
 {
-	ENUMSTRING(cc, CommandStatus,SUCCESS )
-	ENUMSTRING(cc, CommandStatus,TIMEOUT)
-	ENUMSTRING(cc, CommandStatus,NO_SELECT)
-	ENUMSTRING(cc, CommandStatus,FORMAT_ERROR)
-	ENUMSTRING(cc, CommandStatus,NOT_SUPPORTED)
-	ENUMSTRING(cc, CommandStatus,ALREADY_ACTIVE)
-	ENUMSTRING(cc, CommandStatus,HARDWARE_ERROR)
-	ENUMSTRING(cc, CommandStatus,LOCAL)
-	ENUMSTRING(cc, CommandStatus,TOO_MANY_OPS)
-	ENUMSTRING(cc, CommandStatus,NOT_AUTHORIZED)
-	ENUMSTRING(cc, CommandStatus,AUTOMATION_INHIBIT)
-	ENUMSTRING(cc, CommandStatus,PROCESSING_LIMITED)
-	ENUMSTRING(cc, CommandStatus,OUT_OF_RANGE)
-	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_LOCAL)
-	ENUMSTRING(cc, CommandStatus,ALREADY_COMPLETE)
-	ENUMSTRING(cc, CommandStatus,BLOCKED)
-	ENUMSTRING(cc, CommandStatus,CANCELLED)
-	ENUMSTRING(cc, CommandStatus,BLOCKED_OTHER_MASTER)
-	ENUMSTRING(cc, CommandStatus,DOWNSTREAM_FAIL)
-	ENUMSTRING(cc, CommandStatus,NON_PARTICIPATING)
-	ENUMSTRING(cc, CommandStatus,UNDEFINED)
+	ENUMSTRING(cs, CommandStatus,SUCCESS )
+	ENUMSTRING(cs, CommandStatus,TIMEOUT)
+	ENUMSTRING(cs, CommandStatus,NO_SELECT)
+	ENUMSTRING(cs, CommandStatus,FORMAT_ERROR)
+	ENUMSTRING(cs, CommandStatus,NOT_SUPPORTED)
+	ENUMSTRING(cs, CommandStatus,ALREADY_ACTIVE)
+	ENUMSTRING(cs, CommandStatus,HARDWARE_ERROR)
+	ENUMSTRING(cs, CommandStatus,LOCAL)
+	ENUMSTRING(cs, CommandStatus,TOO_MANY_OPS)
+	ENUMSTRING(cs, CommandStatus,NOT_AUTHORIZED)
+	ENUMSTRING(cs, CommandStatus,AUTOMATION_INHIBIT)
+	ENUMSTRING(cs, CommandStatus,PROCESSING_LIMITED)
+	ENUMSTRING(cs, CommandStatus,OUT_OF_RANGE)
+	ENUMSTRING(cs, CommandStatus,DOWNSTREAM_LOCAL)
+	ENUMSTRING(cs, CommandStatus,ALREADY_COMPLETE)
+	ENUMSTRING(cs, CommandStatus,BLOCKED)
+	ENUMSTRING(cs, CommandStatus,CANCELLED)
+	ENUMSTRING(cs, CommandStatus,BLOCKED_OTHER_MASTER)
+	ENUMSTRING(cs, CommandStatus,DOWNSTREAM_FAIL)
+	ENUMSTRING(cs, CommandStatus,NON_PARTICIPATING)
+	ENUMSTRING(cs, CommandStatus,UNDEFINED)
 	return "<no_string_representation>";
 }
 
@@ -261,6 +260,7 @@ enum class QualityFlags: uint16_t
 ENABLE_BITWISE(QualityFlags)
 
 #define FLAGSTRING(E,X) if((q & E::X) == E::X) s += #X "|";
+//TODO: this could be a template so it works for any BitwiseEnabled<> class
 inline std::string ToString(const QualityFlags q)
 {
 	std::string s = "|";
@@ -278,6 +278,7 @@ inline std::string ToString(const QualityFlags q)
 	return s;
 }
 #define SINGLEFLAGSTRING(E,X) if(q == E::X) return #X;
+//TODO: this could be a template so it works for any BitwiseEnabled<> class
 inline std::string SingleFlagString(const QualityFlags q)
 {
 	SINGLEFLAGSTRING(QualityFlags,NONE          )
@@ -415,6 +416,52 @@ inline ConnectState ConnectStateFromString(const std::string StrConnectState)
 	return ConnectState::UNDEFINED;
 }
 
+#define CHECKENUMINT(I,C,X) if (I == static_cast<int>(C::X)) return C::X
+
+inline CommandStatus CommandStatusFromInt(const int i)
+{
+	CHECKENUMINT(i,CommandStatus,SUCCESS);
+	CHECKENUMINT(i,CommandStatus,TIMEOUT);
+	CHECKENUMINT(i,CommandStatus,NO_SELECT);
+	CHECKENUMINT(i,CommandStatus,FORMAT_ERROR);
+	CHECKENUMINT(i,CommandStatus,NOT_SUPPORTED);
+	CHECKENUMINT(i,CommandStatus,ALREADY_ACTIVE);
+	CHECKENUMINT(i,CommandStatus,HARDWARE_ERROR);
+	CHECKENUMINT(i,CommandStatus,LOCAL);
+	CHECKENUMINT(i,CommandStatus,TOO_MANY_OPS);
+	CHECKENUMINT(i,CommandStatus,NOT_AUTHORIZED);
+	CHECKENUMINT(i,CommandStatus,AUTOMATION_INHIBIT);
+	CHECKENUMINT(i,CommandStatus,PROCESSING_LIMITED);
+	CHECKENUMINT(i,CommandStatus,OUT_OF_RANGE);
+	CHECKENUMINT(i,CommandStatus,DOWNSTREAM_LOCAL);
+	CHECKENUMINT(i,CommandStatus,ALREADY_COMPLETE);
+	CHECKENUMINT(i,CommandStatus,BLOCKED);
+	CHECKENUMINT(i,CommandStatus,CANCELLED);
+	CHECKENUMINT(i,CommandStatus,BLOCKED_OTHER_MASTER);
+	CHECKENUMINT(i,CommandStatus,DOWNSTREAM_FAIL);
+	CHECKENUMINT(i,CommandStatus,NON_PARTICIPATING);
+	return CommandStatus::UNDEFINED;
+}
+
+inline EventType EventTypeFromInt(const int i)
+{
+	if(i <= static_cast<int>(EventType::BeforeRange) || i >= static_cast<int>(EventType::AfterRange))
+		return EventType::AfterRange;
+	return static_cast<EventType>(i);
+}
+
+inline ControlCode ControlCodeFromInt(const int i)
+{
+	CHECKENUMINT(i,ControlCode,NUL);
+	CHECKENUMINT(i,ControlCode,PULSE_ON);
+	CHECKENUMINT(i,ControlCode,PULSE_OFF);
+	CHECKENUMINT(i,ControlCode,LATCH_ON);
+	CHECKENUMINT(i,ControlCode,LATCH_OFF);
+	CHECKENUMINT(i,ControlCode,CLOSE_PULSE_ON);
+	CHECKENUMINT(i,ControlCode,TRIP_PULSE_ON);
+	return ControlCode::UNDEFINED;
+}
+
 //Map EventTypes to payload types
 template<EventType t> struct EventTypePayload { typedef void type; };
 #define EVENTPAYLOAD(E,T)\
@@ -524,7 +571,7 @@ EVENTPAYLOAD(EventType::Reserved11               , char) //stub
 EVENTPAYLOAD(EventType::Reserved12               , char) //stub
 //TODO: map the rest
 
-enum class DataToStringMethod : uint8_t {Raw,Hex};
+enum class DataToStringMethod : uint8_t {Raw,Hex,Base64};
 //FIXME: format properly using specialisation https://fmt.dev/latest/api.html#udt
 inline auto format_as(DataToStringMethod dtsm) { return fmt::underlying(dtsm); }
 inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod method = DataToStringMethod::Hex)
@@ -537,10 +584,31 @@ inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod met
 			return std::string(chardata,OSB.size());
 		case DataToStringMethod::Hex:
 			return buf2hex(rawdata,OSB.size());
+		case DataToStringMethod::Base64:
+			return b64encode(rawdata,OSB.size());
 		default:
 			return fmt::format("Unsupported DataToStringMethod: {}",method);
 	}
 }
+
+//see IOTypesString.cpp for these implementations:
+template <typename T> T PayloadFromString(const std::string& PayloadStr);
+template <> bool PayloadFromString(const std::string& PayloadStr);
+template<> DBB PayloadFromString(const std::string& PayloadStr);
+template<> double PayloadFromString(const std::string& PayloadStr);
+template<> uint32_t PayloadFromString(const std::string& PayloadStr);
+template<> CommandStatus PayloadFromString(const std::string& PayloadStr);
+OctetStringBuffer PayloadFromString(const std::string& PayloadStr, DataToStringMethod D2S);
+template<> TAI PayloadFromString(const std::string& PayloadStr);
+template<> SS PayloadFromString(const std::string& PayloadStr);
+template<> ControlRelayOutputBlock PayloadFromString(const std::string& PayloadStr);
+template<> AO16 PayloadFromString(const std::string& PayloadStr);
+template<> AO32 PayloadFromString(const std::string& PayloadStr);
+template<> AOF PayloadFromString(const std::string& PayloadStr);
+template<> AOD PayloadFromString(const std::string& PayloadStr);
+template<> QualityFlags PayloadFromString(const std::string& PayloadStr);
+template<> char PayloadFromString(const std::string& PayloadStr);
+template<> ConnectState PayloadFromString(const std::string& PayloadStr);
 
 #define DELETEPAYLOADCASE(T)\
 	case T: \
@@ -553,6 +621,10 @@ inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod met
 #define DEFAULTPAYLOADCASE(T)\
 	case T: \
 		pPayload = static_cast<void*>(new typename EventTypePayload<T>::type()); \
+		break;
+#define STRINGPAYLOADCASE(T)\
+	case T: \
+		SetPayload<T>(PayloadFromString<EventTypePayload<T>::type>(PayloadStr)); \
 		break;
 
 class EventInfo
@@ -776,6 +848,63 @@ public:
 		if(pPayload)
 			delete static_cast<typename EventTypePayload<t>::type*>(pPayload);
 		pPayload = new typename EventTypePayload<t>::type(std::move(p));
+	}
+
+	void SetPayload(const std::string& PayloadStr, DataToStringMethod D2S = DataToStringMethod::Raw)
+	{
+		switch(Type)
+		{
+			STRINGPAYLOADCASE(EventType::Binary                   )
+			STRINGPAYLOADCASE(EventType::DoubleBitBinary          )
+			STRINGPAYLOADCASE(EventType::Analog                   )
+			STRINGPAYLOADCASE(EventType::Counter                  )
+			STRINGPAYLOADCASE(EventType::FrozenCounter            )
+			STRINGPAYLOADCASE(EventType::BinaryOutputStatus       )
+			STRINGPAYLOADCASE(EventType::AnalogOutputStatus       )
+			STRINGPAYLOADCASE(EventType::BinaryCommandEvent       )
+			STRINGPAYLOADCASE(EventType::AnalogCommandEvent       )
+			STRINGPAYLOADCASE(EventType::TimeAndInterval          )
+			STRINGPAYLOADCASE(EventType::SecurityStat             )
+			STRINGPAYLOADCASE(EventType::ControlRelayOutputBlock  )
+			STRINGPAYLOADCASE(EventType::AnalogOutputInt16        )
+			STRINGPAYLOADCASE(EventType::AnalogOutputInt32        )
+			STRINGPAYLOADCASE(EventType::AnalogOutputFloat32      )
+			STRINGPAYLOADCASE(EventType::AnalogOutputDouble64     )
+			STRINGPAYLOADCASE(EventType::BinaryQuality            )
+			STRINGPAYLOADCASE(EventType::DoubleBitBinaryQuality   )
+			STRINGPAYLOADCASE(EventType::AnalogQuality            )
+			STRINGPAYLOADCASE(EventType::CounterQuality           )
+			STRINGPAYLOADCASE(EventType::BinaryOutputStatusQuality)
+			STRINGPAYLOADCASE(EventType::FrozenCounterQuality     )
+			STRINGPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+			STRINGPAYLOADCASE(EventType::FileAuth                 )
+			STRINGPAYLOADCASE(EventType::FileCommand              )
+			STRINGPAYLOADCASE(EventType::FileCommandStatus        )
+			STRINGPAYLOADCASE(EventType::FileTransport            )
+			STRINGPAYLOADCASE(EventType::FileTransportStatus      )
+			STRINGPAYLOADCASE(EventType::FileDescriptor           )
+			STRINGPAYLOADCASE(EventType::FileSpecString           )
+			STRINGPAYLOADCASE(EventType::ConnectState             )
+			STRINGPAYLOADCASE(EventType::Reserved1                )
+			STRINGPAYLOADCASE(EventType::Reserved2                )
+			STRINGPAYLOADCASE(EventType::Reserved3                )
+			STRINGPAYLOADCASE(EventType::Reserved4                )
+			STRINGPAYLOADCASE(EventType::Reserved5                )
+			STRINGPAYLOADCASE(EventType::Reserved6                )
+			STRINGPAYLOADCASE(EventType::Reserved7                )
+			STRINGPAYLOADCASE(EventType::Reserved8                )
+			STRINGPAYLOADCASE(EventType::Reserved9                )
+			STRINGPAYLOADCASE(EventType::Reserved10               )
+			STRINGPAYLOADCASE(EventType::Reserved11               )
+			STRINGPAYLOADCASE(EventType::Reserved12               )
+			case EventType::OctetString:
+				SetPayload<EventType::OctetString>(PayloadFromString(PayloadStr,D2S));
+				break;
+			default:
+				std::string msg = "odc::EventInfo payload from string setter can't handle EventType::"+ToString(Type);
+				throw std::runtime_error(msg);
+				break;
+		}
 	}
 
 	//Set default payload - mostly for testing
