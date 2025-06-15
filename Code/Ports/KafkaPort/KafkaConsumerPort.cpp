@@ -24,8 +24,6 @@
  *      Author: Neil Stephens
  */
 
-//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
-
 #include "KafkaConsumerPort.h"
 #include "KafkaPort.h"
 #include "TemplateDeserialiser.h"
@@ -135,6 +133,74 @@ void KafkaConsumerPort::BuildConsumer()
 	}
 }
 
+void KafkaConsumerPort::RebalanceCallback(kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps)
+{
+	if(auto log = odc::spdlog_get("KafkaPort"))
+	{
+		const auto action_str = et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned ? "assigned" : "revoked";
+		log->debug("Partitions {}: {}", action_str, kafka::toString(tps));
+	}
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	if(pConf->ConsumerFastForwardOffset != 0
+	   && et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->info("{}: Fast forwarding consumer partitions by {} records", Name, pConf->ConsumerFastForwardOffset);
+		try
+		{
+			//TODO: check what happens if the we seek past the end/beginning
+			std::map<kafka::TopicPartition,kafka::Offset> offsets;
+			if(pConf->ConsumerFastForwardOffset < 0)
+				offsets = pKafkaConsumer->endOffsets(tps);
+			else
+				offsets = pKafkaConsumer->beginningOffsets(tps);
+			for(const auto& [tp, offset] : offsets)
+				pKafkaConsumer->seek(tp, offset+pConf->ConsumerFastForwardOffset);
+		}
+		catch(const std::exception& e)
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("{}: Failed to seek consumer partitions: {}", Name, e.what());
+			return;
+		}
+	}
+}
+
+void KafkaConsumerPort::Subscribe()
+{
+	if(subscribed) return;
+	try
+	{
+		//FIXME: this is blocking and throws on timeout!
+		pKafkaConsumer->subscribe(mTopics,[this](kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps){RebalanceCallback(et,tps);});
+		subscribed = true;
+		pKafkaConsumer->resume();
+	}
+	catch(const std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("{}: Failed to subscribe to topics: {}", Name, e.what());
+	}
+}
+
+void KafkaConsumerPort::Unsubscribe()
+{
+	if(!subscribed) return;
+	subscribed = false;
+	try
+	{
+		//pausing before unsubscribing seems to avoid a crash in the kafka library
+		pKafkaConsumer->pause();
+		//FIXME: this is blocking and throws on timeout!
+		pKafkaConsumer->unsubscribe();
+	}
+	catch(const std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("{}: Failed to unsubscribe from topics: {}", Name, e.what());
+	}
+}
+
 //only call this on the pStateSync strand
 void KafkaConsumerPort::PortUp()
 {
@@ -142,43 +208,7 @@ void KafkaConsumerPort::PortUp()
 		return;
 
 	BuildConsumer();
-
-	auto rebalanceCb = [this](kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps)
-				 {
-					 if(auto log = odc::spdlog_get("KafkaPort"))
-					 {
-						 const auto action_str = et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned ? "assigned" : "revoked";
-						 log->debug("Partitions {}: {}", action_str, kafka::toString(tps));
-					 }
-					 auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
-					 if(pConf->ConsumerFastForwardOffset != 0
-					    && et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned)
-					 {
-						 if(auto log = odc::spdlog_get("KafkaPort"))
-							 log->info("{}: Fast forwarding consumer partitions by {} records", Name, pConf->ConsumerFastForwardOffset);
-						 //TODO: check what happens if the we seek past the end/beginning
-						 std::map<kafka::TopicPartition,kafka::Offset> offsets;
-						 if(pConf->ConsumerFastForwardOffset < 0)
-							 offsets = pKafkaConsumer->endOffsets(tps);
-						 else
-							 offsets = pKafkaConsumer->beginningOffsets(tps);
-						 for(const auto& [tp, offset] : offsets)
-							 pKafkaConsumer->seek(tp, offset+pConf->ConsumerFastForwardOffset);
-					 }
-				 };
-
-	try
-	{
-		//FIXME: this is blocking and throws on timeout!
-		pKafkaConsumer->subscribe(mTopics,rebalanceCb);
-		pKafkaConsumer->resume();
-	}
-	catch(const std::exception& e)
-	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to subscribe to topics: {}", Name, e.what());
-		//FIXME: set a flag to try subscribing again in poll
-	}
+	Subscribe();
 
 	pPollTimer = odc::asio_service::Get()->make_steady_timer();
 	pIOS->post([this](){Poll(pPollTimer);});
@@ -193,20 +223,18 @@ void KafkaConsumerPort::PortDown()
 	pPollTimer->cancel();
 	pPollTimer.reset();
 
+	Unsubscribe();
+
 	try
 	{
-		//pausing before unsubscribing seems to avoid a crash in the kafka library
-		pKafkaConsumer->pause();
-		//FIXME: this is blocking and throws on timeout!
-		pKafkaConsumer->unsubscribe();
+		pKafkaConsumer->close();
 	}
 	catch(const std::exception& e)
 	{
 		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to unsubscribe from topics: {}", Name, e.what());
+			log->error("{}: Failed to close Kafka consumer: {}", Name, e.what());
 	}
 
-	pKafkaConsumer->close();
 	pKafkaConsumer.reset();
 }
 
@@ -219,8 +247,25 @@ void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
 	if(!pTimer)
 		return;
 
-	auto Records = pKafkaConsumer->poll(std::chrono::milliseconds::zero());
-	pKafkaConsumer->commitAsync();
+	if(!subscribed)
+		Subscribe();
+
+	std::vector<KCC::ConsumerRecord> Records;
+
+	if(subscribed)
+	{
+		try
+		{
+			Records = pKafkaConsumer->poll(std::chrono::milliseconds::zero());
+			pKafkaConsumer->commitAsync();
+		}
+		catch(const std::exception& e)
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("{}: Failed to poll records: {}", Name, e.what());
+			return;
+		}
+	}
 
 	auto poll_delay = std::chrono::milliseconds(PollBackoff_ms);
 	if(Records.size() == 0)

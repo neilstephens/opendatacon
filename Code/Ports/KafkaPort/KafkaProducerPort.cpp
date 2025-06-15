@@ -24,8 +24,6 @@
  *      Author: Neil Stephens
  */
 
-//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
-
 #include "KafkaProducerPort.h"
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
@@ -112,9 +110,18 @@ void KafkaProducerPort::PortUp()
 {
 	if(pKafkaProducer) return;
 
-	pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
-	if(!pKafkaProducer)
-		throw std::runtime_error(Name+": Failed to build KafkaProducer.");
+	try
+	{
+		pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
+		if(!pKafkaProducer)
+			throw std::runtime_error(Name+": Failed to build KafkaProducer.");
+	}
+	catch(const std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("{}: Failed to create Kafka Producer: {}", Name, e.what());
+		return;
+	}
 }
 
 //only call this on the pStateSync strand
@@ -216,5 +223,14 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 	}
 
 	// Poll events (e.g. message delivery callback)
-	pKafkaProducer->pollEvents(std::chrono::milliseconds::zero());
+	try
+	{
+		pKafkaProducer->pollEvents(std::chrono::milliseconds::zero());
+	}
+	catch (const std::exception& e)
+	{
+		auto log = odc::spdlog_get("KafkaPort");
+		if(log)
+			log->error("{}: Failed to poll events: {}", Name, e.what());
+	}
 }

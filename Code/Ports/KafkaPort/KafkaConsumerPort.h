@@ -24,8 +24,6 @@
  *      Author: Neil Stephens
  */
 
-//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
-
 #ifndef KAFKACONSUMERPORT_H
 #define KAFKACONSUMERPORT_H
 
@@ -59,9 +57,13 @@ protected:
 private:
 	std::shared_ptr<KCC::KafkaConsumer> pKafkaConsumer = nullptr;
 	std::set<kafka::Topic> mTopics;
+	bool subscribed = false;
 	size_t PollBackoff_ms = 1;
 	std::shared_ptr<asio::steady_timer> pPollTimer = nullptr;
 	void BuildConsumer();
+	void RebalanceCallback(kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps);
+	void Subscribe();
+	void Unsubscribe();
 	void Poll(std::weak_ptr<asio::steady_timer> wTimer);
 	void ProcessRecord(const KCC::ConsumerRecord& record);
 	std::shared_ptr<EventInfo> TemplateDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<TemplateDeserialiser>& pTemplateDeserialiser);

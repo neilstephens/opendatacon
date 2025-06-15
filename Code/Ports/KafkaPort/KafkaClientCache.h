@@ -24,8 +24,6 @@
  *      Author: Neil Stephens
  */
 
-//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
-
 #ifndef KAFKACLIENTCACHE_H
 #define KAFKACLIENTCACHE_H
 
@@ -52,7 +50,16 @@ private:
 		auto pTimer = weak_timer.lock();
 		if(!pTimer) return;
 
-		client->pollEvents(std::chrono::milliseconds::zero());
+		try
+		{
+			client->pollEvents(std::chrono::milliseconds::zero());
+		}
+		catch(const kafka::KafkaException& e)
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("KafkaClientID {}: Failed to poll events: {}", client->clientId(), e.what());
+			return;
+		}
 
 		pTimer->expires_from_now(std::chrono::milliseconds(MaxPollIntervalms));
 		pTimer->async_wait([weak_client,weak_timer,MaxPollIntervalms](asio::error_code err)

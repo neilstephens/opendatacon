@@ -85,9 +85,11 @@ public:
 		std::string regex_str = regexEnabled ? template_str : EscapeRegexLiteral(template_str);
 
 		//TODO: check for matching groups in the template if it's regex enabled
+		//	matching groups in the user supplied regex would screw up the deserialisation
+		//	because inserting a group for each placeholder is how that works (see below)
 		// warn (or throw if the check is robust)
 
-		//make whitespace optional an interchangable with other whitespace
+		//make whitespace optional, and interchangable with other whitespace
 		//  ,by replacing all whitespace with \s*
 		std::regex whitespace_regex(R"(\s+)");
 		regex_str = std::regex_replace(regex_str, whitespace_regex, R"(\s*)");
