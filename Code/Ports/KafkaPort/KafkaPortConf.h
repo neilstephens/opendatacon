@@ -24,8 +24,6 @@
  *      Author: Neil Stephens
  */
 
-//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
-
 #ifndef KafkaPortConf_H_
 #define KafkaPortConf_H_
 #include "CBORSerialiser.h"
@@ -93,7 +91,7 @@ public:
 	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
 	//	then accessed by multiple threads in Event, so it needs to be const
 	std::unique_ptr<const ConsumerTranslationMap> pKafkaMap = nullptr;
-	bool RegexEscapeTemplates = true; //TODO/FIXME: expose this in the config
+	bool RegexEscapeTemplates = true;
 };
 
 #endif /* KafkaPortConf_H_ */

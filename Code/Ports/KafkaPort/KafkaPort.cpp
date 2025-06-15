@@ -24,8 +24,6 @@
  *      Author: Neil Stephens
  */
 
-//FIXME: all the kafka library calls need to be audited for possible exceptions and wrapped in try/catch/retry etc.
-
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
 #include "CBORSerialiser.h"
@@ -178,6 +176,10 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("ConsumerFastForwardOffset"))
 	{
 		pConf->ConsumerFastForwardOffset = JSONRoot["ConsumerFastForwardOffset"].asUInt();
+	}
+	if(JSONRoot.isMember("RegexEscapeTemplates"))
+	{
+		pConf->RegexEscapeTemplates = JSONRoot["RegexEscapeTemplates"].asBool();
 	}
 
 	//Process PointTranslationMap
