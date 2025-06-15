@@ -53,6 +53,7 @@ public:
 
 protected:
 	std::atomic_bool enabled {false};
+	std::unique_ptr<asio::io_service::strand> pStateSync = odc::asio_service::Get()->make_strand();
 	std::shared_ptr<KafkaClientCache> pKafkaClientCache = KafkaClientCache::Get();
 	template <class KafkaClientType> std::shared_ptr<KafkaClientType> Build(std::string TypeString = "")
 	{

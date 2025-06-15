@@ -107,10 +107,9 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 	return message;
 }
 
+//only call this on the pStateSync strand
 void KafkaProducerPort::PortUp()
 {
-	//TODO: use a strand to sync port up/down
-	//  or use a dedicated thread if there are blocking calls (ie subscribe)
 	if(pKafkaProducer) return;
 
 	pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
@@ -118,6 +117,7 @@ void KafkaProducerPort::PortUp()
 		throw std::runtime_error(Name+": Failed to build KafkaProducer.");
 }
 
+//only call this on the pStateSync strand
 void KafkaProducerPort::PortDown()
 {
 	if(!pKafkaProducer) return;
@@ -129,13 +129,20 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 {
 	if(!enabled) return;
 
-	if(event->GetEventType() == EventType::ConnectState)
-	{
-		if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-			PortUp();
-		else if(!InDemand())
-			PortDown();
-	}
+	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(shared_from_this());
+	pStateSync->post([weak_self,event]()
+		{
+			if(auto self = weak_self.lock())
+			{
+				if(event->GetEventType() == EventType::ConnectState)
+				{
+					if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+						self->PortUp();
+					else if(!self->InDemand())
+						self->PortDown();
+				}
+			}
+		});
 
 	if(!pKafkaProducer) return;
 

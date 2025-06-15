@@ -103,13 +103,20 @@ void KafkaConsumerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	if(!enabled)
 		return;
 
-	if(event->GetEventType() == EventType::ConnectState)
-	{
-		if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-			PortUp();
-		else if(!InDemand())
-			PortDown();
-	}
+	std::weak_ptr<KafkaConsumerPort> weak_self = std::static_pointer_cast<KafkaConsumerPort>(shared_from_this());
+	pStateSync->post([weak_self,event]()
+		{
+			if(auto self = weak_self.lock())
+			{
+				if(event->GetEventType() == EventType::ConnectState)
+				{
+					if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+						self->PortUp();
+					else if(!self->InDemand())
+						self->PortDown();
+				}
+			}
+		});
 }
 
 void KafkaConsumerPort::BuildConsumer()
@@ -128,10 +135,9 @@ void KafkaConsumerPort::BuildConsumer()
 	}
 }
 
+//only call this on the pStateSync strand
 void KafkaConsumerPort::PortUp()
 {
-	//TODO: use a strand to sync port up/down
-	//  or use a dedicated thread if there are blocking calls (ie subscribe)
 	if(pPollTimer || pKafkaConsumer)
 		return;
 
@@ -171,19 +177,14 @@ void KafkaConsumerPort::PortUp()
 	{
 		if(auto log = odc::spdlog_get("KafkaPort"))
 			log->error("{}: Failed to subscribe to topics: {}", Name, e.what());
+		//FIXME: set a flag to try subscribing again in poll
 	}
 
 	pPollTimer = odc::asio_service::Get()->make_steady_timer();
 	pIOS->post([this](){Poll(pPollTimer);});
 }
 
-//FIXME: Ideally we would fully destroy and recreate the consumer on port down/up
-//  but librdkafka seems to have issues - some trace of the old object remains, preventing the new one from working
-//  all calls result in an exception claiming the "Broker handle destroyed" (even though it's a new object)
-//  it works fine if ALL kafka ports are destroyed and recreated (meaning the library is fully reloaded), so I guess it's a static/global issue
-//  probably should make a min repro and bug report to librdkafka
-//  ... so we just pause/unsubscribe for now ...
-
+//only call this on the pStateSync strand
 void KafkaConsumerPort::PortDown()
 {
 	if(!pPollTimer || !pKafkaConsumer)

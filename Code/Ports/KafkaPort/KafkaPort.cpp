@@ -44,17 +44,35 @@ KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const
 
 void KafkaPort::Enable()
 {
-	//TODO: support "ServerType", eg. ONDEMAND, PERSISTENT, MANUAL
-	//ONDEMAND should be default (ie. only consume when there are upstream connected ports)
-	if(InDemand())
-		PortUp();
-	enabled = true;
+	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
+	pStateSync->post([weak_self]()
+		{
+			if(auto self = weak_self.lock())
+			{
+				if(self->enabled)
+					return;
+				//TODO: support "ServerType", eg. ONDEMAND, PERSISTENT, MANUAL
+				//ONDEMAND should be default (ie. only consume/produce when there are upstream connected ports)
+				if(self->InDemand())
+					self->PortUp();
+				self->enabled = true;
+			}
+		});
 }
 
 void KafkaPort::Disable()
 {
-	PortDown();
-	enabled = false;
+	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
+	pStateSync->post([weak_self]()
+		{
+			if(auto self = weak_self.lock())
+			{
+				if(!self->enabled)
+					return;
+				self->enabled = false;
+				self->PortDown();
+			}
+		});
 }
 
 void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
