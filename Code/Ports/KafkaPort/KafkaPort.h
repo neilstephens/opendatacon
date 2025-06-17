@@ -53,7 +53,7 @@ protected:
 	std::atomic_bool enabled {false};
 	std::unique_ptr<asio::io_service::strand> pStateSync = odc::asio_service::Get()->make_strand();
 	std::shared_ptr<KafkaClientCache> pKafkaClientCache = KafkaClientCache::Get();
-	template <class KafkaClientType> std::shared_ptr<KafkaClientType> Build(std::string TypeString = "")
+	template <class KafkaClientType> std::shared_ptr<KafkaClientType> Build(std::string TypeString = "") //TODO: make TypeString an enum with to_string helper
 	{
 		auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
@@ -98,9 +98,13 @@ protected:
 
 			return pKafkaClientCache->GetClient<KafkaClientType>(
 				pConf->SharedKafkaClientKey,
-				pConf->NativeKafkaProperties);
+				pConf->NativeKafkaProperties,
+				pConf->MaxPollIntervalms);
 		}
-		return pKafkaClientCache->GetClient<KafkaClientType>(Name, pConf->NativeKafkaProperties);
+		return pKafkaClientCache->GetClient<KafkaClientType>(
+			Name,
+			pConf->NativeKafkaProperties,
+			pConf->MaxPollIntervalms);
 	}
 };
 

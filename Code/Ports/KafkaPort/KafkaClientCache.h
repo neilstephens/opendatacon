@@ -103,7 +103,7 @@ public:
 
 	// Factory method to get a client from the cache, or create a new one if it doesn't exist
 	template<typename ClientType>
-	std::shared_ptr<ClientType> GetClient(const std::string& client_key, const kafka::Properties& properties, const size_t MaxPollIntervalms = std::numeric_limits<size_t>::max())
+	std::shared_ptr<ClientType> GetClient(const std::string& client_key, const kafka::Properties& properties, const size_t MaxPollIntervalms)
 	{
 		std::lock_guard lock(mtx);
 
