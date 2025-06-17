@@ -196,25 +196,6 @@ void KafkaConsumerPort::Subscribe()
 	}
 }
 
-void KafkaConsumerPort::Unsubscribe()
-{
-	if(!subscribed) return;
-	subscribed = false;
-	PublishEvent(ConnectState::DISCONNECTED);
-	try
-	{
-		//pausing before unsubscribing seems to avoid a crash in the kafka library
-		pKafkaConsumer->pause();
-		//FIXME: this is blocking and throws on timeout!
-		pKafkaConsumer->unsubscribe();
-	}
-	catch(const std::exception& e)
-	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to unsubscribe from topics: {}", Name, e.what());
-	}
-}
-
 //only call this on the pStateSync strand
 void KafkaConsumerPort::PortUp()
 {
@@ -234,22 +215,9 @@ void KafkaConsumerPort::PortDown()
 	if(!pPollTimer || !pKafkaConsumer)
 		return;
 
-	pPollTimer->cancel();
 	pPollTimer.reset();
-
-	Unsubscribe();
-
-	try
-	{
-		pKafkaConsumer->close();
-	}
-	catch(const std::exception& e)
-	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to close Kafka consumer: {}", Name, e.what());
-	}
-
 	pKafkaConsumer.reset();
+	subscribed = false;
 }
 
 void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
@@ -271,7 +239,6 @@ void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
 		try
 		{
 			Records = pKafkaConsumer->poll(std::chrono::milliseconds::zero());
-			pKafkaConsumer->commitAsync();
 		}
 		catch(const std::exception& e)
 		{
@@ -291,6 +258,21 @@ void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
 	}
 	else
 	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->trace("{}: Polled {} records from Kafka", Name, Records.size());
+
+		try
+		{
+			//TODO: provide callback with captured sequence number
+			//	the callback can retry the commit if the sequence number hasn't moved on
+			pKafkaConsumer->commitAsync();
+		}
+		catch(const std::exception& e)
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->error("{}: Failed to async commit offsets for {} records: {}", Name, Records.size(), e.what());
+		}
+
 		poll_delay = std::chrono::milliseconds(0);
 		PollBackoff_ms = 1;
 	}

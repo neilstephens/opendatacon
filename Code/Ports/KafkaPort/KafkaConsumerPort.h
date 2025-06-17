@@ -63,7 +63,6 @@ private:
 	void BuildConsumer();
 	void RebalanceCallback(kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps);
 	void Subscribe();
-	void Unsubscribe();
 	void Poll(std::weak_ptr<asio::steady_timer> wTimer);
 	void ProcessRecord(const KCC::ConsumerRecord& record);
 	std::shared_ptr<EventInfo> TemplateDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<TemplateDeserialiser>& pTemplateDeserialiser);
