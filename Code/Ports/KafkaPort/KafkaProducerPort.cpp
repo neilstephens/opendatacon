@@ -179,6 +179,11 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		return;
 	}
 
+	//TODO: De-duplication option:
+	//	could initialise and use the point database DataPort::pDB
+	//	pDB->Swap() out the event and see if the quality or payload changed (optionally configurable change detection fields)
+	//	then only send to kafka if it changed
+
 	#define VAL_OR(X,D) (point_mapping.has_value() ? point_mapping->get().X ? *(point_mapping->get().X) : D : D)
 
 	const auto& topic = VAL_OR(pTopic,pConf->DefaultTopic);
