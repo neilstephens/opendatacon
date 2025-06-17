@@ -94,7 +94,7 @@ public:
 	//TODO: Support for Template {} vs <> for std::format specifiers
 
 	//Consumer
-	size_t ConsumerFastForwardOffset = 0;
+	int64_t ConsumerFastForwardOffset = 0;
 	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
 	//	then accessed by multiple threads in Event, so it needs to be const
 	std::unique_ptr<const ConsumerTranslationMap> pKafkaMap = nullptr;

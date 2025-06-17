@@ -120,7 +120,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 	if(JSONRoot.isMember("MaxPollIntervalms"))
 	{
-		pConf->SharedKafkaClientKey = JSONRoot["MaxPollIntervalms"].asUInt();
+		pConf->MaxPollIntervalms = JSONRoot["MaxPollIntervalms"].asUInt();
 	}
 	if(JSONRoot.isMember("DefaultTopic"))
 	{
@@ -194,7 +194,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 	if(JSONRoot.isMember("ConsumerFastForwardOffset"))
 	{
-		pConf->ConsumerFastForwardOffset = JSONRoot["ConsumerFastForwardOffset"].asUInt();
+		pConf->ConsumerFastForwardOffset = JSONRoot["ConsumerFastForwardOffset"].asInt64();
 	}
 	if(JSONRoot.isMember("RegexEscapeTemplates"))
 	{
