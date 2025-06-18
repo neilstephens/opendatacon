@@ -45,7 +45,7 @@ CommsRideThroughTimer::~CommsRideThroughTimer()
 
 void CommsRideThroughTimer::HeartBeat()
 {
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	auto weak_self = weak_from_this();
 	pHeartBeatTimer->expires_from_now(std::chrono::milliseconds(HeartBeatTimems));
 	pHeartBeatTimer->async_wait(pTimerAccessStrand->wrap([weak_self](asio::error_code err)
 		{
@@ -61,7 +61,7 @@ void CommsRideThroughTimer::HeartBeat()
 
 void CommsRideThroughTimer::Trigger()
 {
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	auto weak_self = weak_from_this();
 	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
@@ -90,7 +90,7 @@ void CommsRideThroughTimer::Trigger()
 
 void CommsRideThroughTimer::FastForward()
 {
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	auto weak_self = weak_from_this();
 	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
@@ -103,7 +103,7 @@ void CommsRideThroughTimer::FastForward()
 
 void CommsRideThroughTimer::Cancel()
 {
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	auto weak_self = weak_from_this();
 	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
