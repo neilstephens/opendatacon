@@ -33,7 +33,9 @@
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool isMaster):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pChanH(std::make_unique<ChannelHandler>(this)),
-	pConnectionStabilityTimer(pIOS->make_steady_timer())
+	pConnectionStabilityTimer(pIOS->make_steady_timer()),
+	stack_enabled(false),
+	pStackSyncStrand(pIOS->make_strand())
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
@@ -124,6 +126,57 @@ void DNP3Port::NotifyOfDisconnection()
 {
 	if(!pConnectionStabilityTimer->cancel())
 		PublishEvent(ConnectState::DISCONNECTED);
+}
+
+void DNP3Port::ChannelWatchdogTrigger(bool on)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	if(stack_enabled)
+	{
+		if(on)                //don't mark the stack as disabled, because this is just a restart
+			DisableStack(); //it will be enabled again shortly when the trigger is off
+		else
+			EnableStack();
+	}
+}
+
+void DNP3Port::CheckStackState()
+{
+	std::weak_ptr<DNP3Port> weak_self = std::static_pointer_cast<DNP3Port>(shared_from_this());
+	pStackSyncStrand->post([weak_self,this]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+			if(!enabled || (pConf->OnDemand && !InDemand()))
+			{
+				if(stack_enabled)
+				{
+					stack_enabled = false;
+					DisableStack(); //this will trigger comms down
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: DNP3 stack disabled", Name);
+				}
+				return;
+			}
+
+			if(enabled && (!pConf->OnDemand || InDemand()))
+			{
+				if(!stack_enabled)
+				{
+					EnableStack();
+					stack_enabled = true;
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: DNP3 stack enabled", Name);
+				}
+				return;
+			}
+
+		});
 }
 
 //DataPort function for UI
@@ -478,11 +531,9 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("ServerType"))
 	{
 		if(JSONRoot["ServerType"].asString() == "ONDEMAND")
-			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::ONDEMAND;
+			static_cast<DNP3PortConf*>(pConf.get())->OnDemand = true;
 		else if(JSONRoot["ServerType"].asString() == "PERSISTENT")
-			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::PERSISTENT;
-		else if(JSONRoot["ServerType"].asString() == "MANUAL")
-			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
+			static_cast<DNP3PortConf*>(pConf.get())->OnDemand = false;
 		else
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))

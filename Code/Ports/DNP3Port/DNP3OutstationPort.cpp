@@ -43,7 +43,6 @@
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides, false),
 	pOutstation(nullptr),
-	stack_enabled(false),
 	master_time_offset(0),
 	IINFlags(AppIINFlags::NONE),
 	last_time_sync(msSinceEpoch()),
@@ -96,13 +95,9 @@ void DNP3OutstationPort::Enable()
 	if(pConf->pPointConf->TimeSyncOnStart)
 		SetIINFlags(AppIINFlags::NEED_TIME);
 
-	if(!stack_enabled && !(pConf->mAddrConf.ServerType == server_type_t::MANUAL))
-	{
-		if(pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || InDemand())
-			EnableStack();
-	}
-
 	enabled = true;
+
+	CheckStackState();
 
 	PublishEvent(ConnectState::PORT_UP);
 }
@@ -112,9 +107,9 @@ void DNP3OutstationPort::Disable()
 		return;
 	enabled = false;
 
-	DisableStack();
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: DNP3 stack disabled", Name);
+	CheckStackState();
+
+	PublishEvent(ConnectState::PORT_DOWN);
 }
 
 // Called by OpenDNP3 Thread Pool
@@ -141,37 +136,16 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link up.", Name);
+
 		NotifyOfConnection();
 	}
 
 	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
 	{
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link down.", Name);
 
 		NotifyOfDisconnection();
-
-		if(pConf->mAddrConf.ServerType == server_type_t::MANUAL
-		   ||(pConf->mAddrConf.ServerType == server_type_t::ONDEMAND && !InDemand()))
-		{
-			pIOS->post([this]()
-				{
-					DisableStack();
-				});
-		}
-	}
-}
-void DNP3OutstationPort::ChannelWatchdogTrigger(bool on)
-{
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
-	if(stack_enabled)
-	{
-		if(on)
-			pOutstation->Disable();
-		else
-			pOutstation->Enable();
 	}
 }
 
@@ -522,7 +496,7 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
 			break;
 		case EventType::ConnectState:
-			Event(event->GetPayload<EventType::ConnectState>());
+			CheckStackState();
 			break;
 		default:
 			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
@@ -561,37 +535,6 @@ inline void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetStr
 	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index, opendnp3::EventMode::Force);
 	pOutstation->Apply(builder.Build());
-}
-
-inline void DNP3OutstationPort::Event(odc::ConnectState state)
-{
-	//TODO: this is common code with DNP3MasterPort. It can move to DNP3Port,
-	//  and should be refactored out into a synchronised state machine for the stack state
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	// If an upstream port is connected, attempt a connection (if on demand)
-	if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->info("{}: Upstream port connected, performing on-demand connection.", Name);
-
-		pIOS->post([this]()
-			{
-				EnableStack();
-			});
-	}
-
-	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
-	if (stack_enabled && !InDemand() && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->info("{}: No upstream connections left, performing on-demand disconnection.", Name);
-
-		pIOS->post([this]()
-			{
-				DisableStack();
-			});
-	}
 }
 
 inline void DNP3OutstationPort::SetIINFlags(const AppIINFlags& flags) const
