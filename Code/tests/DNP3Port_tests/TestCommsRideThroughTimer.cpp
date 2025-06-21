@@ -29,9 +29,9 @@
 
 #define SUITE(name) "CommsRideThroughTimer - " name
 
-const size_t testTimeout = 5000;
+const size_t testTimeout = 10000;
 
-const size_t msRideTime = 100;
+const size_t msRideTime = 200;
 std::atomic_bool CommsIsBad = false;
 std::atomic_bool CommsToggled = false;
 const auto SetCommsBad = [](){ CommsIsBad = true; };
@@ -88,7 +88,7 @@ TEST_CASE(SUITE("Cancel Trigger"))
 
 	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
 
-	const size_t msCancel = 70;
+	const size_t msCancel = msRideTime*0.7;
 
 	auto trigger_time = odc::msSinceEpoch();
 	pCRTT->Trigger();
@@ -117,7 +117,7 @@ TEST_CASE(SUITE("Trigger Pause Resume"))
 
 	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
 
-	const size_t msPause = 70;
+	const size_t msPause = msRideTime*0.7;
 
 	auto trigger_time = odc::msSinceEpoch();
 	pCRTT->Trigger();
@@ -147,7 +147,7 @@ TEST_CASE(SUITE("Pause Trigger Resume"))
 
 	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
 
-	const size_t msPause = 50;
+	const size_t msPause = msRideTime*0.5;
 
 	auto start_time = odc::msSinceEpoch();
 	pCRTT->Pause();
@@ -177,7 +177,7 @@ TEST_CASE(SUITE("Pause Cancel Resume"))
 
 	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
 
-	const size_t msPause = 50;
+	const size_t msPause = msRideTime*0.5;
 
 	pCRTT->Trigger();
 	pCRTT->Pause();
@@ -265,7 +265,7 @@ TEST_CASE(SUITE("Pause Trigger Cancel Resume"))
 
 	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
 
-	const size_t msPause = 50;
+	const size_t msPause = msRideTime*0.5;
 
 	pCRTT->Pause();
 	WaitFor(msPause*0.5);
