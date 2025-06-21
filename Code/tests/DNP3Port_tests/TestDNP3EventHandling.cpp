@@ -77,9 +77,9 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	conf["MaxAnalogOutputStatusEvents"] = Json::UInt(num_indexes+1);
 	conf["MaxOctetStringEvents"] = Json::UInt(num_indexes+1);
 
-	conf["CommsPoint"]["Index"] = comms_idx;
+	conf["CommsPoint"]["Index"] = Json::UInt(comms_idx);
 	conf["CommsPoint"]["FailValue"] = false;
-	conf["CommsPoint"]["RideThroughTimems"] = comms_ride_time_ms;
+	conf["CommsPoint"]["RideThroughTimems"] = Json::UInt(comms_ride_time_ms);
 	conf["CommsPoint"]["RideThroughDemandPause"] = RideThroughDemandPause;
 
 	//make an outstation port
