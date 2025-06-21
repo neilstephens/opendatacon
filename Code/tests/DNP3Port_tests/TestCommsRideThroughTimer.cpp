@@ -37,7 +37,7 @@ std::atomic_bool CommsToggled = false;
 const auto SetCommsBad = [](){ CommsIsBad = true; };
 const auto SetCommsGood = [](){ CommsIsBad = false; CommsToggled = true; };
 
-void WaitFor(const std::atomic_bool& var, const bool state)
+inline void WaitFor(const std::atomic_bool& var, const bool state)
 {
 	auto pIOS = odc::asio_service::Get();
 	auto start_time = odc::msSinceEpoch();
@@ -46,7 +46,7 @@ void WaitFor(const std::atomic_bool& var, const bool state)
 	CHECK(var == state);
 }
 
-void WaitFor(size_t ms)
+inline void WaitFor(size_t ms)
 {
 	auto pIOS = odc::asio_service::Get();
 	auto start_time = odc::msSinceEpoch();
@@ -100,7 +100,6 @@ TEST_CASE(SUITE("Cancel Trigger"))
 	auto measured_duration = odc::msSinceEpoch() - trigger_time;
 	CHECK(measured_duration > 0.95*(msRideTime+msCancel));
 	CHECK(measured_duration < 1.05*(msRideTime+msCancel));
-	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -192,7 +191,6 @@ TEST_CASE(SUITE("Pause Cancel Resume"))
 	auto measured_duration = odc::msSinceEpoch() - start_time;
 	CHECK(measured_duration > 0.95*msRideTime);
 	CHECK(measured_duration < 1.05*msRideTime);
-	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -280,7 +278,6 @@ TEST_CASE(SUITE("Pause Trigger Cancel Resume"))
 	auto measured_duration = odc::msSinceEpoch() - start_time;
 	CHECK(measured_duration > 0.95*msRideTime);
 	CHECK(measured_duration < 1.05*msRideTime);
-	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -324,7 +321,6 @@ TEST_CASE(SUITE("Random"))
 	auto measured_duration = odc::msSinceEpoch() - start_time;
 	CHECK(measured_duration > 0.95*msRideTime);
 	CHECK(measured_duration < 1.05*msRideTime);
-	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -412,7 +408,6 @@ TEST_CASE(SUITE("Trigger Cancel FastForward"))
 	auto measured_duration = odc::msSinceEpoch() - start_time;
 	CHECK(measured_duration > 0.95*msRideTime);
 	CHECK(measured_duration < 1.05*msRideTime);
-	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);

@@ -31,6 +31,8 @@
 #include <opendatacon/asio.h>
 #include <functional>
 
+enum class CommsState {GOOD,BAD,NUL};
+
 class CommsRideThroughTimer: public std::enable_shared_from_this<CommsRideThroughTimer>
 {
 public:
@@ -61,7 +63,7 @@ private:
 	const uint32_t Timeoutms;
 	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
 	bool RideThroughInProgress;
-	bool CommsIsBad;
+	CommsState Comms;
 	bool Paused;
 	bool PendingTrigger;
 	size_t TimerHandlerSequence; //to track the valid (latest) handler

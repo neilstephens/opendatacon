@@ -74,6 +74,7 @@ public:
 	odc::QualityFlags FlagsToSetOnLinkStatus;   /// The flags to Set when SetQualityOnLinkStatus is true
 	odc::QualityFlags FlagsToClearOnLinkStatus; /// The flags to Clear when SetQualityOnLinkStatus is true
 	uint32_t CommsPointRideThroughTimems;       /// How long to wait before admitting the link is down
+	bool CommsPointRideThroughDemandPause;      /// Whether to pause the ridethrough timer if there's no 'demand'
 	uint32_t CommsPointHeartBeatTimems;         /// Send a periodic comms event with this period if non zero
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	opendnp3::ClassField GetEventScanOnEventsAvailableClassMask();

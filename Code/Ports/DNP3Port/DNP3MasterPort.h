@@ -151,10 +151,19 @@ private:
 					IntegrityScanNeeded = true;
 				}
 			});
-
 		pMaster->Enable();
+		pCommsRideThroughTimer->Resume();
 	}
-	inline void DisableStack() override { pMaster->Disable(); }
+	inline void DisableStack() override
+	{
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		if(enabled && pConf->OnDemand
+		   && pConf->pPointConf->CommsPointRideThroughTimems > 0
+		   && pConf->pPointConf->CommsPointRideThroughDemandPause)
+			pCommsRideThroughTimer->Pause();
+
+		pMaster->Disable();
+	}
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)
 	{
 		DNP3PortConf* pConf = static_cast<DNP3PortConf*>(this->pConf.get());

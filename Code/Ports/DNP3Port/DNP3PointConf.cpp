@@ -56,6 +56,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
+	CommsPointRideThroughDemandPause(true),
 	CommsPointHeartBeatTimems(0),
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	EventScanOnEventsAvailableClass1(false),
@@ -324,6 +325,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
 			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("RideThroughDemandPause"))
+			CommsPointRideThroughDemandPause = JSONRoot["CommsPoint"]["RideThroughDemandPause"].asBool();
 		if(JSONRoot["CommsPoint"].isMember("HeartBeatTimems"))
 			CommsPointHeartBeatTimems = JSONRoot["CommsPoint"]["HeartBeatTimems"].asUInt();
 	}

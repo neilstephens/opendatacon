@@ -28,7 +28,7 @@ CommsRideThroughTimer::CommsRideThroughTimer(odc::asio_service &ios,
 	Timeoutms(aTimeoutms),
 	pTimerAccessStrand(ios.make_strand()),
 	RideThroughInProgress(false),
-	CommsIsBad(false),
+	Comms(CommsState::NUL),
 	Paused(false),
 	PendingTrigger(false),
 	TimerHandlerSequence(0),
@@ -59,7 +59,7 @@ void CommsRideThroughTimer::HeartBeat()
 			auto self = weak_self.lock();
 			if(!self || self->HeartBeatTimems == 0)
 				return;
-			self->HeartBeatCB(self->CommsIsBad);
+			self->HeartBeatCB(self->Comms == CommsState::BAD);
 			self->HeartBeat();
 		}));
 }
@@ -73,7 +73,7 @@ void CommsRideThroughTimer::Trigger()
 			if(!self)
 				return;
 
-			if(self->RideThroughInProgress || self->CommsIsBad)
+			if(self->RideThroughInProgress || self->Comms == CommsState::BAD)
 				return;
 
 			if(self->Paused)
@@ -94,7 +94,7 @@ void CommsRideThroughTimer::Trigger()
 					if(self->RideThroughInProgress)
 					{
 						self->CommsBadCB();
-						self->CommsIsBad = true;
+						self->Comms = CommsState::BAD;
 						self->msRemaining = self->Timeoutms;
 					}
 					self->RideThroughInProgress = false;
@@ -180,6 +180,7 @@ void CommsRideThroughTimer::Cancel()
 			auto self = weak_self.lock();
 			if(!self)
 				return;
+
 			if(self->RideThroughInProgress)
 			{
 				self->RideThroughInProgress = false;
@@ -188,11 +189,13 @@ void CommsRideThroughTimer::Cancel()
 				self->TimerHandlerSequence++;
 				self->pCommsRideThroughTimer->cancel();
 			}
-			else if (self->CommsIsBad)
+
+			if(self->Comms != CommsState::GOOD)
 			{
 				self->CommsGoodCB();
-				self->CommsIsBad = false;
+				self->Comms = CommsState::GOOD;
 			}
+
 			self->PendingTrigger = false;
 			self->msRemaining = self->Timeoutms;
 		});
