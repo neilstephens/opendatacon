@@ -27,6 +27,7 @@
 #ifndef COMMSRIDETHROUGHTIMER_H
 #define COMMSRIDETHROUGHTIMER_H
 
+#include <opendatacon/util.h>
 #include <opendatacon/asio.h>
 #include <functional>
 
@@ -41,6 +42,8 @@ public:
 		const uint32_t aHeartBeatTimems = 0);
 	~CommsRideThroughTimer();
 	void Trigger();
+	void Pause();
+	void Resume();
 	void FastForward();
 	void Cancel();
 
@@ -59,6 +62,11 @@ private:
 	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
 	bool RideThroughInProgress;
 	bool CommsIsBad;
+	bool Paused;
+	bool PendingTrigger;
+	size_t TimerHandlerSequence; //to track the valid (latest) handler
+	odc::msSinceEpoch_t ExpiryTime;
+	uint32_t msRemaining;
 	std::unique_ptr<asio::steady_timer> pCommsRideThroughTimer;
 	std::unique_ptr<asio::steady_timer> pHeartBeatTimer;
 	const std::function<void()> CommsGoodCB;
