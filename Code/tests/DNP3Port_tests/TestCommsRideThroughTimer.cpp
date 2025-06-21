@@ -31,7 +31,7 @@
 
 const size_t testTimeout = 10000;
 
-const size_t msRideTime = 200;
+const size_t msRideTime = 1000;
 std::atomic_bool CommsIsBad = false;
 std::atomic_bool CommsToggled = false;
 const auto SetCommsBad = [](){ CommsIsBad = true; };
