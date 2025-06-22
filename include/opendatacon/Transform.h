@@ -44,6 +44,8 @@ public:
 	{}
 	virtual ~Transform(){}
 
+	virtual void Enable() {}
+	virtual void Disable() {}
 	virtual void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) = 0;
 
 	const std::string Name;
