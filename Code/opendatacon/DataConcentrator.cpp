@@ -79,6 +79,7 @@ inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_pt
 		{
 			lognames.push_back(log->name());
 		});
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 	for(const auto& name : lognames)
 		AddLogger(name, sinks);

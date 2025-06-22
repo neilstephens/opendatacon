@@ -227,6 +227,7 @@ int main(int argc, char* argv[])
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->flush();
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 	odc::spdlog_shutdown();
 
