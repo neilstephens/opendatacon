@@ -40,6 +40,22 @@ public:
 	LuaTransform(const std::string& Name, const Json::Value& params);
 	~LuaTransform();
 
+	void Enable() override
+	{
+		pLuaSyncStrand->post([this,h{handler_tracker}]()
+			{
+				Enable_();
+			});
+	}
+
+	void Disable() override
+	{
+		pLuaSyncStrand->post([this,h{handler_tracker}]()
+			{
+				Disable_();
+			});
+	}
+
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
 		pLuaSyncStrand->post([this,event,pAllow,h{handler_tracker}]()
@@ -56,6 +72,8 @@ private:
 	std::shared_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();
 
 	//synchronised versions of pubilic counterpart above
+	void Enable_();
+	void Disable_();
 	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
 
 	lua_State* LuaState = luaL_newstate();

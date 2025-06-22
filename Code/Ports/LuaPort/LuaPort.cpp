@@ -39,6 +39,8 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 
 LuaPort::~LuaPort()
 {
+	lua_gc(LuaState,LUA_GCCOLLECT);
+
 	//Wait for outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
