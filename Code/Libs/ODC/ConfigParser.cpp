@@ -50,10 +50,35 @@ void ConfigParser::ProcessInherits(const std::string& FileName)
 
 void ConfigParser::ProcessFile()
 {
-	if(!ConfFilename.empty())
-		ProcessInherits(ConfFilename);
-	if(!ConfOverrides.isNull())
-		ProcessElements(ConfOverrides);
+	try
+	{
+		if(!ConfFilename.empty())
+			ProcessInherits(ConfFilename);
+	}
+	catch(const std::exception& e)
+	{
+		std::string msg("Exception processing configuration file '" + ConfFilename + "': " + e.what());
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error(msg);
+		else
+			std::cerr << "ERROR: " << msg << std::endl;
+		throw std::runtime_error(msg);
+	}
+
+	try
+	{
+		if(!ConfOverrides.isNull())
+			ProcessElements(ConfOverrides);
+	}
+	catch(const std::exception& e)
+	{
+		std::string msg("Exception processing configuration overrides: '"+ ConfOverrides.toStyledString() +"' :" + e.what());
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error(msg);
+		else
+			std::cerr << "ERROR: " << msg << std::endl;
+		throw std::runtime_error(msg);
+	}
 }
 
 //static
