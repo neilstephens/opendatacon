@@ -49,14 +49,8 @@ public:
 	void FastForward();
 	void Cancel();
 
-	inline void StartHeartBeat()
-	{
-		HeartBeat();
-	}
-	inline void StopHeartBeat()
-	{
-		pHeartBeatTimer->cancel();
-	}
+	void StartHeartBeat();
+	void StopHeartBeat();
 
 private:
 	void HeartBeat();
@@ -75,6 +69,7 @@ private:
 	const std::function<void()> CommsBadCB;
 	const std::function<void(bool CommsIsBad)> HeartBeatCB;
 	const uint32_t HeartBeatTimems;
+	bool HeartBeatStopped;
 };
 
 #endif // COMMSRIDETHROUGHTIMER_H

@@ -48,22 +48,6 @@ CommsRideThroughTimer::~CommsRideThroughTimer()
 	pHeartBeatTimer->cancel();
 }
 
-void CommsRideThroughTimer::HeartBeat()
-{
-	auto weak_self = weak_from_this();
-	pHeartBeatTimer->expires_from_now(std::chrono::milliseconds(HeartBeatTimems));
-	pHeartBeatTimer->async_wait(pTimerAccessStrand->wrap([weak_self](asio::error_code err)
-		{
-			if(err)
-				return;
-			auto self = weak_self.lock();
-			if(!self || self->HeartBeatTimems == 0)
-				return;
-			self->HeartBeatCB(self->Comms == CommsState::BAD);
-			self->HeartBeat();
-		}));
-}
-
 void CommsRideThroughTimer::Trigger()
 {
 	auto weak_self = weak_from_this();
@@ -199,4 +183,47 @@ void CommsRideThroughTimer::Cancel()
 			self->PendingTrigger = false;
 			self->msRemaining = self->Timeoutms;
 		});
+}
+
+void CommsRideThroughTimer::StartHeartBeat()
+{
+	auto weak_self = weak_from_this();
+	pTimerAccessStrand->post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			self->HeartBeatStopped = false;
+			self->HeartBeat();
+		});
+}
+
+void CommsRideThroughTimer::StopHeartBeat()
+{
+	auto weak_self = weak_from_this();
+	pTimerAccessStrand->post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			self->HeartBeatStopped = true;
+			self->pHeartBeatTimer->cancel();
+		});
+}
+
+void CommsRideThroughTimer::HeartBeat()
+{
+	auto weak_self = weak_from_this();
+	pHeartBeatTimer->expires_from_now(std::chrono::milliseconds(HeartBeatTimems));
+	pHeartBeatTimer->async_wait(pTimerAccessStrand->wrap([weak_self](asio::error_code err)
+		{
+			auto self = weak_self.lock();
+			if(!self || self->HeartBeatTimems == 0 || self->HeartBeatStopped)
+				return;
+			if(!self->Paused)
+				self->HeartBeatCB(self->Comms == CommsState::BAD);
+			self->HeartBeat();
+		}));
 }
