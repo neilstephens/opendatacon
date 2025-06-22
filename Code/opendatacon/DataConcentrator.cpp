@@ -796,9 +796,8 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> levels;
 	try
 	{
-		levels = ConfigureLogSinks(JSONRoot);
-
 		odc::spdlog_init_thread_pool(4096,3);
+		levels = ConfigureLogSinks(JSONRoot);
 		AddLogger("opendatacon", LogSinks);
 	}
 	catch (const spdlog::spdlog_ex& ex)
