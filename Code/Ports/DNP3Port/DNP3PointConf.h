@@ -155,8 +155,11 @@ public:
 
 
 	// Point Configuration
-	// TODO: use struct or class for point configuration
+
 	std::pair<opendnp3::Binary, size_t> mCommsPoint;
+	bool AllowUnknownIndexes;
+
+	// TODO: use struct or class for point configuration
 
 	// Binary Point Configuration
 	std::vector<uint16_t> BinaryIndexes;

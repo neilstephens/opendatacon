@@ -457,8 +457,34 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
 				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
 					event->SetTimestamp();
-			PublishEvent(event);
-			pDB->Set(event);
+
+			bool unknown_point = pDB->Set(event);
+			bool publish = true;
+			if(unknown_point)
+			{
+				auto log_level = spdlog::level::err;
+				if(pConf->pPointConf->AllowUnknownIndexes)
+					log_level = spdlog::level::warn;
+				else
+					publish = false;
+
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->log(log_level, "{}: Received {} from stack for unconfigured index ({})",
+						Name, ToString(event->GetEventType()), event->GetIndex());
+			}
+
+			//log an error if we get a binary that clashes with the index of our comms point
+			if(pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE)
+			   && event->GetEventType() == EventType::Binary
+			   && event->GetIndex() == pConf->pPointConf->mCommsPoint.second)
+			{
+				publish = false;
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->error("{}: Received Binary that clashes with comms point index ({})", Name, event->GetIndex());
+			}
+
+			if(publish)
+				PublishEvent(event);
 		});
 }
 
