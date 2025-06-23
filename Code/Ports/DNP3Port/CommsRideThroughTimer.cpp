@@ -28,7 +28,12 @@ CommsRideThroughTimer::CommsRideThroughTimer(odc::asio_service &ios,
 	Timeoutms(aTimeoutms),
 	pTimerAccessStrand(ios.make_strand()),
 	RideThroughInProgress(false),
-	CommsIsBad(false),
+	Comms(CommsState::NUL),
+	Paused(false),
+	PendingTrigger(false),
+	TimerHandlerSequence(0),
+	ExpiryTime(0),
+	msRemaining(Timeoutms),
 	pCommsRideThroughTimer(ios.make_steady_timer()),
 	pHeartBeatTimer(ios.make_steady_timer()),
 	CommsGoodCB(aCommsGoodCB),
@@ -43,81 +48,182 @@ CommsRideThroughTimer::~CommsRideThroughTimer()
 	pHeartBeatTimer->cancel();
 }
 
-void CommsRideThroughTimer::HeartBeat()
-{
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
-	pHeartBeatTimer->expires_from_now(std::chrono::milliseconds(HeartBeatTimems));
-	pHeartBeatTimer->async_wait(pTimerAccessStrand->wrap([weak_self](asio::error_code err)
-		{
-			if(err)
-				return;
-			auto self = weak_self.lock();
-			if(!self || self->HeartBeatTimems == 0)
-				return;
-			self->HeartBeatCB(self->CommsIsBad);
-			self->HeartBeat();
-		}));
-}
-
 void CommsRideThroughTimer::Trigger()
 {
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	auto weak_self = weak_from_this();
 	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
 			if(!self)
 				return;
 
-			if(self->RideThroughInProgress || self->CommsIsBad)
+			if(self->RideThroughInProgress || self->Comms == CommsState::BAD)
 				return;
 
+			if(self->Paused)
+			{
+				self->PendingTrigger = true;
+				return;
+			}
+
 			self->RideThroughInProgress = true;
-			self->pCommsRideThroughTimer->expires_from_now(std::chrono::milliseconds(self->Timeoutms));
-			self->pCommsRideThroughTimer->async_wait(self->pTimerAccessStrand->wrap([weak_self](asio::error_code err)
+			self->ExpiryTime = odc::msSinceEpoch()+self->msRemaining;
+			self->pCommsRideThroughTimer->expires_from_now(std::chrono::milliseconds(self->msRemaining));
+			self->pCommsRideThroughTimer->async_wait(self->pTimerAccessStrand->wrap([weak_self,seq{++self->TimerHandlerSequence}](asio::error_code err)
 				{
 					auto self = weak_self.lock();
-					if(!self)
+					if(!self || seq != self->TimerHandlerSequence)
 						return;
+
 					if(self->RideThroughInProgress)
 					{
 						self->CommsBadCB();
-						self->CommsIsBad = true;
+						self->Comms = CommsState::BAD;
+						self->msRemaining = self->Timeoutms;
 					}
 					self->RideThroughInProgress = false;
+					self->ExpiryTime = 0;
 				}));
+		});
+}
+
+void CommsRideThroughTimer::Pause()
+{
+	auto weak_self = weak_from_this();
+	pTimerAccessStrand->post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			if(self->Paused)
+				return;
+
+			self->Paused = true;
+
+			if(self->RideThroughInProgress)
+			{
+				auto now = odc::msSinceEpoch();
+				self->msRemaining = (self->ExpiryTime > now) ? (self->ExpiryTime - now) : 0;
+
+				self->PendingTrigger = true;
+				self->RideThroughInProgress = false;
+				self->ExpiryTime = 0;
+				//cancel the timer and bump the sequence number so the current handler does nothing
+				self->TimerHandlerSequence++;
+				self->pCommsRideThroughTimer->cancel();
+			}
+		});
+}
+
+void CommsRideThroughTimer::Resume()
+{
+	auto weak_self = weak_from_this();
+	pTimerAccessStrand->post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			if(!self->Paused)
+				return;
+
+			self->Paused = false;
+
+			if(self->PendingTrigger)
+			{
+				self->PendingTrigger = false;
+				self->Trigger();
+			}
 		});
 }
 
 void CommsRideThroughTimer::FastForward()
 {
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	auto weak_self = weak_from_this();
 	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
 			if(!self)
 				return;
+			if(self->Paused && self->PendingTrigger)
+				self->msRemaining = 0;
 			if(self->RideThroughInProgress)
+			{
+				self->ExpiryTime = odc::msSinceEpoch();
 				self->pCommsRideThroughTimer->cancel();
+			}
 		});
 }
 
 void CommsRideThroughTimer::Cancel()
 {
-	std::weak_ptr<CommsRideThroughTimer> weak_self = shared_from_this();
+	auto weak_self = weak_from_this();
 	pTimerAccessStrand->post([weak_self]()
 		{
 			auto self = weak_self.lock();
 			if(!self)
 				return;
+
 			if(self->RideThroughInProgress)
 			{
 				self->RideThroughInProgress = false;
+				self->ExpiryTime = 0;
+				//cancel the timer and bump the sequence number so the current handler does nothing
+				self->TimerHandlerSequence++;
 				self->pCommsRideThroughTimer->cancel();
 			}
-			else
+
+			if(self->Comms != CommsState::GOOD)
 			{
 				self->CommsGoodCB();
-				self->CommsIsBad = false;
+				self->Comms = CommsState::GOOD;
 			}
+
+			self->PendingTrigger = false;
+			self->msRemaining = self->Timeoutms;
 		});
+}
+
+void CommsRideThroughTimer::StartHeartBeat()
+{
+	auto weak_self = weak_from_this();
+	pTimerAccessStrand->post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			self->HeartBeatStopped = false;
+			self->HeartBeat();
+		});
+}
+
+void CommsRideThroughTimer::StopHeartBeat()
+{
+	auto weak_self = weak_from_this();
+	pTimerAccessStrand->post([weak_self]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			self->HeartBeatStopped = true;
+			self->pHeartBeatTimer->cancel();
+		});
+}
+
+void CommsRideThroughTimer::HeartBeat()
+{
+	auto weak_self = weak_from_this();
+	pHeartBeatTimer->expires_from_now(std::chrono::milliseconds(HeartBeatTimems));
+	pHeartBeatTimer->async_wait(pTimerAccessStrand->wrap([weak_self](asio::error_code err)
+		{
+			auto self = weak_self.lock();
+			if(!self || self->HeartBeatTimems == 0 || self->HeartBeatStopped)
+				return;
+			if(!self->Paused)
+				self->HeartBeatCB(self->Comms == CommsState::BAD);
+			self->HeartBeat();
+		}));
 }

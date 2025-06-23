@@ -34,6 +34,7 @@
 // So leave the extension bit out for the moment, just get to the pont where we can load the class and call its methods...
 
 #include "PyPort.h"
+#include <opendatacon/MergeJsonConf.h>
 #include <chrono>
 #include <cstdio>
 #include <ctime>
@@ -774,9 +775,7 @@ void PyPort::PostResponseCallbackCall(const ResponseCallback_t & pResponseCallba
 // This should be called twice, once for the config file setion, and the second for config overrides.
 void PyPort::ProcessElements(const Json::Value& JSONRoot)
 {
-	auto MemberNames = JSONRoot.getMemberNames();
-	for(auto mn : MemberNames)
-		JSONConf[mn] = JSONRoot[mn];
+	MergeJsonConf(JSONConf, JSONRoot);
 
 	if (JSONRoot.isMember("ModuleName"))
 		MyConf->pyModuleName = JSONRoot["ModuleName"].asString();
@@ -802,6 +801,8 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		auto fmt = JSONRoot["OctetStringFormat"].asString();
 		if(fmt == "Hex")
 			MyConf->pyOctetStringFormat = DataToStringMethod::Hex;
+		else if(fmt == "Base64")
+			MyConf->pyOctetStringFormat = DataToStringMethod::Base64;
 		else if(fmt == "Raw")
 			MyConf->pyOctetStringFormat = DataToStringMethod::Raw;
 		else

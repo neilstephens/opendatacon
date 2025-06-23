@@ -43,7 +43,6 @@
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides, false),
 	pOutstation(nullptr),
-	stack_enabled(false),
 	master_time_offset(0),
 	IINFlags(AppIINFlags::NONE),
 	last_time_sync(msSinceEpoch()),
@@ -96,13 +95,9 @@ void DNP3OutstationPort::Enable()
 	if(pConf->pPointConf->TimeSyncOnStart)
 		SetIINFlags(AppIINFlags::NEED_TIME);
 
-	if(!stack_enabled && !(pConf->mAddrConf.ServerType == server_type_t::MANUAL))
-	{
-		if(pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || InDemand())
-			EnableStack();
-	}
-
 	enabled = true;
+
+	CheckStackState();
 
 	PublishEvent(ConnectState::PORT_UP);
 }
@@ -112,9 +107,9 @@ void DNP3OutstationPort::Disable()
 		return;
 	enabled = false;
 
-	DisableStack();
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: DNP3 stack disabled", Name);
+	CheckStackState();
+
+	PublishEvent(ConnectState::PORT_DOWN);
 }
 
 // Called by OpenDNP3 Thread Pool
@@ -141,37 +136,16 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 	{
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link up.", Name);
+
 		NotifyOfConnection();
 	}
 
 	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
 	{
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if(auto log = odc::spdlog_get("DNP3Port"))
 			log->debug("{}: Link down.", Name);
 
 		NotifyOfDisconnection();
-
-		if(pConf->mAddrConf.ServerType == server_type_t::MANUAL
-		   ||(pConf->mAddrConf.ServerType == server_type_t::ONDEMAND && !InDemand()))
-		{
-			pIOS->post([this]()
-				{
-					DisableStack();
-				});
-		}
-	}
-}
-void DNP3OutstationPort::ChannelWatchdogTrigger(bool on)
-{
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
-	if(stack_enabled)
-	{
-		if(on)
-			pOutstation->Disable();
-		else
-			pOutstation->Enable();
 	}
 }
 
@@ -453,18 +427,14 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return FromODC(cb_status);
 }
 
-inline void DNP3OutstationPort::UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual)
+inline bool DNP3OutstationPort::UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual)
 {
 	auto prev_event = pDB->Get(event_type,index);
 	if(!prev_event)
-	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->warn("{}: {} recived for unconfigured index ({})", Name, ToString(event_type), index);
-		return;
-	}
+		return false;
 	auto prev_event_copy = std::make_shared<EventInfo>(*prev_event);
 	prev_event_copy->SetQuality(qual);
-	pDB->Set(prev_event_copy);
+	return pDB->Set(prev_event_copy);
 }
 
 template<>
@@ -494,39 +464,59 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
-	pDB->Set(event);
+
+	bool point_exists = pDB->Set(event);
 
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
-			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
-			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::OctetString:
-			EventT(FromODC<opendnp3::OctetString>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::OctetString>(event), event->GetIndex());
 			break;
 		case EventType::AnalogOutputStatus:
-			EventT(FromODC<opendnp3::AnalogOutputStatus>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::AnalogOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::BinaryOutputStatus:
-			EventT(FromODC<opendnp3::BinaryOutputStatus>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::BinaryOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
-			UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());
-			EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
+			point_exists = UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
-			UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>());
-			EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
+			point_exists = UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
+			break;
+		case EventType::AnalogOutputStatusQuality:
+			point_exists = UpdateQuality(EventType::AnalogOutputStatus,event->GetIndex(),event->GetPayload<EventType::AnalogOutputStatusQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::AnalogOutputStatusQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogOutputStatus);
+			break;
+		case EventType::BinaryOutputStatusQuality:
+			point_exists = UpdateQuality(EventType::BinaryOutputStatus,event->GetIndex(),event->GetPayload<EventType::BinaryOutputStatusQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::BinaryOutputStatusQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryOutputStatus);
+			break;
+		case EventType::OctetStringQuality:
+			point_exists = UpdateQuality(EventType::OctetString,event->GetIndex(),event->GetPayload<EventType::OctetStringQuality>());
+			//DNP3 OctetStrings don't have a quality, so the quality only goes in the local point DB
 			break;
 		case EventType::ConnectState:
-			Event(event->GetPayload<EventType::ConnectState>());
+			CheckStackState();
 			break;
 		default:
 			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 			return;
+	}
+	if(!point_exists)
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("{}: {} received for unconfigured index ({})", Name, ToString(event->GetEventType()), event->GetIndex());
+		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		return;
 	}
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
@@ -561,37 +551,6 @@ inline void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetStr
 	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index, opendnp3::EventMode::Force);
 	pOutstation->Apply(builder.Build());
-}
-
-inline void DNP3OutstationPort::Event(odc::ConnectState state)
-{
-	//TODO: this is common code with DNP3MasterPort. It can move to DNP3Port,
-	//  and should be refactored out into a synchronised state machine for the stack state
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	// If an upstream port is connected, attempt a connection (if on demand)
-	if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->info("{}: Upstream port connected, performing on-demand connection.", Name);
-
-		pIOS->post([this]()
-			{
-				EnableStack();
-			});
-	}
-
-	// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
-	if (stack_enabled && !InDemand() && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->info("{}: No upstream connections left, performing on-demand disconnection.", Name);
-
-		pIOS->post([this]()
-			{
-				DisableStack();
-			});
-	}
 }
 
 inline void DNP3OutstationPort::SetIINFlags(const AppIINFlags& flags) const

@@ -56,6 +56,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
+	CommsPointRideThroughDemandPause(true),
 	CommsPointHeartBeatTimems(0),
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	EventScanOnEventsAvailableClass1(false),
@@ -118,7 +119,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MaxCounterEvents(1000),
 	MaxOctetStringEvents(1000),
 	MaxAnalogOutputStatusEvents(1000),
-	MaxBinaryOutputStatusEvents(1000)
+	MaxBinaryOutputStatusEvents(1000),
+	AllowUnknownIndexes(true)
 {
 	ProcessFile();
 }
@@ -324,6 +326,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
 			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("RideThroughDemandPause"))
+			CommsPointRideThroughDemandPause = JSONRoot["CommsPoint"]["RideThroughDemandPause"].asBool();
 		if(JSONRoot["CommsPoint"].isMember("HeartBeatTimems"))
 			CommsPointHeartBeatTimems = JSONRoot["CommsPoint"]["HeartBeatTimems"].asUInt();
 	}
@@ -464,6 +468,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("MaxBinaryOutputStatusEvents"))
 		MaxBinaryOutputStatusEvents = cap_evenbuffer_size("MaxBinaryOutputStatusEvents");
 
+	if (JSONRoot.isMember("AllowUnknownIndexes"))
+		AllowUnknownIndexes = JSONRoot["AllowUnknownIndexes"].asBool();
+
 	auto GetIndexRange = [](const auto& PointArrayElement) -> std::tuple<bool,size_t,size_t>
 				   {
 					   size_t start, stop;
@@ -484,6 +491,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				   };
 
 	//TODO: remove stale code from way back when removing a point on-the-fly was a thing
+	// although overrides and inherits can process a point for a second time...
 	auto InsertOrDeleteIndex = [](const auto& PointArrayElement, auto& IndexVec, auto index) -> bool
 					   {
 						   if (std::find(IndexVec.begin(),IndexVec.end(),index) == IndexVec.end())

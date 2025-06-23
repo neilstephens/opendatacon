@@ -78,6 +78,7 @@ TEST_CASE(SUITE("Call Once"))
 	bool log_line_found = LogContains("error");
 	REQUIRE_FALSE(log_line_found);
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }
 
@@ -93,6 +94,7 @@ TEST_CASE(SUITE("Call Twice"))
 	bool log_line_found = LogContains("One-shot function called more than once.");
 	REQUIRE(log_line_found);
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }
 
@@ -107,6 +109,7 @@ TEST_CASE(SUITE("Call Never"))
 	bool log_line_found = LogContains("One-shot function not called before destruction.");
 	REQUIRE(log_line_found);
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }
 
@@ -126,6 +129,7 @@ TEST_CASE(SUITE("Wrap Twice"))
 	bool log_line_found = LogContains("One-shot function called more than once.");
 	REQUIRE(log_line_found);
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }
 
@@ -153,6 +157,7 @@ TEST_CASE(SUITE("Test IOHandler::PublishEvent"))
 	bool log_line_found = LogContains("One-shot function called more than once.");
 	REQUIRE(log_line_found);
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }
 
@@ -212,6 +217,7 @@ TEST_CASE(SUITE("DataConnector n Transform - Good Behaviour"))
 	bool log_line_found = LogContains("error");
 	REQUIRE_FALSE(log_line_found);
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }
 
@@ -256,6 +262,7 @@ TEST_CASE(SUITE("DataConnector n Transform - Bad Subscribers"))
 	bool log_line_found = LogContains("One-shot function called more than once.");
 	REQUIRE(log_line_found);
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }
 
@@ -298,6 +305,6 @@ TEST_CASE(SUITE("DataConnector n Transform - Bad Transform"))
 	bool log_line_found = LogContains("One-shot function called more than once.");
 	REQUIRE(log_line_found);
 
-
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 }

@@ -62,6 +62,7 @@ inline void TestSetup()
 inline void TestTearDown()
 {
 	PrepConfFiles(false);
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all(); // Close off everything
 }
 

@@ -750,6 +750,27 @@ template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputSta
 
 	return static_cast<opendnp3::BinaryOutputStatusQuality>(dnp3);
 }
+template<> opendnp3::AnalogOutputStatusQuality FromODC<opendnp3::AnalogOutputStatusQuality>(const QualityFlags& qual)
+{
+	uint8_t dnp3 = 0;
+
+	if((qual & QualityFlags::ONLINE) != QualityFlags::NONE)
+		dnp3 |= static_cast<uint8_t>(opendnp3::AnalogOutputStatusQuality::ONLINE);
+	if((qual & QualityFlags::RESTART) != QualityFlags::NONE)
+		dnp3 |= static_cast<uint8_t>(opendnp3::AnalogOutputStatusQuality::RESTART);
+	if((qual & QualityFlags::COMM_LOST) != QualityFlags::NONE)
+		dnp3 |= static_cast<uint8_t>(opendnp3::AnalogOutputStatusQuality::COMM_LOST);
+	if((qual & QualityFlags::REMOTE_FORCED) != QualityFlags::NONE)
+		dnp3 |= static_cast<uint8_t>(opendnp3::AnalogOutputStatusQuality::REMOTE_FORCED);
+	if((qual & QualityFlags::LOCAL_FORCED) != QualityFlags::NONE)
+		dnp3 |= static_cast<uint8_t>(opendnp3::AnalogOutputStatusQuality::LOCAL_FORCED);
+	if((qual & QualityFlags::OVERRANGE) != QualityFlags::NONE)
+		dnp3 |= static_cast<uint8_t>(opendnp3::AnalogOutputStatusQuality::OVERRANGE);
+	if((qual & QualityFlags::REFERENCE_ERR) != QualityFlags::NONE)
+		dnp3 |= static_cast<uint8_t>(opendnp3::AnalogOutputStatusQuality::REFERENCE_ERR);
+
+	return static_cast<opendnp3::AnalogOutputStatusQuality>(dnp3);
+}
 
 template<> opendnp3::Binary FromODC<opendnp3::Binary>(const std::shared_ptr<const EventInfo>& event)
 {
@@ -835,7 +856,7 @@ template<> opendnp3::AnalogOutputStatus FromODC<opendnp3::AnalogOutputStatus>(co
 {
 	opendnp3::AnalogOutputStatus dnp3(event->GetPayload<EventType::AnalogOutputStatus>());
 
-	auto qual = FromODC<opendnp3::AnalogQuality>(event->GetQuality());
+	auto qual = FromODC<opendnp3::AnalogOutputStatusQuality>(event->GetQuality());
 	dnp3.flags.Set(qual);
 	dnp3.time.value = event->GetTimestamp();
 
@@ -914,6 +935,18 @@ template<> opendnp3::BinaryOutputStatusQuality FromODC<opendnp3::BinaryOutputSta
 			return FromODC<opendnp3::BinaryOutputStatusQuality>(event->GetPayload<EventType::BinaryOutputStatusQuality>());
 		case EventType::BinaryOutputStatus:
 			return FromODC<opendnp3::BinaryOutputStatusQuality>(event->GetQuality());
+		default:
+			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
+	}
+}
+template<> opendnp3::AnalogOutputStatusQuality FromODC<opendnp3::AnalogOutputStatusQuality>(const std::shared_ptr<const EventInfo>& event)
+{
+	switch(event->GetEventType())
+	{
+		case EventType::AnalogOutputStatusQuality:
+			return FromODC<opendnp3::AnalogOutputStatusQuality>(event->GetPayload<EventType::AnalogOutputStatusQuality>());
+		case EventType::AnalogOutputStatus:
+			return FromODC<opendnp3::AnalogOutputStatusQuality>(event->GetQuality());
 		default:
 			throw std::runtime_error("Wrong quality type requested for selected odc::EventInfo");
 	}

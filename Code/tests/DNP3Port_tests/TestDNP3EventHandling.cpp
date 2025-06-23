@@ -37,13 +37,15 @@
 constexpr size_t num_indexes = 1024; //needs a multiple of 4 for the Analog Output Types
 constexpr size_t test_timeout_ms = 10000;
 
+constexpr size_t comms_idx = num_indexes;
+const Json::UInt comms_ride_time_ms(500);
+
 constexpr const char* AnaOutTypes[] = {"AnalogOutputInt16", "AnalogOutputInt32", "AnalogOutputFloat32", "AnalogOutputDouble64"};
 
-std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const module_ptr portlib)
+std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const module_ptr portlib, const std::string& OutstationServerType = "PERSISTENT", const std::string& MasterServerType = "PERSISTENT", bool RideThroughDemandPause = true)
 {
 	//make a config
 	Json::Value conf = Json::objectValue;
-	conf["ServerType"] = "PERSISTENT";
 	//add some points
 	for(auto& PointType : {"Analogs", "Binaries", "OctetStrings", "BinaryControls", "AnalogControls", "BinaryOutputStatuses", "AnalogOutputStatuses"})
 	{
@@ -75,8 +77,13 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	conf["MaxAnalogOutputStatusEvents"] = Json::UInt(num_indexes+1);
 	conf["MaxOctetStringEvents"] = Json::UInt(num_indexes+1);
 
+	conf["CommsPoint"]["Index"] = Json::UInt(comms_idx);
+	conf["CommsPoint"]["FailValue"] = false;
+	conf["CommsPoint"]["RideThroughTimems"] = Json::UInt(comms_ride_time_ms);
+	conf["CommsPoint"]["RideThroughDemandPause"] = RideThroughDemandPause;
 
 	//make an outstation port
+	conf["ServerType"] = OutstationServerType;
 	newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
 	REQUIRE(newOutstation);
 	delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
@@ -85,6 +92,7 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	REQUIRE(OPUT);
 
 	//make a master port
+	conf["ServerType"] = MasterServerType;
 	newptr newMaster = GetPortCreator(portlib, "DNP3Master");
 	REQUIRE(newMaster);
 	delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
@@ -99,23 +107,28 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	return std::make_pair(OPUT, MPUT);
 }
 
-bool WaitForLinkUp(const std::shared_ptr<DataPort>& port, const size_t timeout_ms = 20000)
+bool WaitForLink(const std::shared_ptr<DataPort>& port, const std::string& FromStatusStr, const std::string& ToStatusStr, const size_t timeout_ms = 20000)
 {
 	unsigned int count = 0;
-	while((port->GetStatus()["Result"].asString() == "Port enabled - link down") && count < timeout_ms)
+	while((port->GetStatus()["Result"].asString() == FromStatusStr) && count < timeout_ms)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
 	}
-	return (port->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+	return (port->GetStatus()["Result"].asString() == ToStatusStr);
 }
 
 template<odc::EventType ET, typename PayloadT>
 void SendEvent(const std::shared_ptr<DataPort>& port, const size_t idx, PayloadT payload)
 {
+	const std::string src = "Test";
+
+	if constexpr (std::is_same_v<PayloadT, ConnectState>)
+		port->Event(payload,src);
+
 	auto event = std::make_shared<odc::EventInfo>(ET, idx);
 	event->SetPayload<ET>(std::move(payload));
-	port->Event(event, "Test", std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}));
+	port->Event(event, src, std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}));
 }
 
 template<odc::EventType ET, typename ExpectedT>
@@ -226,7 +239,7 @@ TEST_CASE(SUITE("Analogs"))
 		ThreadPool thread_pool(1); //TODO: Use more threads
 		OPUT->Enable();
 		MPUT->Enable();
-		CHECK(WaitForLinkUp(MPUT));
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
 
 		//send a value to each index
 		std::vector<double> values;
@@ -257,7 +270,7 @@ TEST_CASE(SUITE("Binaries"))
 		ThreadPool thread_pool(1); //TODO: Use more threads
 		OPUT->Enable();
 		MPUT->Enable();
-		CHECK(WaitForLinkUp(MPUT));
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
 
 		//send a value to each index
 		std::vector<bool> values;
@@ -288,7 +301,7 @@ TEST_CASE(SUITE("OctetStrings"))
 		ThreadPool thread_pool(1); //TODO: Use more threads
 		OPUT->Enable();
 		MPUT->Enable();
-		CHECK(WaitForLinkUp(MPUT));
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
 
 		//send a value to each index
 		std::vector<odc::OctetStringBuffer> values;
@@ -319,7 +332,7 @@ TEST_CASE(SUITE("BinaryControls"))
 		ThreadPool thread_pool(1); //TODO: Use more threads
 		OPUT->Enable();
 		MPUT->Enable();
-		CHECK(WaitForLinkUp(MPUT));
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
 
 		//send a value to each index
 		std::vector<typename EventTypePayload<odc::EventType::ControlRelayOutputBlock>::type> values;
@@ -370,7 +383,7 @@ TEST_CASE(SUITE("AnalogControls"))
 		ThreadPool thread_pool(1); //TODO: Use more threads
 		OPUT->Enable();
 		MPUT->Enable();
-		CHECK(WaitForLinkUp(MPUT));
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
 
 		CheckAnalogOutRange<odc::EventType::AnalogOutputDouble64>(MPUT, OPUT, -4e38, 4e38);
 		CheckAnalogOutRange<odc::EventType::AnalogOutputFloat32>(MPUT, OPUT, -2500000000, 2500000000);
@@ -397,7 +410,7 @@ TEST_CASE(SUITE("AnalogOutputStatuses"))
 		ThreadPool thread_pool(1); //TODO: Use more threads
 		OPUT->Enable();
 		MPUT->Enable();
-		CHECK(WaitForLinkUp(MPUT));
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
 
 		//send a value to each index
 		std::vector<double> values;
@@ -428,7 +441,7 @@ TEST_CASE(SUITE("BinaryOutputStatuses"))
 		ThreadPool thread_pool(1); //TODO: Use more threads
 		OPUT->Enable();
 		MPUT->Enable();
-		CHECK(WaitForLinkUp(MPUT));
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
 
 		//send a value to each index
 		std::vector<bool> values;
@@ -438,6 +451,190 @@ TEST_CASE(SUITE("BinaryOutputStatuses"))
 			SendEvent<odc::EventType::BinaryOutputStatus>(OPUT, idx, values.back());
 		}
 		CheckPointDB<odc::EventType::BinaryOutputStatus>(MPUT, values);
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("ConnectState"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports up and going
+		auto [OPUT, MPUT] = MakePorts(portlib,"ONDEMAND","ONDEMAND");
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+
+		//Trigger on-demand enablement of the port DNP3 stacks
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		//Remove demand from Master - it should drop the connection
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
+
+		//Put it back
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		//Remove demand from Outstation - it should drop the connection
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
+
+		//Put it back
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		//Remove demand from Master (again) - it should drop the connection
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
+
+		//This time send a fleeting connection - and do it a few times to be sure
+		for (int i = 0; i < 10; ++i)
+		{
+			SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+			SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			CHECK(WaitForLink(MPUT,"N/A","Port enabled - link down"));
+		}
+
+		//And fleeting the opposite way
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+		for (int i = 0; i < 10; ++i)
+		{
+			SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+			SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			CHECK(WaitForLink(MPUT,"N/A","Port enabled - link up (unreset)"));
+		}
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+bool WaitForCommsPoint(std::shared_ptr<DataPort> pPort, bool val, size_t timeout = test_timeout_ms)
+{
+	auto pIOS = odc::asio_service::Get();
+	auto start_time = odc::msSinceEpoch();
+	while((odc::msSinceEpoch() - start_time) < timeout)
+	{
+		auto event = pPort->pEventDB()->Get(odc::EventType::Binary, comms_idx);
+		try
+		{
+			if(event->GetPayload<EventType::Binary>() == val)
+				break;
+		}
+		catch(std::exception&)
+		{}
+		pIOS->poll_one();
+	}
+	return ((odc::msSinceEpoch() - start_time) < timeout);
+}
+
+TEST_CASE(SUITE("CommsPoint RideThrough"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports up and going
+		auto [OPUT, MPUT] = MakePorts(portlib,"ONDEMAND","ONDEMAND");
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+
+		//Trigger on-demand enablement of the port DNP3 stacks
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForCommsPoint(MPUT,true));
+
+		//Get the OS to drop the connection, and measure the comms point ride-through time
+		auto start_time = odc::msSinceEpoch();
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForCommsPoint(MPUT,false));
+		auto measured_duration = odc::msSinceEpoch() - start_time;
+		CHECK(measured_duration > 0.9*comms_ride_time_ms);
+		CHECK(measured_duration < 1.1*comms_ride_time_ms);
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("CommsPoint RideThrough Pause"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports up and going
+		auto [OPUT, MPUT] = MakePorts(portlib,"ONDEMAND","ONDEMAND");
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+
+		//Trigger on-demand enablement of the port DNP3 stacks
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForCommsPoint(MPUT,true));
+
+		//Get the MS to drop the connection and make sure the comms point doesn't go off (ride-through paused)
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
+		CHECK_FALSE(WaitForCommsPoint(MPUT,false,comms_ride_time_ms*1.1));
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("CommsPoint RideThrough No-Pause"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports up and going
+		auto [OPUT, MPUT] = MakePorts(portlib,"ONDEMAND","ONDEMAND",false);
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+
+		//Trigger on-demand enablement of the port DNP3 stacks
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForCommsPoint(MPUT,true));
+
+		//Get the MS to drop the connection, and measure the comms point ride-through time
+		auto start_time = odc::msSinceEpoch();
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForCommsPoint(MPUT,false));
+		auto measured_duration = odc::msSinceEpoch() - start_time;
+		CHECK(measured_duration > 0.9*comms_ride_time_ms);
+		CHECK(measured_duration < 1.1*comms_ride_time_ms);
 
 		//turn things off
 		OPUT->Disable();

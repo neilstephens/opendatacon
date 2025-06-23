@@ -1,0 +1,254 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * KafkaProducerPort.cpp
+ *
+ *  Created on: 09/07/2024
+ *      Author: Neil Stephens
+ */
+
+#include "KafkaProducerPort.h"
+#include "KafkaPort.h"
+#include "KafkaPortConf.h"
+#include "opendatacon/util.h"
+#include <kafka/Types.h>
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/asio.h>
+#include <opendatacon/spdlog.h>
+#include <kafka/KafkaProducer.h>
+#include <chrono>
+#include <memory>
+#include <string>
+
+void KafkaProducerPort::Build()
+{}
+
+OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const EventInfo> event, const std::string& SenderName)
+{
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	OptionalPoint mapping;
+	if(pConf->pPointMap)
+	{
+		std::string Source = "";
+		if(pConf->PointTraslationSource == SourceLookupMethod::SenderName)
+			Source = SenderName;
+		else if(pConf->PointTraslationSource == SourceLookupMethod::SourcePort)
+			Source = event->GetSourcePort();
+
+		TranslationID tid(Source,event->GetIndex(),event->GetEventType());
+		auto it = pConf->pPointMap->find(tid);
+		if(it != pConf->pPointMap->end())
+			mapping = it->second;
+	}
+	return mapping;
+}
+
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S)
+{
+	std::string message = template_str;
+	auto find_and_replace = [&](const std::string& fnd, const auto& gen_replacement)
+					{
+						size_t pos = 0;
+						while((pos = message.find(fnd, pos)) != std::string::npos)
+						{
+							auto rpl = gen_replacement(event);
+							message.replace(pos, fnd.length(), rpl);
+							pos += rpl.length();
+						}
+					};
+	//Passing a generator lambda to the find_and_replace function means that the expensive string generation is only done if there is a match
+	static auto EVENTTYPE = [](const std::shared_ptr<const EventInfo>& event){ return ToString(event->GetEventType()); };
+	static auto INDEX = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(event->GetIndex()); };
+	static auto TIMESTAMP = [](const std::shared_ptr<const EventInfo>& event){ return std::to_string(event->GetTimestamp()); };
+	static auto QUALITY = [](const std::shared_ptr<const EventInfo>& event){ return ToString(event->GetQuality()); };
+	static auto SOURCEPORT = [](const std::shared_ptr<const EventInfo>& event){ return event->GetSourcePort(); };
+	static auto EVENTTYPE_RAW = [](const std::shared_ptr<const EventInfo>& event)
+					    { return std::to_string(static_cast<std::underlying_type<EventType>::type>(event->GetEventType())); };
+	static auto QUALITY_RAW = [](const std::shared_ptr<const EventInfo>& event)
+					  { return std::to_string(static_cast<std::underlying_type<QualityFlags>::type>(event->GetQuality())); };
+
+	//these aren't static because they need to capture
+	auto SENDERNAME = [&](const std::shared_ptr<const EventInfo>& event){ return SenderName; };
+	auto DATETIME = [&](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp(),dt_fmt); };
+	auto PAYLOAD = [&](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(D2S); };
+
+	find_and_replace("<EVENTTYPE>", EVENTTYPE);
+	find_and_replace("<INDEX>", INDEX);
+	find_and_replace("<TIMESTAMP>", TIMESTAMP);
+	find_and_replace("<DATETIME>", DATETIME);
+	find_and_replace("<QUALITY>", QUALITY);
+	find_and_replace("<PAYLOAD>", PAYLOAD);
+	find_and_replace("<SOURCEPORT>", SOURCEPORT);
+	find_and_replace("<EVENTTYPE_RAW>", EVENTTYPE_RAW);
+	find_and_replace("<QUALITY_RAW>", QUALITY_RAW);
+	find_and_replace("<SENDERNAME>", SENDERNAME);
+	for(const auto& kv : extra_fields)
+		find_and_replace("<POINT:"+kv.first+">", [&](std::shared_ptr<const EventInfo> event){ return kv.second; });
+
+	return message;
+}
+
+//only call this on the pStateSync strand
+void KafkaProducerPort::PortUp()
+{
+	if(pKafkaProducer) return;
+	PublishEvent(ConnectState::CONNECTED);
+	try
+	{
+		pKafkaProducer = KafkaPort::Build<KCP::KafkaProducer>("Producer");
+		if(!pKafkaProducer)
+			throw std::runtime_error(Name+": Failed to build KafkaProducer.");
+	}
+	catch(const std::exception& e)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->error("{}: Failed to create Kafka Producer: {}", Name, e.what());
+		return;
+	}
+}
+
+//only call this on the pStateSync strand
+void KafkaProducerPort::PortDown()
+{
+	if(!pKafkaProducer) return;
+	PublishEvent(ConnectState::DISCONNECTED);
+	pKafkaProducer.reset();
+}
+
+
+void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
+{
+	if(!enabled)
+	{
+		(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
+		return;
+	}
+
+	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(shared_from_this());
+	pStateSync->post([weak_self,event]()
+		{
+			if(auto self = weak_self.lock())
+			{
+				if(event->GetEventType() == EventType::ConnectState)
+				{
+					auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
+					if(pConf->ServerType == server_type_t::ONDEMAND)
+					{
+						if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+							self->PortUp();
+						else if(!self->InDemand())
+							self->PortDown();
+					}
+				}
+			}
+		});
+
+	if(!pKafkaProducer)
+	{
+		(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
+		return;
+	}
+
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+
+	auto point_mapping = CheckPointTranslationMap(event, SenderName);
+
+	if(!point_mapping.has_value() && pConf->BlockUnknownPoints)
+	{
+		if(auto log = odc::spdlog_get("KafkaPort"))
+			log->warn("{}: Event from unmapped point: SenderName({}), SourcePort({}), {}({})",
+				Name, SenderName, event->GetSourcePort(), ToString(event->GetEventType()), event->GetIndex());
+		(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
+		return;
+	}
+
+	//TODO: De-duplication option:
+	//	could initialise and use the point database DataPort::pDB
+	//	pDB->Swap() out the event and see if the quality or payload changed (optionally configurable change detection fields)
+	//	then only send to kafka if it changed
+
+	#define VAL_OR(X,D) (point_mapping.has_value() ? point_mapping->get().X ? *(point_mapping->get().X) : D : D)
+
+	const auto& topic = VAL_OR(pTopic,pConf->DefaultTopic);
+	const auto& key_buffer = VAL_OR(pKey,pConf->DefaultKey);
+	const auto& extra_fields = VAL_OR(pExtraFields,pConf->DefaultExtraFields);
+	if(pConf->TranslationMethod == EventTranslationMethod::Template)
+	{
+		const auto& template_str = VAL_OR(pTemplate,pConf->DefaultTemplate);
+		auto buf = FillTemplate(template_str, event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		Send(topic,key_buffer,std::move(buf),pStatusCallback);
+	}
+	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
+	{
+		const auto& CBORer = VAL_OR(pCBORer,pConf->DefaultCBORSerialiser);
+		auto buf = CBORer.Encode(event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		Send(topic,key_buffer,std::move(buf),pStatusCallback);
+	}
+	else //Lua
+	{
+		//TODO: Implement Lua translation
+		auto buf = std::string("Lua translation not implemented");
+		Send(topic,key_buffer,std::move(buf),pStatusCallback);
+	}
+}
+
+void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer& key_buffer, const OctetStringBuffer& val_buffer, SharedStatusCallback_t pStatusCallback)
+{
+	KCP::ProducerRecord record(topic, kafka::Key(key_buffer.data(),key_buffer.size()), kafka::Value(val_buffer.data(), val_buffer.size()));
+
+	auto deliveryCb = [this,key_buffer,val_buffer,pStatusCallback](const KCP::RecordMetadata& metadata, const kafka::Error& error)
+				{
+					auto log = odc::spdlog_get("KafkaPort");
+					if (!error)
+					{
+						if(log && log->should_log(spdlog::level::trace))
+							log->trace("{}: Message delivered: {}", Name, metadata.toString());
+						(*pStatusCallback)(odc::CommandStatus::SUCCESS);
+					}
+					else
+					{
+						if(log)
+							log->error("{}: Message failed to be delivered: {}", metadata.toString());
+						(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
+					}
+				};
+
+	kafka::Error err;
+	pKafkaProducer->send(record, deliveryCb, err);
+	if(err)
+	{
+		auto log = odc::spdlog_get("KafkaPort");
+		if(log)
+			log->error("{}: Failed to send message: {}", Name, err.toString());
+		(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
+	}
+
+	// Poll events (e.g. message delivery callback)
+	try
+	{
+		pKafkaProducer->pollEvents(std::chrono::milliseconds::zero());
+	}
+	catch (const std::exception& e)
+	{
+		auto log = odc::spdlog_get("KafkaPort");
+		if(log)
+			log->error("{}: Failed to poll events: {}", Name, e.what());
+	}
+}

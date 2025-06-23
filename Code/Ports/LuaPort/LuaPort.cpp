@@ -29,6 +29,7 @@
 #include <Lua/CLua.h>
 #include <Lua/Wrappers.h>
 #include <opendatacon/util.h>
+#include <opendatacon/MergeJsonConf.h>
 
 LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
@@ -39,6 +40,8 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 
 LuaPort::~LuaPort()
 {
+	lua_gc(LuaState,LUA_GCCOLLECT);
+
 	//Wait for outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
@@ -147,9 +150,7 @@ void LuaPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
-	auto MemberNames = JSONRoot.getMemberNames();
-	for(auto mn : MemberNames)
-		JSONConf[mn] = JSONRoot[mn];
+	MergeJsonConf(JSONConf,JSONRoot);
 
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
 

@@ -77,12 +77,9 @@ void DNP3MasterPort::Enable()
 	//initialise as comms down - in case they never come up
 	PortDown();
 
-	if(!stack_enabled && !(pConf->mAddrConf.ServerType == server_type_t::MANUAL))
-	{
-		if(pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || InDemand())
-			EnableStack();
-	}
+	CheckStackState();
 
+	PublishEvent(ConnectState::PORT_UP);
 }
 void DNP3MasterPort::Disable()
 {
@@ -92,12 +89,9 @@ void DNP3MasterPort::Disable()
 
 	pCommsRideThroughTimer->StopHeartBeat();
 
-	if(stack_enabled)
-	{
-		DisableStack(); //this will trigger comms down
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: DNP3 stack disabled", Name);
-	}
+	CheckStackState();
+
+	PublishEvent(ConnectState::PORT_DOWN);
 }
 
 void DNP3MasterPort::PortUp()
@@ -201,6 +195,7 @@ void DNP3MasterPort::SetCommsFailed()
 		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
 		SetCommsFailedQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes);
 		SetCommsFailedQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes);
+		SetCommsFailedQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes);
 
 		// An integrity scan will be needed when/if the link comes back
 		// It's the only way to get the true state upstream
@@ -290,32 +285,8 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Notify subscribers that a disconnect event has occured
 		NotifyOfDisconnection();
 
-		if (stack_enabled && pConf->mAddrConf.ServerType != server_type_t::PERSISTENT && !InDemand())
-		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Disabling stack following disconnect on non-persistent port.", Name);
-
-			// For all but persistent connections, and in-demand ONDEMAND connections, disable the stack
-			pIOS->post([this]()
-				{
-					DisableStack();
-				});
-		}
 		IntegrityScanDone = false;
 		return;
-	}
-}
-
-void DNP3MasterPort::ChannelWatchdogTrigger(bool on)
-{
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
-	if(stack_enabled)
-	{
-		if(on)                    //don't mark the stack as disabled, because this is just a restart
-			pMaster->Disable(); //it will be enabled again shortly when the trigger is off
-		else
-			pMaster->Enable();
 	}
 }
 
@@ -486,8 +457,34 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
 				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
 					event->SetTimestamp();
-			PublishEvent(event);
-			pDB->Set(event);
+
+			bool unknown_point = pDB->Set(event);
+			bool publish = true;
+			if(unknown_point)
+			{
+				auto log_level = spdlog::level::err;
+				if(pConf->pPointConf->AllowUnknownIndexes)
+					log_level = spdlog::level::warn;
+				else
+					publish = false;
+
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->log(log_level, "{}: Received {} from stack for unconfigured index ({})",
+						Name, ToString(event->GetEventType()), event->GetIndex());
+			}
+
+			//log an error if we get a binary that clashes with the index of our comms point
+			if(pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE)
+			   && event->GetEventType() == EventType::Binary
+			   && event->GetIndex() == pConf->pPointConf->mCommsPoint.second)
+			{
+				publish = false;
+				if(auto log = odc::spdlog_get("DNP3Port"))
+					log->error("{}: Received Binary that clashes with comms point index ({})", Name, event->GetIndex());
+			}
+
+			if(publish)
+				PublishEvent(event);
 		});
 }
 
@@ -511,8 +508,6 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 	if(event->GetEventType() == EventType::ConnectState)
 	{
-		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
 		auto state = event->GetPayload<EventType::ConnectState>();
 
 		if(state == ConnectState::PORT_UP)
@@ -522,38 +517,9 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			RePublishEvents();
 		}
 
-		// If an upstream port is connected, attempt a connection (if on demand)
-		if (!stack_enabled && state == ConnectState::CONNECTED && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Upstream port connected, performing on-demand connection.", Name);
-
-			pIOS->post([this]()
-				{
-					EnableStack();
-				});
-		}
-
-		// If an upstream port is disconnected, disconnect ourselves if it was the last active connection (if on demand)
-		if (stack_enabled && !InDemand() && pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
-		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: No upstream connections left, performing on-demand disconnection.", Name);
-
-			pIOS->post([this]()
-				{
-					DisableStack();
-				});
-		}
+		CheckStackState();
 
 		(*pStatusCallback)(CommandStatus::SUCCESS);
-		return;
-	}
-
-	// If the stack is disabled, fail the command
-	if (!stack_enabled)
-	{
-		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
 

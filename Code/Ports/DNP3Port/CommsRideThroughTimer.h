@@ -27,8 +27,11 @@
 #ifndef COMMSRIDETHROUGHTIMER_H
 #define COMMSRIDETHROUGHTIMER_H
 
+#include <opendatacon/util.h>
 #include <opendatacon/asio.h>
 #include <functional>
+
+enum class CommsState {GOOD,BAD,NUL};
 
 class CommsRideThroughTimer: public std::enable_shared_from_this<CommsRideThroughTimer>
 {
@@ -41,30 +44,32 @@ public:
 		const uint32_t aHeartBeatTimems = 0);
 	~CommsRideThroughTimer();
 	void Trigger();
+	void Pause();
+	void Resume();
 	void FastForward();
 	void Cancel();
 
-	inline void StartHeartBeat()
-	{
-		HeartBeat();
-	}
-	inline void StopHeartBeat()
-	{
-		pHeartBeatTimer->cancel();
-	}
+	void StartHeartBeat();
+	void StopHeartBeat();
 
 private:
 	void HeartBeat();
 	const uint32_t Timeoutms;
 	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
 	bool RideThroughInProgress;
-	bool CommsIsBad;
+	CommsState Comms;
+	bool Paused;
+	bool PendingTrigger;
+	size_t TimerHandlerSequence; //to track the valid (latest) handler
+	odc::msSinceEpoch_t ExpiryTime;
+	uint32_t msRemaining;
 	std::unique_ptr<asio::steady_timer> pCommsRideThroughTimer;
 	std::unique_ptr<asio::steady_timer> pHeartBeatTimer;
 	const std::function<void()> CommsGoodCB;
 	const std::function<void()> CommsBadCB;
 	const std::function<void(bool CommsIsBad)> HeartBeatCB;
 	const uint32_t HeartBeatTimems;
+	bool HeartBeatStopped;
 };
 
 #endif // COMMSRIDETHROUGHTIMER_H

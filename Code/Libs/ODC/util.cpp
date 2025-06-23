@@ -280,7 +280,7 @@ std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string for
 
 	//do milliseconds ourself
 	std::string milli_padded = "000";
-	std::sprintf(milli_padded.data(),"%03d",static_cast<int>(milliseconds % 1000));
+	std::snprintf(milli_padded.data(),milli_padded.size()+1,"%03d",static_cast<int>(milliseconds % 1000));
 	auto milli_pos = format.find("%e");
 	while(milli_pos != format.npos)
 	{

@@ -55,6 +55,10 @@ if(LUAWEBPORT)
 add_subdirectory(LuaWebPort_tests)
 endif()
 
+if(KAFKAPORT)
+add_subdirectory(KafkaPort_tests)
+endif()
+
 if(FULL)
 add_subdirectory(Integration_tests)
 endif()

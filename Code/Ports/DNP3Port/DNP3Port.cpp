@@ -33,7 +33,9 @@
 DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides, bool isMaster):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pChanH(std::make_unique<ChannelHandler>(this)),
-	pConnectionStabilityTimer(pIOS->make_steady_timer())
+	pConnectionStabilityTimer(pIOS->make_steady_timer()),
+	stack_enabled(false),
+	pStackSyncStrand(pIOS->make_strand())
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
@@ -101,6 +103,8 @@ void DNP3Port::InitEventDB()
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART,0));
 
+	init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ConnectState,0,"",QualityFlags::RESTART,0));
+
 	pDB = std::make_unique<EventDB>(init_events);
 }
 
@@ -126,6 +130,57 @@ void DNP3Port::NotifyOfDisconnection()
 		PublishEvent(ConnectState::DISCONNECTED);
 }
 
+void DNP3Port::ChannelWatchdogTrigger(bool on)
+{
+	if(auto log = odc::spdlog_get("DNP3Port"))
+		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	if(stack_enabled)
+	{
+		if(on)                //don't mark the stack as disabled, because this is just a restart
+			DisableStack(); //it will be enabled again shortly when the trigger is off
+		else
+			EnableStack();
+	}
+}
+
+void DNP3Port::CheckStackState()
+{
+	std::weak_ptr<DNP3Port> weak_self = std::static_pointer_cast<DNP3Port>(shared_from_this());
+	pStackSyncStrand->post([weak_self,this]()
+		{
+			auto self = weak_self.lock();
+			if(!self)
+				return;
+
+			auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+			if(!enabled || (pConf->OnDemand && !InDemand()))
+			{
+				if(stack_enabled)
+				{
+					stack_enabled = false;
+					DisableStack(); //this will trigger comms down
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: DNP3 stack disabled", Name);
+				}
+				return;
+			}
+
+			if(enabled && (!pConf->OnDemand || InDemand()))
+			{
+				if(!stack_enabled)
+				{
+					EnableStack();
+					stack_enabled = true;
+					if(auto log = odc::spdlog_get("DNP3Port"))
+						log->debug("{}: DNP3 stack enabled", Name);
+				}
+				return;
+			}
+
+		});
+}
+
 //DataPort function for UI
 const Json::Value DNP3Port::GetCurrentState() const
 {
@@ -133,12 +188,15 @@ const Json::Value DNP3Port::GetCurrentState() const
 	Json::Value ret;
 	ret[time_str]["Analogs"] = Json::arrayValue;
 	ret[time_str]["Binaries"] = Json::arrayValue;
+	ret[time_str]["OctetStrings"] = Json::arrayValue;
 	ret[time_str]["BinaryControls"] = Json::arrayValue;
 	ret[time_str]["AnalogControls"] = Json::arrayValue;
-	ret[time_str]["AnalogOutputStatus"] = Json::arrayValue;
-	ret[time_str]["BinaryOutputStatus"] = Json::arrayValue;
+	ret[time_str]["AnalogOutputStatuses"] = Json::arrayValue;
+	ret[time_str]["BinaryOutputStatuses"] = Json::arrayValue;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	//TODO: this wouldn't be needed if the overriden timestamp was stored in the point database
 	auto time_correction = [=](const auto& event)
 				     {
 					     auto ts = event->GetTimestamp();
@@ -152,6 +210,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 					     return since_epoch_to_datetime(ts);
 				     };
 
+	//TODO: change the structure to match the spoof_event command syntax - there are already JSON (de)serialisation helper functions
 	for(const auto index : pConf->pPointConf->BinaryIndexes)
 	{
 		auto event = pDB->Get(EventType::Binary,index);
@@ -175,6 +234,21 @@ const Json::Value DNP3Port::GetCurrentState() const
 		try
 		{
 			state["Value"] = event->GetPayload<EventType::Analog>();
+		}
+		catch(std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = time_correction(event);
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for(const auto index : pConf->pPointConf->OctetStringIndexes)
+	{
+		auto event = pDB->Get(EventType::OctetString,index);
+		auto& state = ret[time_str]["OctetStrings"].append(Json::Value());
+		state["Index"] =  Json::UInt(event->GetIndex());
+		try
+		{
+			state["Value"] = ToString(event->GetPayload<EventType::OctetString>(),DataToStringMethod::Base64);
 		}
 		catch(std::runtime_error&)
 		{}
@@ -217,7 +291,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	for (const auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
 	{
 		auto event = pDB->Get(EventType::AnalogOutputStatus, index);
-		auto& state = ret[time_str]["AnalogOutputStatus"].append(Json::Value());
+		auto& state = ret[time_str]["AnalogOutputStatuses"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());
 		try
 		{
@@ -232,7 +306,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	for (const auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
 	{
 		auto event = pDB->Get(EventType::BinaryOutputStatus, index);
-		auto& state = ret[time_str]["BinaryOutputStatus"].append(Json::Value());
+		auto& state = ret[time_str]["BinaryOutputStatuses"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());
 		try
 		{
@@ -259,6 +333,10 @@ const Json::Value DNP3Port::GetCurrentState() const
 		state["Timestamp"] = time_correction(event);
 		state["SourcePort"] = event->GetSourcePort();
 	}
+
+	auto event = pDB->Get(EventType::ConnectState,0);
+	ret[time_str]["LastUpstreamConnection"] = event->GetPayloadString();
+	ret[time_str]["InDemand"] = InDemand();
 
 	ExtendCurrentState(ret[time_str]);
 	return ret;
@@ -478,11 +556,9 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 	if(JSONRoot.isMember("ServerType"))
 	{
 		if(JSONRoot["ServerType"].asString() == "ONDEMAND")
-			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::ONDEMAND;
+			static_cast<DNP3PortConf*>(pConf.get())->OnDemand = true;
 		else if(JSONRoot["ServerType"].asString() == "PERSISTENT")
-			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::PERSISTENT;
-		else if(JSONRoot["ServerType"].asString() == "MANUAL")
-			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ServerType = server_type_t::MANUAL;
+			static_cast<DNP3PortConf*>(pConf.get())->OnDemand = false;
 		else
 		{
 			if(auto log = odc::spdlog_get("DNP3Port"))

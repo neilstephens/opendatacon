@@ -316,10 +316,18 @@ void DataConnector::Build()
 {}
 void DataConnector::Enable()
 {
+	for(auto& st : SenderTransforms)
+		for(auto& tx : st.second)
+			if(tx)
+				tx->Enable();
 	enabled = true;
 }
 void DataConnector::Disable()
 {
 	enabled = false;
+	for(auto& st : SenderTransforms)
+		for(auto& tx : st.second)
+			if(tx)
+				tx->Disable();
 }
 

@@ -59,18 +59,25 @@ protected:
 	void InitEventDB();
 	void NotifyOfConnection();
 	void NotifyOfDisconnection();
+	void CheckStackState();
 	inline std::weak_ptr<DataPort> ptr()
 	{
 		return weak_from_this();
 	}
 	std::unique_ptr<ChannelHandler> pChanH;
 	std::shared_ptr<asio::steady_timer> pConnectionStabilityTimer;
-	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 
 	virtual void ExtendCurrentState(Json::Value& state) const {}
 	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;
-	virtual void ChannelWatchdogTrigger(bool on) = 0;
 	virtual TCPClientServer ClientOrServer() = 0;
+	virtual void EnableStack() = 0;
+	virtual void DisableStack() = 0;
+
+private:
+	void ChannelWatchdogTrigger(bool on);
+	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
+	std::atomic_bool stack_enabled;
+	std::unique_ptr<asio::io_service::strand> pStackSyncStrand;
 };
 
 #endif /* DNP3PORT_H_ */
