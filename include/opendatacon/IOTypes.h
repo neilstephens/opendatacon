@@ -82,8 +82,8 @@ enum class EventType: uint8_t
 	BinaryOutputStatusQuality = 28,
 	FrozenCounterQuality      = 29,
 	AnalogOutputStatusQuality = 30,
+	OctetStringQuality        = 31,
 
-	Reserved7                 = 31,
 	Reserved8                 = 32,
 	Reserved9                 = 33,
 
@@ -98,8 +98,8 @@ enum class EventType: uint8_t
 
 	Reserved10                = 41,
 	Reserved11                = 42,
-	Reserved12                = 43,
-
+	Reserved12                = 43, //TODO: Add a 'system clock offset' event type so that ports with external time sync can pass through
+	                                //	could also be sent externally to indicate if the system clock has drifted
 	//Connection events
 	ConnectState              = 44,
 
@@ -218,6 +218,7 @@ inline std::string ToString(const EventType et)
 	ENUMSTRING(et,EventType,BinaryOutputStatusQuality)
 	ENUMSTRING(et,EventType,FrozenCounterQuality     )
 	ENUMSTRING(et,EventType,AnalogOutputStatusQuality)
+	ENUMSTRING(et,EventType,OctetStringQuality       )
 	ENUMSTRING(et,EventType,FileAuth                 )
 	ENUMSTRING(et,EventType,FileCommand              )
 	ENUMSTRING(et,EventType,FileCommandStatus        )
@@ -232,7 +233,6 @@ inline std::string ToString(const EventType et)
 	ENUMSTRING(et,EventType,Reserved4                )
 	ENUMSTRING(et,EventType,Reserved5                )
 	ENUMSTRING(et,EventType,Reserved6                )
-	ENUMSTRING(et,EventType,Reserved7                )
 	ENUMSTRING(et,EventType,Reserved8                )
 	ENUMSTRING(et,EventType,Reserved9                )
 	ENUMSTRING(et,EventType,Reserved10               )
@@ -549,6 +549,7 @@ EVENTPAYLOAD(EventType::CounterQuality           , QualityFlags)
 EVENTPAYLOAD(EventType::BinaryOutputStatusQuality, QualityFlags)
 EVENTPAYLOAD(EventType::FrozenCounterQuality     , QualityFlags)
 EVENTPAYLOAD(EventType::AnalogOutputStatusQuality, QualityFlags)
+EVENTPAYLOAD(EventType::OctetStringQuality       , QualityFlags)
 EVENTPAYLOAD(EventType::FileAuth                 , char) //stub
 EVENTPAYLOAD(EventType::FileCommand              , char) //stub
 EVENTPAYLOAD(EventType::FileCommandStatus        , char) //stub
@@ -563,7 +564,6 @@ EVENTPAYLOAD(EventType::Reserved3                , char) //stub
 EVENTPAYLOAD(EventType::Reserved4                , char) //stub
 EVENTPAYLOAD(EventType::Reserved5                , char) //stub
 EVENTPAYLOAD(EventType::Reserved6                , char) //stub
-EVENTPAYLOAD(EventType::Reserved7                , char) //stub
 EVENTPAYLOAD(EventType::Reserved8                , char) //stub
 EVENTPAYLOAD(EventType::Reserved9                , char) //stub
 EVENTPAYLOAD(EventType::Reserved10               , char) //stub
@@ -677,6 +677,7 @@ public:
 				COPYPAYLOADCASE(EventType::BinaryOutputStatusQuality)
 				COPYPAYLOADCASE(EventType::FrozenCounterQuality     )
 				COPYPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				COPYPAYLOADCASE(EventType::OctetStringQuality       )
 				COPYPAYLOADCASE(EventType::FileAuth                 )
 				COPYPAYLOADCASE(EventType::FileCommand              )
 				COPYPAYLOADCASE(EventType::FileCommandStatus        )
@@ -691,7 +692,6 @@ public:
 				COPYPAYLOADCASE(EventType::Reserved4                )
 				COPYPAYLOADCASE(EventType::Reserved5                )
 				COPYPAYLOADCASE(EventType::Reserved6                )
-				COPYPAYLOADCASE(EventType::Reserved7                )
 				COPYPAYLOADCASE(EventType::Reserved8                )
 				COPYPAYLOADCASE(EventType::Reserved9                )
 				COPYPAYLOADCASE(EventType::Reserved10               )
@@ -735,6 +735,7 @@ public:
 				DELETEPAYLOADCASE(EventType::BinaryOutputStatusQuality)
 				DELETEPAYLOADCASE(EventType::FrozenCounterQuality     )
 				DELETEPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+				DELETEPAYLOADCASE(EventType::OctetStringQuality       )
 				DELETEPAYLOADCASE(EventType::FileAuth                 )
 				DELETEPAYLOADCASE(EventType::FileCommand              )
 				DELETEPAYLOADCASE(EventType::FileCommandStatus        )
@@ -749,7 +750,6 @@ public:
 				DELETEPAYLOADCASE(EventType::Reserved4                )
 				DELETEPAYLOADCASE(EventType::Reserved5                )
 				DELETEPAYLOADCASE(EventType::Reserved6                )
-				DELETEPAYLOADCASE(EventType::Reserved7                )
 				DELETEPAYLOADCASE(EventType::Reserved8                )
 				DELETEPAYLOADCASE(EventType::Reserved9                )
 				DELETEPAYLOADCASE(EventType::Reserved10               )
@@ -877,6 +877,7 @@ public:
 			STRINGPAYLOADCASE(EventType::BinaryOutputStatusQuality)
 			STRINGPAYLOADCASE(EventType::FrozenCounterQuality     )
 			STRINGPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+			STRINGPAYLOADCASE(EventType::OctetStringQuality       )
 			STRINGPAYLOADCASE(EventType::FileAuth                 )
 			STRINGPAYLOADCASE(EventType::FileCommand              )
 			STRINGPAYLOADCASE(EventType::FileCommandStatus        )
@@ -891,7 +892,6 @@ public:
 			STRINGPAYLOADCASE(EventType::Reserved4                )
 			STRINGPAYLOADCASE(EventType::Reserved5                )
 			STRINGPAYLOADCASE(EventType::Reserved6                )
-			STRINGPAYLOADCASE(EventType::Reserved7                )
 			STRINGPAYLOADCASE(EventType::Reserved8                )
 			STRINGPAYLOADCASE(EventType::Reserved9                )
 			STRINGPAYLOADCASE(EventType::Reserved10               )
@@ -938,6 +938,7 @@ public:
 			DEFAULTPAYLOADCASE(EventType::BinaryOutputStatusQuality)
 			DEFAULTPAYLOADCASE(EventType::FrozenCounterQuality     )
 			DEFAULTPAYLOADCASE(EventType::AnalogOutputStatusQuality)
+			DEFAULTPAYLOADCASE(EventType::OctetStringQuality       )
 			DEFAULTPAYLOADCASE(EventType::FileAuth                 )
 			DEFAULTPAYLOADCASE(EventType::FileCommand              )
 			DEFAULTPAYLOADCASE(EventType::FileCommandStatus        )
@@ -952,7 +953,6 @@ public:
 			DEFAULTPAYLOADCASE(EventType::Reserved4                )
 			DEFAULTPAYLOADCASE(EventType::Reserved5                )
 			DEFAULTPAYLOADCASE(EventType::Reserved6                )
-			DEFAULTPAYLOADCASE(EventType::Reserved7                )
 			DEFAULTPAYLOADCASE(EventType::Reserved8                )
 			DEFAULTPAYLOADCASE(EventType::Reserved9                )
 			DEFAULTPAYLOADCASE(EventType::Reserved10               )
