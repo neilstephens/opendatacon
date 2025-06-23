@@ -103,6 +103,8 @@ void DNP3Port::InitEventDB()
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART,0));
 
+	init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ConnectState,0,"",QualityFlags::RESTART,0));
+
 	pDB = std::make_unique<EventDB>(init_events);
 }
 
@@ -186,12 +188,15 @@ const Json::Value DNP3Port::GetCurrentState() const
 	Json::Value ret;
 	ret[time_str]["Analogs"] = Json::arrayValue;
 	ret[time_str]["Binaries"] = Json::arrayValue;
+	ret[time_str]["OctetStrings"] = Json::arrayValue;
 	ret[time_str]["BinaryControls"] = Json::arrayValue;
 	ret[time_str]["AnalogControls"] = Json::arrayValue;
-	ret[time_str]["AnalogOutputStatus"] = Json::arrayValue;
-	ret[time_str]["BinaryOutputStatus"] = Json::arrayValue;
+	ret[time_str]["AnalogOutputStatuses"] = Json::arrayValue;
+	ret[time_str]["BinaryOutputStatuses"] = Json::arrayValue;
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	//TODO: this wouldn't be needed if the overriden timestamp was stored in the point database
 	auto time_correction = [=](const auto& event)
 				     {
 					     auto ts = event->GetTimestamp();
@@ -205,6 +210,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 					     return since_epoch_to_datetime(ts);
 				     };
 
+	//TODO: change the structure to match the spoof_event command syntax - there are already JSON (de)serialisation helper functions
 	for(const auto index : pConf->pPointConf->BinaryIndexes)
 	{
 		auto event = pDB->Get(EventType::Binary,index);
@@ -228,6 +234,21 @@ const Json::Value DNP3Port::GetCurrentState() const
 		try
 		{
 			state["Value"] = event->GetPayload<EventType::Analog>();
+		}
+		catch(std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = time_correction(event);
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for(const auto index : pConf->pPointConf->OctetStringIndexes)
+	{
+		auto event = pDB->Get(EventType::OctetString,index);
+		auto& state = ret[time_str]["OctetStrings"].append(Json::Value());
+		state["Index"] =  Json::UInt(event->GetIndex());
+		try
+		{
+			state["Value"] = ToString(event->GetPayload<EventType::OctetString>(),DataToStringMethod::Base64);
 		}
 		catch(std::runtime_error&)
 		{}
@@ -270,7 +291,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	for (const auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
 	{
 		auto event = pDB->Get(EventType::AnalogOutputStatus, index);
-		auto& state = ret[time_str]["AnalogOutputStatus"].append(Json::Value());
+		auto& state = ret[time_str]["AnalogOutputStatuses"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());
 		try
 		{
@@ -285,7 +306,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	for (const auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
 	{
 		auto event = pDB->Get(EventType::BinaryOutputStatus, index);
-		auto& state = ret[time_str]["BinaryOutputStatus"].append(Json::Value());
+		auto& state = ret[time_str]["BinaryOutputStatuses"].append(Json::Value());
 		state["Index"] = Json::UInt(event->GetIndex());
 		try
 		{
@@ -312,6 +333,10 @@ const Json::Value DNP3Port::GetCurrentState() const
 		state["Timestamp"] = time_correction(event);
 		state["SourcePort"] = event->GetSourcePort();
 	}
+
+	auto event = pDB->Get(EventType::ConnectState,0);
+	ret[time_str]["LastUpstreamConnection"] = event->GetPayloadString();
+	ret[time_str]["InDemand"] = InDemand();
 
 	ExtendCurrentState(ret[time_str]);
 	return ret;

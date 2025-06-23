@@ -427,18 +427,14 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return FromODC(cb_status);
 }
 
-inline void DNP3OutstationPort::UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual)
+inline bool DNP3OutstationPort::UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual)
 {
 	auto prev_event = pDB->Get(event_type,index);
 	if(!prev_event)
-	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->warn("{}: {} recived for unconfigured index ({})", Name, ToString(event_type), index);
-		return;
-	}
+		return false;
 	auto prev_event_copy = std::make_shared<EventInfo>(*prev_event);
 	prev_event_copy->SetQuality(qual);
-	pDB->Set(prev_event_copy);
+	return pDB->Set(prev_event_copy);
 }
 
 template<>
@@ -468,32 +464,45 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
-	pDB->Set(event);
+
+	bool point_exists = pDB->Set(event);
 
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
-			EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
-			EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::OctetString:
-			EventT(FromODC<opendnp3::OctetString>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::OctetString>(event), event->GetIndex());
 			break;
 		case EventType::AnalogOutputStatus:
-			EventT(FromODC<opendnp3::AnalogOutputStatus>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::AnalogOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::BinaryOutputStatus:
-			EventT(FromODC<opendnp3::BinaryOutputStatus>(event), event->GetIndex());
+			if(point_exists) EventT(FromODC<opendnp3::BinaryOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
-			UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());
-			EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
+			point_exists = UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
 			break;
 		case EventType::AnalogQuality:
-			UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>());
-			EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
+			point_exists = UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
+			break;
+		case EventType::AnalogOutputStatusQuality:
+			point_exists = UpdateQuality(EventType::AnalogOutputStatus,event->GetIndex(),event->GetPayload<EventType::AnalogOutputStatusQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::AnalogOutputStatusQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogOutputStatus);
+			break;
+		case EventType::BinaryOutputStatusQuality:
+			point_exists = UpdateQuality(EventType::BinaryOutputStatus,event->GetIndex(),event->GetPayload<EventType::BinaryOutputStatusQuality>());
+			if(point_exists) EventT(FromODC<opendnp3::BinaryOutputStatusQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryOutputStatus);
+			break;
+		case EventType::OctetStringQuality:
+			point_exists = UpdateQuality(EventType::OctetString,event->GetIndex(),event->GetPayload<EventType::OctetStringQuality>());
+			//DNP3 OctetStrings don't have a quality, so the quality only goes in the local point DB
 			break;
 		case EventType::ConnectState:
 			CheckStackState();
@@ -501,6 +510,13 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		default:
 			(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 			return;
+	}
+	if(!point_exists)
+	{
+		if(auto log = odc::spdlog_get("DNP3Port"))
+			log->warn("{}: {} received for unconfigured index ({})", Name, ToString(event->GetEventType()), event->GetIndex());
+		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
+		return;
 	}
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
