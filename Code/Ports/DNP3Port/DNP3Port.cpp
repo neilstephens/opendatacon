@@ -335,7 +335,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 	}
 
 	auto event = pDB->Get(EventType::ConnectState,0);
-	ret[time_str]["LastUpstreamConnection"] = event->GetPayloadString();
+	ret[time_str]["LastUpstreamConnection"] = event->HasPayload() ? event->GetPayloadString() : "";
 	ret[time_str]["InDemand"] = InDemand();
 
 	ExtendCurrentState(ret[time_str]);
