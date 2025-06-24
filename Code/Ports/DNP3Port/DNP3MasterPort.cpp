@@ -458,7 +458,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
 					event->SetTimestamp();
 
-			bool unknown_point = pDB->Set(event);
+			bool unknown_point = !pDB->Set(event);
 			bool publish = true;
 			if(unknown_point)
 			{
