@@ -76,6 +76,10 @@ void DNP3MasterPort::Enable()
 
 	//initialise as comms down - in case they never come up
 	PortDown();
+	if(pConf->OnDemand
+	   && pConf->pPointConf->CommsPointRideThroughTimems > 0
+	   && pConf->pPointConf->CommsPointRideThroughDemandPause)
+		pCommsRideThroughTimer->Pause();
 
 	CheckStackState();
 
