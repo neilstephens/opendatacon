@@ -1,4 +1,22 @@
-# opendatacon version 1.9.5
+# opendatacon version 1.10.0
+
+## 1.10.0
+  * New port library: "KafkaPort"
+    * KafkaProducerPort and KafkaConsumerPort
+    * Serialise and deserialise opendatacon events to/from kafka with dynamic formats:
+      * Customisable Text templates with optional regexes
+      * Concise Binary Object Representation (CBOR) with customisable structure
+      * Plans for future custom lua (de)serialisation
+    * Client ports can share the underlying lidrdkafka connection (or have their own)
+    * Powerful point translation map for config re-use and tag generation
+  * Callback wrapping that logs errors if ports don't execute, or execute more than once
+  * Clang/libc++ based release builds
+    * to avoid a libstdc++ regex resource exhaustion bug
+  * DNP3MasterPort feature to suspend comms ride-through timer if not in-demand
+  * Optional Enable/Disable on Transforms
+    * LuaTransforms now garbage-collect on disablement so shutdown doesn't hang
+  * DNP3OutstationPort: fixed missing support for OutputStatusQuality events
+  * Other minor fixes  
 
 ## 1.9.5
   * ECMAScript regex syntax everywhere regexes are used

@@ -150,9 +150,10 @@ jobs:
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
         echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
         choco install openssl --version=1.1.1.2100 --x86
-        Remove-Item 'C:\hostedtoolcache\windows\Python\3.7.9\x64' -Recurse
-        echo "C:\hostedtoolcache\windows\Python\3.7.9\x86" >> $env:GITHUB_PATH
-        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x86/python37_d.dll -Destination C:\Windows\sysWOW64\
+        Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13.exe" -OutFile "python-installer-x86.exe"
+        Start-Process -FilePath "python-installer-x86.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x86" -Wait
+        Remove-Item 'C:\hostedtoolcache\windows\Python\3.9.13\x64' -Recurse
+        echo "C:\hostedtoolcache\windows\Python\3.9.13\x86" >> $env:GITHUB_PATH
         
     - if: matrix.bits == 64 && contains(matrix.os,'windows')
       name: Set 64-bit env
@@ -160,7 +161,8 @@ jobs:
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
         echo 'BITGEN=-Ax64' >> $env:GITHUB_ENV
         choco install openssl
-        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/x64/python37_d.dll -Destination C:\Windows\system32\
+        Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe" -OutFile "python-installer-x64.exe"
+        Start-Process -FilePath "python-installer-x64.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x64" -Wait
     
     - if: contains(matrix.os,'windows')
       name: Setup Windows Environment
@@ -171,9 +173,7 @@ jobs:
           New-Item C:\libmodbus -ItemType Directory
           Move-Item .\libmodbus C:\libmodbus\libmodbus
         }
-        #hack because debug lib aint available!
-        Copy-Item -Path ${{github.workspace}}/Code/Ports/PyPort/${{env.BITPLAT}}/python37_d.lib -Destination C:/hostedtoolcache/windows/Python/3.7.9/${{env.BITPLAT}}/libs/
-        echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.7.9\${{env.BITPLAT}}' >> $env:GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
 
     - if: contains(matrix.os,'macos')
       name: Setup MacOS Environment
@@ -209,6 +209,9 @@ jobs:
     - name: SimPort_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
+    - name: KafkaPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}KafkaPort_tests ${{env.LOG_LVL}} -d yes
     - name: MD3Port_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes

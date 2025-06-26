@@ -40,7 +40,6 @@ public:
 	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		DNP3Port(aName, aConfFilename, aConfOverrides,true),
 		pMaster(nullptr),
-		stack_enabled(false),
 		IntegrityScanNeeded(false),
 		IntegrityScanDone(true), //init true because the stack does an initial integrity scan
 		pCommsRideThroughTimer(nullptr)
@@ -59,7 +58,6 @@ protected:
 	// Implement DNP3Port
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
-	void ChannelWatchdogTrigger(bool on) override;
 
 	void BeginFragment(const opendnp3::ResponseInfo& info) override {}
 	void EndFragment(const opendnp3::ResponseInfo& info) override {}
@@ -120,7 +118,6 @@ private:
 	std::shared_ptr<opendnp3::ISOEHandler> ISOEHandle;
 	std::shared_ptr<opendnp3::IMasterApplication> MasterApp;
 	std::shared_ptr<opendnp3::IMaster> pMaster;
-	std::atomic_bool stack_enabled;
 
 	//Integrity scans are sync'd with the stack by posting on the channel handler strand
 	//Don't access these outside that strand
@@ -141,7 +138,7 @@ private:
 	inline void DoOverrideControlCode(T& arCommand){}
 	void PortUp();
 	void PortDown();
-	inline void EnableStack()
+	inline void EnableStack() override
 	{
 		pChanH->Post([this]()
 			{
@@ -154,13 +151,17 @@ private:
 					IntegrityScanNeeded = true;
 				}
 			});
-
 		pMaster->Enable();
-		stack_enabled = true;
+		pCommsRideThroughTimer->Resume();
 	}
-	inline void DisableStack()
+	inline void DisableStack() override
 	{
-		stack_enabled = false;
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		if(enabled && pConf->OnDemand
+		   && pConf->pPointConf->CommsPointRideThroughTimems > 0
+		   && pConf->pPointConf->CommsPointRideThroughDemandPause)
+			pCommsRideThroughTimer->Pause();
+
 		pMaster->Disable();
 	}
 	inline void DoOverrideControlCode(opendnp3::ControlRelayOutputBlock& arCommand)

@@ -91,7 +91,7 @@ function do_example_stuff()
   local MyEventInfo = {};
   MyEventInfo.EventType = odc.EventType.Binary;
   MyEventInfo.Index = 345;
-  --let SenderName, QualityFlags and Timestamp default
+  --let SourcePort, QualityFlags and Timestamp default
   MyEventInfo.Payload = false;
   odc.PublishEvent(MyEventInfo); --leaving out the optional second parameter
   
@@ -100,7 +100,7 @@ function do_example_stuff()
   {
     EventType = odc.EventType.DoubleBitBinary,
     Index = 999,
-    SenderName = "Spoof",
+    SourcePort = "Spoof",
     QualityFlags = odc.QualityFlags(odc.QualityFlag.ONLINE,odc.QualityFlag.LOCAL_FORCED),
     Timestamp = "2023-06-19 19:22:27.645", --either ms since epoch (system clock epoch) or %Y-%m-%d %H:%M:%S.%e
     --DoubleBitBinary payload needs First and Second

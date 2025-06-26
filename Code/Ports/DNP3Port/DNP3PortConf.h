@@ -70,7 +70,6 @@ struct TLSConfig
 	bool allowTLSv13 = true;
 	std::string cipherList = "";
 };
-enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 enum class WatchdogBark {ONFIRST,ONFINAL,NEVER,DEFAULT};
 struct DNP3AddrConf
 {
@@ -91,11 +90,10 @@ struct DNP3AddrConf
 	//Common
 	uint16_t OutstationAddr;
 	uint16_t MasterAddr;
-	server_type_t ServerType;
 	WatchdogBark ChannelLinksWatchdogBark;
 	uint16_t ConnectionStabilityTimems; //How long the datalink layer has to stay up to publish 'connected'
 
-	DNP3AddrConf(bool isMaster):
+	DNP3AddrConf():
 		SerialSettings(),
 		IP("127.0.0.1"),
 		BindIP(""),
@@ -105,7 +103,6 @@ struct DNP3AddrConf
 		Transport(IPTransport::TCP),
 		OutstationAddr(1),
 		MasterAddr(0),
-		ServerType(isMaster ? server_type_t::ONDEMAND : server_type_t::PERSISTENT),
 		ChannelLinksWatchdogBark(WatchdogBark::DEFAULT),
 		ConnectionStabilityTimems(0)
 	{}
@@ -115,7 +112,8 @@ class DNP3PortConf: public DataPortConf
 {
 public:
 	DNP3PortConf(const std::string& FileName, const Json::Value& ConfOverrides, bool isMaster):
-		mAddrConf(isMaster),
+		mAddrConf(),
+		OnDemand(isMaster),
 		LOG_LEVEL(opendnp3::levels::NORMAL)
 	{
 		pPointConf = std::make_unique<DNP3PointConf>(FileName, ConfOverrides);
@@ -123,6 +121,7 @@ public:
 
 	std::unique_ptr<DNP3PointConf> pPointConf;
 	DNP3AddrConf mAddrConf;
+	bool OnDemand;
 	opendnp3::LogLevels LOG_LEVEL;
 };
 

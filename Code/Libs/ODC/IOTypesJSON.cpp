@@ -176,7 +176,10 @@ template<> CommandStatus PayloadFromJson(const Json::Value& JLoad)
 {
 	if(JLoad.isUInt())
 	{
-		return static_cast<CommandStatus>(JLoad.asUInt());
+		auto cs = CommandStatusFromInt(JLoad.asUInt());
+		if(cs == CommandStatus::UNDEFINED && JLoad.asUInt() != static_cast<unsigned int>(CommandStatus::UNDEFINED))
+			throw std::invalid_argument("Can't convert unsigned integer to odc::CommandStatus.");
+		return cs;
 	}
 	if(JLoad.isString())
 	{
@@ -446,6 +449,7 @@ void PayloadFromJson(const Json::Value& JLoad, std::shared_ptr<EventInfo> event)
 		POP_PAYLOAD_CASE(EventType::BinaryOutputStatusQuality)
 		POP_PAYLOAD_CASE(EventType::FrozenCounterQuality     )
 		POP_PAYLOAD_CASE(EventType::AnalogOutputStatusQuality)
+		POP_PAYLOAD_CASE(EventType::OctetStringQuality       )
 		POP_PAYLOAD_CASE(EventType::FileAuth                 )
 		POP_PAYLOAD_CASE(EventType::FileCommand              )
 		POP_PAYLOAD_CASE(EventType::FileCommandStatus        )
@@ -460,7 +464,6 @@ void PayloadFromJson(const Json::Value& JLoad, std::shared_ptr<EventInfo> event)
 		POP_PAYLOAD_CASE(EventType::Reserved4                )
 		POP_PAYLOAD_CASE(EventType::Reserved5                )
 		POP_PAYLOAD_CASE(EventType::Reserved6                )
-		POP_PAYLOAD_CASE(EventType::Reserved7                )
 		POP_PAYLOAD_CASE(EventType::Reserved8                )
 		POP_PAYLOAD_CASE(EventType::Reserved9                )
 		POP_PAYLOAD_CASE(EventType::Reserved10               )

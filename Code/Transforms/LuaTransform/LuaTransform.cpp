@@ -60,6 +60,8 @@ LuaTransform::LuaTransform(const std::string& Name, const Json::Value& params): 
 
 LuaTransform::~LuaTransform()
 {
+	lua_gc(LuaState,LUA_GCCOLLECT);
+
 	//Wait for outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
@@ -67,6 +69,44 @@ LuaTransform::~LuaTransform()
 		pIOS->poll_one();
 
 	lua_close(LuaState);
+}
+
+//only called on Lua sync strand
+void LuaTransform::Enable_()
+{
+	lua_getglobal(LuaState, "Enable");
+	if(!lua_isfunction(LuaState, -1))
+		return; //Enable is optional
+
+	const int argc = 0; const int retc = 0;
+	auto ret = lua_pcall(LuaState,argc,retc,0);
+	if(ret != LUA_OK)
+	{
+		std::string err = lua_tostring(LuaState, -1);
+		if(auto log = odc::spdlog_get("LuaTransform"))
+			log->error("{}: Lua Enable() call error: {}",Name,err);
+		lua_pop(LuaState,1);
+	}
+}
+
+//only called on Lua sync strand
+void LuaTransform::Disable_()
+{
+	lua_getglobal(LuaState, "Disable");
+	if(lua_isfunction(LuaState, -1)) //Disable is optional
+	{
+		const int argc = 0; const int retc = 0;
+		auto ret = lua_pcall(LuaState,argc,retc,0);
+		if(ret != LUA_OK)
+		{
+			std::string err = lua_tostring(LuaState, -1);
+			if(auto log = odc::spdlog_get("LuaTransform"))
+				log->error("{}: Lua Disable() call error: {}",Name,err);
+			lua_pop(LuaState,1);
+		}
+	}
+	//Force garbage collection now. Lingering shared_ptr finalizers can block shutdown etc
+	lua_gc(LuaState,LUA_GCCOLLECT);
 }
 
 //only called on Lua sync strand
@@ -105,6 +145,4 @@ void LuaTransform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllo
 			log->error("{}: Lua Event() call error: {}",Name,err);
 		lua_pop(LuaState,1);
 	}
-	if(event && event->GetEventType() == EventType::ConnectState && event->HasPayload() && event->GetPayload<EventType::ConnectState>() == ConnectState::PORT_DOWN)
-		lua_gc(LuaState,LUA_GCCOLLECT); //Port down is a sign things might be shutting down. Force garbage collection just in case
 }

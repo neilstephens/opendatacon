@@ -1,0 +1,148 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * OneShotFunc.h
+ *
+ *  Created on: 16th March 2025
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
+#ifndef ONESHOTFUNC_H
+#define ONESHOTFUNC_H
+
+#include <opendatacon/util.h>
+#include <memory>
+#include <utility>
+#include <atomic>
+#include <functional>
+
+namespace odc
+{
+
+// class that simply wraps a shared_ptr to a std::function and warns if it doesn't get called exactly once
+//
+//	Main use case is for callbacks that are designed to be called once and only once
+//	Highlights cases where user-defined Ports/Transforms neglect to call an Event callback,
+//		because PublishEvent, DataConnector, and the Transform base class use this wrapper
+
+template <typename FnT> class OneShotFunc; //FnT is the same style template param as a std::function. Eg OneShotFunc<void(CommandStatus)>
+
+template <typename FnR, typename ... FnArgs>
+class OneShotFunc<FnR(FnArgs...)> //Use an explicit specialisation to break down into return and arg types
+{
+private:
+	using FnT = FnR(FnArgs...);
+	std::shared_ptr<std::function<FnT>> pFn;
+	std::atomic_bool called = false;
+
+public:
+
+	//the only public interface is this friend function, that calls the static wrapping factory function
+	template <typename T>
+	friend inline std::shared_ptr<std::function<T>> OneShotWrap(const std::shared_ptr<std::function<T>>& wrapee);
+
+	//explicitly delete any default ctors
+	OneShotFunc() = delete;
+	OneShotFunc(const OneShotFunc&) = delete;
+	OneShotFunc(OneShotFunc&&) = delete;
+	OneShotFunc& operator=(const OneShotFunc&) = delete;
+	OneShotFunc& operator=(OneShotFunc&&) = delete;
+
+protected:
+
+	//protected ctor/dtor so only the factory can use
+	explicit OneShotFunc(const std::shared_ptr<std::function<FnT>>& wrapee)
+		:pFn(wrapee)
+	{}
+
+	//dtor also logs if the fn was never called
+	~OneShotFunc()
+	{
+		if(!called.load())
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+			{
+				log->error("One-shot function not called before destruction. Dumping trace backlog if configured.");
+				log->dump_backtrace();
+			}
+		}
+	}
+
+private:
+
+	static inline std::shared_ptr<std::function<FnT>> Wrap(const std::shared_ptr<std::function<FnT>>& wrapee)
+	{
+		if(!wrapee) return nullptr;
+
+		//static custom deleter for use as a 'tag' to indicate a shared_ptr was created by us
+		static auto oneshot_was_here = [](std::function<FnT>* p){ delete p; };
+
+		//std::get_deleter returns a pointer, and lambda types are unique, so non-null means it's our 'tag', so convert direct to bool
+		bool has_oneshot_tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
+		if(has_oneshot_tag)
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->trace("Attempted re-wrap of one-shot function detected; returning it as-is.");
+			return wrapee;
+		}
+
+		auto pOneShot = std::make_shared<OneShotFuncBuilder<FnT>>(wrapee);
+		return std::shared_ptr<std::function<FnT>>(new std::function<FnT>([pOneShot](FnArgs... args) -> FnR
+			{
+				return (*pOneShot)(std::forward<FnArgs>(args)...);
+			}), oneshot_was_here);
+	}
+
+	//call operator - calls the wrapped fn after checking if it's been called before
+	FnR operator()(FnArgs&&... args)
+	{
+		if(called.exchange(true))
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+			{
+				log->error("One-shot function called more than once. Dumping trace backlog if configured.");
+				log->dump_backtrace();
+			}
+		}
+		return (*pFn)(std::forward<FnArgs>(args)...);
+	}
+
+	//otherwise useless derrived class for the sole purpose of enabling make_shared to access protected ctor/dtor from within the factory
+	template <typename T>
+	struct OneShotFuncBuilder: public OneShotFunc<T>
+	{
+		OneShotFuncBuilder(const std::shared_ptr<std::function<T>>& wrapee)
+			: OneShotFunc<T>(wrapee)
+		{};
+	};
+};
+
+//Free function template for parameter deduction
+//Couldn't work out how to (or if it was possible to) get OneShotFunc<>::Wrap to auto-deduce
+//So this is the public interface (friended in the class)
+template <typename T>
+static inline std::shared_ptr<std::function<T>> OneShotWrap(const std::shared_ptr<std::function<T>>& wrapee)
+{
+	return OneShotFunc<T>::Wrap(std::move(wrapee));
+}
+
+} //namespace odc
+
+#endif // ONESHOTFUNC_H

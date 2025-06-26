@@ -91,7 +91,7 @@ EVENTDNP3(EventType::AnalogQuality            , opendnp3::AnalogQuality)
 EVENTDNP3(EventType::CounterQuality           , opendnp3::CounterQuality)
 EVENTDNP3(EventType::BinaryOutputStatusQuality, opendnp3::BinaryOutputStatusQuality)
 EVENTDNP3(EventType::FrozenCounterQuality     , opendnp3::CounterQuality)
-EVENTDNP3(EventType::AnalogOutputStatusQuality, opendnp3::AnalogQuality)
+EVENTDNP3(EventType::AnalogOutputStatusQuality, opendnp3::AnalogOutputStatusQuality)
 
 template<typename T> T FromODC(const QualityFlags& qual);
 template<typename T> T FromODC(const std::shared_ptr<const EventInfo>& event);

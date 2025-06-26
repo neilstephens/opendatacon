@@ -123,6 +123,7 @@ void ShutdownDatacon(DataconHandles& handles)
 	TheDataConcentrator.reset();
 	std::cout<<"TheDataConcentrator has been destroyed"<<std::endl;
 
+	odc::spdlog_flush_all();
 	odc::spdlog_drop_all();
 	odc::spdlog_shutdown();
 	std::cout<<"spdlog has been shutdown"<<std::endl;

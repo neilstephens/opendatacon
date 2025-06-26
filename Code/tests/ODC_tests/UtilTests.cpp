@@ -25,6 +25,7 @@
  */
 
 #include <opendatacon/util.h>
+#include <opendatacon/MergeJsonConf.h>
 #include <catch.hpp>
 #include <string>
 #include <fstream>
@@ -122,4 +123,83 @@ TEST_CASE(SUITE("CRC16"))
 	CAPTURE(data);
 	CHECK(result == 0xAFC1);
 }
+
+TEST_CASE(SUITE("MergeJsonConf"))
+{
+	std::string inherits_json_str = R"001(
+	{
+		"MasterAddr" : 0,
+		"OutstationAddr" : 1,
+		"CommsPoint" : {"FailValue" : true}
+		"Analogs" : {},
+	})001";
+	std::string base_json_str = R"001(
+	{
+		"ConfigVersion" : "1.0",
+		"Binaries" : [{"Index": 0},{"Index": 1}],
+		"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 5}}],
+		"CommsPoint" :
+		{
+			"Index" : 100,
+			"FailValue" : false,
+			"RideThroughTimems" : 10000
+		}
+	})001";
+	std::string overrides_json_str = R"001(
+	{
+		"Binaries" : [{"Index": 0, "Name": "I have a name!"},{"Index": 3}],
+		"Analogs" : [{"Index": 2}],
+		"CommsPoint" : {"HeartBeatTimems" : 30000}
+	})001";
+
+	std::string expected_json_str = R"001(
+	{
+		"ConfigVersion" : "1.0",
+		"MasterAddr" : 0,
+		"OutstationAddr" : 1,
+		"Binaries" : [{"Index": 0, "Name": "I have a name!"},{"Index": 1},{"Index": 3}],
+		"Analogs" : [{"Range" : {"Start" : 0, "Stop" : 5}},{"Index": 2}],
+		"CommsPoint" :
+		{
+			"Index" : 100,
+			"FailValue" : false,
+			"RideThroughTimems" : 10000,
+			"HeartBeatTimems" : 30000
+		}
+	})001";
+
+	//parse the string into Json::Values
+	Json::CharReaderBuilder builder;
+	Json::Value inherits_json, base_json, overrides_json, expected_json;
+	std::istringstream inherits_iss(inherits_json_str);
+	std::istringstream base_iss(base_json_str);
+	std::istringstream overrides_iss(overrides_json_str);
+	std::istringstream expected_iss(expected_json_str);
+	Json::parseFromStream(builder, inherits_iss, &inherits_json, nullptr);
+	Json::parseFromStream(builder, base_iss, &base_json, nullptr);
+	Json::parseFromStream(builder, overrides_iss, &overrides_json, nullptr);
+	Json::parseFromStream(builder, expected_iss, &expected_json, nullptr);
+
+	Json::Value merged_json = inherits_json;
+	MergeJsonConf(merged_json, base_json);
+	MergeJsonConf(merged_json, overrides_json);
+
+	// Check the merged result
+	CHECK(merged_json == expected_json);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

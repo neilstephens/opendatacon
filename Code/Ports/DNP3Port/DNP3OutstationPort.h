@@ -52,7 +52,6 @@ protected:
 	void ExtendCurrentState(Json::Value& state) const override;
 	TCPClientServer ClientOrServer() override;
 	void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) override;
-	void ChannelWatchdogTrigger(bool on) override;
 
 	std::pair<std::string,const IUIResponder*> GetUIResponder() final;
 
@@ -96,27 +95,18 @@ protected:
 
 private:
 	std::shared_ptr<opendnp3::IOutstation> pOutstation;
-	std::atomic_bool stack_enabled;
 	std::atomic<int64_t> master_time_offset;
 	mutable std::atomic<AppIINFlags> IINFlags;
 	std::atomic<msSinceEpoch_t> last_time_sync;
 	std::shared_ptr<DNP3OutstationPortCollection> PeerCollection;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
-	void UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual);
+	bool UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual);
 	template<typename T> void EventT(T meas, uint16_t index);
 	template<typename T> void EventT(T qual, uint16_t index, opendnp3::FlagsType FT);
 	void Event(odc::ConnectState state);
-	inline void EnableStack()
-	{
-		pOutstation->Enable();
-		stack_enabled = true;
-	}
-	inline void DisableStack()
-	{
-		stack_enabled = false;
-		pOutstation->Disable();
-	}
+	inline void EnableStack() override { pOutstation->Enable(); }
+	inline void DisableStack() override { pOutstation->Disable(); }
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);

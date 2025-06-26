@@ -85,6 +85,7 @@ set(MD3PORT OFF CACHE BOOL "Build MD3 Port")
 set(CBPORT OFF CACHE BOOL "Build Conitel-Baker Port")
 set(FILETRANSFERPORT OFF CACHE BOOL "Build File Transfer Port")
 set(LUAPORT OFF CACHE BOOL "Build Lua Port")
+set(KAFKAPORT OFF CACHE BOOL "Build Kafka Port")
 set(LUATRANSFORM OFF CACHE BOOL "Build Lua Transform")
 set(LUALOGSINK OFF CACHE BOOL "Build Lua log sink plugin")
 set(LUAUICOMMANDER OFF CACHE BOOL "Build Lua UI command script plugin")
@@ -106,6 +107,7 @@ if(FULL)
 	set(CBPORT ON CACHE BOOL "Build Conitel-Baker Port" FORCE)
 	set(FILETRANSFERPORT ON CACHE BOOL "Build File Transfer Port" FORCE)
 	set(LUAPORT ON CACHE BOOL "Build Lua Port" FORCE)
+	set(KAFKAPORT ON CACHE BOOL "Build Kafka Port" FORCE)
 	set(LUATRANSFORM ON CACHE BOOL "Build Lua Transform" FORCE)
 	set(LUALOGSINK ON CACHE BOOL "Build Lua log sink plugin" FORCE)
 	set(LUAUICOMMANDER ON CACHE BOOL "Build Lua UI command script plugin" FORCE)
@@ -232,7 +234,7 @@ else()
 		#only export API symbols
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
 
-		if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+		if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR ARCH_DESC STREQUAL "x86")
 			link_libraries(atomic)
 		endif()
 	endif()
@@ -245,10 +247,57 @@ else()
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static-libstdc++")
-		#why is this not automatic with Clang?
-		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-			#need to add these to the link libraries manually
-			set(LIBCXX "c++" "c++abi")
+
+		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT APPLE)
+			#need to add static libc++ to the link libraries manually
+			# Find the static lib (.a) files explicitly, because find_library insists on finding dynamic libs
+			set(SEARCH_PATHS
+			    ${CMAKE_LIBRARY_PATH}
+			    ${CMAKE_FRAMEWORK_PATH}
+			    ${CMAKE_PREFIX_PATH}
+			    ${CMAKE_SYSTEM_LIBRARY_PATH}
+			    ${CMAKE_SYSTEM_PREFIX_PATH}
+			    /usr/lib/llvm*/lib
+			    /usr/lib
+			    /usr/lib64
+			)
+			message("linking libc++ statically. Searching ${SEARCH_PATHS}")
+
+			set(LIBCXX_STATIC_LIB "LIBCXX_STATIC_LIB-NOTFOUND")
+			set(LIBCXXABI_STATIC_LIB "LIBCXXABI_STATIC_LIB-NOTFOUND")
+
+			# Search for the static libraries in all the search paths
+			foreach(SEARCH_PATH ${SEARCH_PATHS})
+			  # Use file(GLOB...) to look for libc++.a in each path
+			  file(GLOB LIBCXX_FILES "${SEARCH_PATH}/libc++.a" "${SEARCH_PATH}/*/libc++.a")
+			  if(LIBCXX_FILES)
+			    list(GET LIBCXX_FILES 0 LIBCXX_STATIC_LIB)
+			    break()
+			  endif()
+			endforeach()
+
+			foreach(SEARCH_PATH ${SEARCH_PATHS})
+			  # Use file(GLOB...) to look for libc++abi.a in each path
+			  file(GLOB LIBCXXABI_FILES "${SEARCH_PATH}/libc++abi.a" "${SEARCH_PATH}/*/libc++abi.a")
+			  if(LIBCXXABI_FILES)
+			    list(GET LIBCXXABI_FILES 0 LIBCXXABI_STATIC_LIB)
+			    break()
+			  endif()
+			endforeach()
+
+			# Check if we found the libraries
+			if(NOT EXISTS "${LIBCXX_STATIC_LIB}")
+			  message(FATAL_ERROR "Could not find static libc++ library (libc++.a)")
+			else()
+			  message(STATUS "Found static libc++: ${LIBCXX_STATIC_LIB}")
+			endif()
+
+			if(NOT EXISTS "${LIBCXXABI_STATIC_LIB}")
+			  message(FATAL_ERROR "Could not find static libc++abi library (libc++abi.a)")
+			else()
+			  message(STATUS "Found static libc++abi: ${LIBCXXABI_STATIC_LIB}")
+			endif()
+
 		endif()
 	endif()
 
@@ -419,6 +468,10 @@ endif()
 if(LUAPORT)
 	message("add subdir LuaPort")
 	add_subdirectory(Code/Ports/LuaPort)
+endif()
+if(KAFKAPORT)
+	message("add subdir KafkaPort")
+	add_subdirectory(Code/Ports/KafkaPort)
 endif()
 if(LUATRANSFORM)
 	message("add subdir LuaTransform")
