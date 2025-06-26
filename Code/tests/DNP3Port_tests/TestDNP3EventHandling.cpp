@@ -536,7 +536,8 @@ bool WaitForCommsPoint(std::shared_ptr<DataPort> pPort, bool val, size_t timeout
 		auto event = pPort->pEventDB()->Get(odc::EventType::Binary, comms_idx);
 		try
 		{
-			if(event->GetPayload<EventType::Binary>() == val)
+			if(event->GetPayload<EventType::Binary>() == val
+			   && event->GetQuality() == QualityFlags::ONLINE)
 				break;
 		}
 		catch(std::exception&)
@@ -564,8 +565,9 @@ TEST_CASE(SUITE("CommsPoint RideThrough"))
 		CHECK(WaitForCommsPoint(MPUT,true));
 
 		//Get the OS to drop the connection, and measure the comms point ride-through time
-		auto start_time = odc::msSinceEpoch();
 		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
+		auto start_time = odc::msSinceEpoch();
 		CHECK(WaitForCommsPoint(MPUT,false));
 		auto measured_duration = odc::msSinceEpoch() - start_time;
 		CHECK(measured_duration > 0.9*comms_ride_time_ms);
@@ -592,6 +594,9 @@ TEST_CASE(SUITE("CommsPoint RideThrough Pause"))
 		OPUT->Enable();
 		MPUT->Enable();
 
+		//Make sure the comms point doesn't go bad on first enablement (ridethrough starts as paused with no demand)
+		CHECK_FALSE(WaitForCommsPoint(MPUT,false,comms_ride_time_ms*1.2));
+
 		//Trigger on-demand enablement of the port DNP3 stacks
 		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
 		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
@@ -600,7 +605,7 @@ TEST_CASE(SUITE("CommsPoint RideThrough Pause"))
 		//Get the MS to drop the connection and make sure the comms point doesn't go off (ride-through paused)
 		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
 		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
-		CHECK_FALSE(WaitForCommsPoint(MPUT,false,comms_ride_time_ms*1.1));
+		CHECK_FALSE(WaitForCommsPoint(MPUT,false,comms_ride_time_ms*1.2));
 
 		//turn things off
 		OPUT->Disable();
@@ -623,16 +628,24 @@ TEST_CASE(SUITE("CommsPoint RideThrough No-Pause"))
 		OPUT->Enable();
 		MPUT->Enable();
 
+		//on start, the comms point should indicate failed after the ride-through time
+		auto start_time = odc::msSinceEpoch();
+		CHECK(WaitForCommsPoint(MPUT,false));
+		auto measured_duration = odc::msSinceEpoch() - start_time;
+		CHECK(measured_duration > 0.9*comms_ride_time_ms);
+		CHECK(measured_duration < 1.1*comms_ride_time_ms);
+
 		//Trigger on-demand enablement of the port DNP3 stacks
 		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
 		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
 		CHECK(WaitForCommsPoint(MPUT,true));
 
 		//Get the MS to drop the connection, and measure the comms point ride-through time
-		auto start_time = odc::msSinceEpoch();
 		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
+		start_time = odc::msSinceEpoch();
 		CHECK(WaitForCommsPoint(MPUT,false));
-		auto measured_duration = odc::msSinceEpoch() - start_time;
+		measured_duration = odc::msSinceEpoch() - start_time;
 		CHECK(measured_duration > 0.9*comms_ride_time_ms);
 		CHECK(measured_duration < 1.1*comms_ride_time_ms);
 
