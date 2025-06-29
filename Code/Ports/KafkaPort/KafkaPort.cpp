@@ -38,6 +38,24 @@ KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const
 {
 	pConf = std::make_unique<KafkaPortConf>(isProducer);
 	ProcessFile();
+
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	if(pConf->pPointMap && pConf->MustOverridePTMEntries)
+	{
+		PointTranslationMap ptm;
+		for(const auto& [tid,pte] : *pConf->pPointMap)
+		{
+			if(!pte.override)
+				continue;
+			ptm[tid].override = pte.override;
+			ptm[tid].pCBORer = pte.pCBORer ? std::make_unique<CBORSerialiser>(std::move(*pte.pCBORer)) : nullptr;
+			ptm[tid].pExtraFields = pte.pExtraFields ? std::make_unique<ExtraPointFields>(*pte.pExtraFields) : nullptr;
+			ptm[tid].pKey = pte.pKey ? std::make_unique<odc::OctetStringBuffer>(std::move(*pte.pKey)) : nullptr;
+			ptm[tid].pTemplate = pte.pTemplate ? std::make_unique<std::string>(std::move(*pte.pTemplate)) : nullptr;
+			ptm[tid].pTopic = pte.pTopic ? std::make_unique<kafka::Topic>(std::move(*pte.pTopic)) : nullptr;
+		}
+		pConf->pPointMap = std::make_unique<const PointTranslationMap>(std::move(ptm));
+	}
 }
 
 void KafkaPort::Enable()
@@ -176,6 +194,10 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->OverridesCreateNewPTMEntries = JSONRoot["OverridesCreateNewPTMEntries"].asBool();
 	}
+	if(JSONRoot.isMember("MustOverridePTMEntries"))
+	{
+		pConf->MustOverridePTMEntries = JSONRoot["MustOverridePTMEntries"].asBool();
+	}
 	if (JSONRoot.isMember("OctetStringFormat"))
 	{
 		auto fmt = JSONRoot["OctetStringFormat"].asString();
@@ -211,6 +233,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 		{
 			for(const auto& [tid,pte] : *pConf->pPointMap)
 			{
+				ptm[tid].override = pte.override;
 				ptm[tid].pCBORer = pte.pCBORer ? std::make_unique<CBORSerialiser>(std::move(*pte.pCBORer)) : nullptr;
 				ptm[tid].pExtraFields = pte.pExtraFields ? std::make_unique<ExtraPointFields>(*pte.pExtraFields) : nullptr;
 				ptm[tid].pKey = pte.pKey ? std::make_unique<odc::OctetStringBuffer>(std::move(*pte.pKey)) : nullptr;
@@ -274,6 +297,9 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 					//Take a copy and update the existing entry, or create a new one
 					PointTranslationEntry pte = existing_point ? std::move(ptm.at(tid)) : PointTranslationEntry();
 
+					if(existing_point)
+						pte.override = true;
+
 					for(auto pte_member : entry.getMemberNames())
 					{
 						//Skip members that are already processed
@@ -309,6 +335,6 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 				}
 			}
 		}
-		pConf->pPointMap = std::make_unique<PointTranslationMap>(std::move(ptm));
+		pConf->pPointMap = std::make_unique<const PointTranslationMap>(std::move(ptm));
 	}
 }
