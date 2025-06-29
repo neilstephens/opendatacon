@@ -104,29 +104,13 @@ void KafkaConsumerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		return;
 	}
 
-	std::weak_ptr<KafkaConsumerPort> weak_self = std::static_pointer_cast<KafkaConsumerPort>(shared_from_this());
-	pStateSync->post([weak_self,event,pStatusCallback]()
-		{
-			if(auto self = weak_self.lock())
-			{
-				if(event->GetEventType() == EventType::ConnectState)
-				{
-					auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
-					if(pConf->ServerType == server_type_t::ONDEMAND)
-					{
-						if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-							self->PortUp();
-						else if(!self->InDemand())
-							self->PortDown();
-					}
-					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
-				}
-				else
-					(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
-			}
-			else
-				(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
-		});
+	if(event->GetEventType() == EventType::ConnectState)
+	{
+		ConnectionEvent(event,pStatusCallback);
+		return;
+	}
+
+	(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
 }
 
 void KafkaConsumerPort::BuildConsumer()

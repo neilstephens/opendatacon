@@ -92,6 +92,28 @@ void KafkaPort::Disable()
 		});
 }
 
+void KafkaPort::ConnectionEvent(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback)
+{
+	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
+	pStateSync->post([weak_self,event,pStatusCallback]()
+		{
+			if(auto self = weak_self.lock())
+			{
+				auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
+				if(pConf->ServerType == server_type_t::ONDEMAND)
+				{
+					if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+						self->PortUp();
+					else if(!self->InDemand())
+						self->PortDown();
+					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
+					return;
+				}
+			}
+			(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
+		});
+}
+
 void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;

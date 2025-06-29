@@ -49,10 +49,13 @@ public:
 	virtual void Build() override = 0;
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
+private:
+	std::unique_ptr<asio::io_service::strand> pStateSync = odc::asio_service::Get()->make_strand();
+
 protected:
 	std::atomic_bool enabled {false};
-	std::unique_ptr<asio::io_service::strand> pStateSync = odc::asio_service::Get()->make_strand();
 	std::shared_ptr<KafkaClientCache> pKafkaClientCache = KafkaClientCache::Get();
+	void ConnectionEvent(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback);
 	template <class KafkaClientType> std::shared_ptr<KafkaClientType> Build(std::string TypeString = "") //TODO: make TypeString an enum with to_string helper
 	{
 		auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());

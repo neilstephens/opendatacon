@@ -141,24 +141,11 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		return;
 	}
 
-	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(shared_from_this());
-	pStateSync->post([weak_self,event]()
-		{
-			if(auto self = weak_self.lock())
-			{
-				if(event->GetEventType() == EventType::ConnectState)
-				{
-					auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
-					if(pConf->ServerType == server_type_t::ONDEMAND)
-					{
-						if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-							self->PortUp();
-						else if(!self->InDemand())
-							self->PortDown();
-					}
-				}
-			}
-		});
+	if(event->GetEventType() == EventType::ConnectState)
+	{
+		ConnectionEvent(event,pStatusCallback);
+		return;
+	}
 
 	if(!pKafkaProducer)
 	{
