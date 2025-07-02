@@ -64,9 +64,12 @@ inline std::vector<spdlog::sink_ptr> GetAllSinks(const std::unordered_map<std::s
 inline void AddLogger(const std::string& name, const std::unordered_map<std::string, spdlog::sink_ptr>& sinks)
 {
 	const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(sinks);
+	auto lowest_lvl = spdlog::level::off;
+	for(const auto& s : sink_vec)
+		lowest_lvl = s->level() < lowest_lvl ? s->level() : lowest_lvl;
 	auto pLogger = std::make_shared<spdlog::async_logger>(name, sink_vec.begin(), sink_vec.end(),
 		odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-	pLogger->set_level(spdlog::level::trace);
+	pLogger->set_level(lowest_lvl);
 	odc::spdlog_register_logger(pLogger);
 }
 
@@ -275,6 +278,16 @@ Json::Value DataConcentrator::SetLogLevel(std::stringstream& ss)
 		if(!fail)
 		{
 			LogSinks[sinkname]->set_level(new_level);
+
+			//now set all the logger levels to the lowest sink level
+			for(auto& [sname,sink] : LogSinks)
+				if(new_level > sink->level())
+					new_level = sink->level();
+			odc::spdlog_apply_all([new_level](std::shared_ptr<spdlog::logger> log)
+				{
+					log->set_level(new_level);
+				});
+
 			result = IUIResponder::GenerateResult("Success");
 		}
 	}

@@ -70,6 +70,7 @@ extern "C" void ExportLogWrappers(lua_State* const L, const std::string& Name, c
 			lua_pushinteger(L,i);
 			lua_setfield(L,-2,spdlog::level::level_string_views[i].data());
 		}
+
 		lua_pushcfunction(L, [](lua_State* const L) -> int
 			{
 				if(!lua_isinteger(L,1))
@@ -82,6 +83,27 @@ extern "C" void ExportLogWrappers(lua_State* const L, const std::string& Name, c
 				return 1;
 			});
 		lua_setfield(L,-2,"ToString");
+
+		lua_pushstring(L, LogName.c_str());
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				auto logname = lua_tostring(L, lua_upvalueindex(1));
+				auto log = odc::spdlog_get(logname);
+				if(!log)
+				{
+					lua_pushnil(L);
+					return 1;
+				}
+				if(!lua_isinteger(L,1))
+				{
+					lua_pushnil(L);
+					return 1;
+				}
+				auto l = static_cast<spdlog::level::level_enum>(lua_tointeger(L,1));
+				lua_pushboolean(L,log->should_log(l));
+				return 1;
+			},1);
+		lua_setfield(L,-2,"ShouldLog");
 	}
 	lua_setfield(L,-2,"level");
 

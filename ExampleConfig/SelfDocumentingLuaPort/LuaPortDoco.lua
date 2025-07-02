@@ -51,6 +51,15 @@ function do_example_stuff()
   odc.log.debug("QualityFlag.RESTART : " .. odc.QualityFlag.RESTART);
   odc.log.trace("ControlCode.PULSE_ON : " .. odc.ControlCode.PULSE_ON);
   
+  -- You can check if a log level is currently enabled if you want to avoid building an expensive log message
+  if odc.log.level.ShouldLog(odc.log.level.debug) then
+    --this code path isn't evaluated unless debug messages are enabled
+    local msg = "pretend this message is expensive to generate";
+    odc.log.debug(msg);
+  else
+    odc.log.info("debug logging isn't enabled");
+  end
+  
   --Quality flags can be combined (it's just bitwise OR convenience function)
   local Q = odc.QualityFlags(odc.QualityFlag.COMM_LOST,odc.QualityFlag.RESTART);
   odc.log.info("QualityFlags() returns " .. Q .. ": " .. odc.ToString.QualityFlags(Q));

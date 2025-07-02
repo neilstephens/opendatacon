@@ -200,7 +200,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					{
 						auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
 							odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-						pLogger->set_level(spdlog::level::trace);
+						pLogger->set_level(log->level());
 						odc::spdlog_register_logger(pLogger);
 					}
 				}
