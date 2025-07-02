@@ -55,6 +55,7 @@ private:
 protected:
 	std::atomic_bool enabled {false};
 	std::shared_ptr<KafkaClientCache> pKafkaClientCache = KafkaClientCache::Get();
+	std::unordered_map<std::string,std::unique_ptr<EventDB>> pDBs;
 	void ConnectionEvent(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback);
 	template <class KafkaClientType> std::shared_ptr<KafkaClientType> Build(std::string TypeString = "") //TODO: make TypeString an enum with to_string helper
 	{

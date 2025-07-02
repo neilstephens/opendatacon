@@ -37,8 +37,30 @@
 #include <memory>
 #include <string>
 
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S);
+
 void KafkaProducerPort::Build()
-{}
+{
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	auto log = odc::spdlog_get("KafkaPort");
+	std::unordered_map<std::string,std::vector<std::shared_ptr<const EventInfo>>> init_events;
+	for(const auto& [tid, pte] : *pConf->pPointMap)
+	{
+		const auto& [source,index,ev_type] = tid;
+		init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
+
+		//Log a message for each PTM entry for verification purposes
+		if(log && log->should_log(spdlog::level::trace))
+		{
+			auto dummy_event = std::make_shared<EventInfo>(*init_events[source].back());
+			dummy_event->SetPayload();
+			auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+			log->trace("{} -> {}: {}", source, Name, ev_str);
+		}
+	}
+	for(const auto& [source,events] : init_events)
+		pDBs[source] = std::make_unique<EventDB>(events);
+}
 
 OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const EventInfo> event, const std::string& SenderName)
 {
