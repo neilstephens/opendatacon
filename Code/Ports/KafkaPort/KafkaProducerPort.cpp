@@ -44,18 +44,21 @@ void KafkaProducerPort::Build()
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 	auto log = odc::spdlog_get("KafkaPort");
 	std::unordered_map<std::string,std::vector<std::shared_ptr<const EventInfo>>> init_events;
-	for(const auto& [tid, pte] : *pConf->pPointMap)
+	if(pConf->pPointMap)
 	{
-		const auto& [source,index,ev_type] = tid;
-		init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
-
-		//Log a message for each PTM entry for verification purposes
-		if(log && log->should_log(spdlog::level::trace))
+		for(const auto& [tid, pte] : *pConf->pPointMap)
 		{
-			auto dummy_event = std::make_shared<EventInfo>(*init_events[source].back());
-			dummy_event->SetPayload();
-			auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->OctetStringFormat);
-			log->trace("{} -> {}: {}", source, Name, ev_str);
+			const auto& [source,index,ev_type] = tid;
+			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
+
+			//Log a message for each PTM entry for verification purposes
+			if(log && log->should_log(spdlog::level::trace))
+			{
+				auto dummy_event = std::make_shared<EventInfo>(*init_events[source].back());
+				dummy_event->SetPayload();
+				auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+				log->trace("{} -> {}: {}", source, Name, ev_str);
+			}
 		}
 	}
 	for(const auto& [source,events] : init_events)
