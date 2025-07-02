@@ -177,13 +177,67 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
-	auto point_mapping = CheckPointTranslationMap(event, SenderName);
+	std::shared_ptr<EventInfo> ultimate_event;
+
+	auto DBkey = pConf->PointTraslationSource == SourceLookupMethod::None ? ""
+	                  : pConf->PointTraslationSource == SourceLookupMethod::SenderName ? SenderName
+	                        : event->GetSourcePort();
+	auto pDB_it = pDBs.find(DBkey);
+
+	if(pDB_it != pDBs.end())
+	{
+		switch(event->GetEventType())
+		{
+			case EventType::BinaryQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::Binary,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::Binary,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::BinaryQuality>());
+				break;
+			}
+			case EventType::AnalogQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::Analog,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::Analog,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::AnalogQuality>());
+				break;
+			}
+			case EventType::AnalogOutputStatusQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::AnalogOutputStatus,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::AnalogOutputStatus,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::AnalogOutputStatusQuality>());
+				break;
+			}
+			case EventType::BinaryOutputStatusQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::BinaryOutputStatus,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::BinaryOutputStatus,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::BinaryOutputStatusQuality>());
+				break;
+			}
+			case EventType::OctetStringQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::OctetString,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::OctetString,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::OctetStringQuality>());
+				break;
+			}
+			default:
+				ultimate_event = std::make_shared<EventInfo>(*event);
+				break;
+		}
+	}
+	else
+		ultimate_event = std::make_shared<EventInfo>(*event);
+
+	auto point_mapping = CheckPointTranslationMap(ultimate_event, SenderName);
 
 	if(!point_mapping.has_value() && pConf->BlockUnknownPoints)
 	{
 		if(auto log = odc::spdlog_get("KafkaPort"))
 			log->warn("{}: Event from unmapped point: SenderName({}), SourcePort({}), {}({})",
-				Name, SenderName, event->GetSourcePort(), ToString(event->GetEventType()), event->GetIndex());
+				Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex());
 		(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
 		return;
 	}
@@ -201,13 +255,13 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	if(pConf->TranslationMethod == EventTranslationMethod::Template)
 	{
 		const auto& template_str = VAL_OR(pTemplate,pConf->DefaultTemplate);
-		auto buf = FillTemplate(template_str, event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		auto buf = FillTemplate(template_str, ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 	{
 		const auto& CBORer = VAL_OR(pCBORer,pConf->DefaultCBORSerialiser);
-		auto buf = CBORer.Encode(event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		auto buf = CBORer.Encode(ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else //Lua
