@@ -220,6 +220,10 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->MustOverridePTMEntries = JSONRoot["MustOverridePTMEntries"].asBool();
 	}
+	if(JSONRoot.isMember("DeduplicateEvents"))
+	{
+		pConf->DeduplicateEvents = JSONRoot["DeduplicateEvents"].asBool();
+	}
 	if (JSONRoot.isMember("OctetStringFormat"))
 	{
 		auto fmt = JSONRoot["OctetStringFormat"].asString();

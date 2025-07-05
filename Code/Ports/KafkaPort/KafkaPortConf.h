@@ -90,6 +90,7 @@ public:
 	std::unique_ptr<const PointTranslationMap> pPointMap = nullptr;
 	bool OverridesCreateNewPTMEntries = false;
 	bool MustOverridePTMEntries = false;
+	bool DeduplicateEvents = true;
 	//TODO: make key dynamic, like the value
 	//TODO: Support for Lua translation
 	//TODO: Support for Template {} vs <> for std::format specifiers

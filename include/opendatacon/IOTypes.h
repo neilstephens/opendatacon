@@ -974,6 +974,97 @@ private:
 	void *pPayload;
 };
 
+inline bool operator==(const odc::EventInfo& lhs, const odc::EventInfo& rhs)
+{
+	if (&lhs == &rhs) return true;
+	if (lhs.GetTimestamp() != rhs.GetTimestamp()) return false;
+	if (lhs.GetQuality() != rhs.GetQuality()) return false;
+	if (lhs.GetEventType() != rhs.GetEventType()) return false;
+	if (lhs.GetIndex() != rhs.GetIndex()) return false;
+	if (lhs.HasPayload() != rhs.HasPayload()) return false;
+
+	bool same_payload = [&]()
+				  {
+					  if (lhs.HasPayload())
+					  {
+						  switch (lhs.GetEventType())
+						  {
+							  case odc::EventType::Binary:
+								  return lhs.GetPayload<odc::EventType::Binary>() == rhs.GetPayload<odc::EventType::Binary>();
+							  case odc::EventType::DoubleBitBinary:
+								  return lhs.GetPayload<odc::EventType::DoubleBitBinary>() == rhs.GetPayload<odc::EventType::DoubleBitBinary>();
+							  case odc::EventType::Analog:
+								  return lhs.GetPayload<odc::EventType::Analog>() == rhs.GetPayload<odc::EventType::Analog>();
+							  case odc::EventType::Counter:
+								  return lhs.GetPayload<odc::EventType::Counter>() == rhs.GetPayload<odc::EventType::Counter>();
+							  case odc::EventType::FrozenCounter:
+								  return lhs.GetPayload<odc::EventType::FrozenCounter>() == rhs.GetPayload<odc::EventType::FrozenCounter>();
+							  case odc::EventType::BinaryOutputStatus:
+								  return lhs.GetPayload<odc::EventType::BinaryOutputStatus>() == rhs.GetPayload<odc::EventType::BinaryOutputStatus>();
+							  case odc::EventType::AnalogOutputStatus:
+								  return lhs.GetPayload<odc::EventType::AnalogOutputStatus>() == rhs.GetPayload<odc::EventType::AnalogOutputStatus>();
+							  case odc::EventType::BinaryCommandEvent:
+								  return lhs.GetPayload<odc::EventType::BinaryCommandEvent>() == rhs.GetPayload<odc::EventType::BinaryCommandEvent>();
+							  case odc::EventType::AnalogCommandEvent:
+								  return lhs.GetPayload<odc::EventType::AnalogCommandEvent>() == rhs.GetPayload<odc::EventType::AnalogCommandEvent>();
+							  case odc::EventType::OctetString:
+								  return lhs.GetPayload<odc::EventType::OctetString>() == rhs.GetPayload<odc::EventType::OctetString>();
+							  case odc::EventType::TimeAndInterval:
+								  return lhs.GetPayload<odc::EventType::TimeAndInterval>() == rhs.GetPayload<odc::EventType::TimeAndInterval>();
+							  case odc::EventType::SecurityStat:
+								  return lhs.GetPayload<odc::EventType::SecurityStat>() == rhs.GetPayload<odc::EventType::SecurityStat>();
+							  case odc::EventType::ControlRelayOutputBlock:
+								  return lhs.GetPayload<odc::EventType::ControlRelayOutputBlock>() == rhs.GetPayload<odc::EventType::ControlRelayOutputBlock>();
+							  case odc::EventType::AnalogOutputInt16:
+								  return lhs.GetPayload<odc::EventType::AnalogOutputInt16>() == rhs.GetPayload<odc::EventType::AnalogOutputInt16>();
+							  case odc::EventType::AnalogOutputInt32:
+								  return lhs.GetPayload<odc::EventType::AnalogOutputInt32>() == rhs.GetPayload<odc::EventType::AnalogOutputInt32>();
+							  case odc::EventType::AnalogOutputFloat32:
+								  return lhs.GetPayload<odc::EventType::AnalogOutputFloat32>() == rhs.GetPayload<odc::EventType::AnalogOutputFloat32>();
+							  case odc::EventType::AnalogOutputDouble64:
+								  return lhs.GetPayload<odc::EventType::AnalogOutputDouble64>() == rhs.GetPayload<odc::EventType::AnalogOutputDouble64>();
+							  case odc::EventType::BinaryQuality:
+								  return lhs.GetPayload<odc::EventType::BinaryQuality>() == rhs.GetPayload<odc::EventType::BinaryQuality>();
+							  case odc::EventType::DoubleBitBinaryQuality:
+								  return lhs.GetPayload<odc::EventType::DoubleBitBinaryQuality>() == rhs.GetPayload<odc::EventType::DoubleBitBinaryQuality>();
+							  case odc::EventType::AnalogQuality:
+								  return lhs.GetPayload<odc::EventType::AnalogQuality>() == rhs.GetPayload<odc::EventType::AnalogQuality>();
+							  case odc::EventType::CounterQuality:
+								  return lhs.GetPayload<odc::EventType::CounterQuality>() == rhs.GetPayload<odc::EventType::CounterQuality>();
+							  case odc::EventType::BinaryOutputStatusQuality:
+								  return lhs.GetPayload<odc::EventType::BinaryOutputStatusQuality>() == rhs.GetPayload<odc::EventType::BinaryOutputStatusQuality>();
+							  case odc::EventType::FrozenCounterQuality:
+								  return lhs.GetPayload<odc::EventType::FrozenCounterQuality>() == rhs.GetPayload<odc::EventType::FrozenCounterQuality>();
+							  case odc::EventType::AnalogOutputStatusQuality:
+								  return lhs.GetPayload<odc::EventType::AnalogOutputStatusQuality>() == rhs.GetPayload<odc::EventType::AnalogOutputStatusQuality>();
+							  case odc::EventType::OctetStringQuality:
+								  return lhs.GetPayload<odc::EventType::OctetStringQuality>() == rhs.GetPayload<odc::EventType::OctetStringQuality>();
+							  case odc::EventType::ConnectState:
+								  return lhs.GetPayload<odc::EventType::ConnectState>() == rhs.GetPayload<odc::EventType::ConnectState>();
+							  default:
+							  {
+								  //log an error
+								  if(auto log = odc::spdlog_get("opendatacon"))
+									  log->error("odc::EventInfo comparison can't handle EventType::{}. Returning unequal", ToString(lhs.GetEventType()));
+								  return false;
+							  }
+						  }
+					  }
+					  return true; // Both have no payloads
+				  }();
+	if(!same_payload) return false;
+
+	//compare source port last (only if needed) since string compare ain't cheap
+	if (lhs.GetSourcePort() != rhs.GetSourcePort()) return false;
+
+	return true;
+}
+
+inline bool operator!=(const odc::EventInfo& lhs, const odc::EventInfo& rhs)
+{
+	return !(lhs == rhs);
+}
+
 }
 
 #endif

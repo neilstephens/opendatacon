@@ -230,6 +230,12 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 				ultimate_event = std::make_shared<EventInfo>(*event);
 				break;
 		}
+		auto prev_event = pDB_it->second->Swap(ultimate_event);
+		if(pConf->DeduplicateEvents && prev_event && *ultimate_event == *prev_event)
+		{
+			(*pStatusCallback)(odc::CommandStatus::SUCCESS);
+			return;
+		}
 	}
 	else
 		ultimate_event = std::make_shared<EventInfo>(*event);
@@ -261,11 +267,6 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
 		return;
 	}
-
-	//TODO: De-duplication option:
-	//	could initialise and use the point database DataPort::pDB
-	//	pDB->Swap() out the event and see if the quality or payload changed (optionally configurable change detection fields)
-	//	then only send to kafka if it changed
 
 	#define VAL_OR(X,D) (point_mapping.has_value() ? point_mapping->get().X ? *(point_mapping->get().X) : D : D)
 
