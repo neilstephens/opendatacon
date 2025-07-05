@@ -256,7 +256,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 				if(!evt)
 				{
 					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} {} Payload {} Event {} => DROPPED by transform", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+						log->trace("{} {} {} Payload {} Event {} => DROPPED by transform", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->HasPayload() ? event->GetPayloadString() : "", Name);
 					(*pStatusCallback)(CommandStatus::UNDEFINED);
 					return;
 				}
@@ -266,7 +266,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 				for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 				{
 					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), Name, aMatch_it->second.second->GetName());
+						log->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->HasPayload() ? evt->GetPayloadString() : "", Name, aMatch_it->second.second->GetName());
 
 					if(evt->GetEventType() == EventType::ConnectState)
 					{
@@ -293,7 +293,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 						if(evt)
 						{
 							if(auto log = odc::spdlog_get("opendatacon"))
-								log->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->GetPayloadString(), src, (*Tx_it)->Name);
+								log->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->HasPayload() ? evt->GetPayloadString() : "", src, (*Tx_it)->Name);
 						}
 						(*Tx_it)->Event(evt,ToDestination);
 					});

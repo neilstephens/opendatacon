@@ -234,6 +234,23 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	else
 		ultimate_event = std::make_shared<EventInfo>(*event);
 
+	if(!ultimate_event->HasPayload())
+	{
+		// if the point isn't ONLINE or if it's RESTART qual, then it's OK to not have a payload,
+		//	but we'll default it to avoid serialisation issues
+		if((ultimate_event->GetQuality() & QualityFlags::ONLINE) == QualityFlags::NONE
+		   || (ultimate_event->GetQuality() & QualityFlags::RESTART) != QualityFlags::NONE)
+			ultimate_event->SetPayload();
+		else //it doesn't have a payload when it should (probably), so we'll warn and drop it
+		{
+			if(auto log = odc::spdlog_get("KafkaPort"))
+				log->warn("{}: Event from {}(Source: {}) does not have a payload: {}({}) Quality({})",
+					Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex(), ToString(ultimate_event->GetQuality()));
+			(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
+			return;
+		}
+	}
+
 	auto point_mapping = CheckPointTranslationMap(ultimate_event, SenderName);
 
 	if(!point_mapping.has_value() && pConf->BlockUnknownPoints)

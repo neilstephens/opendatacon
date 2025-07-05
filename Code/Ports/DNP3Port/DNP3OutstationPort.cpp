@@ -465,6 +465,27 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		return;
 	}
 
+	if(!event->HasPayload())
+	{
+		// if the point isn't ONLINE or if it's RESTART qual, then it's OK to not have a payload,
+		//	but we'll default it to avoid DNP3 conversion exceptions
+		if((event->GetQuality() & QualityFlags::ONLINE) == QualityFlags::NONE
+		   || (event->GetQuality() & QualityFlags::RESTART) != QualityFlags::NONE)
+		{
+			EventInfo info(*event);
+			info.SetPayload();
+			event = std::make_shared<const EventInfo>(info);
+		}
+		else //it doesn't have a payload when it should (probably), so we'll warn and drop it
+		{
+			if(auto log = odc::spdlog_get("DNP3Port"))
+				log->warn("{}: Event from {}(Source: {}) does not have a payload: {}({}) Quality({})",
+					Name, SenderName, event->GetSourcePort(), ToString(event->GetEventType()), event->GetIndex(), ToString(event->GetQuality()));
+			(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
+			return;
+		}
+	}
+
 	bool point_exists = pDB->Set(event);
 
 	switch(event->GetEventType())

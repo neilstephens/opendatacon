@@ -762,9 +762,9 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 	{
 		auto popped = rx_event_buffer[seq].front();
 		rx_event_buffer[seq].pop_front();
-		auto OSBuffer = popped->GetPayload<EventType::OctetString>();
+		auto OSBuffer = popped->HasPayload() ? popped->GetPayload<EventType::OctetString>() : odc::OctetStringBuffer();
 
-		if(OSBuffer.size() < crc_size)
+		if(OSBuffer.size() < crc_size) //crc_size is zero if CRCs not in use
 		{
 			if(auto log = odc::spdlog_get("FileTransferPort"))
 				log->error("{}: OctetString without CRC received when UseCRCs == true.", Name);
