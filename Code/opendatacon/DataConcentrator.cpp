@@ -1288,6 +1288,7 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 	const Json::Value& old_main_conf, const Json::Value& new_main_conf,
 	std::set<std::string>& created, std::set<std::string>& changed, std::set<std::string>& deleted)
 {
+	std::unordered_map<std::string,bool> file_cmp_cache;
 	Json::Value changed_confs;
 	//check for new or changed objects in the new config
 	for(Json::ArrayIndex n = 0; n < new_main_conf[collection_name].size(); ++n)
@@ -1312,6 +1313,40 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 
 		if(p_old_object)
 		{
+			std::function<bool(const std::string&, const std::string&)>
+			fileIsDifferent = [&](const std::string& old_filename, const std::string& new_filename)->bool
+						{
+							auto file_cmp_result_it = file_cmp_cache.find(old_filename+"<=>"+new_filename);
+							if(file_cmp_result_it != file_cmp_cache.end())
+								return !file_cmp_result_it->second;
+
+							auto pOld = old_file_confs[old_filename];
+							if(!pOld)
+								pOld = std::make_shared<Json::Value>();
+							auto pNew = RecallOrCreate(new_filename);
+
+							if(*pOld != *pNew)
+							{
+								file_cmp_cache[old_filename+"<=>"+new_filename] = false;
+								return true;
+							}
+
+							if(pNew->isMember("Inherits") && (*pNew)["Inherits"].isArray())
+							{
+								for(Json::ArrayIndex n = 0; n < (*pNew)["Inherits"].size(); ++n)
+								{
+									const auto& filename = (*pNew)["Inherits"][n].asString();
+									if(fileIsDifferent(filename,filename))
+									{
+										file_cmp_cache[old_filename+"<=>"+new_filename] = false;
+										return true;
+									}
+								}
+							}
+
+							file_cmp_cache[old_filename+"<=>"+new_filename] = true;
+							return false;
+						};
 			auto isDifferent = [&]() -> bool
 						 {
 							 if((*p_old_object)["Type"] != new_object["Type"])
@@ -1321,26 +1356,10 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 							 if((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"])
 								 return true;
 
-							 auto pOld = old_file_confs[(*p_old_object)["ConfFilename"].asString()];
-							 if(!pOld)
-								 pOld = std::make_shared<Json::Value>();
+							 const auto& old_filename = (*p_old_object)["ConfFilename"].asString();
+							 const auto& new_filename = new_object["ConfFilename"].asString();
 
-							 auto pNew = RecallOrCreate(new_object["ConfFilename"].asString());
-
-							 if(*pOld != *pNew)
-								 return true;
-
-							 if(pNew->isMember("Inherits") && (*pNew)["Inherits"].isArray())
-								 for(Json::ArrayIndex n = 0; n < (*pNew)["Inherits"].size(); ++n)
-								 {
-									 auto filename = (*pNew)["Inherits"][n].asString();
-									 auto pOldInherit = old_file_confs[filename];
-									 auto pNewInherit = RecallOrCreate(filename);
-									 if(pOldInherit && pNewInherit && *pOldInherit != *pNewInherit)
-										 return true;
-								 }
-
-							 return false;
+							 return fileIsDifferent(old_filename,new_filename);
 						 };
 
 			if(isDifferent())
