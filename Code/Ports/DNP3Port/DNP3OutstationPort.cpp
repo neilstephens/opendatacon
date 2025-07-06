@@ -168,6 +168,7 @@ void DNP3OutstationPort::OnKeepAliveReset()
 // Called by OpenDNP3 Thread Pool
 bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp)
 {
+	CheckStackState(); //just in case
 	pChanH->LinkUp();
 	auto now = msSinceEpoch();
 	const auto& master_time = timestamp.msSinceEpoch;

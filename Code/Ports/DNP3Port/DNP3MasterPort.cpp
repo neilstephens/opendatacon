@@ -239,6 +239,9 @@ void DNP3MasterPort::CommsHeartBeat(bool isFailed)
 		SetCommsFailed();
 	else
 		UpdateCommsPoint(isFailed); //don't call SetCommsFailed() because it does an integrity scan
+
+	//just in case
+	CheckStackState();
 }
 
 // Called by OpenDNP3 Thread Pool

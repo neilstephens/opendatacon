@@ -45,6 +45,9 @@ void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
 		pWatchdog->LinkDown(pPort->ptr());
 	}
+
+	//redundant check for in-demand status
+	pPort->CheckStackState();
 }
 
 void ChannelHandler::SetLinkStatus_(opendnp3::LinkStatus status)
@@ -64,6 +67,9 @@ void ChannelHandler::LinkDown_()
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
 		pWatchdog->LinkDown(pPort->ptr());
 	}
+
+	//redundant check for in-demand status
+	pPort->CheckStackState();
 }
 void ChannelHandler::LinkUp_()
 {
