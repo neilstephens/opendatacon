@@ -229,7 +229,7 @@ void CommsRideThroughTimer::HeartBeat()
 			auto self = weak_self.lock();
 			if(!self || self->HeartBeatTimems == 0 || self->HeartBeatStopped)
 				return;
-			if(!self->Paused)
+			if(!self->Paused && self->Comms != CommsState::NUL)
 				self->HeartBeatCB(self->Comms == CommsState::BAD);
 			self->HeartBeat();
 		}));
