@@ -48,6 +48,30 @@ CommsRideThroughTimer::~CommsRideThroughTimer()
 	pHeartBeatTimer->cancel();
 }
 
+//Only called from on the strand in Trigger and Resume
+//	that's why it doesn't have to post
+void CommsRideThroughTimer::StartTimer()
+{
+	RideThroughInProgress = true;
+	ExpiryTime = odc::msSinceEpoch()+msRemaining;
+	pCommsRideThroughTimer->expires_from_now(std::chrono::milliseconds(msRemaining));
+	pCommsRideThroughTimer->async_wait(pTimerAccessStrand->wrap([weak_self{weak_from_this()},seq{++TimerHandlerSequence}](asio::error_code err)
+		{
+			auto self = weak_self.lock();
+			if(!self || seq != self->TimerHandlerSequence)
+				return;
+
+			if(self->RideThroughInProgress)
+			{
+				self->CommsBadCB();
+				self->Comms = CommsState::BAD;
+				self->msRemaining = self->Timeoutms;
+			}
+			self->RideThroughInProgress = false;
+			self->ExpiryTime = 0;
+		}));
+}
+
 void CommsRideThroughTimer::Trigger()
 {
 	auto weak_self = weak_from_this();
@@ -66,24 +90,7 @@ void CommsRideThroughTimer::Trigger()
 				return;
 			}
 
-			self->RideThroughInProgress = true;
-			self->ExpiryTime = odc::msSinceEpoch()+self->msRemaining;
-			self->pCommsRideThroughTimer->expires_from_now(std::chrono::milliseconds(self->msRemaining));
-			self->pCommsRideThroughTimer->async_wait(self->pTimerAccessStrand->wrap([weak_self,seq{++self->TimerHandlerSequence}](asio::error_code err)
-				{
-					auto self = weak_self.lock();
-					if(!self || seq != self->TimerHandlerSequence)
-						return;
-
-					if(self->RideThroughInProgress)
-					{
-						self->CommsBadCB();
-						self->Comms = CommsState::BAD;
-						self->msRemaining = self->Timeoutms;
-					}
-					self->RideThroughInProgress = false;
-					self->ExpiryTime = 0;
-				}));
+			self->StartTimer();
 		});
 }
 
@@ -133,7 +140,7 @@ void CommsRideThroughTimer::Resume()
 			if(self->PendingTrigger)
 			{
 				self->PendingTrigger = false;
-				self->Trigger();
+				self->StartTimer();
 			}
 		});
 }

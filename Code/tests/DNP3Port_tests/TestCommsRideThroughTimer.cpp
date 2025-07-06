@@ -167,6 +167,30 @@ TEST_CASE(SUITE("Pause Trigger Resume"))
 	TestTearDown();
 }
 
+TEST_CASE(SUITE("Pause Trigger Resume Cancel"))
+{
+	TestSetup();
+	auto pIOS = odc::asio_service::Get();
+	ThreadPool thread_pool(1);
+	CommsIsBad = false; CommsToggled = false;
+
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+
+	const size_t msPause = msRideTime*0.2;
+
+	pCRTT->Pause();
+	WaitFor(msPause*0.5);
+	pCRTT->Trigger();
+	WaitFor(msPause*0.5);
+	pCRTT->Resume();
+	pCRTT->Cancel();
+	WaitFor(msRideTime*1.2);
+
+	CHECK_FALSE(CommsIsBad);
+
+	TestTearDown();
+}
+
 TEST_CASE(SUITE("Pause Cancel Resume"))
 {
 	TestSetup();
@@ -297,33 +321,50 @@ TEST_CASE(SUITE("Random"))
 	std::random_device rd;
 	std::mt19937 g(rd());
 	auto log = odc::spdlog_get("DNP3Port");
-	std::vector<std::function<void()>> random_actions =
-	{
-		[pCRTT,log](){pCRTT->Pause(); log->debug("Pause");},
-		[pCRTT,log](){pCRTT->Trigger(); log->debug("Trigger");},
-		[pCRTT,log](){pCRTT->Cancel(); log->debug("Cancel");},
-		[pCRTT,log](){pCRTT->Resume(); log->debug("Resume");}
-	};
 
-	for(int i=0; i<100; i++)
+	auto pPause = std::make_shared<std::function<void(void)>>([pCRTT,log](){pCRTT->Pause(); log->debug("Pause");});
+	auto pTrigger = std::make_shared<std::function<void(void)>>([pCRTT,log](){pCRTT->Trigger(); log->debug("Trigger");});
+	auto pCancel = std::make_shared<std::function<void(void)>>([pCRTT,log](){pCRTT->Cancel(); log->debug("Cancel");});
+	auto pResume = std::make_shared<std::function<void(void)>>([pCRTT,log](){pCRTT->Resume(); log->debug("Resume");});
+
+	std::vector<std::shared_ptr<std::function<void(void)>>> random_actions = {pPause,pTrigger,pCancel,pResume};
+
+	for(int i=0; i<10; i++)
 	{
-		std::shuffle(random_actions.begin(), random_actions.end(), g);
-		for(auto& action : random_actions)
-			action();
+		CommsIsBad = false; CommsToggled = false;
+		for(int j=0; j<20; j++)
+		{
+			std::shuffle(random_actions.begin(), random_actions.end(), g);
+			for(auto& action : random_actions)
+				(*action)();
+		}
+
+		auto start_time = odc::msSinceEpoch();
+		if(random_actions.back() == pTrigger)
+		{
+			WaitFor(CommsIsBad,true);
+			auto measured_duration = odc::msSinceEpoch() - start_time;
+			CHECK(measured_duration > 0.95*msRideTime);
+			CHECK(measured_duration < 1.05*msRideTime);
+		}
+		else if(random_actions.back() == pCancel)
+		{
+			WaitFor(msRideTime*1.2);
+			CHECK_FALSE(CommsIsBad);
+		}
+		else
+		{
+			pCRTT->Resume();
+			pCRTT->Cancel();
+			pCRTT->Trigger();
+			WaitFor(CommsIsBad,true);
+			auto measured_duration = odc::msSinceEpoch() - start_time;
+			CHECK(measured_duration > 0.95*msRideTime);
+			CHECK(measured_duration < 1.05*msRideTime);
+		}
+		pCRTT->Cancel();
+		WaitFor(CommsIsBad,false);
 	}
-
-	pCRTT->Resume();
-	pCRTT->Cancel();
-	pCRTT->Trigger();
-	auto start_time = odc::msSinceEpoch();
-	WaitFor(CommsIsBad,true);
-
-	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime);
-	CHECK(measured_duration < 1.05*msRideTime);
-
-	pCRTT->Cancel();
-	WaitFor(CommsIsBad,false);
 
 	//sleep for a bit to make sure logs finish
 	log->flush();
