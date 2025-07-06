@@ -60,52 +60,52 @@ KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const
 
 void KafkaPort::Enable()
 {
-	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
-	pStateSync->post([weak_self]()
+	auto weak_self = weak_from_this();
+	pStateSync->post([weak_self,this]()
 		{
 			if(auto self = weak_self.lock())
 			{
-				if(self->enabled)
+				if(enabled)
 					return;
-				auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
-				if(pConf->ServerType == server_type_t::PERSISTENT || (pConf->ServerType == server_type_t::ONDEMAND && self->InDemand()))
-					self->PortUp();
-				self->enabled = true;
-				self->PublishEvent(ConnectState::PORT_UP);
+				auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+				if(pConf->ServerType == server_type_t::PERSISTENT || (pConf->ServerType == server_type_t::ONDEMAND && InDemand()))
+					PortUp();
+				enabled = true;
+				PublishEvent(ConnectState::PORT_UP);
 			}
 		});
 }
 
 void KafkaPort::Disable()
 {
-	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
-	pStateSync->post([weak_self]()
+	auto weak_self = weak_from_this();
+	pStateSync->post([weak_self,this]()
 		{
 			if(auto self = weak_self.lock())
 			{
-				if(!self->enabled)
+				if(!enabled)
 					return;
-				self->enabled = false;
-				self->PortDown();
-				self->PublishEvent(ConnectState::PORT_DOWN);
+				enabled = false;
+				PortDown();
+				PublishEvent(ConnectState::PORT_DOWN);
 			}
 		});
 }
 
 void KafkaPort::ConnectionEvent(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback)
 {
-	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
-	pStateSync->post([weak_self,event,pStatusCallback]()
+	auto weak_self = weak_from_this();
+	pStateSync->post([weak_self,this,event,pStatusCallback]()
 		{
 			if(auto self = weak_self.lock())
 			{
-				auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
+				auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 				if(pConf->ServerType == server_type_t::ONDEMAND)
 				{
 					if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-						self->PortUp();
-					else if(!self->InDemand())
-						self->PortDown();
+						PortUp();
+					else if(!InDemand())
+						PortDown();
 					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
 					return;
 				}

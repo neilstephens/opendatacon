@@ -145,7 +145,7 @@ void DNP3Port::ChannelWatchdogTrigger(bool on)
 
 void DNP3Port::CheckStackState()
 {
-	std::weak_ptr<DNP3Port> weak_self = std::static_pointer_cast<DNP3Port>(shared_from_this());
+	auto weak_self = weak_from_this();
 	pStackSyncStrand->post([weak_self,this]()
 		{
 			auto self = weak_self.lock();
