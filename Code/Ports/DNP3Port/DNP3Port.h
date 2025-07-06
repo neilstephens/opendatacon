@@ -78,6 +78,7 @@ private:
 	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 	std::atomic_bool stack_enabled;
 	std::unique_ptr<asio::io_service::strand> pStackSyncStrand;
+	bool connection_notification_pending;
 };
 
 #endif /* DNP3PORT_H_ */

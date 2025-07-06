@@ -35,7 +35,8 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	pChanH(std::make_unique<ChannelHandler>(this)),
 	pConnectionStabilityTimer(pIOS->make_steady_timer()),
 	stack_enabled(false),
-	pStackSyncStrand(pIOS->make_strand())
+	pStackSyncStrand(pIOS->make_strand()),
+	connection_notification_pending(false)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
@@ -108,26 +109,36 @@ void DNP3Port::InitEventDB()
 	pDB = std::make_unique<EventDB>(init_events);
 }
 
+// These NotifyOf(Dis)Connection functions are already called on the channel handler strand
+//	but since we fire off a timer, we have to sync the callback
 void DNP3Port::NotifyOfConnection()
 {
+	connection_notification_pending = true;
+	auto notify = [this]()
+			  {
+				  if(connection_notification_pending)
+				  {
+					  PublishEvent(ConnectState::CONNECTED);
+					  connection_notification_pending = false;
+				  }
+			  };
+
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	if(pConf->mAddrConf.ConnectionStabilityTimems)
-	{
-		pConnectionStabilityTimer->expires_from_now(std::chrono::milliseconds(pConf->mAddrConf.ConnectionStabilityTimems));
-		pConnectionStabilityTimer->async_wait([this](asio::error_code err_code)
-			{
-				if(err_code)
-					return;
-				PublishEvent(ConnectState::CONNECTED);
-			});
-	}
-	else
-		PublishEvent(ConnectState::CONNECTED);
+	pConnectionStabilityTimer->expires_from_now(std::chrono::milliseconds(pConf->mAddrConf.ConnectionStabilityTimems));
+	pConnectionStabilityTimer->async_wait([this,notify](asio::error_code err_code)
+		{
+			if(!err_code) pChanH->Post(notify);
+		});
 }
 void DNP3Port::NotifyOfDisconnection()
 {
-	if(!pConnectionStabilityTimer->cancel())
-		PublishEvent(ConnectState::DISCONNECTED);
+	if(connection_notification_pending)
+	{
+		connection_notification_pending = false;
+		pConnectionStabilityTimer->cancel();
+		return;
+	}
+	PublishEvent(ConnectState::DISCONNECTED);
 }
 
 void DNP3Port::ChannelWatchdogTrigger(bool on)
