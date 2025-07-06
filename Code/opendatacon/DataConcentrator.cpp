@@ -1401,6 +1401,11 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		return false;
 	}
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("DataConcentrator::ReloadConfig() called with filename '{}'",filename);
+	auto before = msSinceEpoch();
+	auto before_everything = before;
+
 	auto old_main_conf = RecallOrCreate(ConfFilename);
 
 	//copy all the old config file contents
@@ -1414,6 +1419,9 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		ConfFilename = filename;
 
 	auto new_main_conf = RecallOrCreate(ConfFilename);
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("DataConcentrator::ReloadConfig() parsed main file in {}ms", msSinceEpoch() - before);
 
 	Json::Value changed_confs;
 	std::set<std::string> createdIOHs;
@@ -1430,9 +1438,21 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		    && !(*new_main_conf)["Plugins"].size()))
 			throw std::runtime_error("No objects found");
 
+		before = msSinceEpoch();
 		changed_confs["Ports"] = FindChangedConfs("Ports",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->debug("DataConcentrator::ReloadConfig() compared for Port changes in {}ms", msSinceEpoch() - before);
+
+		before = msSinceEpoch();
 		changed_confs["Connectors"] = FindChangedConfs("Connectors",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->debug("DataConcentrator::ReloadConfig() compared for Connector changes in {}ms", msSinceEpoch() - before);
+
+		before = msSinceEpoch();
 		changed_confs["Plugins"] = FindChangedConfs("Plugins",old_file_confs,*old_main_conf,*new_main_conf,createdIUIs,changedIUIs,deletedIUIs);
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->debug("DataConcentrator::ReloadConfig() compared for Plugin changes in {}ms", msSinceEpoch() - before);
+
 	}
 	catch(std::exception& e)
 	{
@@ -1460,6 +1480,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	}
 
 	//do log sinks first
+	before = msSinceEpoch();
 	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> levels;
 	try
 	{
@@ -1481,10 +1502,11 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			{
 				log->critical("Log level set to {}", spdlog::level::level_string_views[levels.first]);
 				log->critical("Console level set to {}", spdlog::level::level_string_views[levels.second]);
+				log->debug("DataConcentrator::ReloadConfig() compared and configured log sinks in {}ms", msSinceEpoch() - before);
 			}
 		}
 		else if(auto log = odc::spdlog_get("opendatacon"))
-			log->info("Logging config didn't change - not reloading log sinks");
+			log->info("Logging config didn't change - not reloading log sinks (compared in {}ms)", msSinceEpoch() - before);
 	}
 	catch(std::exception& e)
 	{
@@ -1495,6 +1517,8 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		ConfFilename = old_ConfFilename;
 		return false;
 	}
+
+	before = msSinceEpoch();
 
 	//if nothig else has changed, we're done
 	if(createdIOHs.size()+changedIOHs.size()+deletedIOHs.size()
@@ -1584,6 +1608,10 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 				}
 	}
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("DataConcentrator::ReloadConfig() validated changes in {}ms", msSinceEpoch() - before);
+	before = msSinceEpoch();
+
 	//Disable all interfaces because deleteing ports can delete IUIResponders - refresh those below
 	for(auto interface : Interfaces)
 		interface.second->Disable();
@@ -1607,9 +1635,17 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		});
 	result.get(); //wait
 
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("DataConcentrator::ReloadConfig() Disable + ReloadDelay : {}ms", msSinceEpoch() - before);
+	before = msSinceEpoch();
+
 	///////////// PARK THREADS ///////////////
 	if(!ParkThreads()) //This should only return false if we're shutting down, so no cleanup required
 		return false;
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("DataConcentrator::ReloadConfig() parked threads in {}ms", msSinceEpoch() - before);
+	before = msSinceEpoch();
 
 	//Now we can modify the unprotected collections
 	//We've induced a state similar to start-up (when there are no other threads running)
@@ -1793,12 +1829,13 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		reload_disable_delay_s = (*new_main_conf)["ReloadDelaySecs"].asUInt();
 
 	if(auto log = odc::spdlog_get("opendatacon"))
-		log->critical("Reloaded config applied.");
+		log->critical("Reloaded config applied in {}ms", msSinceEpoch() - before);
 
 	////////////// UNPARK THREADS ////////////
 	parking = false;
 
 	//wait for delete thread, or detach it if it takes too long
+	before = msSinceEpoch();
 	wait_count = 0;
 	while(!*del_done && wait_count++ < 200)
 		pIOS->run_one_for(std::chrono::milliseconds(5));
@@ -1810,6 +1847,9 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			log->error("Reload cleanup thread taking too long - detaching");
 		delete_thread.detach();
 	}
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("DataConcentrator::ReloadConfig() waited on cleanup thread for {}ms", msSinceEpoch() - before);
+	before = msSinceEpoch();
 
 	if(auto log = odc::spdlog_get("opendatacon"))
 		log->debug("Enabling objects after reload.");
@@ -1834,7 +1874,10 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		EnableIUI(ui_pair.second);
 
 	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Enabled {} objects affected by reload.",created_or_changeIUIs.size()+created_or_changeIOHs.size()+reenable.size()-do_not_enable.size());
+		log->info("Enabled {} objects affected by reload in {}ms.",created_or_changeIUIs.size()+created_or_changeIOHs.size()+reenable.size()-do_not_enable.size(), msSinceEpoch() - before);
+
+	if(auto log = odc::spdlog_get("opendatacon"))
+		log->debug("DataConcentrator::ReloadConfig() whole reload took {}ms", msSinceEpoch() - before_everything);
 
 	return true;
 }
