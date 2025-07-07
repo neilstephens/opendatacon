@@ -55,17 +55,17 @@ void KafkaConsumerPort::Build()
 		if(pConf->TranslationMethod == EventTranslationMethod::Template)
 		{
 			const auto& Template = pte.pTemplate ? *pte.pTemplate : pConf->DefaultTemplate;
-			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(Template, pConf->DateTimeFormat, !pConf->RegexEscapeTemplates);
+			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(Template, pConf->DateTimeFormat, pConf->DateTimeIsUTC, !pConf->RegexEscapeTemplates);
 		}
 
 		if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 		{
 			auto pSerialiser = pte.pCBORer ? pte.pCBORer.get() : &pConf->DefaultCBORSerialiser;
-			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(pSerialiser, pConf->DateTimeFormat);
+			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(pSerialiser, pConf->DateTimeFormat, pConf->DateTimeIsUTC);
 		}
 
 		if(pConf->TranslationMethod == EventTranslationMethod::Lua)
-			cte.pLuaDeserialiser = std::make_unique<LuaDeserialiser>(/*FIXME*/ "","", pConf->DateTimeFormat);
+			cte.pLuaDeserialiser = std::make_unique<LuaDeserialiser>(/*FIXME*/ "","", pConf->DateTimeFormat, pConf->DateTimeIsUTC);
 
 		CTM.emplace(std::move(cid), std::move(cte));
 	}

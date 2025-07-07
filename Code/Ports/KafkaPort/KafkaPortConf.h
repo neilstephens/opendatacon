@@ -78,6 +78,7 @@ public:
 	std::string DefaultTemplate = JSONwPlaceholders();
 	DataToStringMethod OctetStringFormat = DataToStringMethod::Base64;
 	std::string DateTimeFormat = "%Y-%m-%d %H:%M:%S.%e";
+	bool DateTimeIsUTC = false;
 
 	//Producer
 	odc::OctetStringBuffer DefaultKey;

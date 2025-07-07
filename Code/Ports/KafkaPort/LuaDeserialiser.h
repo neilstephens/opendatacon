@@ -31,8 +31,8 @@
 class LuaDeserialiser: public Deserialiser
 {
 public:
-	LuaDeserialiser(const std::string& lua_file, const std::string& lua_code, const std::string& datetime_format):
-		Deserialiser(datetime_format)
+	LuaDeserialiser(const std::string& lua_file, const std::string& lua_code, const std::string& datetime_format, const bool utc):
+		Deserialiser(datetime_format,utc)
 	{}
 	virtual ~LuaDeserialiser() = default;
 

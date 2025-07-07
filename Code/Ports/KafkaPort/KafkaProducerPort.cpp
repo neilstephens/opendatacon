@@ -37,7 +37,7 @@
 #include <memory>
 #include <string>
 
-static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S);
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const bool utc, const DataToStringMethod D2S);
 
 void KafkaProducerPort::Build()
 {
@@ -56,7 +56,7 @@ void KafkaProducerPort::Build()
 			{
 				auto dummy_event = std::make_shared<EventInfo>(*init_events[source].back());
 				dummy_event->SetPayload();
-				auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+				auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
 				log->trace("{} -> {}: {}", source, Name, ev_str);
 			}
 		}
@@ -85,7 +85,7 @@ OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const 
 	return mapping;
 }
 
-static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S)
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const bool utc, const DataToStringMethod D2S)
 {
 	std::string message = template_str;
 	auto find_and_replace = [&](const std::string& fnd, const auto& gen_replacement)
@@ -111,7 +111,7 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 
 	//these aren't static because they need to capture
 	auto SENDERNAME = [&](const std::shared_ptr<const EventInfo>& event){ return SenderName; };
-	auto DATETIME = [&](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp(),dt_fmt); };
+	auto DATETIME = [&](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp(),dt_fmt,utc); };
 	auto PAYLOAD = [&](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(D2S); };
 
 	find_and_replace("<EVENTTYPE>", EVENTTYPE);
@@ -276,13 +276,13 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	if(pConf->TranslationMethod == EventTranslationMethod::Template)
 	{
 		const auto& template_str = VAL_OR(pTemplate,pConf->DefaultTemplate);
-		auto buf = FillTemplate(template_str, ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		auto buf = FillTemplate(template_str, ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 	{
 		const auto& CBORer = VAL_OR(pCBORer,pConf->DefaultCBORSerialiser);
-		auto buf = CBORer.Encode(ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		auto buf = CBORer.Encode(ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else //Lua

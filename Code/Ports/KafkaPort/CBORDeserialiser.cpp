@@ -26,8 +26,8 @@
 
 #include "CBORDeserialiser.h"
 
-CBORDeserialiser::CBORDeserialiser(const CBORSerialiser* const serialiser, const std::string& datetime_format):
-	Deserialiser(datetime_format),
+CBORDeserialiser::CBORDeserialiser(const CBORSerialiser* const serialiser, const std::string& datetime_format, const bool utc):
+	Deserialiser(datetime_format,utc),
 	pSerialiser(serialiser)
 {
 	if(!pSerialiser)
@@ -147,7 +147,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				auto datetime_str = cbor_event.get<std::string>();
 				try
 				{
-					timestamp = odc::datetime_to_since_epoch(datetime_str, datetime_format);
+					timestamp = odc::datetime_to_since_epoch(datetime_str, datetime_format, utc);
 				}
 				catch(const std::exception& e)
 				{

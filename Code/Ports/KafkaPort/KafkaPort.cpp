@@ -240,6 +240,10 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->DateTimeFormat = JSONRoot["DateTimeFormat"].asString();
 	}
+	if(JSONRoot.isMember("DateTimeIsUTC"))
+	{
+		pConf->DateTimeIsUTC = JSONRoot["DateTimeIsUTC"].asBool();
+	}
 	if(JSONRoot.isMember("ConsumerFastForwardOffset"))
 	{
 		pConf->ConsumerFastForwardOffset = JSONRoot["ConsumerFastForwardOffset"].asInt64();

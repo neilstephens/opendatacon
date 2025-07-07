@@ -79,8 +79,8 @@ inline std::string EscapeRegexLiteral(const std::string &lit)
 class TemplateDeserialiser: public Deserialiser
 {
 public:
-	TemplateDeserialiser(const std::string& template_str, const std::string& datetime_format, const bool regexEnabled):
-		Deserialiser(datetime_format)
+	TemplateDeserialiser(const std::string& template_str, const std::string& datetime_format, const bool utc, const bool regexEnabled):
+		Deserialiser(datetime_format,utc)
 	{
 		std::string regex_str = regexEnabled ? template_str : EscapeRegexLiteral(template_str);
 
@@ -220,12 +220,12 @@ public:
 		{
 			try
 			{
-				timestamp = datetime_to_since_epoch(captured_values["<DATETIME>"], datetime_format);
+				timestamp = datetime_to_since_epoch(captured_values["<DATETIME>"], datetime_format, utc);
 			}
 			catch(const std::exception& e)
 			{
 				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("Failed to deserialise DateTime '{}' as '{}' : {}", captured_values["<DATETIME>"], datetime_format, e.what());
+					log->error("Failed to deserialise DateTime '{}' as '{}' : {}", captured_values["<DATETIME>"], datetime_format, utc, e.what());
 				return nullptr;
 			}
 		}
