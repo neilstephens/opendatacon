@@ -1288,30 +1288,47 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 	const Json::Value& old_main_conf, const Json::Value& new_main_conf,
 	std::set<std::string>& created, std::set<std::string>& changed, std::set<std::string>& deleted)
 {
+	//Results of comparing config files cached in this hash map
 	std::unordered_map<std::string,bool> file_cmp_cache;
-	Json::Value changed_confs;
-	//check for new or changed objects in the new config
-	for(Json::ArrayIndex n = 0; n < new_main_conf[collection_name].size(); ++n)
+
+	//Create a hash map of the old config objects indexed against "Name", for fast lookup
+	//iterate in reverse order in case the original config had ignored duplicates
+	std::unordered_map<std::string, const Json::Value&> OldObjects;
+	for(auto const& old_obj : old_main_conf[collection_name])
 	{
-		const auto& new_object = new_main_conf[collection_name][n];
+		if(old_obj.isMember("Name"))
+		{
+			auto [_,success] = OldObjects.try_emplace(old_obj["Name"].asString(), old_obj);
+			if(!success)
+				if(auto log = odc::spdlog_get("opendatacon"))
+					log->warn("Ignoring old config {} object with duplicate 'Name' : '{}'",collection_name,old_obj.toStyledString());
+		}
+		else if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("Old config {} object without 'Name' : '{}'",collection_name,old_obj.toStyledString());
+	}
+
+	Json::Value changed_confs;
+	std::unordered_set<std::string> new_object_names;
+	//check for new or changed objects in the new config
+	for(const auto& new_object : new_main_conf[collection_name])
+	{
 		if(!new_object.isMember("Name"))
 		{
 			if(auto log = odc::spdlog_get("opendatacon"))
-				log->error("{} object without 'Name' : '{}'",collection_name,new_object.toStyledString());
+				log->error("New config {} object without 'Name' : '{}'",collection_name,new_object.toStyledString());
 			continue;
 		}
 		const auto& name = new_object["Name"].asString();
+		if(!new_object_names.insert(name).second)
+		{
+			if(auto log = odc::spdlog_get("opendatacon"))
+				log->warn("Ignoring new config {} object with duplicate 'Name' : '{}'",collection_name,new_object.toStyledString());
+			continue;
+		}
 
-		//try to find that name in the old config
-		const Json::Value* p_old_object = nullptr;
-		for(Json::ArrayIndex m = 0; m < old_main_conf[collection_name].size(); ++m)
-			if(old_main_conf[collection_name][m]["Name"] == name)
-			{
-				p_old_object = &old_main_conf[collection_name][m];
-				break;
-			}
-
-		if(p_old_object)
+		//check if it existed in the old config
+		const auto old_object_it = OldObjects.find(name);
+		if(old_object_it != OldObjects.end())
 		{
 			std::function<bool(const std::string&, const std::string&)>
 			fileIsDifferent = [&](const std::string& old_filename, const std::string& new_filename)->bool
@@ -1349,14 +1366,14 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 						};
 			auto isDifferent = [&]() -> bool
 						 {
-							 if((*p_old_object)["Type"] != new_object["Type"])
+							 if(old_object_it->second["Type"] != new_object["Type"])
 								 return true;
-							 if((*p_old_object)["Library"] != new_object["Library"])
+							 if(old_object_it->second["Library"] != new_object["Library"])
 								 return true;
-							 if((*p_old_object)["ConfOverrides"] != new_object["ConfOverrides"])
+							 if(old_object_it->second["ConfOverrides"] != new_object["ConfOverrides"])
 								 return true;
 
-							 const auto& old_filename = (*p_old_object)["ConfFilename"].asString();
+							 const auto& old_filename = old_object_it->second["ConfFilename"].asString();
 							 const auto& new_filename = new_object["ConfFilename"].asString();
 
 							 return fileIsDifferent(old_filename,new_filename);
@@ -1367,6 +1384,9 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 				changed.insert(name);
 				changed_confs.append(new_object);
 			}
+			//erase from the old object cache if it's same or changed in the new conf
+			//what's left at the end are the old objects to delete (not in the new conf)
+			OldObjects.erase(name);
 		}
 		else //totally new
 		{
@@ -1374,19 +1394,11 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 			changed_confs.append(new_object);
 		}
 	}
-	//check for old objects that aren't in the new config
-	for(Json::ArrayIndex m = 0; m < old_main_conf[collection_name].size(); ++m)
-	{
-		bool found = false;
-		for(Json::ArrayIndex n = 0; n < new_main_conf[collection_name].size(); ++n)
-			if(old_main_conf[collection_name][m]["Name"] == new_main_conf[collection_name][n]["Name"])
-			{
-				found = true;
-				break;
-			}
-		if(!found)
-			deleted.insert(old_main_conf[collection_name][m]["Name"].asString());
-	}
+
+	//the old object cache now only has objects that aren't in the new config
+	for(const auto& [name,_] : OldObjects)
+		deleted.insert(name);
+
 	return changed_confs;
 }
 
