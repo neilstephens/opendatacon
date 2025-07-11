@@ -8,6 +8,7 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 	pSyncStrand(pIOS->make_strand()),
 	handler_tracker(std::make_shared<char>()),
 	pPort(p),
+	ChannelID(""),
 	pChannel(nullptr),
 	pWatchdog(nullptr),
 	link_status(opendnp3::LinkStatus::UNRESET),
@@ -89,7 +90,6 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 
 	auto pConf = static_cast<DNP3PortConf*>(pPort->pConf.get());
 
-	std::string ChannelID;
 	bool isSerial;
 
 	std::string remote_host = "";
@@ -139,7 +139,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	//Create a channel listener that will subscribe this port to channel updates
 	//if we're the first port on the channel, this listener will get passed to the dnp3 stack below
 	//otherwise it can be destroyed, still leaving this port subscribed.
-	auto listener = std::make_shared<ChannelListener>(ChannelID,this);
+	auto listener = std::make_shared<ChannelListener>(ChannelID,weak_from_this());
 
 	//if there's already a channel, just take some pointers and return
 	if(Channels.count(ChannelID))

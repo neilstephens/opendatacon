@@ -45,7 +45,6 @@ DNP3MasterPort::~DNP3MasterPort()
 		pMaster->Shutdown();
 		pMaster.reset();
 	}
-	ChannelStateSubscriber::Unsubscribe(pChanH.get());
 	pChanH.reset();
 }
 

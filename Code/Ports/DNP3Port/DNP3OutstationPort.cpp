@@ -76,7 +76,6 @@ DNP3OutstationPort::~DNP3OutstationPort()
 		pOutstation->Shutdown();
 		pOutstation.reset();
 	}
-	ChannelStateSubscriber::Unsubscribe(pChanH.get());
 	pChanH.reset();
 }
 

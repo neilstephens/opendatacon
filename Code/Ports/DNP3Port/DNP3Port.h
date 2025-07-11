@@ -64,7 +64,7 @@ protected:
 	{
 		return weak_from_this();
 	}
-	std::unique_ptr<ChannelHandler> pChanH;
+	std::shared_ptr<ChannelHandler> pChanH;
 	std::shared_ptr<asio::steady_timer> pConnectionStabilityTimer;
 
 	virtual void ExtendCurrentState(Json::Value& state) const {}
