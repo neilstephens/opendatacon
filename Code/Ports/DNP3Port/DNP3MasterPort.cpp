@@ -91,6 +91,7 @@ void DNP3MasterPort::Disable()
 	enabled = false;
 
 	pCommsRideThroughTimer->StopHeartBeat();
+	pCommsRideThroughTimer->FastForward();
 
 	CheckStackState();
 
