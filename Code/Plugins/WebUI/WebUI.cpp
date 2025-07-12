@@ -26,6 +26,7 @@
 //
 
 #include "WebUI.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <opendatacon/asio.h>
 
@@ -38,9 +39,7 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& web
 	filter_is_regex(false),
 	pLogRegex(nullptr),
 	log_q_size(log_q_size)
-{
-	SetLog("WebUI");
-}
+{}
 
 void WebUI::AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc)
 {

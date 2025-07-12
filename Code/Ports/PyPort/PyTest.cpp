@@ -44,6 +44,7 @@
 
 // #include <trompeloeil.hpp> Not used at the moment - requires __cplusplus to be defined so the cppcheck works properly.
 #include "PyPort.h"
+#include "Log.h"
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <catch.hpp>
@@ -243,14 +244,14 @@ private:
 	TestTearDown()
 
 #define START_IOS() \
-	LOGINFO("Starting ASIO Threads"); \
+	Log.Info("Starting ASIO Threads"); \
 	const int ThreadCount = std::thread::hardware_concurrency()+2;\
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	std::vector<std::thread> threads; \
 	for (int i = 0; i < ThreadCount; i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
-	LOGINFO("Shutting Down ASIO Threads");    \
+	Log.Info("Shutting Down ASIO Threads");    \
 	work.reset();     \
 	IOS->run();       \
 	for (auto& t : threads) t.join()
@@ -377,7 +378,7 @@ TEST_CASE("Py.TestsUsingPython")
 	{
 		std::string msg("Ports Enable() Asio system error: ");
 		msg += e.what();
-		LOGERROR(msg);
+		Log.Error(msg);
 		STOP_IOS();
 		FAIL(msg);
 	}
@@ -394,7 +395,7 @@ TEST_CASE("Py.TestsUsingPython")
 				throw std::runtime_error("Waiting for Ports to Enable timed out");
 			}
 		} ());
-	LOGINFO("Ports Enabled");
+	Log.Info("Ports Enabled");
 
 	INFO("SendBinaryAndAnalogEvents")
 	{
@@ -410,7 +411,7 @@ TEST_CASE("Py.TestsUsingPython")
 		boolevent->SetPayload<EventType::Binary>(std::move(val));
 
 		// Send a bool event on 4 ports, but only check that the first succeeded.
-		LOGINFO("Sending Binary Events");
+		Log.Info("Sending Binary Events");
 		PythonPort->Event(boolevent, "Connector1", pStatusCallback);
 		PythonPort2->Event(boolevent, "TestHarness2", nullptr);
 		PythonPort3->Event(boolevent, "TestHarness3", nullptr);
@@ -466,7 +467,7 @@ TEST_CASE("Py.TestsUsingPython")
 			} ());
 
 		// Check that the web response is correct.
-		LOGDEBUG("Response {}", sres.get());
+		Log.Debug("Response {}", sres.get());
 		REQUIRE(sres.get() == "{\"test\": \"POST\"}"); // The Get will Wait for the result to be set.
 
 		// Spew a whole bunch of commands into the Python interface - which will be ASIO dispatch or post commands, to ensure single strand access.
@@ -499,7 +500,7 @@ TEST_CASE("Py.TestsUsingPython")
 					throw("Waiting for 1000 RestHandler responses timed out");
 				}
 			} ());
-		LOGDEBUG("Last Response {}", sres.get());
+		Log.Debug("Last Response {}", sres.get());
 	}
 
 	INFO("WebServerTest")
@@ -513,11 +514,11 @@ TEST_CASE("Py.TestsUsingPython")
 			"You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, "
 			"which is case senstive.<br>Anything beyond this will be passed to the Python code.");
 
-		LOGERROR("If the Tests Hang here, the client making a HTTP request is waiting for an answer from the HTTP server - and is not getting it..");
+		Log.Error("If the Tests Hang here, the client making a HTTP request is waiting for an answer from the HTTP server - and is not getting it..");
 		std::string callresp;
 		bool res = DoHttpRequst("localhost", "10000", "/", callresp);
 
-		LOGDEBUG("GET http://localhost:10000 - We got back {}", callresp);
+		Log.Debug("GET http://localhost:10000 - We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
@@ -526,7 +527,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		res = DoHttpRequst("localhost", "10000", "/TestMaster", callresp);
 
-		LOGDEBUG("GET http://localhost:10000/TestMaster We got back {}", callresp);
+		Log.Debug("GET http://localhost:10000/TestMaster We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(callresp.find("\"processedevents\": 2") != std::string::npos);
@@ -534,15 +535,15 @@ TEST_CASE("Py.TestsUsingPython")
 
 		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
 
-		LOGDEBUG("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
+		Log.Debug("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(callresp.find("\"processedevents\": 1") != std::string::npos);
 		REQUIRE(callresp.find("\"test\": \"GET\"") != std::string::npos);
-		LOGERROR("HTTP tests are finished..");
+		Log.Error("HTTP tests are finished..");
 	}
 
-	LOGDEBUG("Starting teardown ports 1-4");
+	Log.Debug("Starting teardown ports 1-4");
 
 	PythonPort->Disable();
 	PythonPort2->Disable();
@@ -559,11 +560,11 @@ TEST_CASE("Py.TestsUsingPython")
 				throw("Waiting for Ports to be disabled timed out");
 			}
 		} ());
-	LOGDEBUG("Ports1-4 Disabled");
+	Log.Debug("Ports1-4 Disabled");
 
 	INFO("QueuedEvents")
 	{
-		LOGERROR("Queued Events Tests..");
+		Log.Error("Queued Events Tests..");
 		Json::Value portoverride;
 		portoverride["EventsAreQueued"] = static_cast<Json::UInt>(1);
 		TEST_PythonPort5(portoverride);
@@ -588,7 +589,7 @@ TEST_CASE("Py.TestsUsingPython")
 				}
 			} ());
 
-		LOGINFO("Port5 Enabled");
+		Log.Info("Port5 Enabled");
 
 		std::atomic<size_t> block_counts[4];
 		odc::SharedStatusCallback_t block_callbacks[4];
@@ -603,7 +604,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		IOS->post([PythonPort5,&block_callbacks]()
 			{
-				LOGINFO("Sending Binary Events 1");
+				Log.Info("Sending Binary Events 1");
 				for (int ODCIndex = 1; ODCIndex <= 5000; ODCIndex++)
 				{
 					bool val = (ODCIndex % 2 == 0);
@@ -611,11 +612,11 @@ TEST_CASE("Py.TestsUsingPython")
 					boolevent->SetPayload<EventType::Binary>(std::move(val));
 					PythonPort5->Event(boolevent, "Connector1", block_callbacks[0]);
 				}
-				LOGINFO("Sending Binary Events 1 Done");
+				Log.Info("Sending Binary Events 1 Done");
 			});
 		IOS->post([PythonPort5,&block_callbacks]()
 			{
-				LOGINFO("Sending Binary Events 2");
+				Log.Info("Sending Binary Events 2");
 				for (int ODCIndex = 5001; ODCIndex <= 9000; ODCIndex++)
 				{
 					bool val = (ODCIndex % 2 == 0);
@@ -623,11 +624,11 @@ TEST_CASE("Py.TestsUsingPython")
 					boolevent->SetPayload<EventType::Binary>(std::move(val));
 					PythonPort5->Event(boolevent, "Connector1", block_callbacks[1]);
 				}
-				LOGINFO("Sending Binary Events 2 Done");
+				Log.Info("Sending Binary Events 2 Done");
 			});
 		IOS->post([PythonPort5,&block_callbacks]()
 			{
-				LOGINFO("Sending Binary Events 3");
+				Log.Info("Sending Binary Events 3");
 				for (int ODCIndex = 9001; ODCIndex <= 12000; ODCIndex++)
 				{
 					bool val = (ODCIndex % 2 == 0);
@@ -635,11 +636,11 @@ TEST_CASE("Py.TestsUsingPython")
 					boolevent->SetPayload<EventType::Binary>(std::move(val));
 					PythonPort5->Event(boolevent, "Connector1", block_callbacks[2]);
 				}
-				LOGINFO("Sending Binary Events 3 Done");
+				Log.Info("Sending Binary Events 3 Done");
 			});
 		IOS->post([PythonPort5,&block_callbacks]()
 			{
-				LOGINFO("Sending Binary Events 4");
+				Log.Info("Sending Binary Events 4");
 				for (int ODCIndex = 12001; ODCIndex <= 15000; ODCIndex++)
 				{
 					bool val = (ODCIndex % 2 == 0);
@@ -647,11 +648,11 @@ TEST_CASE("Py.TestsUsingPython")
 					boolevent->SetPayload<EventType::Binary>(std::move(val));
 					PythonPort5->Event(boolevent, "Connector1", block_callbacks[3]);
 				}
-				LOGINFO("Sending Binary Events 4 Done");
+				Log.Info("Sending Binary Events 4 Done");
 			});
 
 
-		LOGERROR("Waiting for all events to be queued");
+		Log.Error("Waiting for all events to be queued");
 		REQUIRE_NOTHROW([IOS,&block_counts]()
 			{
 				if (!WaitIOSFnResult(IOS, 60, [&block_counts]() // RPI very much slower than everything else... 5 works for all other platforms...
@@ -661,11 +662,11 @@ TEST_CASE("Py.TestsUsingPython")
 						return true;
 					}))
 				{
-					LOGERROR("Waiting for queuing events timed out"); // the throw does not get reported - causes a seg fault in travis
+					Log.Error("Waiting for queuing events timed out"); // the throw does not get reported - causes a seg fault in travis
 					throw("Waiting for queuing events timed out");
 				}
 			} ());
-		LOGERROR("All events queued");
+		Log.Error("All events queued");
 
 		REQUIRE_NOTHROW([IOS,PythonPort5]()
 			{
@@ -688,7 +689,7 @@ TEST_CASE("Py.TestsUsingPython")
 
 		REQUIRE(resp);
 
-		LOGDEBUG("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
+		Log.Debug("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
 
 		std::string matchstr("json\r\n\n");
 		size_t pos = callresp.find(matchstr);
@@ -696,14 +697,14 @@ TEST_CASE("Py.TestsUsingPython")
 
 		uint32_t ProcessedEvents = GetProcessedEventsFromJSON(callresp.substr(pos + matchstr.length()));
 
-		LOGDEBUG("The PyPortSim Code Processed {} Events", ProcessedEvents);
+		Log.Debug("The PyPortSim Code Processed {} Events", ProcessedEvents);
 
 		size_t QueueSize = PythonPort5->GetEventQueueSize();
 
 		REQUIRE(ProcessedEvents == 15000);
 		REQUIRE(QueueSize == 1);
 
-		LOGDEBUG("Tests Complete, starting teardown");
+		Log.Debug("Tests Complete, starting teardown");
 
 		PythonPort5->Disable();
 		REQUIRE_NOTHROW([IOS,PythonPort]()
@@ -716,14 +717,14 @@ TEST_CASE("Py.TestsUsingPython")
 					throw("Waiting for Ports to be disabled timed out");
 				}
 			} ());
-		LOGDEBUG("Port5 Disabled");
+		Log.Debug("Port5 Disabled");
 	}
 
 	STOP_IOS(); // Wait in here for all threads to stop.
-	LOGDEBUG("IOS Stopped");
+	Log.Debug("IOS Stopped");
 
 	STANDARD_TEST_TEARDOWN();
-	LOGDEBUG("Test Teardown complete");
+	Log.Debug("Test Teardown complete");
 }
 
 }

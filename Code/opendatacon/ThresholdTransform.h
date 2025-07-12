@@ -27,6 +27,7 @@
 #ifndef THRESHOLDTRANSFORM_H_
 #define THRESHOLDTRANSFORM_H_
 
+#include "Log.h"
 #include <cstdint>
 #include <cfloat>
 #include <opendatacon/Transform.h>
@@ -41,7 +42,6 @@ public:
 		already_under(false),
 		threshold(-DBL_MAX)
 	{
-		SetLog("Connectors");
 		if(!params.isMember("threshold_point_index") || !params["threshold_point_index"].isUInt())
 		{
 			threshold_point_index = 0;

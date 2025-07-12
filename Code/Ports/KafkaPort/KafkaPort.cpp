@@ -28,6 +28,7 @@
 #include "KafkaPortConf.h"
 #include "CBORSerialiser.h"
 #include "EventTranslation.h"
+#include "Log.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
@@ -36,7 +37,6 @@
 KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides, const bool isProducer):
 	DataPort(Name, Filename, Overrides)
 {
-	SetLog("KafkaPort");
 	pConf = std::make_unique<KafkaPortConf>(isProducer);
 	ProcessFile();
 

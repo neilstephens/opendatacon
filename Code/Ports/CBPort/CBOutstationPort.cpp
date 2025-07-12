@@ -31,6 +31,7 @@
  An event from an outstation will be a master control signal to turn something on or off.
 */
 #include "CB.h"
+#include "Log.h"
 #include "CBOutstationPort.h"
 #include "CBOutStationPortCollection.h"
 #include "CBUtility.h"
@@ -56,7 +57,7 @@ CBOutstationPort::CBOutstationPort(const std::string & aName, const std::string 
 
 	IsOutStation = true;
 
-	LOGDEBUG("CBOutstation Constructor - {} ", Name);
+	Log.Debug("CBOutstation Constructor - {} ", Name);
 }
 
 void CBOutstationPort::UpdateOutstationPortCollection()
@@ -104,7 +105,7 @@ void CBOutstationPort::Enable()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("{} Problem opening connection : {}", Name, e.what());
+		Log.Error("{} Problem opening connection : {}", Name, e.what());
 		enabled = false;
 		return;
 	}
@@ -131,7 +132,7 @@ void CBOutstationPort::SocketStateHandler(bool state)
 		PublishEvent(ConnectState::DISCONNECTED);
 		msg = Name + ": pConnection closed.";
 	}
-	LOGINFO(msg);
+	Log.Info(msg);
 }
 
 void CBOutstationPort::Build()
@@ -157,13 +158,13 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 {
 	if (CompleteCBMessage.size() == 0)
 	{
-		LOGERROR("{} - Tried to send an empty message to the TCP Port",Name);
+		Log.Error("{} - Tried to send an empty message to the TCP Port",Name);
 		return;
 	}
 	if (BitFlipProbability != 0.0)
 	{
 		auto msg = CorruptCBMessage(CompleteCBMessage);
-		LOGDEBUG("{} - Sending Corrupted Message - Correct {}, Corrupted {}", Name, CBMessageAsString(CompleteCBMessage), CBMessageAsString(msg));
+		Log.Debug("{} - Sending Corrupted Message - Correct {}, Corrupted {}", Name, CBMessageAsString(CompleteCBMessage), CBMessageAsString(msg));
 		CBPort::SendCBMessage(msg);
 	}
 	else
@@ -177,12 +178,12 @@ void CBOutstationPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 
 			if (dist(e2) < ResponseDropProbability)
 			{
-				LOGDEBUG("{} - Dropping Message - {}", Name, CBMessageAsString(CompleteCBMessage));
+				Log.Debug("{} - Dropping Message - {}", Name, CBMessageAsString(CompleteCBMessage));
 				return;
 			}
 		}
 
-		LOGDEBUG("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
+		Log.Debug("{} - Sending Message - {}", Name, CBMessageAsString(CompleteCBMessage));
 		// Done this way just to get context into log messages.
 		CBPort::SendCBMessage(CompleteCBMessage);
 	}
@@ -269,10 +270,10 @@ void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 			// ODC Analog is a double by default...
 			auto analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
-			LOGTRACE("{} - Received Event - Analog - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(analogmeas));
+			if(Log.ShouldLog(spdlog::level::trace)) Log.Trace("{} - Received Event - Analog - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
 			{
-				LOGERROR("Tried to set the value for an invalid analog point index {}, {}", SenderName,ODCIndex);
+				Log.Error("Tried to set the value for an invalid analog point index {}, {}", SenderName,ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -281,10 +282,10 @@ void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 		{
 			auto countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
-			LOGDEBUG("{} - Received Event - Counter - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(countermeas));
+			Log.Debug("{} - Received Event - Counter - Index {}  Value 0x{}",Name, ODCIndex, to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))
 			{
-				LOGERROR("Tried to set the value for an invalid counter point index {} {}", SenderName,ODCIndex);
+				Log.Error("Tried to set the value for an invalid counter point index {} {}", SenderName,ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -295,7 +296,7 @@ void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 			CBTime eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
 
-			LOGDEBUG("{} - Received Event - Binary - Index {}, Bit Value {}",Name,ODCIndex,meas);
+			Log.Debug("{} - Received Event - Binary - Index {}, Bit Value {}",Name,ODCIndex,meas);
 
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf->OverrideOldTimeStamps)
@@ -303,13 +304,13 @@ void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 				if (abs(static_cast<int64_t>(now / 1000) - static_cast<int64_t>(eventtime / 1000)) < 60 * 30)
 				{
 					eventtime = now; // msec since epoch.
-					LOGDEBUG("{} Binary time tag value is too far from current time (>30min) changing to current time. Point index {}",Name, ODCIndex);
+					Log.Debug("{} Binary time tag value is too far from current time (>30min) changing to current time. Point index {}",Name, ODCIndex);
 				}
 			}
 
 			if (!MyPointConf->PointTable.SetBinaryValueUsingODCIndex(ODCIndex, meas, eventtime))
 			{
-				LOGERROR("{} Tried to set the value for an invalid binary point index {} {}",Name, SenderName,ODCIndex);
+				Log.Error("{} Tried to set the value for an invalid binary point index {} {}",Name, SenderName,ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 
@@ -324,7 +325,7 @@ void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 
 			if (state == ConnectState::CONNECTED)
 			{
-				LOGDEBUG("{} Upstream (other side of ODC) port enabled - So a Master will send us events - and we can send what we have over ODC ",Name);
+				Log.Debug("{} Upstream (other side of ODC) port enabled - So a Master will send us events - and we can send what we have over ODC ",Name);
 				// We dont know the state of the upstream data, so send event information for all points.
 
 			}
@@ -342,7 +343,7 @@ void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 			{
 				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
-					LOGERROR("{} Tried to set the failure value for an invalid analog point index {} {}", Name, SenderName,ODCIndex);
+					Log.Error("{} Tried to set the failure value for an invalid analog point index {} {}", Name, SenderName,ODCIndex);
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}
@@ -354,7 +355,7 @@ void CBOutstationPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 			{
 				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(MISSINGVALUE)))
 				{
-					LOGERROR("{} Tried to set the failure value for an invalid counter point index {} {}", Name, SenderName,ODCIndex);
+					Log.Error("{} Tried to set the failure value for an invalid counter point index {} {}", Name, SenderName,ODCIndex);
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}

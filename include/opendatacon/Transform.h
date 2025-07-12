@@ -36,7 +36,7 @@
 namespace odc
 {
 using EvtHandler_ptr = std::shared_ptr<std::function<void (std::shared_ptr<EventInfo> event)>>;
-class Transform: public LogHelpers
+class Transform
 {
 public:
 	Transform(const std::string& Name, const Json::Value& params):

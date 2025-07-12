@@ -255,8 +255,8 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 			{
 				if(!evt)
 				{
-					if(MainShouldLog(spdlog::level::trace))
-						MainLog()->trace("{} {} {} Payload {} Event {} => DROPPED by transform", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->HasPayload() ? event->GetPayloadString() : "", Name);
+					if(Log.ShouldLog(spdlog::level::trace))
+						Log.Trace("{} {} {} Payload {} Event {} => DROPPED by transform", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->HasPayload() ? event->GetPayloadString() : "", Name);
 					(*pStatusCallback)(CommandStatus::UNDEFINED);
 					return;
 				}
@@ -265,8 +265,8 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 				auto bounds = SenderConnections.equal_range(SenderName);
 				for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; aMatch_it++)
 				{
-					if(MainShouldLog(spdlog::level::trace))
-						MainLog()->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->HasPayload() ? evt->GetPayloadString() : "", Name, aMatch_it->second.second->GetName());
+					if(Log.ShouldLog(spdlog::level::trace))
+						Log.Trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->HasPayload() ? evt->GetPayloadString() : "", Name, aMatch_it->second.second->GetName());
 
 					if(evt->GetEventType() == EventType::ConnectState)
 					{
@@ -292,8 +292,8 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 						auto src = (Tx_it+1 == rend) ? Name : (*(Tx_it+1))->Name;
 						if(evt)
 						{
-							if(MainShouldLog(spdlog::level::trace))
-								MainLog()->trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->HasPayload() ? evt->GetPayloadString() : "", src, (*Tx_it)->Name);
+							if(Log.ShouldLog(spdlog::level::trace))
+								Log.Trace("{} {} {} Payload {} Event {} => {}", evt->GetSourcePort(), ToString(evt->GetEventType()),evt->GetIndex(), evt->HasPayload() ? evt->GetPayloadString() : "", src, (*Tx_it)->Name);
 						}
 						(*Tx_it)->Event(evt,ToDestination);
 					});

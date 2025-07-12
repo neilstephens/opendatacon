@@ -59,7 +59,7 @@ private:
 	//asio::io_service::strand sync;
 };
 
-class IOHandler: public LogHelpers
+class IOHandler
 {
 public:
 	IOHandler(const std::string& aName);
@@ -126,8 +126,8 @@ protected:
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(const auto& IOHandler_pair: Subscribers)
 		{
-			if(MainShouldLog(spdlog::level::trace))
-				MainLog()->trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->HasPayload() ? event->GetPayloadString() : "", Name, IOHandler_pair.first);
+			if(IOHLog.ShouldLog(spdlog::level::trace))
+				IOHLog.Trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->HasPayload() ? event->GetPayloadString() : "", Name, IOHandler_pair.first);
 			if(shouldPost)
 				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, OneShotWrap(multi_callback));});
 			else
@@ -140,6 +140,7 @@ protected:
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;
 	DemandMap mDemandMap;
+	inline static LogHelpers IOHLog{"opendatacon"};
 
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;

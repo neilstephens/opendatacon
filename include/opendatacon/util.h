@@ -33,6 +33,9 @@
 namespace odc
 {
 
+size_t GetLogRefreshSequenceNum();
+void BumpLogRefreshSequenceNum();
+
 void spdlog_init_thread_pool(size_t q_size, size_t thread_count);
 std::shared_ptr<spdlog::details::thread_pool> spdlog_thread_pool();
 void spdlog_flush_all();

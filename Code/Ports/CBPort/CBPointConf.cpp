@@ -39,7 +39,7 @@ CBPointConf::CBPointConf(const std::string & _FileName, const Json::Value& ConfO
 	FileName(_FileName)
 {
 	PointTable.SetName(FileName); // Just to make error messages better on parsing. Remove .conf
-	LOGDEBUG("Conf processing file - {}",FileName);
+	Log.Debug("Conf processing file - {}",FileName);
 	ProcessFile(); // This should call process elements below?
 }
 
@@ -49,7 +49,7 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	// Root level Configuration values
-	LOGDEBUG("{} processing",FileName);
+	Log.Debug("{} processing",FileName);
 
 	try
 	{
@@ -67,83 +67,83 @@ void CBPointConf::ProcessElements(const Json::Value& JSONRoot)
 		if (JSONRoot.isMember("Analogs"))
 		{
 			const auto Analogs = JSONRoot["Analogs"];
-			LOGDEBUG("Conf processed - Analog Points");
+			Log.Debug("Conf processed - Analog Points");
 			ProcessAnalogCounterPoints(Analog, Analogs);
 		}
 		if (JSONRoot.isMember("Counters"))
 		{
 			const auto Counters = JSONRoot["Counters"];
-			LOGDEBUG("Conf processed - Counter Points");
+			Log.Debug("Conf processed - Counter Points");
 			ProcessAnalogCounterPoints(Counter, Counters);
 		}
 		if (JSONRoot.isMember("AnalogControls"))
 		{
 			const auto AnalogControls = JSONRoot["AnalogControls"];
-			LOGDEBUG("Conf processed - AnalogControls");
+			Log.Debug("Conf processed - AnalogControls");
 			ProcessAnalogCounterPoints(AnalogControl, AnalogControls);
 		}
 
 		if (JSONRoot.isMember("Binaries"))
 		{
 			const auto Binaries = JSONRoot["Binaries"];
-			LOGDEBUG("Conf processed - Binary Points");
+			Log.Debug("Conf processed - Binary Points");
 			ProcessBinaryPoints(Binary, Binaries);
 		}
 
 		if (JSONRoot.isMember("BinaryControls"))
 		{
 			const auto BinaryControls = JSONRoot["BinaryControls"];
-			LOGDEBUG("Conf processed -Binary Controls");
+			Log.Debug("Conf processed -Binary Controls");
 			ProcessBinaryPoints(BinaryControl, BinaryControls);
 		}
 
 		if (JSONRoot.isMember("IsBakerDevice"))
 		{
 			IsBakerDevice = JSONRoot["IsBakerDevice"].asBool();
-			LOGDEBUG("Conf processed - IsBakerDevice - {}", std::to_string(IsBakerDevice));
+			Log.Debug("Conf processed - IsBakerDevice - {}", std::to_string(IsBakerDevice));
 		}
 		if (JSONRoot.isMember("OverrideOldTimeStamps"))
 		{
 			OverrideOldTimeStamps = JSONRoot["OverrideOldTimeStamps"].asBool();
-			LOGDEBUG("Conf processed - OverrideOldTimeStamps - {}", std::to_string(OverrideOldTimeStamps));
+			Log.Debug("Conf processed - OverrideOldTimeStamps - {}", std::to_string(OverrideOldTimeStamps));
 		}
 		if (JSONRoot.isMember("UpdateAnalogCounterTimeStamps"))
 		{
 			OverrideOldTimeStamps = JSONRoot["UpdateAnalogCounterTimeStamps"].asBool();
-			LOGDEBUG("Conf processed - UpdateAnalogCounterTimeStamps - {}", std::to_string(UpdateAnalogCounterTimeStamps));
+			Log.Debug("Conf processed - UpdateAnalogCounterTimeStamps - {}", std::to_string(UpdateAnalogCounterTimeStamps));
 		}
 		if (JSONRoot.isMember("StandAloneOutstation"))
 		{
 			StandAloneOutstation = JSONRoot["StandAloneOutstation"].asBool();
-			LOGDEBUG("Conf processed - StandAloneOutstation - {}", std::to_string(StandAloneOutstation));
+			Log.Debug("Conf processed - StandAloneOutstation - {}", std::to_string(StandAloneOutstation));
 		}
 		if (JSONRoot.isMember("CBCommandTimeoutmsec"))
 		{
 			CBCommandTimeoutmsec = JSONRoot["CBCommandTimeoutmsec"].asUInt();
-			LOGDEBUG("Conf processed - CBCommandTimeoutmsec - {}", std::to_string(CBCommandTimeoutmsec));
+			Log.Debug("Conf processed - CBCommandTimeoutmsec - {}", std::to_string(CBCommandTimeoutmsec));
 		}
 		if (JSONRoot.isMember("SOEQueueSize"))
 		{
 			SOEQueueSize = JSONRoot["SOEQueueSize"].asUInt();
-			LOGDEBUG("Conf processed - SOEQueueSize - {}", std::to_string(SOEQueueSize));
+			Log.Debug("Conf processed - SOEQueueSize - {}", std::to_string(SOEQueueSize));
 		}
 		if (JSONRoot.isMember("CBCommandRetries"))
 		{
 			CBCommandRetries = JSONRoot["CBCommandRetries"].asUInt();
-			LOGDEBUG("Conf processed - CBCommandRetries - {}", std::to_string(CBCommandRetries));
+			Log.Debug("Conf processed - CBCommandRetries - {}", std::to_string(CBCommandRetries));
 		}
 	}
 	catch (const std::exception& e)
 	{
-		LOGERROR("Exception Caught while processing {}, {} - configuration not loaded", FileName, e.what() );
+		Log.Error("Exception Caught while processing {}, {} - configuration not loaded", FileName, e.what() );
 	}
-	LOGDEBUG("{} End  processing",FileName);
+	Log.Debug("{} End  processing",FileName);
 }
 
 // This method must be processed before points are loaded
 void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 {
-	LOGDEBUG("Conf processing - PollGroups");
+	Log.Debug("Conf processing - PollGroups");
 
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
@@ -151,12 +151,12 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 
 		if (!JSONNode[n].isMember("ID"))
 		{
-			LOGERROR("Poll group missing ID : " + JSONNode[n].toStyledString());
+			Log.Error("Poll group missing ID : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 		if (!JSONNode[n].isMember("PollRate"))
 		{
-			LOGERROR("Poll group missing PollRate : "+ JSONNode[n].toStyledString());
+			Log.Error("Poll group missing PollRate : "+ JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -166,13 +166,13 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 
 		if ((pollrate == 0) || (pollrate > 9000000))
 		{
-			LOGERROR("Illegal PollRate, ignoring poll group {}. PollRate :{}",PollID,pollrate);
+			Log.Error("Illegal PollRate, ignoring poll group {}. PollRate :{}",PollID,pollrate);
 			error = true;
 		}
 
 		if (PollGroups.count(PollID) > 0)
 		{
-			LOGERROR("Duplicate poll group ignored : "+ JSONNode[n].toStyledString());
+			Log.Error("Duplicate poll group ignored : "+ JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -196,14 +196,14 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 		}
 		else
 		{
-			LOGERROR("Poll scantype missing : " + JSONNode[n].toStyledString());
+			Log.Error("Poll scantype missing : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
 		if (!JSONNode[n].isMember("Group") && (polltype != TimeSetCommand) && (polltype != SystemFlagScan))
 		{
 			// Dont need a group for the time set command, or flag scan
-			LOGERROR("Poll group missing Group : " + JSONNode[n].toStyledString());
+			Log.Error("Poll group missing Group : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -215,22 +215,22 @@ void CBPointConf::ProcessPollGroups(const Json::Value & JSONNode)
 
 		if (!error)
 		{
-			LOGDEBUG("Conf processed - PollID - {} Rate {} Type {} Group {} Force Unconditional PendingCommand {}", std::to_string(PollID), std::to_string(pollrate), std::to_string(polltype), std::to_string(group), std::to_string(ForceUnconditional));
+			Log.Debug("Conf processed - PollID - {} Rate {} Type {} Group {} Force Unconditional PendingCommand {}", std::to_string(PollID), std::to_string(pollrate), std::to_string(polltype), std::to_string(group), std::to_string(ForceUnconditional));
 
 			PollGroups[PollID] = CBPollGroup(PollID, pollrate, polltype, numeric_cast<uint8_t>(group), ForceUnconditional);
 		}
 		else
 		{
-			LOGDEBUG("Poll JSON entry missing information - ignoring this entry {}", JSONNode.toStyledString());
+			Log.Debug("Poll JSON entry missing information - ignoring this entry {}", JSONNode.toStyledString());
 		}
 	}
-	LOGDEBUG("Conf processing - PollGroups - Finished");
+	Log.Debug("Conf processing - PollGroups - Finished");
 }
 
 // This method loads both Binary read points, and Binary Control points.
 void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNode)
 {
-	LOGDEBUG("Conf processing - Binary");
+	Log.Debug("Conf processing - Binary");
 
 	std::string BinaryName;
 	if (ptype == Binary)
@@ -242,7 +242,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 	{
 		try
 		{
-			//LOGDEBUG("Digital processing {}, {} ", n, JSONNode[n].toStyledString());
+			//Log.Debug("Digital processing {}, {} ", n, JSONNode[n].toStyledString());
 
 			bool error = false;
 			uint32_t start, stop; // Will set index from these later
@@ -266,7 +266,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			}
 			else
 			{
-				LOGERROR("A {} point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : : {}", BinaryName, JSONNode[n].toStyledString());
+				Log.Error("A {} point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : : {}", BinaryName, JSONNode[n].toStyledString());
 				start = 1;
 				stop = 0;
 				error = true;
@@ -280,7 +280,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 				}
 				else
 				{
-					LOGERROR("A Binary point needs a \"PayloadLocation\" : {}", JSONNode[n].toStyledString());
+					Log.Error("A Binary point needs a \"PayloadLocation\" : {}", JSONNode[n].toStyledString());
 					error = true;
 				}
 			}
@@ -294,7 +294,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 				group = JSONNode[n]["Group"].asUInt();
 			else
 			{
-				LOGERROR("A {} point needs a \"Group\" : {}", BinaryName, JSONNode[n].toStyledString());
+				Log.Error("A {} point needs a \"Group\" : {}", BinaryName, JSONNode[n].toStyledString());
 				error = true;
 			}
 
@@ -304,7 +304,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 			}
 			else
 			{
-				LOGERROR("A {} point needs a \"Channel\" : {}", BinaryName, JSONNode[n].toStyledString());
+				Log.Error("A {} point needs a \"Channel\" : {}", BinaryName, JSONNode[n].toStyledString());
 				error = true;
 			}
 
@@ -323,13 +323,13 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					pointtype = BINCONTROL;
 				else
 				{
-					LOGERROR("A {} point needs a valid \"Type\" : {}", BinaryName, JSONNode[n].toStyledString());
+					Log.Error("A {} point needs a valid \"Type\" : {}", BinaryName, JSONNode[n].toStyledString());
 					error = true;
 				}
 			}
 			else
 			{
-				LOGERROR("A {} point needs a \"Type\" : {}", BinaryName, JSONNode[n].toStyledString());
+				Log.Error("A {} point needs a \"Type\" : {}", BinaryName, JSONNode[n].toStyledString());
 				error = true;
 			}
 
@@ -344,13 +344,13 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 
 						if (SOEIndex > 120)
 						{
-							LOGERROR("\"SOEIndex\" must be 0 to 120 : {}", JSONNode[n].toStyledString());
+							Log.Error("\"SOEIndex\" must be 0 to 120 : {}", JSONNode[n].toStyledString());
 							error = true;
 						}
 					}
 					else
 					{
-						LOGERROR("{} point - If SOE exists, it needs an \"Index\" : {}", BinaryName, JSONNode[n].toStyledString());
+						Log.Error("{} point - If SOE exists, it needs an \"Index\" : {}", BinaryName, JSONNode[n].toStyledString());
 						error = true;
 					}
 				}
@@ -368,15 +368,15 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 						// Do some sanity checks
 						if ((pointtype == DIG) && ((currentchannel < 1) || (currentchannel > 12)))
 						{
-							LOGERROR("A binary point channel for point type DIG must be between 1 and 12 {}", std::to_string(currentchannel));
+							Log.Error("A binary point channel for point type DIG must be between 1 and 12 {}", std::to_string(currentchannel));
 						}
 						else if (((pointtype == MCA) || (pointtype == MCB) || (pointtype == MCC)) && ((currentchannel < 1) || (currentchannel > 6)))
 						{
-							LOGERROR("A binary point channel for point type MCA/MCB/MCC must be between 1 and 6 {}", std::to_string(currentchannel));
+							Log.Error("A binary point channel for point type MCA/MCB/MCC must be between 1 and 6 {}", std::to_string(currentchannel));
 						}
 						else if (pointtype == BINCONTROL)
 						{
-							LOGERROR("A binary input cannot have type CONTROL {}", std::to_string(currentchannel));
+							Log.Error("A binary input cannot have type CONTROL {}", std::to_string(currentchannel));
 						}
 						else
 						{
@@ -388,11 +388,11 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 					{
 						if (pointtype != BINCONTROL)
 						{
-							LOGERROR("A binary control can only have type CONTROL {}", std::to_string(currentchannel));
+							Log.Error("A binary control can only have type CONTROL {}", std::to_string(currentchannel));
 						}
 						else if ((currentchannel < 1) || (currentchannel > 12))
 						{
-							LOGERROR("A binary control channel must be between 1 and 12 {}", std::to_string(currentchannel));
+							Log.Error("A binary control channel must be between 1 and 12 {}", std::to_string(currentchannel));
 						}
 						else
 						{
@@ -401,7 +401,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 						}
 					}
 					else
-						LOGERROR("Illegal point type passed to ProcessBinaryPoints");
+						Log.Error("Illegal point type passed to ProcessBinaryPoints");
 
 					if (res)
 					{
@@ -411,7 +411,7 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 
 						std::string payloadstring = (BinaryName == "BinaryControl") ? "C" : payloadlocation.to_string();
 						// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
-						LOGDEBUG("Adding a {} - Index: {} Group: {} Channel: {}  Point Type : {} Payload Location : {} {}",
+						Log.Debug("Adding a {} - Index: {} Group: {} Channel: {}  Point Type : {} Payload Location : {} {}",
 							BinaryName, std::to_string(index), std::to_string(group), std::to_string(currentchannel), pointtypestring, payloadstring, SOEString);
 					}
 					SOEIndex++;
@@ -420,16 +420,16 @@ void CBPointConf::ProcessBinaryPoints(PointType ptype, const Json::Value& JSONNo
 		}
 		catch (const std::exception& e)
 		{
-			LOGERROR("Exception Caught while processing {}, {} - configuration not loaded", JSONNode[n].toStyledString(), e.what());
+			Log.Error("Exception Caught while processing {}, {} - configuration not loaded", JSONNode[n].toStyledString(), e.what());
 			throw e;
 		}
 	}
-	LOGDEBUG("Conf processing - Binary - Finished");
+	Log.Debug("Conf processing - Binary - Finished");
 }
 // This method loads status byte location in the group.
 void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 {
-	LOGDEBUG("Conf processing - Remote Status Byte");
+	Log.Debug("Conf processing - Remote Status Byte");
 
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
@@ -444,7 +444,7 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 		}
 		else
 		{
-			LOGERROR("A RemoteStatus needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
+			Log.Error("A RemoteStatus needs a \"PayloadLocation\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -452,7 +452,7 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 			group = JSONNode[n]["Group"].asUInt();
 		else
 		{
-			LOGERROR(" A RemoteStatus needs a \"Group\" : " + JSONNode[n].toStyledString());
+			Log.Error(" A RemoteStatus needs a \"Group\" : " + JSONNode[n].toStyledString());
 			error = true;
 		}
 
@@ -461,11 +461,11 @@ void CBPointConf::ProcessStatusByte(const Json::Value& JSONNode)
 			if (PointTable.AddStatusByteToCBMap(numeric_cast<uint8_t>(group), payloadlocation))
 			{
 				// Can only exist in on group, save the group and payload location
-				LOGDEBUG("Adding a Status Byte - Group: " + std::to_string(group) + " Payload Location: " + payloadlocation.to_string());
+				Log.Debug("Adding a Status Byte - Group: " + std::to_string(group) + " Payload Location: " + payloadlocation.to_string());
 			}
 		}
 	}
-	LOGDEBUG("Conf processing - Status Byte - Finished");
+	Log.Debug("Conf processing - Status Byte - Finished");
 }
 
 // This method loads both Analog and Counter/Timers. They look functionally similar in CB
@@ -480,7 +480,7 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 	if (ptype == AnalogControl)
 		Name = "AnalogControl";
 
-	LOGDEBUG("Conf processing - {}",Name);
+	Log.Debug("Conf processing - {}",Name);
 	for (Json::ArrayIndex n = 0; n < JSONNode.size(); ++n)
 	{
 		size_t index = 0;
@@ -558,15 +558,15 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			// Do some sanity checks
 			if ((pointtype == ANA) && (channel != 1))
 			{
-				LOGERROR("An Analog point channel for point type ANA must be 1 - " + JSONNode[n].toStyledString());
+				Log.Error("An Analog point channel for point type ANA must be 1 - " + JSONNode[n].toStyledString());
 			}
 			else if ((pointtype == ANA6) && ((channel < 1) || (channel > 2)))
 			{
-				LOGERROR("An analog point channel for point type ANA6 must be between 1 and 2 - " + JSONNode[n].toStyledString());
+				Log.Error("An analog point channel for point type ANA6 must be between 1 and 2 - " + JSONNode[n].toStyledString());
 			}
 			else if ((pointtype == ACC12) || (pointtype == ACC24))
 			{
-				LOGERROR("An Analog input cannot have type ACC12 or ACC24 " + JSONNode[n].toStyledString());
+				Log.Error("An Analog input cannot have type ACC12 or ACC24 " + JSONNode[n].toStyledString());
 			}
 			else
 			{
@@ -579,11 +579,11 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			// Do some sanity checks
 			if (((pointtype == ACC12) || (pointtype == ACC24)) && (channel != 1))
 			{
-				LOGERROR("A Counter input only have a channel of 1 - " + JSONNode[n].toStyledString());
+				Log.Error("A Counter input only have a channel of 1 - " + JSONNode[n].toStyledString());
 			}
 			else if ((pointtype == ANA6) || (pointtype == ANA))
 			{
-				LOGERROR("A Counter point cannot have a type ANA6 or ANA - " + JSONNode[n].toStyledString());
+				Log.Error("A Counter point cannot have a type ANA6 or ANA - " + JSONNode[n].toStyledString());
 			}
 			else
 			{
@@ -595,11 +595,11 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 		{
 			if (pointtype != ANACONTROL)
 			{
-				LOGERROR("An analogcontrol point must be type CONTROL - "+JSONNode[n].toStyledString());
+				Log.Error("An analogcontrol point must be type CONTROL - "+JSONNode[n].toStyledString());
 			}
 			else if ((channel < 1) || (channel > 2))
 			{
-				LOGERROR("An analogcontrol point channel for point type CONTROL must be between 1 and 2 -"+JSONNode[n].toStyledString());
+				Log.Error("An analogcontrol point channel for point type CONTROL must be between 1 and 2 -"+JSONNode[n].toStyledString());
 			}
 			else
 			{
@@ -614,11 +614,11 @@ void CBPointConf::ProcessAnalogCounterPoints(PointType ptype, const Json::Value&
 			std::string payloadstring = (Name == "AnalogControl") ? "C" : payloadlocation.to_string();
 
 			// The poll group now only has a group number. We need a Group structure to have links to all the points so we can collect them easily.
-			LOGDEBUG("Adding an {} - Index: {} Group: {} Channel: {}  Point Type : {} Payload Location : {}",
+			Log.Debug("Adding an {} - Index: {} Group: {} Channel: {}  Point Type : {} Payload Location : {}",
 				Name, std::to_string(index), std::to_string(group), std::to_string(channel), pointtypestring, payloadstring);
 		}
 	}
-	LOGDEBUG("Conf processing - Analog/Counter - Finished");
+	Log.Debug("Conf processing - Analog/Counter - Finished");
 }
 // The string will have "2", or "2B" or "3A" or "15A". The number 1 to 15, the letter A/B/or nothing
 bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType& payloadlocation)
@@ -627,7 +627,7 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 
 	if (pl.size() < 2)
 	{
-		LOGERROR("Payload string needs to be a minimum of 2 characters. Needs to be '2A' or '15B' in format");
+		Log.Error("Payload string needs to be a minimum of 2 characters. Needs to be '2A' or '15B' in format");
 		return false;
 	}
 
@@ -638,7 +638,7 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 	}
 	else
 	{
-		LOGERROR("Payload string first character needs to be 1 to 9 Needs to be '3' or '2B' in format");
+		Log.Error("Payload string first character needs to be 1 to 9 Needs to be '3' or '2B' in format");
 		return false;
 	}
 
@@ -653,7 +653,7 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 		payloadlocation.Position = PayloadABType::PositionA;
 		if (payloadlocation.Packet == 1)
 		{
-			LOGERROR("Cannot have a payload location of '1A'. This is reserved for the Station/Group/Function information");
+			Log.Error("Cannot have a payload location of '1A'. This is reserved for the Station/Group/Function information");
 			return false;
 		}
 		return true;
@@ -665,7 +665,7 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 	}
 	else
 	{
-		LOGERROR("Payload string second character not correct. Needs to be '2B' or '16B' in format");
+		Log.Error("Payload string second character not correct. Needs to be '2B' or '16B' in format");
 		return false;
 	}
 
@@ -681,7 +681,7 @@ bool CBPointConf::ParsePayloadString(const std::string &pl, PayloadLocationType&
 		return true;
 	}
 
-	LOGERROR("Payload string third character not correct. Needs to be A or B as in '16B' in format");
+	Log.Error("Payload string third character not correct. Needs to be A or B as in '16B' in format");
 	return false;
 }
 

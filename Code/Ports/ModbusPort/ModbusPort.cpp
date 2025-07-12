@@ -25,13 +25,13 @@
  */
 
 #include "ModbusPort.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 
 ModbusPort::ModbusPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	stack_enabled(false)
 {
-	SetLog("ModbusPort");
 	//the creation of a new ModbusPortConf will get the point details
 	pConf = std::make_unique<ModbusPortConf>(ConfFilename);
 

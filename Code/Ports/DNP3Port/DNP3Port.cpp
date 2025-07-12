@@ -26,6 +26,7 @@
 
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <opendnp3/gen/Parity.h>
 #include <opendnp3/logging/LogLevels.h>
@@ -38,7 +39,6 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	pStackSyncStrand(pIOS->make_strand()),
 	connection_notification_pending(false)
 {
-	SetLog("DNP3Port");
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<opendnp3::DNP3Manager> weak_mgr;
 

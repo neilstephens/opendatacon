@@ -27,6 +27,7 @@
 #ifndef EVENTSINKTRANSFORM_H_
 #define EVENTSINKTRANSFORM_H_
 
+#include "Log.h"
 #include <cstdint>
 #include <opendatacon/Transform.h>
 
@@ -36,9 +37,7 @@ class BlackHoleTransform: public Transform
 {
 public:
 	BlackHoleTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
-	{
-		SetLog("Connectors");
-	}
+	{}
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{

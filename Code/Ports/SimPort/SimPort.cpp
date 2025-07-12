@@ -27,6 +27,7 @@
 #include "SimPort.h"
 #include "SimPortCollection.h"
 #include "SimPortConf.h"
+#include "Log.h"
 #include "sqlite3/sqlite3.h"
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
@@ -60,7 +61,6 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	DataPort(Name, File, Overrides),
 	SimCollection(nullptr)
 {
-	SetLog("SimPort");
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<SimPortCollection> weak_collection;
 
@@ -695,7 +695,7 @@ void SimPort::Build()
 				rep.headers[0].value = std::to_string(rep.content.size());
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = contenttype;
-				LOGDEBUG("{} Get Command {}, Resp {}", Name, absoluteuri, rep.content);
+				Log.Debug("{} Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
 		HttpServerManager::AddHandler(httpServerToken, "GET /" + Name, gethandler);
 
@@ -790,7 +790,7 @@ void SimPort::Build()
 				rep.headers[0].value = std::to_string(rep.content.size());
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = "text/html";
-				LOGDEBUG("{} Post/Get Command {}, Resp {}", Name, absoluteuri, rep.content);
+				Log.Debug("{} Post/Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
 		HttpServerManager::AddHandler(httpServerToken, "POST /" + Name, posthandler);
 		HttpServerManager::AddHandler(httpServerToken, "GET /post/" + Name, posthandler); // Allow the post functionality but using a get - easier for testing!
@@ -856,8 +856,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 	bool forced = false;
 	if(fb->mode == FeedbackMode::PULSE)
 	{
-		if(ShouldLog(spdlog::level::trace))
-			LogTrace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
 		switch(command.functionCode)
 		{
 			case ControlCode::PULSE_ON:
@@ -897,8 +897,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 	{
 		if (IsOnCommand(command.functionCode))
 		{
-			if(ShouldLog(spdlog::level::trace))
-				LogTrace("{}: Control {}: Latch on feedback to Binary {}.",
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: Control {}: Latch on feedback to Binary {}.",
 					Name, index,fb->on_value->GetIndex());
 			fb->on_value->SetTimestamp();
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
@@ -912,8 +912,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 		}
 		else if (IsOffCommand(command.functionCode))
 		{
-			if(ShouldLog(spdlog::level::trace))
-				LogTrace("{}: Control {}: Latch off feedback to Binary {}.",
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: Control {}: Latch off feedback to Binary {}.",
 					Name, index, fb->off_value->GetIndex());
 			fb->off_value->SetTimestamp();
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
@@ -1154,8 +1154,8 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 
 void SimPort::EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status)
 {
-	if(ShouldLog(spdlog::level::trace))
-		LogTrace("{} : {} for Index {}", Name, message, index);
+	if(Log.ShouldLog(spdlog::level::trace))
+		Log.Trace("{} : {} for Index {}", Name, message, index);
 	(*pStatusCallback)(status);
 }
 

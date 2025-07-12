@@ -26,6 +26,7 @@
 
 #include "FileTransferPort.h"
 #include "FileTransferPortConf.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <filesystem>
 #include <memory>
@@ -39,7 +40,6 @@ using namespace odc;
 FileTransferPort::FileTransferPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
-	SetLog("FileTransferPort");
 	pConf = std::make_unique<FileTransferPortConf>();
 	ProcessFile();
 }
@@ -317,8 +317,8 @@ void FileTransferPort::Event_(std::shared_ptr<const EventInfo> event, const std:
 {
 	if(!enabled)
 	{
-		if(ShouldLog(spdlog::level::trace))
-			LogTrace("{}: Disabled - ignoring {} event from {}", Name, ToString(event->GetEventType()), SenderName);
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{}: Disabled - ignoring {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 		pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 		return;
 	}
@@ -400,8 +400,8 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 	{
 		if(UnsolConfirm)
 		{
-			if(ShouldLog(spdlog::level::trace))
-				LogTrace("{}: Received unsolicited positive confirmation: Clear queues up to sequence {}, CRC {}", Name, expected_sequence, crc_str);
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: Received unsolicited positive confirmation: Clear queues up to sequence {}, CRC {}", Name, expected_sequence, crc_str);
 			if(pConf->UseCRCs ? (expected_sequence == seq && expected_crc == crc) : (expected_sequence == seq))
 			{
 				tx_event_buffer.clear();
@@ -418,8 +418,8 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 		}
 		else
 		{
-			if(ShouldLog(spdlog::level::trace))
-				LogTrace("{}: Received positive confirmation: Entire sequence OK.", Name);
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: Received positive confirmation: Entire sequence OK.", Name);
 			pConfirmTimer->cancel();
 			tx_event_buffer.clear();
 			tx_uncofirmed_transfers.clear();
@@ -595,14 +595,14 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 
 		if(index != seq)
 		{
-			if(ShouldLog(spdlog::level::trace))
-				LogTrace("{}: Out-of-order sequence number {} buffered {} sequences deep.", Name, index, rx_event_buffer[index].size());
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: Out-of-order sequence number {} buffered {} sequences deep.", Name, index, rx_event_buffer[index].size());
 		}
 
 		if(!rx_in_progress)
 		{
-			if(ShouldLog(spdlog::level::trace))
-				LogTrace("{}: File data (seq={}) before file name/start buffered {} sequences deep.", Name, index, rx_event_buffer[index].size());
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: File data (seq={}) before file name/start buffered {} sequences deep.", Name, index, rx_event_buffer[index].size());
 			return;
 		}
 
@@ -724,8 +724,8 @@ inline void FileTransferPort::ConfirmCheck()
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	if(pConf->UseConfirms && seq == pConf->SequenceIndexStop)
 	{
-		if(ShouldLog(spdlog::level::trace))
-			LogTrace("{}: Sending confirmation full sequence received.", Name);
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{}: Sending confirmation full sequence received.", Name);
 		auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
 		confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
 		pIOS->post([=] { PublishEvent(confirm_event); });
@@ -807,8 +807,8 @@ void FileTransferPort::ProcessRxBuffer(const std::string& SenderName)
 			}
 			else
 			{
-				if(ShouldLog(spdlog::level::trace))
-					LogTrace("{}: Wrote '{}' to {}.", Name, popped->GetPayloadString(), (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
+				if(Log.ShouldLog(spdlog::level::trace))
+					Log.Trace("{}: Wrote '{}' to {}.", Name, popped->GetPayloadString(), (std::filesystem::path(pConf->Directory) / std::filesystem::path(Filename)).string());
 			}
 		}
 		//else - we should have already logged an error when fout went bad.

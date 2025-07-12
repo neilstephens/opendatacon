@@ -27,6 +27,7 @@
 #ifndef CBOUTSTATIONPORT_H_
 #define CBOUTSTATIONPORT_H_
 #include "CB.h"
+#include "Log.h"
 #include "CBPort.h"
 #include "CBUtility.h"
 #include "CBConnection.h"
@@ -46,7 +47,7 @@ public:
 		if (SOEAvailableFn != nullptr)
 			return SOEAvailableFn();
 
-		LOGERROR("GetSOEAvailableFlag called without a handler being registered");
+		Log.Error("GetSOEAvailableFlag called without a handler being registered");
 		return false;
 	}
 
@@ -56,7 +57,7 @@ public:
 		if (SOEOverflowFn != nullptr)
 			return SOEOverflowFn();
 
-		LOGERROR("GetSOEOverflowFlag called without a handler being registered");
+		Log.Error("GetSOEOverflowFlag called without a handler being registered");
 		return false;
 	}
 	uint16_t GetStatusPayload(uint16_t Payload)

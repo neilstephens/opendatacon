@@ -36,7 +36,7 @@
 
 using CmdFunc_t = std::function<Json::Value (std::stringstream& args)>;
 
-class IUI: public odc::LogHelpers
+class IUI
 {
 public:
 	virtual ~IUI(){}

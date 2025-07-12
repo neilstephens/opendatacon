@@ -28,6 +28,7 @@
 #ifndef LOGICINVTRANSFORM_H_
 #define LOGICINVTRANSFORM_H_
 
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
 #include <opendatacon/IOTypes.h>
@@ -38,9 +39,7 @@ class LogicInvTransform: public Transform
 {
 public:
 	LogicInvTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
-	{
-		SetLog("Connectors");
-	}
+	{}
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{

@@ -27,13 +27,13 @@
 
 #include "MD3Port.h"
 #include "MD3PortConf.h"
+#include "Log.h"
 #include <iostream>
 #include <utility>
 
 MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
-	SetLog("MD3Port");
 	//the creation of a new MD3PortConf will get the point details
 	pConf = std::make_unique<MD3PortConf>(ConfFilename, ConfOverrides);
 
@@ -64,7 +64,7 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	if (JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
-		LOGERROR("Warning: MD3 port serial device AND IP address specified - IP overrides");
+		Log.Error("Warning: MD3 port serial device AND IP address specified - IP overrides");
 
 	if (JSONRoot.isMember("IP"))
 	{
@@ -83,7 +83,7 @@ void MD3Port::ProcessElements(const Json::Value& JSONRoot)
 		else if (JSONRoot["TCPClientServer"].asString() == "DEFAULT")
 			static_cast<MD3PortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::DEFAULT;
 		else
-			LOGERROR("Warning: Invalid TCP client/server type, it should be CLIENT, SERVER, or DEFAULT : "+ JSONRoot["TCPClientServer"].asString());
+			Log.Error("Warning: Invalid TCP client/server type, it should be CLIENT, SERVER, or DEFAULT : "+ JSONRoot["TCPClientServer"].asString());
 	}
 
 	if (JSONRoot.isMember("OutstationAddr"))
@@ -129,7 +129,7 @@ void MD3Port::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 
 	if (CompleteMD3Message.size() == 0)
 	{
-		LOGERROR("Tried to send an empty message to the TCP Port");
+		Log.Error("Tried to send an empty message to the TCP Port");
 		return;
 	}
 	MD3Connection::Write(pConnection, CompleteMD3Message);

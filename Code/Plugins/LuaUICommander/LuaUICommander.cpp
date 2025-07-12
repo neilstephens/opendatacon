@@ -24,6 +24,7 @@
  *      Author: Neil Stephens
  */
 #include "LuaUICommander.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 
 inline std::stringstream ParamsToSStream(const ParamCollection &params)
@@ -41,7 +42,6 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 	mute_scripts(true),
 	maxQ(500)
 {
-	SetLog("LuaUICommander");
 	IUIResponder::AddCommand("ExecuteFile", [this](const ParamCollection &params) -> const Json::Value
 		{
 			auto LineStream = ParamsToSStream(params);
@@ -70,8 +70,8 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			if(LineStream>>Base64 && LineStream>>ID)
 			{
 				std::string lua_code = odc::b64decode(Base64);
-				if(ShouldLog(spdlog::level::trace))
-					LogTrace("Decoded base64 as:\n{}",lua_code);
+				if(Log.ShouldLog(spdlog::level::trace))
+					Log.Trace("Decoded base64 as:\n{}",lua_code);
 				auto started = Execute(lua_code,ID,LineStream);
 				auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
 				return IUIResponder::GenerateResult(msg);

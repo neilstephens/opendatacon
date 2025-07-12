@@ -33,22 +33,25 @@
 #include <iomanip>
 #include <exception>
 #include <filesystem>
+#include <atomic>
 
 const std::size_t bcd_pack_size = 4;
 
 namespace odc
 {
 static std::string ConfigVersion = "None";
-
 std::string GetConfigVersion()
 {
 	return ConfigVersion;
 }
-
 void SetConfigVersion(const std::string& Version)
 {
 	ConfigVersion = Version;
 }
+
+static std::atomic_size_t LogRefreshSequenceNum = 0;
+size_t GetLogRefreshSequenceNum(){ return LogRefreshSequenceNum.load(); }
+void BumpLogRefreshSequenceNum(){ LogRefreshSequenceNum++; }
 
 void spdlog_init_thread_pool(size_t q_size, size_t thread_count)
 {

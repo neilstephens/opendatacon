@@ -27,6 +27,7 @@
 #ifndef AnalogScalingTransform_H_
 #define AnalogScalingTransform_H_
 
+#include "Log.h"
 #include <opendatacon/Transform.h>
 
 using namespace odc;
@@ -36,7 +37,6 @@ class AnalogScalingTransform: public Transform
 public:
 	AnalogScalingTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
-		SetLog("Connectors");
 		if(!params.isMember("Indexes") || !params["Indexes"].isArray())
 		{
 			if(auto log = odc::spdlog_get("Connectors"))

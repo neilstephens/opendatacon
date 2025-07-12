@@ -51,12 +51,12 @@ void KafkaProducerPort::Build()
 			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
 
 			//Log a message for each PTM entry for verification purposes
-			if(ShouldLog(spdlog::level::trace))
+			if(Log.ShouldLog(spdlog::level::trace))
 			{
 				auto dummy_event = std::make_shared<EventInfo>(*init_events[source].back());
 				dummy_event->SetPayload();
 				auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
-				LogTrace("{} -> {}: {}", source, Name, ev_str);
+				Log.Trace("{} -> {}: {}", source, Name, ev_str);
 			}
 		}
 	}
@@ -300,13 +300,13 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 				{
 					if (!error)
 					{
-						if(ShouldLog(spdlog::level::trace))
-							LogTrace("{}: Message delivered: {}", Name, metadata.toString());
+						if(Log.ShouldLog(spdlog::level::trace))
+							Log.Trace("{}: Message delivered: {}", Name, metadata.toString());
 						(*pStatusCallback)(odc::CommandStatus::SUCCESS);
 					}
 					else
 					{
-						LogError("{}: Message failed to be delivered: {}", metadata.toString());
+						Log.Error("{}: Message failed to be delivered: {}", metadata.toString());
 						(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
 					}
 				};

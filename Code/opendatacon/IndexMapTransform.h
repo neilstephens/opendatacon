@@ -27,6 +27,7 @@
 #ifndef INDEXMAPTRANSFORM_H_
 #define INDEXMAPTRANSFORM_H_
 
+#include "Log.h"
 #include <opendatacon/Transform.h>
 
 using namespace odc;
@@ -36,7 +37,6 @@ class IndexMapTransform: public Transform
 public:
 	IndexMapTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
-		SetLog("Connectors");
 		auto load_map = [&params](const std::string& map_name, std::unordered_map<uint16_t,uint16_t>& map)
 				    {
 					    if(params.isMember(map_name) && params[map_name].isMember("From") && params[map_name].isMember("To")

@@ -24,7 +24,7 @@
  *      Author: Scott Ellis - scott.ellis@novatex.com.au
  */
 
-#include "MD3.h"
+#include "Log.h"
 #include "MD3Connection.h"
 #include "MD3Utility.h"
 #include <functional>
@@ -47,14 +47,14 @@ ConnectionTokenType::~ConnectionTokenType()
 	{
 		if (pConnection.use_count() <= 2)
 		{
-			LOGDEBUG("MD3 Use Count On Connection Shared_ptr down to 2 - Destroying the Map Connection - {}", ChannelID);
+			Log.Debug("MD3 Use Count On Connection Shared_ptr down to 2 - Destroying the Map Connection - {}", ChannelID);
 			pConnection->RemoveConnectionFromMap();
 			// Now release our shared_ptr - the last one..The CBConnection destructor should now be called.
 			pConnection.reset();
 		}
 		else
 		{
-			LOGDEBUG("MD3 Use Count On Connection Shared_ptr at {} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
+			Log.Debug("MD3 Use Count On Connection Shared_ptr at {} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
 		}
 	}
 }
@@ -82,7 +82,7 @@ MD3Connection::MD3Connection
 {
 	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
-	LOGDEBUG("MD3 Opened an MD3Connection object {} As a {}",InternalChannelID, (isServer ? "Server" : "Client"));
+	Log.Debug("MD3 Opened an MD3Connection object {} As a {}",InternalChannelID, (isServer ? "Server" : "Client"));
 }
 
 // Static Method
@@ -111,7 +111,7 @@ ConnectionTokenType MD3Connection::AddConnection
 		ConnectionMap[ChannelID] = std::make_shared<MD3Connection>(apIOS, aisServer, aEndPoint, aPort, retry_time_ms,throttle_bitrate,throttle_chunksize,throttle_writedelay_ms);
 	}
 	else
-		LOGDEBUG("MD3 Connection already exists, using that connection - {}", ChannelID);
+		Log.Debug("MD3 Connection already exists, using that connection - {}", ChannelID);
 
 	return ConnectionTokenType(ChannelID, ConnectionMap[ChannelID]); // the use count on the Connection Map shared_ptr will go up by one.
 }
@@ -130,7 +130,7 @@ void MD3Connection::AddOutstation(const ConnectionTokenType &ConnectionTok,
 	}
 	else
 	{
-		LOGERROR("Md3 Tried to add an Outstation when the connection was no longer valid");
+		Log.Error("Md3 Tried to add an Outstation when the connection was no longer valid");
 	}
 }
 
@@ -143,7 +143,7 @@ void MD3Connection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, u
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to remove an Outstation when the connection was no longer valid");
+		Log.Error("MD3 Tried to remove an Outstation when the connection was no longer valid");
 	}
 }
 
@@ -159,7 +159,7 @@ void MD3Connection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t 
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to add a Master when the connection was no longer valid");
+		Log.Error("MD3 Tried to add a Master when the connection was no longer valid");
 	}
 }
 
@@ -172,7 +172,7 @@ void MD3Connection::RemoveMaster(const ConnectionTokenType &ConnectionTok, uint8
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to remove a Master when the connection was no longer valid");
+		Log.Error("MD3 Tried to remove a Master when the connection was no longer valid");
 	}
 }
 
@@ -192,7 +192,7 @@ void MD3Connection::Open(const ConnectionTokenType &ConnectionTok)
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to open a connection when the connection was no longer valid");
+		Log.Error("MD3 Tried to open a connection when the connection was no longer valid");
 	}
 }
 
@@ -208,11 +208,11 @@ void MD3Connection::Open()
 		{
 			pSockMan->Open();
 			opencount.fetch_add(1);
-			LOGDEBUG("MD3 ConnectionTok Opened: {}", InternalChannelID);
+			Log.Debug("MD3 ConnectionTok Opened: {}", InternalChannelID);
 		}
 		catch (std::exception& e)
 		{
-			LOGERROR("MD3 Problem opening connection :{} - {}", InternalChannelID, e.what());
+			Log.Error("MD3 Problem opening connection :{} - {}", InternalChannelID, e.what());
 			successfullyopened.exchange(false);
 			return;
 		}
@@ -220,7 +220,7 @@ void MD3Connection::Open()
 	else
 	{
 		opencount.fetch_add(1);
-		LOGDEBUG("MD3 Connection increased open count: {} {}", opencount.load(), InternalChannelID);
+		Log.Debug("MD3 Connection increased open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }
 
@@ -233,7 +233,7 @@ void MD3Connection::Close(const ConnectionTokenType &ConnectionTok)
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to close a connection when the connection was no longer valid");
+		Log.Error("MD3 Tried to close a connection when the connection was no longer valid");
 	}
 }
 
@@ -248,11 +248,11 @@ void MD3Connection::Close()
 		pSockMan->Close();
 		successfullyopened.exchange(false);
 
-		LOGDEBUG("MD3 Connection open count 0, Closed: {}", InternalChannelID);
+		Log.Debug("MD3 Connection open count 0, Closed: {}", InternalChannelID);
 	}
 	else
 	{
-		LOGDEBUG("MD3 Connection reduced open count: {} {}", opencount.load(), InternalChannelID);
+		Log.Debug("MD3 Connection reduced open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }
 
@@ -266,7 +266,7 @@ void MD3Connection::Write(const ConnectionTokenType &ConnectionTok, const MD3Mes
 {
 	if (CompleteMD3Message.size() == 0)
 	{
-		LOGERROR("MD3 Tried to send an empty message to the TCP Port");
+		Log.Error("MD3 Tried to send an empty message to the TCP Port");
 		return;
 	}
 	// Turn the blocks into a binary string.
@@ -298,7 +298,7 @@ void MD3Connection::Write(const ConnectionTokenType &ConnectionTok, const MD3Mes
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to write to a connection when the connection was no longer valid");
+		Log.Error("MD3 Tried to write to a connection when the connection was no longer valid");
 	}
 }
 
@@ -317,7 +317,7 @@ void MD3Connection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, s
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to SetSendTCPdataFn when the connection was no longer valid");
+		Log.Error("MD3 Tried to SetSendTCPdataFn when the connection was no longer valid");
 	}
 }
 //Static method
@@ -330,7 +330,7 @@ void MD3Connection::InjectSimulatedTCPMessage(const ConnectionTokenType &Connect
 	}
 	else
 	{
-		LOGERROR("MD3 Tried to InjectSimulatedTCPMessage when the connection was no longer valid");
+		Log.Error("MD3 Tried to InjectSimulatedTCPMessage when the connection was no longer valid");
 	}
 }
 
@@ -358,14 +358,14 @@ void MD3Connection::ReadCompletionHandler(buf_t&readbuf)
 				// We know we are looking for the first block if MD3Message is empty.
 				if (MD3Message.size() != 0)
 				{
-					LOGDEBUG("MD3 Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
+					Log.Debug("MD3 Received a start block when we have not got to an end block - discarding data blocks - " + std::to_string(MD3Message.size()));
 					MD3Message.clear();
 				}
 				MD3Message.push_back(ReadCompletionHandlerMD3block); // Takes a copy of the block
 			}
 			else if (MD3Message.size() == 0)
 			{
-				LOGDEBUG("MD3 Received a non start block when we are waiting for a start block - discarding data - " + ReadCompletionHandlerMD3block.ToString());
+				Log.Debug("MD3 Received a non start block when we are waiting for a start block - discarding data - " + ReadCompletionHandlerMD3block.ToString());
 			}
 			else
 			{
@@ -406,26 +406,26 @@ void MD3Connection::RouteMD3Message(MD3Message_t&& CompleteMD3Message)
 	{
 		// If zero, route to all outstations!
 		// Most zero station address functions do not send a response - the SystemSignOnMessage is an exception.
-		LOGDEBUG("MD3 Received a zero station address routing to all outstations - " + MD3MessageAsString(CompleteMD3Message));
+		Log.Debug("MD3 Received a zero station address routing to all outstations - " + MD3MessageAsString(CompleteMD3Message));
 		for (auto it = ReadCallbackMap.begin(); it != ReadCallbackMap.end(); ++it)
 			it->second(MD3Message_t(CompleteMD3Message));
 	}
 	else if (ReadCallbackMap.count(StationAddress) != 0)
 	{
 		// We have found a matching outstation, do read callback
-		LOGDEBUG("MD3 Routing Message to station - {} Message - {}",StationAddress, MD3MessageAsString(CompleteMD3Message));
+		Log.Debug("MD3 Routing Message to station - {} Message - {}",StationAddress, MD3MessageAsString(CompleteMD3Message));
 		ReadCallbackMap.at(StationAddress)(std::move(CompleteMD3Message));
 	}
 	else
 	{
 		// NO match
-		LOGDEBUG("MD3 Received non-matching outstation address - {} Message - {}",StationAddress, MD3MessageAsString(CompleteMD3Message));
+		Log.Debug("MD3 Received non-matching outstation address - {} Message - {}",StationAddress, MD3MessageAsString(CompleteMD3Message));
 	}
 }
 
 void MD3Connection::SocketStateHandler(bool state)
 {
-	LOGDEBUG("MD3 Connection changed state {} As a {}", InternalChannelID, (isServer ? "Open" : "Close"));
+	Log.Debug("MD3 Connection changed state {} As a {}", InternalChannelID, (isServer ? "Open" : "Close"));
 
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)

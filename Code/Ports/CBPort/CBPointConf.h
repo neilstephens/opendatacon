@@ -42,7 +42,6 @@
 // Good article http://www.codersblock.org/blog/2016/6/02/ditching-the-mutex
 
 #include "CB.h"
-#include "CBUtility.h"
 #include "CBPointTableAccess.h"
 
 // Also I have concerns about blocking checks on futures, which would block one of the asio threads - we may only have 4!

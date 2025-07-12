@@ -242,8 +242,8 @@ void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
 	}
 	else
 	{
-		if(ShouldLog(spdlog::level::trace))
-			LogTrace("{}: Polled {} records from Kafka", Name, Records.size());
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{}: Polled {} records from Kafka", Name, Records.size());
 
 		try
 		{

@@ -29,6 +29,7 @@
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
 #include "CommsRideThroughTimer.h"
+#include "Log.h"
 #include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
 #include <opendnp3/master/IMasterApplication.h>
@@ -88,8 +89,8 @@ protected:
 	}
 	bool AssignClassDuringStartup() final
 	{
-		if(ShouldLog(spdlog::level::trace))
-			LogTrace("{}: AssignClassDuringStartup() called.", Name);
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{}: AssignClassDuringStartup() called.", Name);
 		return false;
 	}
 	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final

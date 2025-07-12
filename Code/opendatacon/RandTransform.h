@@ -27,6 +27,7 @@
 #ifndef RANDTRANSFORM_H_
 #define RANDTRANSFORM_H_
 
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
 #include <random>
@@ -37,9 +38,7 @@ class RandTransform: public Transform
 {
 public:
 	RandTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
-	{
-		SetLog("Connectors");
-	}
+	{}
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{

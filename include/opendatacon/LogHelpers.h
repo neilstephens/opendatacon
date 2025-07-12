@@ -33,34 +33,30 @@
 namespace odc
 {
 
-/* The idea of these log helpers is to enable derrived classes to log conveniently, but also efficiently
+/* The idea of these log helpers is to enable classes to log conveniently, but also efficiently,
+ * simply by adding a LogHelpers static data member
  *	- avoids having to fetch log pointers from the central spdlog registry every time (locking bottle-neck)
- *	- but since logs can be reloaded dynamically, we can't keep pointers forever
- *		- so this uses weak_ptrs and tries to refresh them when they expire
+ *	- but since logs can be reloaded dynamically, and this is for static lifetime, we can't simply store a shared_ptr
+ *	- so this uses a weak_ptr and refreshes it when needed
+ *	- also optimises 'should log' queries by caching the result for trace level
+ *		- the main datacon signals that the cache is invalid by bumping the global sequence number
  */
 
-class LogHelpers
+class LogHelpers final
 {
-protected:
-	LogHelpers() = default;
-
-	// SetLog needs to be called by the derrived classes that know their logger name
-	inline void SetLog(const std::string& log_name) { logname = log_name; }
+public:
+	LogHelpers(const std::string& log_name):
+		logname(log_name)
+	{}
+	virtual ~LogHelpers() = default;
 
 	inline std::shared_ptr<spdlog::logger> GetLog() const
 	{
 		if(auto l = log.lock())
 			return l;
 		auto l = odc::spdlog_get(logname);
+		if(l) l->debug("Refreshing expired log weak_ptr. RefreshSequenceNum {}", GetLogRefreshSequenceNum());
 		log = l;
-		return l;
-	}
-	inline std::shared_ptr<spdlog::logger> MainLog() const
-	{
-		if(auto l = mainlog.lock())
-			return l;
-		auto l = odc::spdlog_get("opendatacon");
-		mainlog = l;
 		return l;
 	}
 	inline bool ShouldLog(const spdlog::level::level_enum& lvl) const
@@ -68,11 +64,13 @@ protected:
 		//trace gets special treatment - only check the underlying log if the global log refresh sequence has changed
 		if(!lvl)
 		{
-			if(refreshSeq == RefreshSequenceNum)
+			auto seq = GetLogRefreshSequenceNum();
+			if(refreshSeq == seq)
 				return trace_should_log;
-			refreshSeq.store(RefreshSequenceNum);
+			refreshSeq = seq;
 			if(auto l = GetLog())
 			{
+				l->debug("Refreshing 'trace_should_log' cache due to sequence bump. RefreshSequenceNum {}", seq);
 				trace_should_log = l->should_log(lvl);
 				return trace_should_log;
 			}
@@ -81,45 +79,20 @@ protected:
 		if(auto l = GetLog()) return l->should_log(lvl);
 		return false;
 	}
-	inline bool MainShouldLog(const spdlog::level::level_enum& lvl) const
-	{
-		//trace gets special treatment - only check the underlying log if the global log refresh sequence has changed
-		if(!lvl)
-		{
-			if(refreshSeqMain == RefreshSequenceNum)
-				return trace_should_log_main;
-			refreshSeqMain.store(RefreshSequenceNum);
-			if(auto l = MainLog())
-			{
-				trace_should_log_main = l->should_log(lvl);
-				return trace_should_log_main;
-			}
-			return false;
-		}
-		if(auto l = MainLog()) return l->should_log(lvl);
-		return false;
-	}
 
 	//And for our great convenience!
-	template<typename ... Args> void LogTrace(Args&&... args) const { if(auto l = GetLog())l->trace(std::forward<Args>(args)...);}
-	template<typename ... Args> void LogDebug(Args&&... args) const { if(auto l = GetLog())l->debug(std::forward<Args>(args)...);}
-	template<typename ... Args> void LogInfo(Args&&... args) const { if(auto l = GetLog())l->info(std::forward<Args>(args)...);}
-	template<typename ... Args> void LogWarn(Args&&... args) const { if(auto l = GetLog())l->warn(std::forward<Args>(args)...);}
-	template<typename ... Args> void LogError(Args&&... args) const { if(auto l = GetLog())l->error(std::forward<Args>(args)...);}
-	template<typename ... Args> void LogCritical(Args&&... args) const { if(auto l = GetLog())l->critical(std::forward<Args>(args)...);}
+	template<typename ... Args> inline void Trace(Args&&... args) const { if(auto l = GetLog()) l->trace(std::forward<Args>(args)...);}
+	template<typename ... Args> inline void Debug(Args&&... args) const { if(auto l = GetLog()) l->debug(std::forward<Args>(args)...);}
+	template<typename ... Args> inline void Info(Args&&... args) const { if(auto l = GetLog()) l->info(std::forward<Args>(args)...);}
+	template<typename ... Args> inline void Warn(Args&&... args) const { if(auto l = GetLog()) l->warn(std::forward<Args>(args)...);}
+	template<typename ... Args> inline void Error(Args&&... args) const { if(auto l = GetLog()) l->error(std::forward<Args>(args)...);}
+	template<typename ... Args> inline void Critical(Args&&... args) const { if(auto l = GetLog()) l->critical(std::forward<Args>(args)...);}
 
 private:
 	std::string logname;
 	mutable std::weak_ptr<spdlog::logger> log;
-	mutable std::weak_ptr<spdlog::logger> mainlog;
 	mutable std::atomic_bool trace_should_log;
-	mutable std::atomic_bool trace_should_log_main;
 	mutable std::atomic_size_t refreshSeq = 9999;
-	mutable std::atomic_size_t refreshSeqMain = 9999;
-
-public:
-	inline static std::atomic_size_t RefreshSequenceNum = 0;
-	virtual ~LogHelpers() = default;
 };
 
 } //namespace odc

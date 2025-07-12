@@ -25,13 +25,13 @@
  */
 
 #include "LuaTransform.h"
+#include "Log.h"
 #include <Lua/CLua.h>
 #include <Lua/Wrappers.h>
 #include <opendatacon/util.h>
 
 LuaTransform::LuaTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 {
-	SetLog("LuaTransform");
 	if(!params.isObject() || !params.isMember("LuaFile") || !params["LuaFile"].isString())
 		throw std::runtime_error("LuaTransform requires 'Parameters' object with 'LuaFile' member string: "+params.toStyledString());
 	//top level table "odc"

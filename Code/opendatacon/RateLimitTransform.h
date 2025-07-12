@@ -27,6 +27,7 @@
 #ifndef RATELIMITTRANSFORM_H_
 #define RATELIMITTRANSFORM_H_
 
+#include "Log.h"
 #include <atomic>
 #include <opendatacon/Transform.h>
 #include <unordered_map>
@@ -39,7 +40,6 @@ class RateLimitTransform: public Transform
 public:
 	RateLimitTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
-		SetLog("Connectors");
 		std::string name = "DEFAULT";
 		if (params.isMember("Name") && params["Name"].isString())
 		{

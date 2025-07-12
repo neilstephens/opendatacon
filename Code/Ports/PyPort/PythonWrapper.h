@@ -27,8 +27,10 @@
 #ifndef PYWRAPPER_H_
 #define PYWRAPPER_H_
 
-#include "Py.h"
 #include "SpecialEventQueue.h"
+#include "Log.h"
+#include <Python.h>
+#include <opendatacon/asio.h>
 #include <opendatacon/util.h>
 #include <opendatacon/DataPort.h>
 #include <mutex>
@@ -141,7 +143,7 @@ private:
 		uint64_t guid = reinterpret_cast<uint64_t>(this);
 		if (sizeof(uintptr_t) == 4) guid &= 0x00000000FFFFFFFF; // Stop sign extension
 		PyWrappers.emplace(guid);
-		LOGDEBUG("Stored python wrapper guid into mapping table - {0:#x}", guid);
+		Log.Debug("Stored python wrapper guid into mapping table - {0:#x}", guid);
 	}
 	void RemoveWrapperMapping()
 	{

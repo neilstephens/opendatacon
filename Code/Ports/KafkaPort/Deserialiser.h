@@ -27,7 +27,7 @@
 #ifndef IDESERIALISER_H
 #define IDESERIALISER_H
 
-#include <opendatacon/LogHelpers.h>
+#include "Log.h"
 #include <opendatacon/IOTypes.h>
 #include <kafka/ConsumerRecord.h>
 #include <string>
@@ -35,15 +35,13 @@
 using namespace odc;
 namespace KCC = kafka::clients::consumer;
 
-class Deserialiser: public LogHelpers
+class Deserialiser
 {
 public:
 	Deserialiser(const std::string& datetime_format, const bool utc):
 		datetime_format(datetime_format),
 		utc(utc)
-	{
-		SetLog("KafkaPort");
-	}
+	{}
 	virtual ~Deserialiser()
 	{};
 	virtual std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) = 0;
