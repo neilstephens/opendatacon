@@ -41,6 +41,7 @@ public:
 		already_under(false),
 		threshold(-DBL_MAX)
 	{
+		SetLog("Connectors");
 		if(!params.isMember("threshold_point_index") || !params["threshold_point_index"].isUInt())
 		{
 			threshold_point_index = 0;

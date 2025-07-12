@@ -60,6 +60,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	DataPort(Name, File, Overrides),
 	SimCollection(nullptr)
 {
+	SetLog("SimPort");
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<SimPortCollection> weak_collection;
 

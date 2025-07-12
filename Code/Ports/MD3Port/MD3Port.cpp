@@ -33,6 +33,7 @@
 MD3Port::MD3Port(const std::string &aName, const std::string & aConfFilename, const Json::Value & aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
+	SetLog("MD3Port");
 	//the creation of a new MD3PortConf will get the point details
 	pConf = std::make_unique<MD3PortConf>(ConfFilename, ConfOverrides);
 

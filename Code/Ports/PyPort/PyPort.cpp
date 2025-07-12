@@ -102,6 +102,7 @@ std::string GetNumber(const std::string& input)
 PyPort::PyPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
+	SetLog("PyPort");
 	//the creation of a new PyPortConf will get the point details
 	pConf = std::make_unique<PyPortConf>(ConfFilename, ConfOverrides);
 

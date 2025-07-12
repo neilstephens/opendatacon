@@ -36,6 +36,7 @@
 KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const Json::Value& Overrides, const bool isProducer):
 	DataPort(Name, Filename, Overrides)
 {
+	SetLog("KafkaPort");
 	pConf = std::make_unique<KafkaPortConf>(isProducer);
 	ProcessFile();
 

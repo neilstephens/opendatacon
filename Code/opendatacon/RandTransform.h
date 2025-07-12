@@ -37,7 +37,9 @@ class RandTransform: public Transform
 {
 public:
 	RandTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
-	{}
+	{
+		SetLog("Connectors");
+	}
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{

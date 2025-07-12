@@ -37,6 +37,7 @@ JSONPort::JSONPort(const std::string& aName, const std::string& aConfFilename, c
 	isServer(aisServer),
 	pSockMan(nullptr)
 {
+	SetLog("JSONPort");
 	//the creation of a new PortConf will get the point details
 	pConf = std::make_unique<JSONPortConf>(ConfFilename, aConfOverrides);
 

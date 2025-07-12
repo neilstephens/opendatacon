@@ -89,6 +89,8 @@ inline void ReloadLogSinks(const std::unordered_map<std::string, spdlog::sink_pt
 
 	if(flush_period_s > 0)
 		odc::spdlog_flush_every(std::chrono::seconds(flush_period_s));
+
+	LogHelpers::RefreshSequenceNum++;
 }
 
 DataConcentrator::DataConcentrator(const std::string& FileName):
@@ -287,6 +289,7 @@ Json::Value DataConcentrator::SetLogLevel(std::stringstream& ss)
 				{
 					log->set_level(new_level);
 				});
+			LogHelpers::RefreshSequenceNum++;
 
 			result = IUIResponder::GenerateResult("Success");
 		}

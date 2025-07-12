@@ -39,6 +39,7 @@ using namespace odc;
 FileTransferPort::FileTransferPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
+	SetLog("FileTransferPort");
 	pConf = std::make_unique<FileTransferPortConf>();
 	ProcessFile();
 }

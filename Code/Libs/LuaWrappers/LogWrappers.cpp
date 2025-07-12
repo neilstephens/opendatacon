@@ -43,7 +43,7 @@ extern "C" void ExportLogWrappers(lua_State* const L, const std::string& Name, c
 
 		//push table value - closure with three upvalues
 		lua_pushstring(L, Name.c_str());
-		lua_pushstring(L, LogName.c_str());
+		lua_pushstring(L, LogName.c_str()); //TODO: push a weak_ptr to the actual logger; spdlog_get is a bottleneck
 		lua_pushinteger(L,i);
 		lua_pushcclosure(L, [](lua_State* const L) -> int
 			{

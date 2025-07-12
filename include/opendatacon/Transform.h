@@ -27,6 +27,7 @@
 #ifndef TRANSFORM_H_
 #define TRANSFORM_H_
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/IOHandler.h>
 #include <opendatacon/IOTypes.h>
 #include <json/json.h>
@@ -35,7 +36,7 @@
 namespace odc
 {
 using EvtHandler_ptr = std::shared_ptr<std::function<void (std::shared_ptr<EventInfo> event)>>;
-class Transform
+class Transform: public LogHelpers
 {
 public:
 	Transform(const std::string& Name, const Json::Value& params):

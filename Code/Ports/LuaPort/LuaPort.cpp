@@ -34,6 +34,7 @@
 LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DataPort(aName, aConfFilename, aConfOverrides)
 {
+	SetLog("LuaPort");
 	pConf = std::make_unique<LuaPortConf>();
 	ProcessFile();
 }

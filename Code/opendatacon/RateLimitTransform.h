@@ -39,6 +39,7 @@ class RateLimitTransform: public Transform
 public:
 	RateLimitTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
+		SetLog("Connectors");
 		std::string name = "DEFAULT";
 		if (params.isMember("Name") && params["Name"].isString())
 		{

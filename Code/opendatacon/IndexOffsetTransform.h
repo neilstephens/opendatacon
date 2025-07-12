@@ -37,6 +37,7 @@ class IndexOffsetTransform: public Transform
 public:
 	IndexOffsetTransform(const std::string& Name, const Json::Value& params): Transform(Name,params)
 	{
+		SetLog("Connectors");
 		if(params.isMember("Offset") && params["Offset"].isInt())
 			offset = params["Offset"].asInt();
 		else if(params.isMember("offset") && params["offset"].isInt())

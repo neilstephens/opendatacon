@@ -31,6 +31,7 @@ ModbusPort::ModbusPort(const std::string& aName, const std::string& aConfFilenam
 	DataPort(aName, aConfFilename, aConfOverrides),
 	stack_enabled(false)
 {
+	SetLog("ModbusPort");
 	//the creation of a new ModbusPortConf will get the point details
 	pConf = std::make_unique<ModbusPortConf>(ConfFilename);
 

@@ -27,6 +27,7 @@
 #ifndef IOHANDLER_H_
 #define IOHANDLER_H_
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
@@ -58,7 +59,7 @@ private:
 	//asio::io_service::strand sync;
 };
 
-class IOHandler
+class IOHandler: public LogHelpers
 {
 public:
 	IOHandler(const std::string& aName);
