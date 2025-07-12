@@ -28,29 +28,37 @@
 #include <utility>
 
 std::multimap<std::string, std::weak_ptr<ChannelHandler>> ChannelStateSubscriber::SubscriberMap;
-std::mutex ChannelStateSubscriber::MapMutex;
+std::shared_mutex ChannelStateSubscriber::MapMutex;
 
 void ChannelStateSubscriber::Subscribe(std::weak_ptr<ChannelHandler> wChanH)
 {
 	if(auto pChanH = wChanH.lock())
 	{
-		std::lock_guard<std::mutex> lock(MapMutex);
+		std::unique_lock<std::shared_mutex> lock(MapMutex);
 		SubscriberMap.emplace(pChanH->GetChannelID(),wChanH);
 	}
 }
 
 void ChannelStateSubscriber::StateListener(const std::string& ChanID, opendnp3::ChannelState state)
 {
-	std::lock_guard<std::mutex> lock(MapMutex);
+	std::shared_lock<std::shared_mutex> lock(MapMutex);
+	auto bounds = SubscriberMap.equal_range(ChanID);
+	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; ++aMatch_it)
+	{
+		if(auto pChanH = aMatch_it->second.lock())
+			pChanH->StateListener(state);
+	}
+}
+
+void ChannelStateSubscriber::Unsubscribe(const std::string& ChanID)
+{
+	std::unique_lock<std::shared_mutex> lock(MapMutex);
 	auto bounds = SubscriberMap.equal_range(ChanID);
 	for(auto aMatch_it = bounds.first; aMatch_it != bounds.second; /*advance in loop*/)
 	{
-		if(auto pChanH = aMatch_it->second.lock())
-		{
-			pChanH->StateListener(state);
-			++aMatch_it;
-		}
-		else //clear out expired subscribers on-the-fly
+		if(aMatch_it->second.expired())
 			aMatch_it = SubscriberMap.erase(aMatch_it);
+		else
+			++aMatch_it;
 	}
 }

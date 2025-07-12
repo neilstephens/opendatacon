@@ -31,21 +31,22 @@
 #include <opendnp3/channel/IChannel.h>
 #include <opendnp3/channel/IChannelListener.h>
 #include <map>
-#include <mutex>
+#include <shared_mutex>
 #include <memory>
 
 class ChannelStateSubscriber
 {
-public:
+	friend class ChannelListener;
+private:
+	static std::multimap<std::string, std::weak_ptr<ChannelHandler>> SubscriberMap;
+	static std::shared_mutex MapMutex;
+
+	ChannelStateSubscriber() = delete;
 	static void Subscribe(std::weak_ptr<ChannelHandler> wChanH);
 	static void StateListener(const std::string& ChanID, opendnp3::ChannelState state);
 
-private:
-	ChannelStateSubscriber() = delete;
-	static std::multimap<std::string, std::weak_ptr<ChannelHandler>> SubscriberMap;
-
-	//FIXME: replace with a strand
-	static std::mutex MapMutex;
+public:
+	static void Unsubscribe(const std::string& ChanID);
 };
 
 class ChannelListener: public opendnp3::IChannelListener

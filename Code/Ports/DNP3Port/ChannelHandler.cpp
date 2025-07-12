@@ -24,6 +24,8 @@ ChannelHandler::~ChannelHandler()
 	//wait til they're all gone, or harmless
 	while(!tracker.expired() && !pIOS->stopped() && !pSyncStrand->running_in_this_thread())
 		pIOS->poll_one();
+
+	ChannelStateSubscriber::Unsubscribe(ChannelID);
 }
 
 // Called by OpenDNP3 Thread Pool
