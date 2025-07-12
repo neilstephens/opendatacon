@@ -817,8 +817,6 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	std::string message = "Control not supported";
 	std::size_t index = 0;
-	//if(auto log = odc::spdlog_get("SimPort"))
-	//    log->trace("{}: Received control for Name {}", Name);
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
@@ -858,8 +856,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 	bool forced = false;
 	if(fb->mode == FeedbackMode::PULSE)
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
+		if(ShouldLog(spdlog::level::trace))
+			LogTrace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
 		switch(command.functionCode)
 		{
 			case ControlCode::PULSE_ON:
@@ -899,8 +897,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 	{
 		if (IsOnCommand(command.functionCode))
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: Latch on feedback to Binary {}.",
+			if(ShouldLog(spdlog::level::trace))
+				LogTrace("{}: Control {}: Latch on feedback to Binary {}.",
 					Name, index,fb->on_value->GetIndex());
 			fb->on_value->SetTimestamp();
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
@@ -914,8 +912,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 		}
 		else if (IsOffCommand(command.functionCode))
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: Latch off feedback to Binary {}.",
+			if(ShouldLog(spdlog::level::trace))
+				LogTrace("{}: Control {}: Latch off feedback to Binary {}.",
 					Name, index, fb->off_value->GetIndex());
 			fb->off_value->SetTimestamp();
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
@@ -1156,8 +1154,8 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 
 void SimPort::EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status)
 {
-	if(auto log = odc::spdlog_get("SimPort"))
-		log->trace("{} : {} for Index {}", Name, message, index);
+	if(ShouldLog(spdlog::level::trace))
+		LogTrace("{} : {} for Index {}", Name, message, index);
 	(*pStatusCallback)(status);
 }
 

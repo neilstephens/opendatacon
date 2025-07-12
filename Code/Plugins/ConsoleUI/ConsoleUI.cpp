@@ -53,6 +53,7 @@ ConsoleUI::ConsoleUI():
 	tinyConsole("odc> "),
 	context("")
 {
+	SetLog("ConsoleUI");
 	AddHelp("If commands in context to a collection (Eg. DataPorts etc.) require parameters, "
 		"the first argument is taken as a regex to match which items in the collection the "
 		"command will run for. The remainer of the arguments will be passed through to each element."

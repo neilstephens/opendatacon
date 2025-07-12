@@ -313,8 +313,8 @@ void DNP3MasterPort::OnKeepAliveReset()
 }
 void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
+	if(ShouldLog(spdlog::level::trace))
+		LogTrace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
 	pChanH->LinkUp();
 	pChanH->Post([this,iin]()
 		{

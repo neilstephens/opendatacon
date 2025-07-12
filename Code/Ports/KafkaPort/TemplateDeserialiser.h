@@ -140,8 +140,8 @@ public:
 	std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) override
 	{
 		std::string val_str(static_cast<const char*>(record.value().data()), record.value().size());
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->trace("Deserialising record value: '{}'", val_str);
+		if(ShouldLog(spdlog::level::trace))
+			LogTrace("Deserialising record value: '{}'", val_str);
 
 		std::smatch matches;
 		if(!std::regex_search(val_str, matches, template_regex))
@@ -160,8 +160,8 @@ public:
 		for(const auto& [place_holder, group_num] : capture_groups)
 		{
 			captured_values[place_holder] = matches[group_num].str();
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->trace("Captured '{}'(grp{}): '{}'", place_holder, group_num, captured_values[place_holder]);
+			if(ShouldLog(spdlog::level::trace))
+				LogTrace("Captured '{}'(grp{}): '{}'", place_holder, group_num, captured_values[place_holder]);
 		}
 
 		EventType event_type;

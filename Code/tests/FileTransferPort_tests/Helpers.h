@@ -202,8 +202,8 @@ public:
 			{
 				//drop data
 				case 1:
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("DROPPED: {} {} Payload {} Event {} => DROP", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+					if(MainShouldLog(spdlog::level::trace))
+						MainLog()->trace("DROPPED: {} {} Payload {} Event {} => DROP", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
 					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
 					return;
 
@@ -233,8 +233,8 @@ public:
 private:
 	inline void PublishEvent(const std::shared_ptr<const odc::EventInfo> event, const std::shared_ptr<odc::DataPort> Sendee, const odc::SharedStatusCallback_t pStatusCallback)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, Sendee->GetName());
+		if(MainShouldLog(spdlog::level::trace))
+			MainLog()->trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, Sendee->GetName());
 		Sendee->Event(event,Name,pStatusCallback);
 	}
 	std::shared_ptr<odc::DataPort> Port1;

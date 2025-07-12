@@ -41,6 +41,7 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 	mute_scripts(true),
 	maxQ(500)
 {
+	SetLog("LuaUICommander");
 	IUIResponder::AddCommand("ExecuteFile", [this](const ParamCollection &params) -> const Json::Value
 		{
 			auto LineStream = ParamsToSStream(params);
@@ -69,8 +70,8 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			if(LineStream>>Base64 && LineStream>>ID)
 			{
 				std::string lua_code = odc::b64decode(Base64);
-				if(auto log = odc::spdlog_get("ConsoleUI"))
-					log->trace("Decoded base64 as:\n{}",lua_code);
+				if(ShouldLog(spdlog::level::trace))
+					LogTrace("Decoded base64 as:\n{}",lua_code);
 				auto started = Execute(lua_code,ID,LineStream);
 				auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
 				return IUIResponder::GenerateResult(msg);

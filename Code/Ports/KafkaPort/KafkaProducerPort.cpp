@@ -42,7 +42,6 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 void KafkaProducerPort::Build()
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
-	auto log = odc::spdlog_get("KafkaPort");
 	std::unordered_map<std::string,std::vector<std::shared_ptr<const EventInfo>>> init_events;
 	if(pConf->pPointMap)
 	{
@@ -52,12 +51,12 @@ void KafkaProducerPort::Build()
 			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
 
 			//Log a message for each PTM entry for verification purposes
-			if(log && log->should_log(spdlog::level::trace))
+			if(ShouldLog(spdlog::level::trace))
 			{
 				auto dummy_event = std::make_shared<EventInfo>(*init_events[source].back());
 				dummy_event->SetPayload();
 				auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
-				log->trace("{} -> {}: {}", source, Name, ev_str);
+				LogTrace("{} -> {}: {}", source, Name, ev_str);
 			}
 		}
 	}
@@ -299,17 +298,15 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 
 	auto deliveryCb = [this,key_buffer,val_buffer,pStatusCallback](const KCP::RecordMetadata& metadata, const kafka::Error& error)
 				{
-					auto log = odc::spdlog_get("KafkaPort");
 					if (!error)
 					{
-						if(log && log->should_log(spdlog::level::trace))
-							log->trace("{}: Message delivered: {}", Name, metadata.toString());
+						if(ShouldLog(spdlog::level::trace))
+							LogTrace("{}: Message delivered: {}", Name, metadata.toString());
 						(*pStatusCallback)(odc::CommandStatus::SUCCESS);
 					}
 					else
 					{
-						if(log)
-							log->error("{}: Message failed to be delivered: {}", metadata.toString());
+						LogError("{}: Message failed to be delivered: {}", metadata.toString());
 						(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
 					}
 				};

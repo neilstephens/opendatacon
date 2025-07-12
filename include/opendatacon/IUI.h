@@ -29,13 +29,14 @@
 #define opendatacon_IUI_h
 
 #include "IUIResponder.h"
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/util.h>
 #include <memory>
 
 using CmdFunc_t = std::function<Json::Value (std::stringstream& args)>;
 
-class IUI
+class IUI: public odc::LogHelpers
 {
 public:
 	virtual ~IUI(){}
