@@ -82,13 +82,24 @@ public:
 		return false;
 	}
 
-	//And for our great convenience!
-	template<typename ... Args> inline bool Trace(Args&&... args) const { if(auto l = GetLog()) l->trace(std::forward<Args>(args)...);else return false;return true; }
-	template<typename ... Args> inline bool Debug(Args&&... args) const { if(auto l = GetLog()) l->debug(std::forward<Args>(args)...);else return false;return true; }
-	template<typename ... Args> inline bool Info(Args&&... args) const { if(auto l = GetLog()) l->info(std::forward<Args>(args)...);else return false;return true; }
-	template<typename ... Args> inline bool Warn(Args&&... args) const { if(auto l = GetLog()) l->warn(std::forward<Args>(args)...);else return false;return true; }
-	template<typename ... Args> inline bool Error(Args&&... args) const { if(auto l = GetLog()) l->error(std::forward<Args>(args)...);else return false;return true; }
-	template<typename ... Args> inline bool Critical(Args&&... args) const { if(auto l = GetLog()) l->critical(std::forward<Args>(args)...);else return false;return true; }
+	//Expose the convenience log functions one-for-one
+	#define CONVENIENCE(Level,level)\
+		template<typename ... Args> inline bool Level(Args&&... args) const \
+		{                                                                   \
+			if(auto l = GetLog())                                         \
+			{                                                             \
+				l->level(std::forward<Args>(args)...);                  \
+				return true;                                            \
+			}                                                             \
+			return false;                                                 \
+		}
+	CONVENIENCE(Trace,trace)
+	CONVENIENCE(Debug,debug)
+	CONVENIENCE(Info,info)
+	CONVENIENCE(Warn,warn)
+	CONVENIENCE(Error,error)
+	CONVENIENCE(Critical,critical)
+	#undef CONVENIENCE //don't let the macro escape to the outside world
 
 private:
 	std::string logname;
