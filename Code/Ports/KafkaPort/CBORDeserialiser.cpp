@@ -32,8 +32,7 @@ CBORDeserialiser::CBORDeserialiser(const CBORSerialiser* const serialiser, const
 {
 	if(!pSerialiser)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("CBORDeserialiser created with null CBORSerialiser");
+		Log.Error("CBORDeserialiser created with null CBORSerialiser");
 		throw std::runtime_error("CBORDeserialiser created with null CBORSerialiser");
 	}
 }
@@ -69,15 +68,13 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 	{
 		if(cursor.done())
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("CBORDeserialiser: CBOR has fewer elements than serialiser Ops");
+			Log.Error("CBORDeserialiser: CBOR has fewer elements than serialiser Ops");
 			return nullptr;
 		}
 		const auto& cbor_event = cursor.current();
 		if(!ParseMatchOp(Op, cbor_event))
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("CBORDeserialiser: Unexpected CBOR structure");
+			Log.Error("CBORDeserialiser: Unexpected CBOR structure");
 			return nullptr;
 		}
 		switch(Op)
@@ -102,8 +99,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 			{
 				if(et == odc::EventType::BeforeRange)
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Payload found before EventType. Unable to parse.");
+					Log.Error("CBORDeserialiser: Payload found before EventType. Unable to parse.");
 					return nullptr;
 				}
 
@@ -121,8 +117,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				}
 				catch(const std::exception& e)
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Error parsing {} payload: {}", ToString(et), e.what());
+					Log.Error("CBORDeserialiser: Error parsing {} payload: {}", ToString(et), e.what());
 					return nullptr;
 				}
 				break;
@@ -134,8 +129,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				et = odc::EventTypeFromString(et_str);
 				if(et == odc::EventType::AfterRange)
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Invalid EventType '{}'", et_str);
+					Log.Error("CBORDeserialiser: Invalid EventType '{}'", et_str);
 					return nullptr;
 				}
 				cursor.next();
@@ -151,8 +145,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				}
 				catch(const std::exception& e)
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Error parsing datetime '{}': {}", datetime_str, e.what());
+					Log.Error("CBORDeserialiser: Error parsing datetime '{}': {}", datetime_str, e.what());
 					return nullptr;
 				}
 				cursor.next();
@@ -189,8 +182,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				et = EventTypeFromInt(cbor_event.get<uint64_t>());
 				if(et == EventType::AfterRange)
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Invalid EventType {}", cbor_event.get<uint64_t>());
+					Log.Error("CBORDeserialiser: Invalid EventType {}", cbor_event.get<uint64_t>());
 					return nullptr;
 				}
 				cursor.next();
@@ -201,8 +193,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				//check that the value is at least in 16bit range
 				if(cbor_event.get<uint64_t>() > std::numeric_limits<uint16_t>::max())
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Invalid QualityFlags {}", cbor_event.get<uint64_t>());
+					Log.Error("CBORDeserialiser: Invalid QualityFlags {}", cbor_event.get<uint64_t>());
 					return nullptr;
 				}
 				quality = static_cast<odc::QualityFlags>(cbor_event.get<uint64_t>());
@@ -216,8 +207,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				auto str_val = cbor_event.get<std::string>();
 				if(StringIt == pSerialiser->Strings.end() || *StringIt != str_val)
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Unexpected string literal '{}'", str_val);
+					Log.Error("CBORDeserialiser: Unexpected string literal '{}'", str_val);
 					return nullptr;
 				}
 				++StringIt;
@@ -229,8 +219,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				//compare to the expected literal uints
 				if(UIntIt == pSerialiser->UInts.end() || *UIntIt != cbor_event.get<uint64_t>())
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Unexpected uint literal '{}'", cbor_event.get<uint64_t>());
+					Log.Error("CBORDeserialiser: Unexpected uint literal '{}'", cbor_event.get<uint64_t>());
 					return nullptr;
 				}
 				++UIntIt;
@@ -242,8 +231,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				//compare to the expected literal bools
 				if(BoolIt == pSerialiser->Bools.end() || *BoolIt != cbor_event.get<bool>())
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Unexpected bool literal '{}'", cbor_event.get<bool>());
+					Log.Error("CBORDeserialiser: Unexpected bool literal '{}'", cbor_event.get<bool>());
 					return nullptr;
 				}
 				++BoolIt;
@@ -255,8 +243,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				//compare to the expected literal doubles
 				if(DoubleIt == pSerialiser->Doubles.end() || *DoubleIt != cbor_event.get<double>())
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Unexpected double literal '{}'", cbor_event.get<double>());
+					Log.Error("CBORDeserialiser: Unexpected double literal '{}'", cbor_event.get<double>());
 					return nullptr;
 				}
 				++DoubleIt;
@@ -268,8 +255,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				//compare to the expected literal halves
 				if(HalfIt == pSerialiser->Halfs.end() || *HalfIt != cbor_event.get<uint16_t>())
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Unexpected half literal '{}'", cbor_event.get<uint16_t>());
+					Log.Error("CBORDeserialiser: Unexpected half literal '{}'", cbor_event.get<uint16_t>());
 					return nullptr;
 				}
 				++HalfIt;
@@ -281,8 +267,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 				//compare to the expected literal ints
 				if(IntIt == pSerialiser->Ints.end() || *IntIt != cbor_event.get<int64_t>())
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("CBORDeserialiser: Unexpected int literal '{}'", cbor_event.get<int64_t>());
+					Log.Error("CBORDeserialiser: Unexpected int literal '{}'", cbor_event.get<int64_t>());
 					return nullptr;
 				}
 				++IntIt;
@@ -291,8 +276,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 			}
 			default:
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("CBORDeserialiser: Unknown Encode Operator.");
+				Log.Error("CBORDeserialiser: Unknown Encode Operator.");
 				return nullptr;
 			}
 		}
@@ -301,8 +285,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const KCC::ConsumerReco
 	if(!event)
 	{
 		//log an error - there must not have been an event type and payload
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("CBORDeserialiser: Minimum event info (EventType and Payload) not found in CBOR.");
+		Log.Error("CBORDeserialiser: Minimum event info (EventType and Payload) not found in CBOR.");
 		return nullptr;
 	}
 
@@ -417,14 +400,12 @@ bool CBORDeserialiser::ParseMatchOp(const EncodeOps& Op, const staj_event& cbor_
 		}
 		default:
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("CBORDeserialiser: Unknown Encode Operator.");
+			Log.Error("CBORDeserialiser: Unknown Encode Operator.");
 			return false;
 		}
 	}
 	//can't/shouldn't get here
-	if(auto log = odc::spdlog_get("KafkaPort"))
-		log->error("CBORDeserialiser: Something went terribly wrong.");
+	Log.Error("CBORDeserialiser: Something went terribly wrong.");
 	return false;
 }
 

@@ -28,8 +28,11 @@
 #include <iostream>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/util.h>
+#include <opendatacon/LogHelpers.h>
 
 std::unordered_map<std::string,std::shared_ptr<Json::Value>> ConfigParser::JSONFileCache;
+
+odc::LogHelpers Log{"opendatacon"};
 
 ConfigParser::ConfigParser(const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	ConfFilename(aConfFilename),
@@ -58,9 +61,7 @@ void ConfigParser::ProcessFile()
 	catch(const std::exception& e)
 	{
 		std::string msg("Exception processing configuration file '" + ConfFilename + "': " + e.what());
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error(msg);
-		else
+		if (!Log.Error(msg))
 			std::cerr << "ERROR: " << msg << std::endl;
 		throw std::runtime_error(msg);
 	}
@@ -73,9 +74,7 @@ void ConfigParser::ProcessFile()
 	catch(const std::exception& e)
 	{
 		std::string msg("Exception processing configuration overrides: '"+ ConfOverrides.toStyledString() +"' :" + e.what());
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error(msg);
-		else
+		if (!Log.Error(msg))
 			std::cerr << "ERROR: " << msg << std::endl;
 		throw std::runtime_error(msg);
 	}
@@ -92,9 +91,7 @@ std::shared_ptr<const Json::Value> ConfigParser::RecallOrCreate(const std::strin
 		if (fin.fail())
 		{
 			std::string msg("Config file " + FileName + " open fail.");
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->error(msg);
-			else
+			if (!Log.Error(msg))
 				std::cerr << "ERROR: " << msg << std::endl;
 			return std::make_shared<Json::Value>();
 		}
@@ -105,9 +102,7 @@ std::shared_ptr<const Json::Value> ConfigParser::RecallOrCreate(const std::strin
 		if (!parse_success)
 		{
 			std::string msg("Failed to parse configuration from '" + FileName + "' : " + err_str);
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->error(msg);
-			else
+			if (!Log.Error(msg))
 				std::cerr << "ERROR: " << msg <<std::endl;
 			return std::make_shared<Json::Value>();
 		}

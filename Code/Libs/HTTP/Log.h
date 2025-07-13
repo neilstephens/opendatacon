@@ -29,6 +29,6 @@
 
 #include <opendatacon/LogHelpers.h>
 
-inline static odc::LogHelpers Log("opendatacon");
+inline static odc::LogHelpers Log{"opendatacon"};
 
 #endif // LOG_H

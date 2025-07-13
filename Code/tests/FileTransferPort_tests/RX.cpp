@@ -148,8 +148,8 @@ TEST_CASE(SUITE("Sequence Reordering"))
 
 		for(auto e : events)
 		{
-			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->trace("Testharness: sending index '{}', payload '{}'", e->GetIndex(), ToString(e->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("Testharness: sending index '{}', payload '{}'", e->GetIndex(), ToString(e->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
 			PUT->Event(e,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 		}
 
@@ -211,8 +211,8 @@ TEST_CASE(SUITE("Sequence Reordering"))
 
 		for(auto e : events)
 		{
-			if(auto log = odc::spdlog_get("FileTransferPort"))
-				log->trace("Testharness: sending index '{}', payload '{}'", e->GetIndex(), ToString(e->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("Testharness: sending index '{}', payload '{}'", e->GetIndex(), ToString(e->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw));
 			PUT->Event(e,"me",std::make_shared<std::function<void (CommandStatus)>>([] (CommandStatus){}));
 		}
 

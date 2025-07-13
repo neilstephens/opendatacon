@@ -131,10 +131,8 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			{
 				pConf->NativeKafkaProperties.put(memberName, JSONRoot["NativeKafkaProperties"][memberName].asString());
 			}
-			else if(auto log = odc::spdlog_get("KafkaPort"))
-			{
-				log->error("NativeKafkaProperties member '{}' is not a simple value; ignoring.", memberName);
-			}
+			else
+				Log.Error("NativeKafkaProperties member '{}' is not a simple value; ignoring.", memberName);
 		}
 	}
 	if(JSONRoot.isMember("ShareKafkaClient"))
@@ -151,8 +149,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->ServerType = server_type_t::MANUAL;
 		else
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->warn("Invalid KafkaPort server type: '{}'.", JSONRoot["ServerType"].asString());
+			Log.Warn("Invalid KafkaPort server type: '{}'.", JSONRoot["ServerType"].asString());
 		}
 	}
 	if(JSONRoot.isMember("SharedKafkaClientKey"))
@@ -189,8 +186,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->TranslationMethod = EventTranslationMethod::CBOR;
 		else
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Unknown TranslationMethod '{}'. Defaulting to Template.", JSONRoot["TranslationMethod"].asString());
+			Log.Error("Unknown TranslationMethod '{}'. Defaulting to Template.", JSONRoot["TranslationMethod"].asString());
 			pConf->TranslationMethod = EventTranslationMethod::Template;
 		}
 	}
@@ -208,8 +204,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->PointTraslationSource = SourceLookupMethod::None;
 		else
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Unknown PointTraslationSource '{}'. Defaulting to None.", JSONRoot["PointTraslationSource"].asString());
+			Log.Error("Unknown PointTraslationSource '{}'. Defaulting to None.", JSONRoot["PointTraslationSource"].asString());
 			pConf->PointTraslationSource = SourceLookupMethod::None;
 		}
 	}
@@ -234,8 +229,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->OctetStringFormat = DataToStringMethod::Raw;
 		else if(fmt == "Base64")
 			pConf->OctetStringFormat = DataToStringMethod::Base64;
-		else if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("Unknown OctetStringFormat '{}', should be Raw or Hex. Defaulting to Hex", fmt);
+		else Log.Error("Unknown OctetStringFormat '{}', should be Raw or Hex. Defaulting to Hex", fmt);
 	}
 	if(JSONRoot.isMember("DateTimeFormat"))
 	{
@@ -279,18 +273,12 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			auto eventType = EventTypeFromString(EventTypeStr);
 			if(eventType == odc::EventType::AfterRange)
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-				{
-					log->error("Unknown EventType '{}' in PointTranslationMap. Ignoring.", EventTypeStr);
-				}
+				Log.Error("Unknown EventType '{}' in PointTranslationMap. Ignoring.", EventTypeStr);
 				continue;
 			}
 			if(!JSON_PTM[EventTypeStr].isArray())
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-				{
-					log->error("PointTranslationMap member '{}' should be an array. Ignoring.", EventTypeStr);
-				}
+				Log.Error("PointTranslationMap member '{}' should be an array. Ignoring.", EventTypeStr);
 				continue;
 			}
 			for(auto& entry : JSON_PTM[EventTypeStr])
@@ -307,8 +295,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 				}
 				else
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("A PointTranslationMap entry needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : skipping '{}'", entry.toStyledString());
+					Log.Error("A PointTranslationMap entry needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : skipping '{}'", entry.toStyledString());
 					continue;
 				}
 				for(size_t idx = start; idx <= stop; idx+=inc)
@@ -351,8 +338,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 							}
 							catch(std::exception& e)
 							{
-								if(auto log = odc::spdlog_get("KafkaPort"))
-									log->error("Failed to process 'CBORStructure': {}",e.what());
+								Log.Error("Failed to process 'CBORStructure': {}",e.what());
 							}
 						}
 						else

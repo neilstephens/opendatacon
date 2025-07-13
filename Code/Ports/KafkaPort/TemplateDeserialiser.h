@@ -122,8 +122,7 @@ public:
 		}
 		//and finally add start/end anchors
 		regex_str = "^"+regex_str+"$";
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->debug("TemplateDeserialiser regex: '{}'", regex_str);
+		Log.Debug("TemplateDeserialiser regex: '{}'", regex_str);
 
 		try
 		{
@@ -131,8 +130,7 @@ public:
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Failed to compile regex '{}', for template '{}': {}", regex_str, template_str, e.what());
+			Log.Error("Failed to compile regex '{}', for template '{}': {}", regex_str, template_str, e.what());
 		}
 	}
 	virtual ~TemplateDeserialiser() = default;
@@ -146,14 +144,12 @@ public:
 		std::smatch matches;
 		if(!std::regex_search(val_str, matches, template_regex))
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->warn("Failed to deserialise record (regex_search failed to match): {}", record.toString());
+			Log.Warn("Failed to deserialise record (regex_search failed to match): {}", record.toString());
 			return nullptr;
 		}
 		if(matches.size() != capture_groups.size()+1)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Wrong number of group matches when deserialising record: {}", record.toString());
+			Log.Error("Wrong number of group matches when deserialising record: {}", record.toString());
 			return nullptr;
 		}
 		std::map<std::string,std::string> captured_values;
@@ -184,8 +180,7 @@ public:
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Failed to deserialise EventType: {}", e.what());
+			Log.Error("Failed to deserialise EventType: {}", e.what());
 			return nullptr;
 		}
 
@@ -196,8 +191,7 @@ public:
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Failed to deserialise Index '{}': {}", captured_values["<INDEX>"], e.what());
+			Log.Error("Failed to deserialise Index '{}': {}", captured_values["<INDEX>"], e.what());
 			return nullptr;
 		}
 
@@ -211,8 +205,7 @@ public:
 			}
 			catch(const std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("Failed to deserialise Timestamp '{}': {}", captured_values["<TIMESTAMP>"], e.what());
+				Log.Error("Failed to deserialise Timestamp '{}': {}", captured_values["<TIMESTAMP>"], e.what());
 				return nullptr;
 			}
 		}
@@ -224,8 +217,7 @@ public:
 			}
 			catch(const std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("Failed to deserialise DateTime '{}' as '{}' : {}", captured_values["<DATETIME>"], datetime_format, utc, e.what());
+				Log.Error("Failed to deserialise DateTime '{}' as '{}' : {}", captured_values["<DATETIME>"], datetime_format, utc, e.what());
 				return nullptr;
 			}
 		}
@@ -246,8 +238,7 @@ public:
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Failed to deserialise Quality: {}", e.what());
+			Log.Error("Failed to deserialise Quality: {}", e.what());
 			return nullptr;
 		}
 
@@ -260,8 +251,7 @@ public:
 			}
 			catch(const std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("Failed to deserialise Payload: {}", e.what());
+				Log.Error("Failed to deserialise Payload: {}", e.what());
 				return nullptr;
 			}
 		}

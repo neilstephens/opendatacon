@@ -26,6 +26,7 @@
  */
 
 #include "SimPortPointData.h"
+#include "Log.h"
 
 SimPortPointData::SimPortPointData() {}
 
@@ -119,11 +120,8 @@ void SimPortPointData::Payload(odc::EventType type, std::size_t index, double pa
 	}
 	if (points.find(index) == points.end())
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-		{
-			log->error("{} Index == {} not found on the points container, why they are asking for set?", ToString(type), index);
-			return;
-		}
+		Log.Error("{} Index == {} not found on the points container, why they are asking for set?", ToString(type), index);
+		return;
 	}
 	if (type == odc::EventType::Analog)
 	{
@@ -280,8 +278,7 @@ bool SimPortPointData::IsIndex(odc::EventType type, std::size_t index)
 		return m_binary_control.IsIndex(index);
 	else
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("IsIndex() called for unsupported event type '{}'", ToString(type));
+		Log.Error("IsIndex() called for unsupported event type '{}'", ToString(type));
 		return false;
 	}
 }

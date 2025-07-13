@@ -32,6 +32,7 @@
 #include <Lua/Wrappers.h>
 #include <Lua/CLua.h>
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/Platform.h>
 #include <opendatacon/util.h>
 #include <whereami++.h>
@@ -41,6 +42,7 @@
 
 extern "C" bool test_func()
 {
+	static odc::LogHelpers Log{"opendatacon"};
 	auto LuaModuleFileName = std::filesystem::path(GetLibFileName("TestLuaModule"));
 	auto ext = LuaModuleFileName.extension().string();
 	auto name = LuaModuleFileName.stem().string();
@@ -49,8 +51,7 @@ extern "C" bool test_func()
 	auto path2 = (path_base/"lib"/("?"+ext)).string();
 	auto paths = path1+";"+path2+";";
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Lua module name: {}", name);
+	Log.Info("Lua module name: {}", name);
 
 	Lua::DynamicSymbols syms;
 
@@ -60,8 +61,7 @@ extern "C" bool test_func()
 		"    mo.echo(\"Message from Lua module\");                 \n"
 		"    odc.log.info(\"Message from Lua\");                   \n";
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Lua code:\n{}", LuaCode);
+	Log.Info("Lua code:\n{}", LuaCode);
 
 	auto L = luaL_newstate();
 	//top level table "odc"
@@ -76,8 +76,7 @@ extern "C" bool test_func()
 	if(ret != LUA_OK)
 	{
 		std::string err = lua_tostring(L, -1);
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("Failed to load code. Error: {}", err);
+		Log.Error("Failed to load code. Error: {}", err);
 	}
 	lua_close(L);
 	return (ret == LUA_OK);

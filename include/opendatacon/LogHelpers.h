@@ -46,7 +46,9 @@ class LogHelpers final
 {
 public:
 	LogHelpers(const std::string& log_name):
-		logname(log_name)
+		logname(log_name),
+		plog(odc::make_shared(std::weak_ptr<spdlog::logger>())),
+		log(*plog)
 	{}
 	virtual ~LogHelpers() = default;
 
@@ -81,16 +83,18 @@ public:
 	}
 
 	//And for our great convenience!
-	template<typename ... Args> inline void Trace(Args&&... args) const { if(auto l = GetLog()) l->trace(std::forward<Args>(args)...);}
-	template<typename ... Args> inline void Debug(Args&&... args) const { if(auto l = GetLog()) l->debug(std::forward<Args>(args)...);}
-	template<typename ... Args> inline void Info(Args&&... args) const { if(auto l = GetLog()) l->info(std::forward<Args>(args)...);}
-	template<typename ... Args> inline void Warn(Args&&... args) const { if(auto l = GetLog()) l->warn(std::forward<Args>(args)...);}
-	template<typename ... Args> inline void Error(Args&&... args) const { if(auto l = GetLog()) l->error(std::forward<Args>(args)...);}
-	template<typename ... Args> inline void Critical(Args&&... args) const { if(auto l = GetLog()) l->critical(std::forward<Args>(args)...);}
+	template<typename ... Args> inline bool Trace(Args&&... args) const { if(auto l = GetLog()) l->trace(std::forward<Args>(args)...);else return false;return true; }
+	template<typename ... Args> inline bool Debug(Args&&... args) const { if(auto l = GetLog()) l->debug(std::forward<Args>(args)...);else return false;return true; }
+	template<typename ... Args> inline bool Info(Args&&... args) const { if(auto l = GetLog()) l->info(std::forward<Args>(args)...);else return false;return true; }
+	template<typename ... Args> inline bool Warn(Args&&... args) const { if(auto l = GetLog()) l->warn(std::forward<Args>(args)...);else return false;return true; }
+	template<typename ... Args> inline bool Error(Args&&... args) const { if(auto l = GetLog()) l->error(std::forward<Args>(args)...);else return false;return true; }
+	template<typename ... Args> inline bool Critical(Args&&... args) const { if(auto l = GetLog()) l->critical(std::forward<Args>(args)...);else return false;return true; }
 
 private:
 	std::string logname;
-	mutable std::weak_ptr<spdlog::logger> log;
+	//manage the weak_ptr with a shared_ptr, so I can force the destructor to run in libODC
+	std::shared_ptr<std::weak_ptr<spdlog::logger>> plog;
+	std::weak_ptr<spdlog::logger>& log;
 	mutable std::atomic_bool trace_should_log;
 	mutable std::atomic_size_t refreshSeq = 9999;
 };

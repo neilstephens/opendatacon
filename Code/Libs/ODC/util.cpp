@@ -512,5 +512,6 @@ std::shared_ptr<T> make_shared(T&& X)
 MAKE_SHARED(std::string);
 MAKE_SHARED(std::vector<char>);
 MAKE_SHARED(std::vector<uint8_t>);
+MAKE_SHARED(std::weak_ptr<spdlog::logger>);
 
 } // namespace odc

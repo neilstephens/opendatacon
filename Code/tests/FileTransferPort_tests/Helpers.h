@@ -110,8 +110,7 @@ inline Json::Value GetConfigJSON(bool TX)
 	bool parse_success = Json::parseFromStream(JSONReader,iss, &json_conf, &err_str);
 	if (!parse_success)
 	{
-		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->error("Failed to parse configuration: '{}'", err_str);
+		Log.Error("Failed to parse configuration: '{}'", err_str);
 	}
 	return json_conf;
 }

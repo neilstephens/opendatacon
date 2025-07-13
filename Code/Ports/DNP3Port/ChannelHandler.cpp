@@ -1,4 +1,5 @@
 #include "ChannelHandler.h"
+#include "Log.h"
 #include "ChannelStateSubscriber.h"
 #include "DNP3Port.h"
 #include <opendatacon/util.h>
@@ -31,8 +32,7 @@ ChannelHandler::~ChannelHandler()
 // Called by OpenDNP3 Thread Pool
 void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelState {}.", pPort->Name, opendnp3::ChannelStateSpec::to_human_string(state));
+	Log.Debug("{}: ChannelState {}.", pPort->Name, opendnp3::ChannelStateSpec::to_human_string(state));
 
 	auto previous_deadness = link_deadness.load();
 
@@ -55,8 +55,7 @@ void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 
 void ChannelHandler::SetLinkStatus_(opendnp3::LinkStatus status)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: LinkStatus {}.", pPort->Name, opendnp3::LinkStatusSpec::to_human_string(status));
+	Log.Debug("{}: LinkStatus {}.", pPort->Name, opendnp3::LinkStatusSpec::to_human_string(status));
 
 	link_status = status;
 }
@@ -122,8 +121,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 				local_interface = pConf->mAddrConf.IP;
 				if(!pConf->mAddrConf.BindIP.empty() && pConf->mAddrConf.BindIP != pConf->mAddrConf.IP)
 				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->warn("{}: Ignoring 'BindIP' for TCP server. 'IP' is used as bind addr for servers.", pPort->Name);
+					Log.Warn("{}: Ignoring 'BindIP' for TCP server. 'IP' is used as bind addr for servers.", pPort->Name);
 				}
 				local_port = pConf->mAddrConf.Port;
 				ChannelID = "TCPSERVER:"+local_interface +":"+ std::to_string(local_port);
@@ -235,8 +233,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 				default:
 				{
 					const std::string msg(pPort->Name + ": Can't determine if TCP socket is client or server");
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->error(msg);
+					Log.Error(msg);
 					throw std::runtime_error(msg);
 				}
 			}

@@ -41,14 +41,12 @@ auto CapAnalogOutputValue(const std::shared_ptr<const EventInfo>& fromEvent)
 	auto LowLimit = std::numeric_limits<decltype(to_val.first)>::lowest();
 	if(from_val.first > HighLimit)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the high limit");
+		Log.Warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the high limit");
 		from_val.first = HighLimit;
 	}
 	if(from_val.first < LowLimit)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the low limit");
+		Log.Warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the low limit");
 		from_val.first = LowLimit;
 	}
 	to_val = from_val;

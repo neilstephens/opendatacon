@@ -320,8 +320,8 @@ TEST_CASE(SUITE("Random"))
 
 	std::random_device rd;
 	std::mt19937 g(rd());
-	auto log = odc::spdlog_get("DNP3Port");
 
+	auto log = Log.GetLog();
 	auto pPause = std::make_shared<std::function<void(void)>>([pCRTT,log](){pCRTT->Pause(); log->debug("Pause");});
 	auto pTrigger = std::make_shared<std::function<void(void)>>([pCRTT,log](){pCRTT->Trigger(); log->debug("Trigger");});
 	auto pCancel = std::make_shared<std::function<void(void)>>([pCRTT,log](){pCRTT->Cancel(); log->debug("Cancel");});

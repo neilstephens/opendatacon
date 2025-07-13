@@ -1043,7 +1043,6 @@ inline bool operator==(const odc::EventInfo& lhs, const odc::EventInfo& rhs)
 								  return lhs.GetPayload<odc::EventType::ConnectState>() == rhs.GetPayload<odc::EventType::ConnectState>();
 							  default:
 							  {
-								  //log an error
 								  if(auto log = odc::spdlog_get("opendatacon"))
 									  log->error("odc::EventInfo comparison can't handle EventType::{}. Returning unequal", ToString(lhs.GetEventType()));
 								  return false;

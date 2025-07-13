@@ -64,13 +64,11 @@ protected:
 		if(!pConf->NativeKafkaProperties.contains("bootstrap.servers"))
 		{
 			pConf->NativeKafkaProperties.put("bootstrap.servers", "localhost:9092");
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("{}: bootstrap.servers property not found, defaulting to localhost:9092", Name);
+			Log.Error("{}: bootstrap.servers property not found, defaulting to localhost:9092", Name);
 		}
 
 		if(pConf->NativeKafkaProperties.getProperty("enable.manual.events.poll") == "false")
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->warn("{}: enable.manual.events.poll property is set to false, forcing to true", Name);
+			Log.Warn("{}: enable.manual.events.poll property is set to false, forcing to true", Name);
 		pConf->NativeKafkaProperties.put("enable.manual.events.poll", "true");
 
 		auto LogEntryName = Name;
@@ -86,21 +84,19 @@ protected:
 
 		pConf->NativeKafkaProperties.put("error_cb", [LogEntryName](const kafka::Error& error)
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("{}: {}",LogEntryName,error.toString());
+				Log.Error("{}: {}",LogEntryName,error.toString());
 			});
 
 		pConf->NativeKafkaProperties.put("log_cb", [LogEntryName](int level, const char* filename, int lineno, const char* msg)
 			{
 				auto spdlog_lvl = spdlog::level::level_enum(6-level);
-				if(auto log = odc::spdlog_get("KafkaPort"))
+				if(auto log = Log.GetLog())
 					log->log(spdlog_lvl,"{} ({}:{}): {}",LogEntryName,filename,lineno,msg);
 			});
 
 		pConf->NativeKafkaProperties.put("stats_cb", [LogEntryName](const std::string& jsonString)
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->info("{}: Statistics: {}",LogEntryName,jsonString);
+				Log.Info("{}: Statistics: {}",LogEntryName,jsonString);
 			});
 
 

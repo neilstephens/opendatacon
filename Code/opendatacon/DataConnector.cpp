@@ -58,8 +58,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			{
 				if(!JConnections[n].isMember("Port1") || !JConnections[n].isMember("Port2"))
 				{
-					if(auto log = odc::spdlog_get("Connectors"))
-						log->error("Invalid Connection config: need at least Port1 and Port2: \n'{}\n' : ignoring", JConnections[n].toStyledString());
+					Log.Error("Invalid Connection config: need at least Port1 and Port2: \n'{}\n' : ignoring", JConnections[n].toStyledString());
 					continue;
 				}
 				auto ConName = JConnections[n]["Name"].asString();
@@ -67,8 +66,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				auto ConPort2 = JConnections[n]["Port2"].asString();
 				if ((GetIOHandlers().count(ConPort1) == 0) || (GetIOHandlers().count(ConPort2) == 0))
 				{
-					if(auto log = odc::spdlog_get("Connectors"))
-						log->error("Invalid port on connection '{}' skipping...", ConName);
+					Log.Error("Invalid port on connection '{}' skipping...", ConName);
 					continue;
 				}
 				//insert the connections in both directions
@@ -80,8 +78,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			}
 			catch (std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("Connectors"))
-					log->error("Exception raised when creating Connection from config: \n'{}\n' : ignoring", JConnections[n].toStyledString());
+				Log.Error("Exception raised when creating Connection from config: \n'{}\n' : ignoring", JConnections[n].toStyledString());
 			}
 		}
 	}
@@ -95,8 +92,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			{
 				if(!Transforms[n].isMember("Type") || !Transforms[n].isMember("Sender"))
 				{
-					if(auto log = odc::spdlog_get("Connectors"))
-						log->error("Invalid Transform config: need at least Type and Sender: \n'{}\n' : ignoring", Transforms[n].toStyledString());
+					Log.Error("Invalid Transform config: need at least Type and Sender: \n'{}\n' : ignoring", Transforms[n].toStyledString());
 					continue;
 				}
 				std::string txname = Transforms[n].isMember("Name") ? Transforms[n]["Name"].asString() : Name+" Transform "+std::to_string(n);
@@ -157,19 +153,14 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				}
 				auto libfilename = GetLibFileName(libname);
 
-				if (auto log = odc::spdlog_get("Connectors"))
-					log->debug("Attempting to load library: {}, {}", libname, libfilename);
+				Log.Debug("Attempting to load library: {}, {}", libname, libfilename);
 
 				//try to load the lib
 				auto txlib = LoadModule(libfilename);
 
 				if(txlib == nullptr)
 				{
-					if(auto log = odc::spdlog_get("Connectors"))
-					{
-						log->error("{}",LastSystemError());
-						log->error("Failed to load library '{}' skipping transform...", libfilename);
-					}
+					Log.Error("Failed to load library '{}' (Error: {}) skipping transform...", libfilename,LastSystemError());
 					continue;
 				}
 
@@ -181,22 +172,19 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 				auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
 
 				if(new_tx_func == nullptr)
-					if(auto log = odc::spdlog_get("Connectors"))
-						log->info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
+					Log.Info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
 				if(delete_tx_func == nullptr)
-					if(auto log = odc::spdlog_get("Connectors"))
-						log->info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
+					Log.Info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
 				if(new_tx_func == nullptr || delete_tx_func == nullptr)
 				{
-					if(auto log = odc::spdlog_get("Connectors"))
-						log->error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
+					Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
 					continue;
 				}
 
 				//Create a logger if we haven't already
 				if(!odc::spdlog_get(libname))
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
+					if(auto log = Log.GetLog())
 					{
 						auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
 							odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
@@ -216,8 +204,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 			}
 			catch (std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("Connectors"))
-					log->error("Exception raised when creating Transform from config: \n'{}\n' Error: '{}' - skipping transform", Transforms[n].toStyledString(), e.what());
+				Log.Error("Exception raised when creating Transform from config: \n'{}\n' Error: '{}' - skipping transform", Transforms[n].toStyledString(), e.what());
 			}
 		}
 	}
@@ -306,8 +293,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 		return;
 	}
 	//no connection for sender if we get here
-	if(auto log = odc::spdlog_get("Connectors"))
-		log->warn("{}: discarding event from '{}' (No connection defined)", Name, SenderName);
+	Log.Warn("{}: discarding event from '{}' (No connection defined)", Name, SenderName);
 
 	(*pStatusCallback)(CommandStatus::UNDEFINED);
 }

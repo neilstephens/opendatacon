@@ -216,12 +216,7 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 }
 void WriteStartLoggingMessage(const std::string& TestName)
 {
-	std::string msg = "Logging for '" + TestName + "' started..";
-
-	if (auto md3logger = odc::spdlog_get("MD3Port"))
-		md3logger->info(msg);
-	else if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info("MD3Port Logger Message: "+msg);
+	Log.Info("Logging for '{}' started..",TestName);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {

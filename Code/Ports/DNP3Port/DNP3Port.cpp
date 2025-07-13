@@ -144,8 +144,7 @@ void DNP3Port::NotifyOfDisconnection()
 
 void DNP3Port::ChannelWatchdogTrigger(bool on)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	Log.Debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
 	if(stack_enabled)
 	{
 		if(on)                //don't mark the stack as disabled, because this is just a restart
@@ -172,8 +171,7 @@ void DNP3Port::CheckStackState()
 				{
 					stack_enabled = false;
 					DisableStack(); //this will trigger comms down
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: DNP3 stack disabled", Name);
+					Log.Debug("{}: DNP3 stack disabled", Name);
 				}
 				return;
 			}
@@ -184,8 +182,7 @@ void DNP3Port::CheckStackState()
 				{
 					EnableStack();
 					stack_enabled = true;
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: DNP3 stack enabled", Name);
+					Log.Debug("{}: DNP3 stack enabled", Name);
 				}
 				return;
 			}
@@ -391,14 +388,12 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			LOG_LEVEL = opendnp3::levels::NOTHING;
 		else
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->warn("Invalid LOG_LEVEL setting: '{}' - defaulting to 'NORMAL' log level.", value);
+			Log.Warn("Invalid LOG_LEVEL setting: '{}' - defaulting to 'NORMAL' log level.", value);
 		}
 	}
 
 	if(JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->warn("Serial device AND IP address specified - IP wins");
+		Log.Warn("Serial device AND IP address specified - IP wins");
 
 	if(JSONRoot.isMember("SerialDevice"))
 	{
@@ -417,8 +412,7 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.parity = opendnp3::Parity::None;
 			else
 			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->warn("Invalid serial parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
+				Log.Warn("Invalid serial parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
 			}
 		}
 		if(JSONRoot.isMember("DataBits"))
@@ -435,8 +429,7 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SerialSettings.stopBits = opendnp3::StopBits::Two;
 			else
 			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->warn("Invalid serial stop bits: {}, should be 0, 1, 1.5, or 2", JSONRoot["StopBits"].asFloat());
+				Log.Warn("Invalid serial stop bits: {}, should be 0, 1, 1.5, or 2", JSONRoot["StopBits"].asFloat());
 			}
 		}
 	}
@@ -471,14 +464,11 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 				}
 				else
 				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-					{
-						Json::Value Eg;
-						Eg["TLSFiles"]["PeerCert"] = "/path/to/file";
-						Eg["TLSFiles"]["LocalCert"] = "/path/to/file";
-						Eg["TLSFiles"]["PrivateKey"] = "/path/to/file";
-						log->warn("Reverting to TCP: TLS IPTransport requires TLSFiles config, Eg '{}'", Eg.asString());
-					}
+					Json::Value Eg;
+					Eg["TLSFiles"]["PeerCert"] = "/path/to/file";
+					Eg["TLSFiles"]["LocalCert"] = "/path/to/file";
+					Eg["TLSFiles"]["PrivateKey"] = "/path/to/file";
+					Log.Warn("Reverting to TCP: TLS IPTransport requires TLSFiles config, Eg '{}'", Eg.asString());
 				}
 				if(JSONRoot.isMember("TLSAllowedVersions"))
 				{
@@ -510,29 +500,25 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 
 							if(invalidVer)
 							{
-								if(auto log = odc::spdlog_get("DNP3Port"))
-									log->error("Invalid entry in TLSAllowedVersions: Valid versions are 10,11,12,13.");
+								Log.Error("Invalid entry in TLSAllowedVersions: Valid versions are 10,11,12,13.");
 							}
 						}
 					}
 					else
 					{
-						if(auto log = odc::spdlog_get("DNP3Port"))
-							log->error("TLSAllowedVersions should be a JSON array.");
+						Log.Error("TLSAllowedVersions should be a JSON array.");
 					}
 				}
 				if(JSONRoot.isMember("TLSCiphers"))
 				{
 					if(JSONRoot["TLSCiphers"].isString())
 						static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.TLSConf.cipherList = JSONRoot["TLSCiphers"].asString();
-					else if(auto log = odc::spdlog_get("DNP3Port"))
-						log->error("TLSCiphers should be a string.");
+					else Log.Error("TLSCiphers should be a string.");
 				}
 			}
 			else if(JSONRoot["IPTransport"].asString() != "TCP")
 			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->warn("Invalid IP transport protocol: {}, should be TCP, UDP, or TLS. Using TCP", JSONRoot["IPTransport"].asString());
+				Log.Warn("Invalid IP transport protocol: {}, should be TCP, UDP, or TLS. Using TCP", JSONRoot["IPTransport"].asString());
 			}
 			//else TCP, already default
 		}
@@ -554,8 +540,7 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::DEFAULT;
 		else
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->warn("Invalid TCP client/server type: {}, should be CLIENT, SERVER, or DEFAULT.", JSONRoot["TCPClientServer"].asString());
+			Log.Warn("Invalid TCP client/server type: {}, should be CLIENT, SERVER, or DEFAULT.", JSONRoot["TCPClientServer"].asString());
 		}
 	}
 
@@ -573,8 +558,7 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			static_cast<DNP3PortConf*>(pConf.get())->OnDemand = false;
 		else
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->warn("Invalid DNP3 Port server type: '{}'.", JSONRoot["ServerType"].asString());
+			Log.Warn("Invalid DNP3 Port server type: '{}'.", JSONRoot["ServerType"].asString());
 		}
 	}
 	if(JSONRoot.isMember("ChannelLinksWatchdogBark"))
@@ -590,8 +574,7 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ChannelLinksWatchdogBark = WatchdogBark::DEFAULT;
 		else
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->warn("Invalid DNP3 Port ChannelLinksWatchdogBark: '{}'.", bark);
+			Log.Warn("Invalid DNP3 Port ChannelLinksWatchdogBark: '{}'.", bark);
 		}
 	}
 	if(JSONRoot.isMember("ConnectionStabilityTimems"))

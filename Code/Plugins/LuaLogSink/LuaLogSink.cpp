@@ -25,9 +25,12 @@
  */
 #include "LuaLogSink.h"
 #include <Lua/Wrappers.h>
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/Platform.h>
 #include <opendatacon/util.h>
 #include <string>
+
+static odc::LogHelpers Log{"opendatacon"};
 
 LuaLogSink::LuaLogSink(const std::string& Name, const std::string& LuaFile, const Json::Value& Config):
 	Name(Name)
@@ -82,8 +85,7 @@ void LuaLogSink::sink_it_(const spdlog::details::log_msg &msg)
 			if(ret != 0)
 			{
 				std::string err = lua_tostring(L, -1);
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->error("{}: error calling Lua code's LogSink() function. Error: '{}'",Name,err);
+				Log.Error("{}: error calling Lua code's LogSink() function. Error: '{}'",Name,err);
 			}
 		});
 }

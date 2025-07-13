@@ -25,6 +25,7 @@
  */
 
 #include "CBORSerialiser.h"
+#include "Log.h"
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/cbor/cbor.hpp>
 #include <opendatacon/IOTypes.h>
@@ -94,8 +95,7 @@ void CBORSerialiser::CheckForPlaceholder(const std::string_view& str, bool isKey
 {
 	auto KeyErr = [this,&str]()
 			  {
-				  if(auto log = odc::spdlog_get("KafkaPort"))
-					  log->error("Can't use placeholder '{}' for CBOR key (only string types allowed)",str);
+				  Log.Error("Can't use placeholder '{}' for CBOR key (only string types allowed)",str);
 				  Strings.emplace_back(str);
 				  return Ops.emplace_back(EncodeOps::KEY);
 			  };
@@ -246,8 +246,7 @@ const std::vector<uint8_t> CBORSerialiser::Encode(std::shared_ptr<const EventInf
 				encoder.end_object();
 				break;
 			default:
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("Unknown CBORSerialiser EncodeOp");
+				Log.Error("Unknown CBORSerialiser EncodeOp");
 				break;
 		}
 	}

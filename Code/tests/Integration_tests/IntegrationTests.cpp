@@ -34,6 +34,8 @@
 void PrepReloadConfFiles(bool init);
 void PrepTransferFiles(bool init);
 
+LogHelpers Log{"opendatacon"};
+
 class TestHook
 {
 public:
@@ -98,8 +100,7 @@ void ShutdownDatacon(DataconHandles& handles)
 		if(i == 140)
 			odc::asio_service::Get()->post([&wakeup_called]
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
+					Log.Critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
 					wakeup_called = true;
 				});
 	}

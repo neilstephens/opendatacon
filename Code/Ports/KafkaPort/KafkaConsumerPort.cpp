@@ -73,14 +73,12 @@ void KafkaConsumerPort::Build()
 
 	if(!pConf->NativeKafkaProperties.contains("client.id"))
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->warn("{}: Consumer client.id is not set in the properties, this may cause issues when reloading/restarting (can't resume from the same offset)", Name);
+		Log.Warn("{}: Consumer client.id is not set in the properties, this may cause issues when reloading/restarting (can't resume from the same offset)", Name);
 	}
 
 	if(pConf->ShareKafkaClient)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Consumer ports cannot share a KafkaClient.", Name);
+		Log.Error("{}: Consumer ports cannot share a KafkaClient.", Name);
 		pConf->ShareKafkaClient = false;
 	}
 
@@ -123,25 +121,19 @@ void KafkaConsumerPort::BuildConsumer()
 	}
 	catch(const std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to create Kafka Consumer: {}", Name, e.what());
+		Log.Error("{}: Failed to create Kafka Consumer: {}", Name, e.what());
 		return;
 	}
 }
 
 void KafkaConsumerPort::RebalanceCallback(kafka::clients::consumer::RebalanceEventType et, const kafka::TopicPartitions& tps)
 {
-	if(auto log = odc::spdlog_get("KafkaPort"))
-	{
-		const auto action_str = et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned ? "assigned" : "revoked";
-		log->debug("Partitions {}: {}", action_str, kafka::toString(tps));
-	}
+	Log.Debug("Partitions {}: {}", et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned ? "assigned" : "revoked", kafka::toString(tps));
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 	if(pConf->ConsumerFastForwardOffset != 0
 	   && et == kafka::clients::consumer::RebalanceEventType::PartitionsAssigned)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->info("{}: Fast forwarding consumer partitions by {} records", Name, pConf->ConsumerFastForwardOffset);
+		Log.Info("{}: Fast forwarding consumer partitions by {} records", Name, pConf->ConsumerFastForwardOffset);
 		try
 		{
 			//TODO: check what happens if the we seek past the end/beginning
@@ -155,8 +147,7 @@ void KafkaConsumerPort::RebalanceCallback(kafka::clients::consumer::RebalanceEve
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("{}: Failed to seek consumer partitions: {}", Name, e.what());
+			Log.Error("{}: Failed to seek consumer partitions: {}", Name, e.what());
 			return;
 		}
 	}
@@ -175,8 +166,7 @@ void KafkaConsumerPort::Subscribe()
 	}
 	catch(const std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to subscribe to topics: {}", Name, e.what());
+		Log.Error("{}: Failed to subscribe to topics: {}", Name, e.what());
 	}
 }
 
@@ -226,8 +216,7 @@ void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("{}: Failed to poll records: {}", Name, e.what());
+			Log.Error("{}: Failed to poll records: {}", Name, e.what());
 			return;
 		}
 	}
@@ -253,8 +242,7 @@ void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
 		}
 		catch(const std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("{}: Failed to async commit offsets for {} records: {}", Name, Records.size(), e.what());
+			Log.Error("{}: Failed to async commit offsets for {} records: {}", Name, Records.size(), e.what());
 		}
 
 		poll_delay = std::chrono::milliseconds(0);
@@ -290,20 +278,17 @@ void KafkaConsumerPort::ProcessRecord(const KCC::ConsumerRecord& record)
 			event = LuaDeserialise(record,it->second.pLuaDeserialiser);
 		else
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("{}: Translation method {} not implemented", Name, static_cast<std::underlying_type_t<EventTranslationMethod>>(pConf->TranslationMethod));
+			Log.Error("{}: Translation method {} not implemented", Name, static_cast<std::underlying_type_t<EventTranslationMethod>>(pConf->TranslationMethod));
 		}
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->warn("{}: No deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
+		Log.Warn("{}: No deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
 	}
 
 	if(!event)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to translate kafka record to EventInfo: '{}'", Name, record.toString());
+		Log.Error("{}: Failed to translate kafka record to EventInfo: '{}'", Name, record.toString());
 		return;
 	}
 
@@ -318,8 +303,7 @@ std::shared_ptr<EventInfo> KafkaConsumerPort::TemplateDeserialise(const KCC::Con
 {
 	if(!pTemplateDeserialiser)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->warn("{}: Null template deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
+		Log.Warn("{}: Null template deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
 		return nullptr;
 	}
 	return pTemplateDeserialiser->Deserialise(record);
@@ -329,8 +313,7 @@ std::shared_ptr<EventInfo> KafkaConsumerPort::CBORDeserialise(const KCC::Consume
 {
 	if(!pCBORDeserialiser)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->warn("{}: Null CBOR deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
+		Log.Warn("{}: Null CBOR deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
 		return nullptr;
 	}
 	return pCBORDeserialiser->Deserialise(record);
@@ -340,8 +323,7 @@ std::shared_ptr<EventInfo> KafkaConsumerPort::LuaDeserialise(const KCC::Consumer
 {
 	if(!pLuaDeserialiser)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->warn("{}: Null Lua deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
+		Log.Warn("{}: Null Lua deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
 		return nullptr;
 	}
 	return pLuaDeserialiser->Deserialise(record);

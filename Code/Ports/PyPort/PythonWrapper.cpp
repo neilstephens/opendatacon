@@ -125,7 +125,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		WholeMessage += message;
 
 		// Take appropriate action
-		if (auto log = odc::spdlog_get("PyPort"))
+		if (auto log = Log.GetLog())
 		{
 			// Ordinals match spdlog values - spdlog::level::level_enum::
 			switch (logtype)

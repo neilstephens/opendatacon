@@ -56,8 +56,7 @@ void DNP3MasterPort::Enable()
 		return;
 	if(nullptr == pMaster)
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("{}: DNP3 stack not initialised.", Name);
+		Log.Error("{}: DNP3 stack not initialised.", Name);
 		return;
 	}
 
@@ -100,8 +99,7 @@ void DNP3MasterPort::Disable()
 
 void DNP3MasterPort::PortUp()
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: PortUp() called.", Name);
+	Log.Debug("{}: PortUp() called.", Name);
 
 	//cancel the timer if we were riding through
 	pCommsRideThroughTimer->Cancel();
@@ -109,8 +107,7 @@ void DNP3MasterPort::PortUp()
 
 void DNP3MasterPort::PortDown()
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: PortDown() called.", Name);
+	Log.Debug("{}: PortDown() called.", Name);
 
 	//trigger the ride through timer
 	pCommsRideThroughTimer->Trigger();
@@ -126,8 +123,7 @@ void DNP3MasterPort::UpdateCommsPoint(bool isFailed)
 	// Update the comms state point if configured
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Updating comms point ({}).", Name, isFailed ? "failed" : "good");
+		Log.Debug("{}: Updating comms point ({}).", Name, isFailed ? "failed" : "good");
 
 		auto commsEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
@@ -139,8 +135,7 @@ void DNP3MasterPort::UpdateCommsPoint(bool isFailed)
 
 void DNP3MasterPort::RePublishEvents()
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: Re-publishing events.", Name);
+	Log.Debug("{}: Re-publishing events.", Name);
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	for (auto index : pConf->pPointConf->BinaryIndexes)
 	{
@@ -192,8 +187,7 @@ void DNP3MasterPort::SetCommsFailed()
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
+		Log.Debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
 
 		SetCommsFailedQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes);
 		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
@@ -206,8 +200,7 @@ void DNP3MasterPort::SetCommsFailed()
 		// Can't just reset quality, because it would make new events for old values
 		pChanH->Post([this]()
 			{
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
+				Log.Debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
 				IntegrityScanNeeded = true;
 			});
 	}
@@ -248,8 +241,7 @@ void DNP3MasterPort::CommsHeartBeat(bool isFailed)
 // Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
+	Log.Debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
 	pChanH->SetLinkStatus(status);
 	//TODO: track a statistic - reset count
 }
@@ -257,8 +249,7 @@ void DNP3MasterPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3MasterPort::OnKeepAliveFailure()
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: KeepAliveFailure() called.", Name);
+	Log.Debug("{}: KeepAliveFailure() called.", Name);
 	pChanH->LinkDown();
 }
 
@@ -274,8 +265,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 
 		if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->debug("{}: Setting IntegrityScanNeeded for Link-up.",Name);
+			Log.Debug("{}: Setting IntegrityScanNeeded for Link-up.",Name);
 			IntegrityScanNeeded = true;
 		}
 
@@ -301,8 +291,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 // Called when a keep alive message receives a valid response
 void DNP3MasterPort::OnKeepAliveSuccess()
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: KeepAliveSuccess() called.", Name);
+	Log.Debug("{}: KeepAliveSuccess() called.", Name);
 	pChanH->LinkUp();
 }
 // Called by OpenDNP3 Thread Pool
@@ -324,8 +313,7 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 				if((iin.IsSet(opendnp3::IINBit::EVENT_BUFFER_OVERFLOW) && pConf->pPointConf->IntegrityOnEventOverflowIIN) ||
 				   (iin.IsSet(opendnp3::IINBit::DEVICE_RESTART) && pConf->pPointConf->IgnoreRestartIIN == false))
 				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: Stack executed IIN triggered integrity scan for this link session.",Name);
+					Log.Debug("{}: Stack executed IIN triggered integrity scan for this link session.",Name);
 					IntegrityScanDone = true;
 				}
 				if(IntegrityScanNeeded)
@@ -333,12 +321,10 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 					IntegrityScanNeeded = false;
 					if(IntegrityScanDone)
 					{
-						if(auto log = odc::spdlog_get("DNP3Port"))
-							log->debug("{}: Skipping startup integrity scan (stack already did one).",Name);
+						Log.Debug("{}: Skipping startup integrity scan (stack already did one).",Name);
 						return;
 					}
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: Executing startup integrity scan.",Name);
+					Log.Debug("{}: Executing startup integrity scan.",Name);
 					pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
 					IntegrityScanDone = true;
 				}
@@ -360,8 +346,7 @@ void DNP3MasterPort::Build()
 
 	if (!pChanH->SetChannel())
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("{}: Channel not found for masterstation.", Name);
+		Log.Error("{}: Channel not found for masterstation.", Name);
 		return;
 	}
 
@@ -422,8 +407,7 @@ void DNP3MasterPort::Build()
 
 	if (pMaster == nullptr)
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("{}: Error creating masterstation.", Name);
+		Log.Error("{}: Error creating masterstation.", Name);
 		return;
 	}
 
@@ -475,7 +459,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 				else
 					publish = false;
 
-				if(auto log = odc::spdlog_get("DNP3Port"))
+				if(auto log = Log.GetLog())
 					log->log(log_level, "{}: Received {} from stack for unconfigured index ({})",
 						Name, ToString(event->GetEventType()), event->GetIndex());
 			}
@@ -486,8 +470,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 			   && event->GetIndex() == pConf->pPointConf->mCommsPoint.second)
 			{
 				publish = false;
-				if(auto log = odc::spdlog_get("DNP3Port"))
-					log->error("{}: Received Binary that clashes with comms point index ({})", Name, event->GetIndex());
+				Log.Error("{}: Received Binary that clashes with comms point index ({})", Name, event->GetIndex());
 			}
 
 			if(publish)
@@ -519,8 +502,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 
 		if(state == ConnectState::PORT_UP)
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->info("{}: Upstream port enabled.", Name);
+			Log.Info("{}: Upstream port enabled.", Name);
 			RePublishEvents();
 		}
 
@@ -559,16 +541,14 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		case odc::EventType::ControlRelayOutputBlock:
 			if(std::find(pConf->pPointConf->ControlIndexes.begin(), pConf->pPointConf->ControlIndexes.end(), index) != pConf->pPointConf->ControlIndexes.end())
 			{
-				if (auto log = odc::spdlog_get("DNP3Port"))
-					log->debug("{}: Executing direct operate to index: {}", Name, index);
+				Log.Debug("{}: Executing direct operate to index: {}", Name, index);
 
 				auto lCommand = FromODC<opendnp3::ControlRelayOutputBlock>(event);
 				DoOverrideControlCode(lCommand);
 				this->pMaster->DirectOperate(lCommand, index, DNP3Callback);
 				return;
 			}
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->warn("{}: CROB Control sent to invalid DNP3 index: {}", Name, index);
+			Log.Warn("{}: CROB Control sent to invalid DNP3 index: {}", Name, index);
 			break;
 		case odc::EventType::AnalogOutputInt16:
 		case odc::EventType::AnalogOutputInt32:
@@ -576,8 +556,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		case odc::EventType::AnalogOutputDouble64:
 			if(std::find(pConf->pPointConf->AnalogControlIndexes.begin(), pConf->pPointConf->AnalogControlIndexes.end(), index) != pConf->pPointConf->AnalogControlIndexes.end())
 			{
-				if (auto log = odc::spdlog_get("DNP3Port"))
-					log->debug("{}: Executing analog control to index: {}", Name, index);
+				Log.Debug("{}: Executing analog control to index: {}", Name, index);
 
 				// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command, for example
 				// We need to convert the event to the correct type
@@ -605,14 +584,12 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 				}
 				catch(const std::exception& e)
 				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->error("{}: Error converting event for analog control: {}", Name, e.what());
+					Log.Error("{}: Error converting event for analog control: {}", Name, e.what());
 					(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 				}
 				return;
 			}
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->warn("{}: Analog Control sent to invalid DNP3 index: {}", Name, index);
+			Log.Warn("{}: Analog Control sent to invalid DNP3 index: {}", Name, index);
 			break;
 		default:
 			break;

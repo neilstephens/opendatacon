@@ -223,12 +223,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 }
 void WriteStartLoggingMessage(const std::string& TestName)
 {
-	std::string msg = "Logging for '"+TestName+"' started..";
-
-	if (auto cblogger = odc::spdlog_get("CBPort"))
-		cblogger->info(msg);
-	else if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info("CBPort Logger Message: "+msg);
+	Log.Info("Logging for '{}' started..",TestName);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {

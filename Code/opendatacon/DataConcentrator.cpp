@@ -443,7 +443,6 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 	std::string sinkname;
 	std::string sinklevel;
 	std::string sinktype;
-	auto log = odc::spdlog_get("opendatacon");
 
 	if(ss>>sinkname && ss>>sinklevel && ss>>sinktype)
 	{
@@ -821,7 +820,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 		throw std::runtime_error("Main logger initialization failed: " + std::string(ex.what()));
 	}
 
-	auto log = odc::spdlog_get("opendatacon");
+	auto log = Log.GetLog();
 	if(!log)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
@@ -850,7 +849,7 @@ void DataConcentrator::ProcessElements(const Json::Value& JSONRoot)
 
 void DataConcentrator::ProcessPorts(const Json::Value& Ports)
 {
-	auto log = odc::spdlog_get("opendatacon");
+	auto log = Log.GetLog();
 	if(!log)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
@@ -982,7 +981,7 @@ void DataConcentrator::ProcessPorts(const Json::Value& Ports)
 
 void DataConcentrator::ProcessConnectors(const Json::Value& Connectors)
 {
-	auto log = odc::spdlog_get("opendatacon");
+	auto log = Log.GetLog();
 	if(!log)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
@@ -1029,7 +1028,7 @@ void DataConcentrator::ProcessConnectors(const Json::Value& Connectors)
 
 void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
 {
-	auto log = odc::spdlog_get("opendatacon");
+	auto log = Log.GetLog();
 	if(!log)
 		throw std::runtime_error("Failed to fetch main logger registration");
 
@@ -1107,14 +1106,12 @@ void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
 
 void DataConcentrator::Build()
 {
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Initialising Interfaces...");
+	Log.Info("Initialising Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 	{
 		Name_n_UI.second->Build();
 	}
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Initialising DataPorts...");
+	Log.Info("Initialising DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 	{
 		try
@@ -1126,8 +1123,7 @@ void DataConcentrator::Build()
 			throw std::runtime_error("Port '"+Name_n_Port.first+"' Build() threw exception: " + e.what());
 		}
 	}
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Initialising DataConnectors...");
+	Log.Info("Initialising DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 	{
 		Name_n_Conn.second->Build();
@@ -1172,8 +1168,7 @@ void DataConcentrator::EnableIUI(std::shared_ptr<IUI> iui)
 
 void DataConcentrator::Run()
 {
-	if (auto log = odc::spdlog_get("opendatacon"))
-		log->info("Starting worker threads...");
+	Log.Info("Starting worker threads...");
 
 	for (int i = 0; i < pIOS->GetConcurrency(); ++i)
 		threads.emplace_back([this]()
@@ -1184,24 +1179,20 @@ void DataConcentrator::Run()
 				}
 				catch (std::exception& e)
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->critical("Shutting down due to exception from thread pool: {}", e.what());
+					Log.Critical("Shutting down due to exception from thread pool: {}", e.what());
 					Shutdown();
 				}
 			});
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Enabling DataConnectors...");
+	Log.Info("Enabling DataConnectors...");
 	for(auto& Name_n_Conn : DataConnectors)
 		EnableIOHandler(Name_n_Conn.second);
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Enabling DataPorts...");
+	Log.Info("Enabling DataPorts...");
 	for(auto& Name_n_Port : DataPorts)
 		EnableIOHandler(Name_n_Port.second);
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Enabling Interfaces...");
+	Log.Info("Enabling Interfaces...");
 	for(auto& Name_n_UI : Interfaces)
 		EnableIUI(Name_n_UI.second);
 
@@ -1210,15 +1201,13 @@ void DataConcentrator::Run()
 		while(starting_element_count > 0)
 			pIOS->run_one_for(std::chrono::milliseconds(10));
 
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->info("Up and running.");
+		Log.Info("Up and running.");
 
 		pIOS->run();
 	}
 	catch (std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->critical("Shutting down due to exception from thread pool: {}", e.what());
+		Log.Critical("Shutting down due to exception from thread pool: {}", e.what());
 		Shutdown();
 		pIOS->run();
 	}
@@ -1227,16 +1216,13 @@ void DataConcentrator::Run()
 		thread.join();
 	threads.clear();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Destoying Interfaces...");
+	Log.Info("Destoying Interfaces...");
 	Interfaces.clear();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Destoying DataConnectors...");
+	Log.Info("Destoying DataConnectors...");
 	DataConnectors.clear();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Destoying DataPorts...");
+	Log.Info("Destoying DataPorts...");
 	DataPorts.clear();
 	shut_down = true;
 }
@@ -1253,16 +1239,14 @@ void DataConcentrator::ParkThread()
 	//park another threads if there's any left
 	pIOS->post([this](){ParkThread();});
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("ParkThread() parking thread {}",std::this_thread::get_id());
+	Log.Debug("ParkThread() parking thread {}",std::this_thread::get_id());
 
 	num_parked_threads++;
 	while(!shutting_down && parking)
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	num_parked_threads--;
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("ParkThread() releasing thread {}",std::this_thread::get_id());
+	Log.Debug("ParkThread() releasing thread {}",std::this_thread::get_id());
 }
 
 bool DataConcentrator::ParkThreads()
@@ -1280,8 +1264,7 @@ bool DataConcentrator::ParkThreads()
 	if(shutting_down)
 		parking = false;
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("ParkThreads() returning {}",parking);
+	Log.Debug("ParkThreads() returning {}",parking);
 
 	return parking;
 }
@@ -1303,11 +1286,9 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 		{
 			auto [_,success] = OldObjects.try_emplace(old_obj["Name"].asString(), old_obj);
 			if(!success)
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->warn("Ignoring old config {} object with duplicate 'Name' : '{}'",collection_name,old_obj.toStyledString());
+				Log.Warn("Ignoring old config {} object with duplicate 'Name' : '{}'",collection_name,old_obj.toStyledString());
 		}
-		else if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("Old config {} object without 'Name' : '{}'",collection_name,old_obj.toStyledString());
+		else Log.Error("Old config {} object without 'Name' : '{}'",collection_name,old_obj.toStyledString());
 	}
 
 	Json::Value changed_confs;
@@ -1317,15 +1298,13 @@ Json::Value DataConcentrator::FindChangedConfs(const std::string& collection_nam
 	{
 		if(!new_object.isMember("Name"))
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->error("New config {} object without 'Name' : '{}'",collection_name,new_object.toStyledString());
+			Log.Error("New config {} object without 'Name' : '{}'",collection_name,new_object.toStyledString());
 			continue;
 		}
 		const auto& name = new_object["Name"].asString();
 		if(!new_object_names.insert(name).second)
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->warn("Ignoring new config {} object with duplicate 'Name' : '{}'",collection_name,new_object.toStyledString());
+			Log.Warn("Ignoring new config {} object with duplicate 'Name' : '{}'",collection_name,new_object.toStyledString());
 			continue;
 		}
 
@@ -1411,13 +1390,11 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	std::unique_lock<std::mutex> lock(mtx, std::try_to_lock);
 	if(!lock.owns_lock())
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("Reload failed: Another reload already in progress.");
+		Log.Error("Reload failed: Another reload already in progress.");
 		return false;
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("DataConcentrator::ReloadConfig() called with filename '{}'",filename);
+	Log.Debug("DataConcentrator::ReloadConfig() called with filename '{}'",filename);
 	auto before = msSinceEpoch();
 	auto before_everything = before;
 
@@ -1435,8 +1412,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 
 	auto new_main_conf = RecallOrCreate(ConfFilename);
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("DataConcentrator::ReloadConfig() parsed main file in {}ms", msSinceEpoch() - before);
+	Log.Debug("DataConcentrator::ReloadConfig() parsed main file in {}ms", msSinceEpoch() - before);
 
 	Json::Value changed_confs;
 	std::set<std::string> createdIOHs;
@@ -1455,30 +1431,26 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 
 		before = msSinceEpoch();
 		changed_confs["Ports"] = FindChangedConfs("Ports",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->debug("DataConcentrator::ReloadConfig() compared for Port changes in {}ms", msSinceEpoch() - before);
+		Log.Debug("DataConcentrator::ReloadConfig() compared for Port changes in {}ms", msSinceEpoch() - before);
 
 		before = msSinceEpoch();
 		changed_confs["Connectors"] = FindChangedConfs("Connectors",old_file_confs,*old_main_conf,*new_main_conf,createdIOHs,changedIOHs,deletedIOHs);
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->debug("DataConcentrator::ReloadConfig() compared for Connector changes in {}ms", msSinceEpoch() - before);
+		Log.Debug("DataConcentrator::ReloadConfig() compared for Connector changes in {}ms", msSinceEpoch() - before);
 
 		before = msSinceEpoch();
 		changed_confs["Plugins"] = FindChangedConfs("Plugins",old_file_confs,*old_main_conf,*new_main_conf,createdIUIs,changedIUIs,deletedIUIs);
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->debug("DataConcentrator::ReloadConfig() compared for Plugin changes in {}ms", msSinceEpoch() - before);
+		Log.Debug("DataConcentrator::ReloadConfig() compared for Plugin changes in {}ms", msSinceEpoch() - before);
 
 	}
 	catch(std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("DataConcentrator::ReloadConfig() Failed : '{}'",e.what());
+		Log.Error("DataConcentrator::ReloadConfig() Failed : '{}'",e.what());
 		ConfigParser::JSONFileCache = old_file_confs;
 		ConfFilename = old_ConfFilename;
 		return false;
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
+	if(auto log = Log.GetLog())
 	{
 		for(auto create : createdIOHs)
 			log->info("New IOHandler: '{}'",create);
@@ -1510,23 +1482,20 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		//all that's left in the copied confs should be logging config
 		if(copy_old != copy_new)
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("Logging config changed - reloading log sinks");
+			Log.Info("Logging config changed - reloading log sinks");
 			levels = ConfigureLogSinks(*new_main_conf);
-			if(auto log = odc::spdlog_get("opendatacon"))
+			if(auto log = Log.GetLog())
 			{
 				log->critical("Log level set to {}", spdlog::level::level_string_views[levels.first]);
 				log->critical("Console level set to {}", spdlog::level::level_string_views[levels.second]);
 				log->debug("DataConcentrator::ReloadConfig() compared and configured log sinks in {}ms", msSinceEpoch() - before);
 			}
 		}
-		else if(auto log = odc::spdlog_get("opendatacon"))
-			log->info("Logging config didn't change - not reloading log sinks (compared in {}ms)", msSinceEpoch() - before);
+		else Log.Info("Logging config didn't change - not reloading log sinks (compared in {}ms)", msSinceEpoch() - before);
 	}
 	catch(std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("DataConcentrator::ReloadConfig() Failed : '{}'",e.what());
+		Log.Error("DataConcentrator::ReloadConfig() Failed : '{}'",e.what());
 		ConfigureLogSinks(*old_main_conf);
 		ConfigParser::JSONFileCache = old_file_confs;
 		ConfFilename = old_ConfFilename;
@@ -1539,8 +1508,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	if(createdIOHs.size()+changedIOHs.size()+deletedIOHs.size()
 	   +createdIUIs.size()+changedIUIs.size()+deletedIUIs.size() == 0)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->info("No changed objects - reload finished.");
+		Log.Info("No changed objects - reload finished.");
 		odc::SetConfigVersion(new_main_conf->isMember("Version") ? (*new_main_conf)["Version"].asString() : "No Version Available");
 		if(new_main_conf->isMember("ReloadDelaySecs"))
 			reload_disable_delay_s = (*new_main_conf)["ReloadDelaySecs"].asUInt();
@@ -1558,8 +1526,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	{
 		if(IOHandler::GetIOHandlers().find(name) == IOHandler::GetIOHandlers().end())
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->warn("IOHandler '{}' from old config not found.",name);
+			Log.Warn("IOHandler '{}' from old config not found.",name);
 			not_found.insert(name);
 		}
 	}
@@ -1581,8 +1548,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	for(auto name : delete_or_changeIUIs)
 		if(Interfaces.find(name) == Interfaces.end())
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->warn("UI '{}' from old config not found.",name);
+			Log.Warn("UI '{}' from old config not found.",name);
 			not_found.insert(name);
 		}
 	for(auto& name : not_found)
@@ -1598,8 +1564,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		for(auto& sub_pair : IOHandler::GetIOHandlers().at(name)->GetSubscribers())
 			if(dynamic_cast<DataConnector*>(sub_pair.second) && delete_or_changeIOHs.find(sub_pair.first) == delete_or_changeIOHs.end())
 			{
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->error("Connector '{}' would be left with dangling reference to deleted object '{}'.",sub_pair.first,name);
+				Log.Error("Connector '{}' would be left with dangling reference to deleted object '{}'.",sub_pair.first,name);
 				ConfigParser::JSONFileCache = old_file_confs;
 				ConfFilename = old_ConfFilename;
 				return false;
@@ -1616,29 +1581,25 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			for(auto conn_pair : pConn->GetConnections())
 				if(conn_pair.second.second->Enabled() && delete_or_changeIOHs.find(conn_pair.second.second->GetName()) == delete_or_changeIOHs.end())
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->debug("Temporary disablement of IOHandler '{}', connected to changing connection '{}'.",conn_pair.second.second->GetName(),pConn->GetName());
+					Log.Debug("Temporary disablement of IOHandler '{}', connected to changing connection '{}'.",conn_pair.second.second->GetName(),pConn->GetName());
 					conn_pair.second.second->Disable();
 					reenable.insert(conn_pair.second.second->GetName());
 				}
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("DataConcentrator::ReloadConfig() validated changes in {}ms", msSinceEpoch() - before);
+	Log.Debug("DataConcentrator::ReloadConfig() validated changes in {}ms", msSinceEpoch() - before);
 	before = msSinceEpoch();
 
 	//Disable all interfaces because deleteing ports can delete IUIResponders - refresh those below
 	for(auto interface : Interfaces)
 		interface.second->Disable();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Disabled {} objects affected by reload.",Interfaces.size()+delete_or_changeIOHs.size()+reenable.size());
+	Log.Info("Disabled {} objects affected by reload.",Interfaces.size()+delete_or_changeIOHs.size()+reenable.size());
 
 	//wait a while to make sure disable events flow through
 	for(auto t = disable_delay; t>0; t--)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->info("{} seconds until reload...",t);
+		Log.Info("{} seconds until reload...",t);
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
 	//post a task and wait for it, just in case it's all backed up
@@ -1650,27 +1611,23 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		});
 	result.get(); //wait
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("DataConcentrator::ReloadConfig() Disable + ReloadDelay : {}ms", msSinceEpoch() - before);
+	Log.Debug("DataConcentrator::ReloadConfig() Disable + ReloadDelay : {}ms", msSinceEpoch() - before);
 	before = msSinceEpoch();
 
 	///////////// PARK THREADS ///////////////
 	if(!ParkThreads()) //This should only return false if we're shutting down, so no cleanup required
 		return false;
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("DataConcentrator::ReloadConfig() parked threads in {}ms", msSinceEpoch() - before);
+	Log.Debug("DataConcentrator::ReloadConfig() parked threads in {}ms", msSinceEpoch() - before);
 	before = msSinceEpoch();
 
 	//Now we can modify the unprotected collections
 	//We've induced a state similar to start-up (when there are no other threads running)
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->critical("Applying reloaded config.");
+	Log.Critical("Applying reloaded config.");
 
 	////////////////// Failues beyond this point are terminal because we're about to start breaking connections and delteing stuff //////////
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Clearing copy of old file cache - unneeded cache items will be deleted.");
+	Log.Debug("Clearing copy of old file cache - unneeded cache items will be deleted.");
 	old_file_confs.clear();
 
 	//Unsubscribe conns to be deleted (from thier ports)
@@ -1683,8 +1640,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 
 	//delete old objects
 	//a bit of stuff to backup first
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Preparing to delete old config objects.");
+	Log.Debug("Preparing to delete old config objects.");
 	std::vector<std::shared_ptr<void>> to_delete;
 	std::map<std::string,std::unordered_map<std::string,IOHandler*>> old_subs;
 	std::map<std::string,std::map<std::string,Demands_t>> old_demands;
@@ -1720,8 +1676,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		Interfaces.erase(name);
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Deleting old config objects.");
+	Log.Debug("Deleting old config objects.");
 	//make another thread run the destructors
 	//just in case they block on anything posted to asio (which is paused)
 	auto del_done = std::make_shared<std::atomic_bool>(false);
@@ -1736,17 +1691,13 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	size_t wait_count = 0;
 	while(!*del_done && wait_count++ < 200)
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
-	if(auto log = odc::spdlog_get("opendatacon"))
-	{
-		if(*del_done)
-			log->info("Old config objects deleted within {}ms",wait_count*5);
-		else
-			log->warn("Old config objects not deleted after {}ms - may be blocked. Trying again after asio un-parked",wait_count*5);
-	}
+	if(*del_done)
+		Log.Info("Old config objects deleted within {}ms",wait_count*5);
+	else
+		Log.Warn("Old config objects not deleted after {}ms - may be blocked. Trying again after asio un-parked",wait_count*5);
 
 	//create replacements and new
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Creating new and replacement Ports.");
+	Log.Debug("Creating new and replacement Ports.");
 	ProcessPorts(changed_confs["Ports"]);
 	for(auto name : changedIOHs)
 	{
@@ -1766,8 +1717,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 			}
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Creating new and replacement Connectors.");
+	Log.Debug("Creating new and replacement Connectors.");
 	ProcessConnectors(changed_confs["Connectors"]);
 	for(auto name : changedIOHs)
 	{
@@ -1781,14 +1731,12 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		}
 		else if(auto count = needs_new_addr.count(name))
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->critical("{} connectors with dangling pointer because port '{}' construction failed.",count,name);
+			Log.Critical("{} connectors with dangling pointer because port '{}' construction failed.",count,name);
 			throw std::runtime_error("Reload config failed terminally - connectors with dangling pointer");
 		}
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Creating new and replacement Plugins.");
+	Log.Debug("Creating new and replacement Plugins.");
 	ProcessPlugins(changed_confs["Plugins"]);
 
 	//superset for all changed and new
@@ -1800,8 +1748,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		created_or_changeIUIs.insert(name);
 
 	std::set<std::string> do_not_enable;
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Building new and replacement Ports.");
+	Log.Debug("Building new and replacement Ports.");
 	for(auto& port_pair : DataPorts)
 	{
 		try
@@ -1811,20 +1758,17 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		}
 		catch(std::exception& e)
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->critical("Will not enable Port '{}': Build() threw exception: '{}'",port_pair.first,e.what());
+			Log.Critical("Will not enable Port '{}': Build() threw exception: '{}'",port_pair.first,e.what());
 			do_not_enable.insert(port_pair.first);
 		}
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Building new and replacement Connectors.");
+	Log.Debug("Building new and replacement Connectors.");
 	for(auto& conn_pair : DataConnectors)
 		if(created_or_changeIOHs.find(conn_pair.first) != created_or_changeIOHs.end())
 			conn_pair.second->Build();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Building new and replacement Plugins.");
+	Log.Debug("Building new and replacement Plugins.");
 	RefreshIUIResponders();
 	for(auto& ui_pair : Interfaces)
 	{
@@ -1843,8 +1787,7 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	if(new_main_conf->isMember("ReloadDelaySecs"))
 		reload_disable_delay_s = (*new_main_conf)["ReloadDelaySecs"].asUInt();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->critical("Reloaded config applied in {}ms", msSinceEpoch() - before);
+	Log.Critical("Reloaded config applied in {}ms", msSinceEpoch() - before);
 
 	////////////// UNPARK THREADS ////////////
 	parking = false;
@@ -1858,16 +1801,13 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 		delete_thread.join();
 	else
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("Reload cleanup thread taking too long - detaching");
+		Log.Error("Reload cleanup thread taking too long - detaching");
 		delete_thread.detach();
 	}
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("DataConcentrator::ReloadConfig() waited on cleanup thread for {}ms", msSinceEpoch() - before);
+	Log.Debug("DataConcentrator::ReloadConfig() waited on cleanup thread for {}ms", msSinceEpoch() - before);
 	before = msSinceEpoch();
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("Enabling objects after reload.");
+	Log.Debug("Enabling objects after reload.");
 
 	for(auto& conn_pair : DataConnectors)
 		if(created_or_changeIOHs.find(conn_pair.first) != created_or_changeIOHs.end())
@@ -1888,11 +1828,9 @@ bool DataConcentrator::ReloadConfig(const std::string &filename, const size_t di
 	for(auto& ui_pair : Interfaces)
 		EnableIUI(ui_pair.second);
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->info("Enabled {} objects affected by reload in {}ms.",created_or_changeIUIs.size()+created_or_changeIOHs.size()+reenable.size()-do_not_enable.size(), msSinceEpoch() - before);
+	Log.Info("Enabled {} objects affected by reload in {}ms.",created_or_changeIUIs.size()+created_or_changeIOHs.size()+reenable.size()-do_not_enable.size(), msSinceEpoch() - before);
 
-	if(auto log = odc::spdlog_get("opendatacon"))
-		log->debug("DataConcentrator::ReloadConfig() whole reload took {}ms", msSinceEpoch() - before_everything);
+	Log.Debug("DataConcentrator::ReloadConfig() whole reload took {}ms", msSinceEpoch() - before_everything);
 
 	return true;
 }
@@ -1912,7 +1850,7 @@ void DataConcentrator::Shutdown()
 				while(starting_element_count > 0)
 					pIOS->run_one_for(std::chrono::milliseconds(10));
 
-				if(auto log = odc::spdlog_get("opendatacon"))
+				if(auto log = Log.GetLog())
 				{
 					log->critical("Shutting Down...");
 					log->info("Disabling Interfaces...");
@@ -1921,20 +1859,18 @@ void DataConcentrator::Shutdown()
 				{
 					Name_n_UI.second->Disable();
 				}
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->info("Disabling DataConnectors...");
+				Log.Info("Disabling DataConnectors...");
 				for(auto& Name_n_Conn : DataConnectors)
 				{
 					Name_n_Conn.second->Disable();
 				}
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->info("Disabling DataPorts...");
+				Log.Info("Disabling DataPorts...");
 				for(auto& Name_n_Port : DataPorts)
 				{
 					Name_n_Port.second->Disable();
 				}
 
-				if (auto log = odc::spdlog_get("opendatacon"))
+				if (auto log = Log.GetLog())
 				{
 					log->info("Destroying user log sinks");
 					//wait for async logging, so the sinks get the message before they're destroyed
@@ -1964,8 +1900,7 @@ void DataConcentrator::Shutdown()
 				} while(max_refs > 1);
 				user_sinks.clear();
 
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->info("Finishing asynchronous tasks...");
+				Log.Info("Finishing asynchronous tasks...");
 
 				//shutdown tcp stream bufs so they don't keep the io_service going
 				for (auto it = TCPbufs.begin(); it != TCPbufs.end(); ++it)
@@ -1975,8 +1910,7 @@ void DataConcentrator::Shutdown()
 			}
 			catch(const std::exception& e)
 			{
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->critical("Caught exception in DataConcentrator::Shutdown(): {}", e.what());
+				Log.Critical("Caught exception in DataConcentrator::Shutdown(): {}", e.what());
 				//Fall through - we set the shutting_down flag for watchdog
 			}
 		});

@@ -84,8 +84,7 @@ void LuaTransform::Enable_()
 	if(ret != LUA_OK)
 	{
 		std::string err = lua_tostring(LuaState, -1);
-		if(auto log = odc::spdlog_get("LuaTransform"))
-			log->error("{}: Lua Enable() call error: {}",Name,err);
+		Log.Error("{}: Lua Enable() call error: {}",Name,err);
 		lua_pop(LuaState,1);
 	}
 }
@@ -101,8 +100,7 @@ void LuaTransform::Disable_()
 		if(ret != LUA_OK)
 		{
 			std::string err = lua_tostring(LuaState, -1);
-			if(auto log = odc::spdlog_get("LuaTransform"))
-				log->error("{}: Lua Disable() call error: {}",Name,err);
+			Log.Error("{}: Lua Disable() call error: {}",Name,err);
 			lua_pop(LuaState,1);
 		}
 	}
@@ -142,8 +140,7 @@ void LuaTransform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllo
 	if(ret != LUA_OK)
 	{
 		std::string err = lua_tostring(LuaState, -1);
-		if(auto log = odc::spdlog_get("LuaTransform"))
-			log->error("{}: Lua Event() call error: {}",Name,err);
+		Log.Error("{}: Lua Event() call error: {}",Name,err);
 		lua_pop(LuaState,1);
 	}
 }

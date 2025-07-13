@@ -139,12 +139,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 }
 void WriteStartLoggingMessage(const std::string& TestName)
 {
-	std::string msg = "Logging for '" + TestName + "' started..";
-
-	if (auto pylogger = odc::spdlog_get("PyPort"))
-		pylogger->info(msg);
-	else if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info("PyPort Logger Message: "+msg);
+	Log.Info("Logging for '{}' started..",TestName);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {

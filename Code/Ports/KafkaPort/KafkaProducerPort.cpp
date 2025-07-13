@@ -142,8 +142,7 @@ void KafkaProducerPort::PortUp()
 	}
 	catch(const std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to create Kafka Producer: {}", Name, e.what());
+		Log.Error("{}: Failed to create Kafka Producer: {}", Name, e.what());
 		return;
 	}
 }
@@ -248,9 +247,8 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 			ultimate_event->SetPayload();
 		else //it doesn't have a payload when it should (probably), so we'll warn and drop it
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->warn("{}: Event from {}(Source: {}) does not have a payload: {}({}) Quality({})",
-					Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex(), ToString(ultimate_event->GetQuality()));
+			Log.Warn("{}: Event from {}(Source: {}) does not have a payload: {}({}) Quality({})",
+				Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex(), ToString(ultimate_event->GetQuality()));
 			(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
 			return;
 		}
@@ -260,9 +258,8 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 
 	if(!point_mapping.has_value() && pConf->BlockUnknownPoints)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->warn("{}: Event from unmapped point: SenderName({}), SourcePort({}), {}({})",
-				Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex());
+		Log.Warn("{}: Event from unmapped point: SenderName({}), SourcePort({}), {}({})",
+			Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex());
 		(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
 		return;
 	}
@@ -315,9 +312,7 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 	pKafkaProducer->send(record, deliveryCb, err);
 	if(err)
 	{
-		auto log = odc::spdlog_get("KafkaPort");
-		if(log)
-			log->error("{}: Failed to send message: {}", Name, err.toString());
+		Log.Error("{}: Failed to send message: {}", Name, err.toString());
 		(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
 	}
 
@@ -328,8 +323,6 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 	}
 	catch (const std::exception& e)
 	{
-		auto log = odc::spdlog_get("KafkaPort");
-		if(log)
-			log->error("{}: Failed to poll events: {}", Name, e.what());
+		Log.Error("{}: Failed to poll events: {}", Name, e.what());
 	}
 }

@@ -27,6 +27,7 @@
 #ifndef ONESHOTFUNC_H
 #define ONESHOTFUNC_H
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/util.h>
 #include <memory>
 #include <utility>
@@ -51,6 +52,7 @@ private:
 	using FnT = FnR(FnArgs...);
 	std::shared_ptr<std::function<FnT>> pFn;
 	std::atomic_bool called = false;
+	inline static LogHelpers Log{"opendatacon"};
 
 public:
 
@@ -77,8 +79,7 @@ protected:
 	{
 		if(!called.load())
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->error("One-shot function not called before destruction.");
+			Log.Error("One-shot function not called before destruction.");
 		}
 	}
 
@@ -108,8 +109,7 @@ private:
 	{
 		if(called.exchange(true))
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->error("One-shot function called more than once.");
+			Log.Error("One-shot function called more than once.");
 		}
 		return (*pFn)(std::forward<FnArgs>(args)...);
 	}

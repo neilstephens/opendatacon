@@ -205,14 +205,11 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 
 bool SimPort::UILoad(EventType type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
 {
-	auto log = odc::spdlog_get("SimPort");
-	if(log)
-		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
+	Log.Debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
 
 	if(!enabled)
 	{
-		if (log)
-			log->error("{} : UILoad() when disabled.", Name);
+		Log.Error("{} : UILoad() when disabled.", Name);
 		return false;
 	}
 
@@ -274,9 +271,7 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 
 bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, const std::string& period)
 {
-	auto log = odc::spdlog_get("SimPort");
-	if(log)
-		log->debug("{} : UISetUpdateInterval : {}, {}, {}", Name, ToString(type), index, period);
+	Log.Debug("{} : UISetUpdateInterval : {}, {}, {}", Name, ToString(type), index, period);
 
 	unsigned int delta = 0;
 	try
@@ -483,13 +478,11 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 	}
 	else if(rv == SQLITE_DONE)
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
+		Log.Debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
+		Log.Error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
 	}
 	//no more records or error - wait forever
 	auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
@@ -551,13 +544,11 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 		event->SetPayload<EventType::Binary>(std::move(val));
 		interval = pSimConf->UpdateInterval(event->GetEventType(), event->GetIndex());
 	}
-	else if(auto log = odc::spdlog_get("SimPort"))
+	else
 	{
-		log->error("{} : Unsupported EventType : '{}'", Name, ToString(event->GetEventType()));
+		Log.Error("{} : Unsupported EventType : '{}'", Name, ToString(event->GetEventType()));
 		return;
 	}
-	else
-		return;
 
 	auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 	event->SetTimestamp(msSinceEpoch()+random_interval);

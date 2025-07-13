@@ -397,7 +397,7 @@ TEST_CASE(SUITE("Single Drop"))
 
 		for(auto conn_dir : conn_dirs)
 		{
-			odc::spdlog_get("DNP3Port")->info("MITMConfig: {}.",to_string(conn_dir));
+			Log.Info("MITMConfig: {}.",to_string(conn_dir));
 			//Make back-to-back TCP sockets so we can drop data and count re-connects
 			auto pMITM = std::make_shared<ManInTheMiddle>(conn_dir,ms_port,os_port,"DNP3Port");
 
@@ -406,7 +406,7 @@ TEST_CASE(SUITE("Single Drop"))
 			port_pair.first->Enable();
 			port_pair.second->Enable();
 
-			odc::spdlog_get("DNP3Port")->info("Initial link up check.");
+			Log.Info("Initial link up check.");
 			//wait for them to connect through the man-in-the-middle
 			require_link_up(port_pair.first);
 			require_link_up(port_pair.second);
@@ -414,7 +414,7 @@ TEST_CASE(SUITE("Single Drop"))
 			//take a baseline for the number of connections
 			auto start_open1 = pMITM->ConnectionCount(true);
 			auto start_open2 = pMITM->ConnectionCount(false);
-			odc::spdlog_get("DNP3Port")->info("Initial connection count: {},{}",start_open1,start_open2);
+			Log.Info("Initial connection count: {},{}",start_open1,start_open2);
 
 			pMITM->Drop();
 			//data is being dropped now, so the links should go down,
@@ -431,7 +431,7 @@ TEST_CASE(SUITE("Single Drop"))
 			//make sure there were reconnects
 			auto new_open1 = require_connection_increase(pMITM,true,start_open1);
 			auto new_open2 = require_connection_increase(pMITM,false,start_open2);
-			odc::spdlog_get("DNP3Port")->info("New connection count: {},{}",new_open1,new_open2);
+			Log.Info("New connection count: {},{}",new_open1,new_open2);
 
 			port_pair.first->Disable();
 			port_pair.second->Disable();
@@ -474,7 +474,7 @@ TEST_CASE(SUITE("Multi Drop"))
 			port_pair.second->Enable();
 		}
 
-		odc::spdlog_get("DNP3Port")->info("Initial links up test.");
+		Log.Info("Initial links up test.");
 		for(auto port_pair : port_pairs)
 		{
 			//wait for them to connect through the man-in-the-middle
@@ -485,11 +485,11 @@ TEST_CASE(SUITE("Multi Drop"))
 		//take a baseline for the number of connections
 		auto start_open1 = pMITM->ConnectionCount(true);
 		auto start_open2 = pMITM->ConnectionCount(false);
-		odc::spdlog_get("DNP3Port")->info("Initial connection count: {},{}",start_open1,start_open2);
+		Log.Info("Initial connection count: {},{}",start_open1,start_open2);
 
 		//just disabling one or two ports shouldn't affect the others
 		port_pairs[0].first->Disable();
-		odc::spdlog_get("DNP3Port")->info("One down.");
+		Log.Info("One down.");
 		require_link_down(port_pairs[0].second);
 		//wait another keepalive periods to check - just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
@@ -499,7 +499,7 @@ TEST_CASE(SUITE("Multi Drop"))
 			require_link_up(port_pairs[i].second);
 		}
 		port_pairs[1].second->Disable();
-		odc::spdlog_get("DNP3Port")->info("Two down.");
+		Log.Info("Two down.");
 		require_link_down(port_pairs[1].first);
 		//wait another keepalive periods to check - just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
@@ -508,7 +508,7 @@ TEST_CASE(SUITE("Multi Drop"))
 
 		port_pairs[0].first->Enable();
 		port_pairs[1].second->Enable();
-		odc::spdlog_get("DNP3Port")->info("All back.");
+		Log.Info("All back.");
 
 		//wait another keepalive periods to check - just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
@@ -544,7 +544,7 @@ TEST_CASE(SUITE("Multi Drop"))
 		//make sure there were reconnects
 		auto new_open1 = require_connection_increase(pMITM,true,start_open1);
 		auto new_open2 = require_connection_increase(pMITM,false,start_open2);
-		odc::spdlog_get("DNP3Port")->info("New connection count: {},{}",new_open1,new_open2);
+		Log.Info("New connection count: {},{}",new_open1,new_open2);
 
 		for(auto port_pair : port_pairs)
 		{
