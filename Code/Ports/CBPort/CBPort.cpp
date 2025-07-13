@@ -27,6 +27,7 @@
 
 #include "CBPort.h"
 #include "CBPortConf.h"
+#include "Log.h"
 #include <iostream>
 #include <utility>
 
@@ -65,7 +66,7 @@ void CBPort::ProcessElements(const Json::Value& JSONRoot)
 	if (!JSONRoot.isObject()) return;
 
 	if (JSONRoot.isMember("IP") && JSONRoot.isMember("SerialDevice"))
-		LOGERROR("Warning: CB port serial device AND IP address specified - IP overrides");
+		Log.Error("Warning: CB port serial device AND IP address specified - IP overrides");
 
 	if (JSONRoot.isMember("IP"))
 	{
@@ -84,7 +85,7 @@ void CBPort::ProcessElements(const Json::Value& JSONRoot)
 		else if (JSONRoot["TCPClientServer"].asString() == "DEFAULT")
 			static_cast<CBPortConf*>(pConf.get())->mAddrConf.ClientServer = TCPClientServer::SERVER;
 		else
-			LOGERROR("Warning: Invalid TCP client/server type, it should be CLIENT, SERVER, or DEFAULT(SERVER) : "+ JSONRoot["TCPClientServer"].asString());
+			Log.Error("Warning: Invalid TCP client/server type, it should be CLIENT, SERVER, or DEFAULT(SERVER) : "+ JSONRoot["TCPClientServer"].asString());
 	}
 
 	if (JSONRoot.isMember("OutstationAddr"))
@@ -129,7 +130,7 @@ void CBPort::SendCBMessage(const CBMessage_t &CompleteCBMessage)
 {
 	if (CompleteCBMessage.size() == 0)
 	{
-		LOGERROR("Tried to send an empty message to the TCP Port");
+		Log.Error("Tried to send an empty message to the TCP Port");
 		return;
 	}
 	if (!enabled.load()) return; // Port Disabled so dont process

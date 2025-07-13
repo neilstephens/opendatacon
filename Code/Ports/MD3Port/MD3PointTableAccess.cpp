@@ -46,13 +46,13 @@ bool MD3PointTableAccess::AddCounterPointToPointTable(const size_t &index, const
 	uint16_t md3index = CalcAnalogCounterMD3Index(moduleaddress, channel);
 	if (CounterMD3PointMap.find(md3index) != CounterMD3PointMap.end())
 	{
-		LOGERROR("Duplicate Counter MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		Log.Error("Duplicate Counter MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (CounterODCPointMap.find(index) != CounterODCPointMap.end())
 	{
-		LOGERROR("Duplicate Counter ODC Index : " + std::to_string(index));
+		Log.Error("Duplicate Counter ODC Index : " + std::to_string(index));
 		return false;
 	}
 
@@ -66,13 +66,13 @@ bool MD3PointTableAccess::AddAnalogPointToPointTable(const size_t &index, const 
 	uint16_t md3index = CalcAnalogCounterMD3Index(moduleaddress, channel);
 	if (AnalogMD3PointMap.find(md3index) != AnalogMD3PointMap.end())
 	{
-		LOGERROR("Duplicate Analog MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		Log.Error("Duplicate Analog MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (AnalogODCPointMap.find(index) != AnalogODCPointMap.end())
 	{
-		LOGERROR("Duplicate Analog ODC Index : " + std::to_string(index));
+		Log.Error("Duplicate Analog ODC Index : " + std::to_string(index));
 		return false;
 	}
 
@@ -86,13 +86,13 @@ bool MD3PointTableAccess::AddAnalogControlPointToPointTable(const size_t &index,
 	uint16_t md3index = ShiftLeft8Result16Bits(moduleaddress) | channel;
 	if (AnalogControlMD3PointMap.find(md3index) != AnalogControlMD3PointMap.end())
 	{
-		LOGERROR("Duplicate Analog MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		Log.Error("Duplicate Analog MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (AnalogControlODCPointMap.find(index) != AnalogControlODCPointMap.end())
 	{
-		LOGERROR("Duplicate Analog ODC Index : " + std::to_string(index));
+		Log.Error("Duplicate Analog ODC Index : " + std::to_string(index));
 		return false;
 	}
 
@@ -107,13 +107,13 @@ bool MD3PointTableAccess::AddBinaryPointToPointTable(const size_t &index, const 
 	uint16_t md3index = ShiftLeft8Result16Bits(moduleaddress) | channel;
 	if (BinaryMD3PointMap.find(md3index) != BinaryMD3PointMap.end())
 	{
-		LOGERROR("Duplicate Binary MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		Log.Error("Duplicate Binary MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (BinaryODCPointMap.find(index) != BinaryODCPointMap.end())
 	{
-		LOGERROR("Duplicate Binary ODC Index : " + std::to_string(index));
+		Log.Error("Duplicate Binary ODC Index : " + std::to_string(index));
 		return false;
 	}
 
@@ -127,13 +127,13 @@ bool MD3PointTableAccess::AddBinaryControlPointToPointTable(const size_t &index,
 	uint16_t md3index = ShiftLeft8Result16Bits(moduleaddress) | channel;
 	if (BinaryControlMD3PointMap.find(md3index) != BinaryControlMD3PointMap.end())
 	{
-		LOGERROR("Duplicate BinaryControl MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
+		Log.Error("Duplicate BinaryControl MD3 Index " + std::to_string(moduleaddress) + " - " + std::to_string(channel));
 		return false;
 	}
 
 	if (BinaryControlODCPointMap.find(index) != BinaryControlODCPointMap.end())
 	{
-		LOGERROR("Duplicate BinaryControl ODC Index : " + std::to_string(index));
+		Log.Error("Duplicate BinaryControl ODC Index : " + std::to_string(index));
 		return false;
 	}
 

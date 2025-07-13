@@ -27,6 +27,7 @@
 #ifndef AnalogScalingTransform_H_
 #define AnalogScalingTransform_H_
 
+#include "Log.h"
 #include <opendatacon/Transform.h>
 
 using namespace odc;
@@ -38,8 +39,7 @@ public:
 	{
 		if(!params.isMember("Indexes") || !params["Indexes"].isArray())
 		{
-			if(auto log = odc::spdlog_get("Connectors"))
-				log->error("AnalogScalingTransform requires 'Indexes' Array Parameter");
+			Log.Error("AnalogScalingTransform requires 'Indexes' Array Parameter");
 			return;
 		}
 		if(params.isMember("ScaleFactors") && params["ScaleFactors"].isArray()
@@ -54,8 +54,7 @@ public:
 		}
 		else if(params.isMember("ScaleFactors"))
 		{
-			if(auto log = odc::spdlog_get("Connectors"))
-				log->error("AnalogScalingTransform requires optional 'ScaleFactors' Array Parameter to have equal length as 'Indexes'");
+			Log.Error("AnalogScalingTransform requires optional 'ScaleFactors' Array Parameter to have equal length as 'Indexes'");
 		}
 		if(params.isMember("Offsets") && params["Offsets"].isArray()
 		   && params["Indexes"].size() == params["Offsets"].size())
@@ -69,8 +68,7 @@ public:
 		}
 		else if(params.isMember("Offsets"))
 		{
-			if(auto log = odc::spdlog_get("Connectors"))
-				log->error("AnalogScalingTransform requires optional 'Offsets' Array Parameter to have equal length as 'Indexes'");
+			Log.Error("AnalogScalingTransform requires optional 'Offsets' Array Parameter to have equal length as 'Indexes'");
 		}
 	}
 

@@ -19,6 +19,7 @@
  */
 
 #include "ConsoleUI.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <fstream>
 #include <iomanip>

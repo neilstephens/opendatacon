@@ -25,6 +25,7 @@
  */
 
 #include "JSONPort.h"
+#include "Log.h"
 #include <chrono>
 #include <memory>
 #include <opendatacon/IOTypes.h>
@@ -56,8 +57,7 @@ void JSONPort::Enable()
 	}
 	catch(std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("JSONPort"))
-			log->error("{}: Problem opening connection:: {}", Name, e.what());
+		Log.Error("{}: Problem opening connection:: {}", Name, e.what());
 		return;
 	}
 }
@@ -85,8 +85,7 @@ void JSONPort::SocketStateHandler(bool state)
 		msg = Name+": Connection closed.";
 		conn_state = ConnectState::DISCONNECTED;
 	}
-	if(auto log = odc::spdlog_get("JSONPort"))
-		log->info(msg);
+	Log.Info(msg);
 
 	//Send an event out
 	PublishEvent(std::move(conn_state));
@@ -170,8 +169,7 @@ void JSONPort::ReadCompletionHandler(buf_t& readbuf)
 			{
 				braced.clear(); //discard because it must be outside matched braces
 				count_close_braces = count_open_braces = 0;
-				if(auto log = odc::spdlog_get("JSONPort"))
-					log->warn("Malformed JSON received: unmatched closing brace.");
+				Log.Warn("Malformed JSON received: unmatched closing brace.");
 			}
 		}
 		braced.push_back(ch);
@@ -199,8 +197,7 @@ DataToStringMethod GetOctetStringFormat(const Json::Value& point_json)
 			format = DataToStringMethod::Base64;
 		else if(point_json["Format"].asString() != "Raw")
 		{
-			if(auto log = odc::spdlog_get("JSONPort"))
-				log->warn("Unknown format for OctetString specified '{}'. Using raw text", point_json["Format"].asString());
+			Log.Warn("Unknown format for OctetString specified '{}'. Using raw text", point_json["Format"].asString());
 		}
 	}
 	return format;
@@ -249,8 +246,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			}
 			catch(std::runtime_error& e)
 			{
-				if(auto log = odc::spdlog_get("JSONPort"))
-					log->error("Error decoding timestamp as Uint64: '{}'",e.what());
+				Log.Error("Error decoding timestamp as Uint64: '{}'",e.what());
 			}
 		}
 
@@ -278,16 +274,14 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					}
 					catch(std::exception&)
 					{
-						if(auto log = odc::spdlog_get("JSONPort"))
-							log->error("Error decoding Analog from string '{}', for index {}",val.asString(),point_pair.first);
+						Log.Error("Error decoding Analog from string '{}', for index {}",val.asString(),point_pair.first);
 						event->SetPayload<EventType::Analog>(0);
 						event->SetQuality(QualityFlags::OVERRANGE);
 					}
 				}
 				else
 				{
-					if(auto log = odc::spdlog_get("JSONPort"))
-						log->error("Error decoding Analog for index {}",point_pair.first);
+					Log.Error("Error decoding Analog for index {}",point_pair.first);
 					event->SetPayload<EventType::Analog>(0);
 					event->SetQuality(QualityFlags::OVERRANGE);
 				}
@@ -355,8 +349,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						catch(const std::exception& e)
 						{
 							auto msg = fmt::format("Invalid hex string '{}': {}", unmodified_string, e.what());
-							if(auto log = odc::spdlog_get("JSONPort"))
-								log->warn(msg);
+							Log.Warn(msg);
 							event->SetPayload<EventType::OctetString>(std::move(msg));
 						}
 						break;
@@ -370,13 +363,11 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						catch(const std::exception& e)
 						{
 							auto msg = fmt::format("Invalid base64 string '{}': {}", unmodified_string, e.what());
-							if(auto log = odc::spdlog_get("JSONPort"))
-								log->warn(msg);
+							Log.Warn(msg);
 							event->SetPayload<EventType::OctetString>(std::move(msg));
 						}
 					default:
-						if(auto log = odc::spdlog_get("JSONPort"))
-							log->warn("Unsupported string to data method {}",format);
+						Log.Warn("Unsupported string to data method {}",format);
 						event->SetPayload<EventType::OctetString>(std::move(unmodified_string));
 						break;
 				}
@@ -458,8 +449,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error& e)
 						{
-							if(auto log = odc::spdlog_get("JSONPort"))
-								log->error("'{}', for index {}",e.what(),point_pair.first);
+							Log.Error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
 						if(on)
@@ -476,8 +466,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 						}
 						catch(std::runtime_error& e)
 						{
-							if(auto log = odc::spdlog_get("JSONPort"))
-								log->error("'{}', for index {}",e.what(),point_pair.first);
+							Log.Error("'{}', for index {}",e.what(),point_pair.first);
 							continue;
 						}
 						if(trip)
@@ -487,8 +476,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					}
 					else if(cm != "PULSE")
 					{
-						if(auto log = odc::spdlog_get("JSONPort"))
-							log->error("Unrecongnised ControlMode '{}', received for index {}",cm,point_pair.first);
+						Log.Error("Unrecongnised ControlMode '{}', received for index {}",cm,point_pair.first);
 						continue;
 					}
 				}
@@ -537,8 +525,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				AO16 analogpayload;
 				analogpayload.second = CommandStatus::SUCCESS;
 
-				if (auto log = odc::spdlog_get("JSONPort"))
-					log->debug("JSNOn AnalogControl Command - {}", val.asString());
+				Log.Debug("JSON AnalogControl Command - {}", val.asString());
 
 				if (val.isNumeric())
 					analogpayload.first = val.asUInt();
@@ -550,14 +537,12 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					}
 					catch (std::exception&)
 					{
-						if (auto log = odc::spdlog_get("JSONPort"))
-							log->error("Error decoding AnalogControl from string '{}', for index {}", val.asString(), point_pair.first);
+						Log.Error("Error decoding AnalogControl from string '{}', for index {}", val.asString(), point_pair.first);
 					}
 				}
 				else
 				{
-					if (auto log = odc::spdlog_get("JSONPort"))
-						log->error("Error decoding AnalogControl value for index {}", point_pair.first);
+					Log.Error("Error decoding AnalogControl value for index {}", point_pair.first);
 					return;
 				}
 				event->SetPayload<EventType::AnalogOutputInt16>(std::move(analogpayload));
@@ -591,8 +576,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("JSONPort"))
-			log->warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
+		Log.Warn("Error parsing JSON string: '{}' : '{}'", braced, err_str);
 	}
 }
 

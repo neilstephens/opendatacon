@@ -40,6 +40,7 @@
 #include <opendatacon/util.h>
 #include <opendatacon/IUI.h>
 #include <opendatacon/asio.h>
+#include <opendatacon/LogHelpers.h>
 #include <unordered_map>
 #include <set>
 
@@ -64,6 +65,7 @@ public:
 	bool isShutDown();
 
 private:
+	inline static LogHelpers Log{"opendatacon"};
 	std::pair<spdlog::level::level_enum,spdlog::level::level_enum> ConfigureLogSinks(const Json::Value& JSONRoot);
 	void ProcessPorts(const Json::Value& Ports);
 	void ProcessConnectors(const Json::Value& Connectors);

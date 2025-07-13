@@ -26,7 +26,8 @@
 
 #include "DNP3PointConf.h"
 #include "OpenDNP3Helpers.h"
-#include "opendatacon/IOTypes.h"
+#include "Log.h"
+#include <opendatacon/IOTypes.h>
 #include <algorithm>
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
@@ -170,8 +171,7 @@ opendnp3::PointClass GetClass(Json::Value JPoint)
 					clazz = opendnp3::PointClass::Class3;
 					break;
 				default:
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->error("Invalid class for Point: '{}'", JPoint.toStyledString());
+					Log.Error("Invalid class for Point: '{}'", JPoint.toStyledString());
 					break;
 			}
 		}
@@ -185,8 +185,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 
 	// DNP3 Link Configuration
 	if (JSONRoot.isMember("LinkNumRetry"))
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("Use of 'LinkNumRetry' is deprecated");
+		Log.Error("Use of 'LinkNumRetry' is deprecated");
 	if (JSONRoot.isMember("LinkTimeoutms"))
 		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
 	if (JSONRoot.isMember("LinkKeepAlivems"))
@@ -194,8 +193,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	if (JSONRoot.isMember("LinkUseConfirms"))
 		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
 	if (JSONRoot.isMember("UseConfirms"))
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '{}'", JSONRoot["UseConfirms"].toStyledString());
+		Log.Error("Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '{}'", JSONRoot["UseConfirms"].toStyledString());
 
 	// Common application configuration
 	if (JSONRoot.isMember("ServerAcceptMode"))
@@ -205,20 +203,17 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		else if(JSONRoot["ServerAcceptMode"].asString() == "CloseExisting")
 			ServerAcceptMode = opendnp3::ServerAcceptMode::CloseExisting;
 		else
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("Invalid ServerAcceptMode : '{}'", JSONRoot["ServerAcceptMode"].asString());
+			Log.Error("Invalid ServerAcceptMode : '{}'", JSONRoot["ServerAcceptMode"].asString());
 	}
 	if (JSONRoot.isMember("TCPConnectRetryPeriodMinms"))
 	{
 		IPConnectRetryPeriodMinms = JSONRoot["TCPConnectRetryPeriodMinms"].asUInt();
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->warn("TCPConnectRetryPeriodMinms is deprecated, use IPConnectRetryPeriodMinms instead");
+		Log.Warn("TCPConnectRetryPeriodMinms is deprecated, use IPConnectRetryPeriodMinms instead");
 	}
 	if (JSONRoot.isMember("TCPConnectRetryPeriodMaxms"))
 	{
 		IPConnectRetryPeriodMaxms = JSONRoot["TCPConnectRetryPeriodMaxms"].asUInt();
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->warn("TCPConnectRetryPeriodMaxms is deprecated, use IPConnectRetryPeriodMaxms instead");
+		Log.Warn("TCPConnectRetryPeriodMaxms is deprecated, use IPConnectRetryPeriodMaxms instead");
 	}
 	if (JSONRoot.isMember("IPConnectRetryPeriodMinms"))
 		IPConnectRetryPeriodMinms = JSONRoot["IPConnectRetryPeriodMinms"].asUInt();
@@ -242,8 +237,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		LANModeTimeSync = JSONRoot["LANModeTimeSync"].asBool();
 	if (JSONRoot.isMember("DoUnsolOnStartup"))
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->warn("DoUnsolOnStartup is deprecated because it had a non-compliant default, use DisableUnsolOnStartup=false if you really want non-compliant behaviour");
+		Log.Warn("DoUnsolOnStartup is deprecated because it had a non-compliant default, use DisableUnsolOnStartup=false if you really want non-compliant behaviour");
 	}
 	/// If true, the master will disable unsol on startup (warning: setting false produces non-compliant behaviour)
 	if (JSONRoot.isMember("DisableUnsolOnStartup"))
@@ -283,8 +277,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::ON_EVERY;
 		else
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->error("Invalid LinkUpIntegrityTrigger: {}, should be NEVER, ON_FIRST, or ON_EVERY - defaulting to ON_FIRST", trig_str);
+			Log.Error("Invalid LinkUpIntegrityTrigger: {}, should be NEVER, ON_FIRST, or ON_EVERY - defaulting to ON_FIRST", trig_str);
 		}
 	}
 	/// Which classes should be requested for forced integrity scans
@@ -321,8 +314,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		}
 		else
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->error("CommsPoint needs an 'Index' and a 'FailValue'.");
+			Log.Error("CommsPoint needs an 'Index' and a 'FailValue'.");
 		}
 		if(JSONRoot["CommsPoint"].isMember("RideThroughTimems"))
 			CommsPointRideThroughTimems = JSONRoot["CommsPoint"]["RideThroughTimems"].asUInt();
@@ -420,8 +412,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		AnalogControlType = odc::EventTypeFromString(JSONRoot["AnalogControlType"].asString());
 		if(AnalogControlType < odc::EventType::AnalogOutputInt16 || AnalogControlType > odc::EventType::AnalogOutputDouble64)
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to AnalogOutputInt32", JSONRoot["AnalogControlType"].asString());
+			Log.Error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to AnalogOutputInt32", JSONRoot["AnalogControlType"].asString());
 			AnalogControlType = odc::EventType::AnalogOutputInt32;
 		}
 	}
@@ -437,8 +428,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			TimestampOverride = DNP3PointConf::TimestampOverride_t::NEVER;
 		else
 		{
-			if(auto log = odc::spdlog_get("DNP3Port"))
-				log->error("Invalid TimestampOverride: {}, should be ALWAYS, ZERO, or NEVER - defaulting to ZERO", JSONRoot["TimestampOverride"].asString());
+			Log.Error("Invalid TimestampOverride: {}, should be ALWAYS, ZERO, or NEVER - defaulting to ZERO", JSONRoot["TimestampOverride"].asString());
 		}
 	}
 
@@ -448,8 +438,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 						   const auto EBsize = JSONRoot[eb_key].asUInt();
 						   if(EBsize > std::numeric_limits<uint16_t>::max())
 						   {
-							   if(auto log = odc::spdlog_get("DNP3Port"))
-								   log->error("Max size for DNP3 event buffer capped. Reduced {} from {} to {}. Set in config to avoid this error.", eb_key, EBsize, std::numeric_limits<uint16_t>::max());
+							   Log.Error("Max size for DNP3 event buffer capped. Reduced {} from {} to {}. Set in config to avoid this error.", eb_key, EBsize, std::numeric_limits<uint16_t>::max());
 							   return std::numeric_limits<uint16_t>::max();
 						   }
 						   return EBsize;
@@ -483,8 +472,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					   }
 					   else
 					   {
-						   if(auto log = odc::spdlog_get("DNP3Port"))
-							   log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", PointArrayElement.toStyledString());
+						   Log.Error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", PointArrayElement.toStyledString());
 						   return {false,0,0};
 					   }
 					   return {true,start,stop};
@@ -771,8 +759,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					AnalogControlTypes[index] = odc::EventTypeFromString(AnalogControls[n]["Type"].asString());
 					if(AnalogControlTypes[index] < odc::EventType::AnalogOutputInt16 || AnalogControlTypes[index] > odc::EventType::AnalogOutputDouble64)
 					{
-						if(auto log = odc::spdlog_get("DNP3Port"))
-							log->error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port default {}", AnalogControls[n]["Type"].asString(),ToString(AnalogControlType));
+						Log.Error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port default {}", AnalogControls[n]["Type"].asString(),ToString(AnalogControlType));
 						AnalogControlTypes[index] = AnalogControlType;
 					}
 				}

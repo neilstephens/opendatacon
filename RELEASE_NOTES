@@ -1,4 +1,20 @@
-# opendatacon version 1.10.0
+# opendatacon version 1.10.1
+
+## 1.10.1
+  * KafkaPort fixes
+    * Shared client logging name fixed
+    * Quality-only event handling and event de-duplication
+    * UTC date-time formatting option
+    * misc edge case stability fixes
+  * DNP3Port fixes
+    * Fixed logic races in on-demand and comms ride-through
+    * No heartbeat before comms is initialised
+  * Performance enhancements
+    * Major config reload speed-up, and support for recursive "Inherits"
+    * Removed bottleneck for mass DNP3 connection state changes
+    * More efficient logging
+	  * Removed bottleneck on spdlog registry
+	  * 'Should Log?' checks on trace level logging
 
 ## 1.10.0
   * New port library: "KafkaPort"

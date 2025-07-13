@@ -34,6 +34,7 @@
 #include "MD3OutStationPortCollection.h"
 #include "MD3OutstationPort.h"
 #include "MD3Utility.h"
+#include "Log.h"
 #include <chrono>
 #include <future>
 #include <random>
@@ -55,7 +56,7 @@ MD3OutstationPort::MD3OutstationPort(const std::string & aName, const std::strin
 
 	IsOutStation = true;
 
-	LOGDEBUG("{} - MD3Outstation Constructor",aName);
+	Log.Debug("{} - MD3Outstation Constructor",aName);
 }
 
 void MD3OutstationPort::UpdateOutstationPortCollection()
@@ -104,7 +105,7 @@ void MD3OutstationPort::Enable()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("{} Problem opening connection : {}",Name, e.what());
+		Log.Error("{} Problem opening connection : {}",Name, e.what());
 		enabled = false;
 		return;
 	}
@@ -132,7 +133,7 @@ void MD3OutstationPort::SocketStateHandler(bool state)
 		PublishEvent(ConnectState::DISCONNECTED);
 		msg = Name + ": Connection closed.";
 	}
-	LOGINFO(msg);
+	Log.Info(msg);
 }
 
 void MD3OutstationPort::Build()
@@ -158,13 +159,13 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 {
 	if (CompleteMD3Message.size() == 0)
 	{
-		LOGERROR("{} - Tried to send an empty message to the TCP Port",Name);
+		Log.Error("{} - Tried to send an empty message to the TCP Port",Name);
 		return;
 	}
 	if (BitFlipProbability != 0.0)
 	{
 		auto msg = CorruptMD3Message(CompleteMD3Message);
-		LOGDEBUG("{} - Sending Corrupted Message - Correct {}, Corrupted {}", Name, MD3MessageAsString(CompleteMD3Message), MD3MessageAsString(msg));
+		Log.Debug("{} - Sending Corrupted Message - Correct {}, Corrupted {}", Name, MD3MessageAsString(CompleteMD3Message), MD3MessageAsString(msg));
 		MD3Port::SendMD3Message(msg);
 	}
 	else
@@ -178,11 +179,11 @@ void MD3OutstationPort::SendMD3Message(const MD3Message_t &CompleteMD3Message)
 
 			if (dist(e2) < ResponseDropProbability)
 			{
-				LOGDEBUG("{} - Dropping Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
+				Log.Debug("{} - Dropping Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
 				return;
 			}
 		}
-		LOGDEBUG("{} - Sending Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
+		Log.Debug("{} - Sending Message - {}", Name, MD3MessageAsString(CompleteMD3Message));
 		// Done this way just to get context into log messages.
 		MD3Port::SendMD3Message(CompleteMD3Message);
 	}
@@ -272,10 +273,10 @@ void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedSta
 		{
 			auto analogmeas = static_cast<uint16_t>(event->GetPayload<EventType::Analog>());
 
-			LOGTRACE("{} - Received Event - Analog - Index {} Value {}",Name, ODCIndex, to_hexstring(analogmeas));
+			if(Log.ShouldLog(spdlog::level::trace)) Log.Trace("{} - Received Event - Analog - Index {} Value {}",Name, ODCIndex, to_hexstring(analogmeas));
 			if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, analogmeas))
 			{
-				LOGERROR("{} - Tried to set the value for an invalid analog point index {}",Name, ODCIndex);
+				Log.Error("{} - Tried to set the value for an invalid analog point index {}",Name, ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -284,10 +285,10 @@ void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedSta
 		{
 			auto countermeas = numeric_cast<uint16_t>(event->GetPayload<EventType::Counter>());
 
-			LOGDEBUG("{} - Received Event - Counter - Index {} Value {}",Name, ODCIndex,to_hexstring(countermeas));
+			Log.Debug("{} - Received Event - Counter - Index {} Value {}",Name, ODCIndex,to_hexstring(countermeas));
 			if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, countermeas))
 			{
-				LOGERROR("{} - Tried to set the value for an invalid counter point index {}",Name, ODCIndex);
+				Log.Error("{} - Tried to set the value for an invalid counter point index {}",Name, ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 			return (*pStatusCallback)(CommandStatus::SUCCESS);
@@ -300,7 +301,7 @@ void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedSta
 			MD3Time eventtime = event->GetTimestamp();
 			uint8_t meas = event->GetPayload<EventType::Binary>();
 
-			LOGDEBUG("{} - Received Event - Binary - Index {}  Value {}",Name, ODCIndex,meas);
+			Log.Debug("{} - Received Event - Binary - Index {}  Value {}",Name, ODCIndex,meas);
 
 			// Check that the passed time is within 30 minutes of the actual time, if not use the current time
 			if (MyPointConf->OverrideOldTimeStamps)
@@ -308,13 +309,13 @@ void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedSta
 				if (abs(static_cast<int64_t>(now / 1000) - static_cast<int64_t>(eventtime / 1000)) < 60 * 30)
 				{
 					eventtime = now; // msec since epoch.
-					LOGDEBUG("{} - Binary time tag value is too far from current time (>30min) changing to current time. Point index {}",Name,ODCIndex);
+					Log.Debug("{} - Binary time tag value is too far from current time (>30min) changing to current time. Point index {}",Name,ODCIndex);
 				}
 			}
 
 			if (!MyPointConf->PointTable.SetBinaryValueUsingODCIndex(ODCIndex, meas, eventtime))
 			{
-				LOGERROR("{} - Tried to set the value for an invalid binary point index {}",Name, ODCIndex);
+				Log.Error("{} - Tried to set the value for an invalid binary point index {}",Name, ODCIndex);
 				return (*pStatusCallback)(CommandStatus::UNDEFINED);
 			}
 
@@ -329,7 +330,7 @@ void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedSta
 
 			if (state == ConnectState::CONNECTED)
 			{
-				LOGDEBUG("{} - Upstream (other side of ODC) port enabled - So a Master will send us events - and we can send what we have over ODC ",Name);
+				Log.Debug("{} - Upstream (other side of ODC) port enabled - So a Master will send us events - and we can send what we have over ODC ",Name);
 				// We dont know the state of the upstream data, so send event information for all points.
 
 			}
@@ -347,7 +348,7 @@ void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedSta
 			{
 				if (!MyPointConf->PointTable.SetAnalogValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
 				{
-					LOGERROR("{} - Tried to set the failure value for an invalid analog point index {}",Name, ODCIndex);
+					Log.Error("{} - Tried to set the failure value for an invalid analog point index {}",Name, ODCIndex);
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}
@@ -359,7 +360,7 @@ void MD3OutstationPort::Event_(std::shared_ptr<const EventInfo> event, SharedSta
 			{
 				if (!MyPointConf->PointTable.SetCounterValueUsingODCIndex(ODCIndex, static_cast<uint16_t>(0x8000)))
 				{
-					LOGERROR("{} - Tried to set the failure value for an invalid counter point index {}",Name, ODCIndex);
+					Log.Error("{} - Tried to set the failure value for an invalid counter point index {}",Name, ODCIndex);
 					return (*pStatusCallback)(CommandStatus::UNDEFINED);
 				}
 			}

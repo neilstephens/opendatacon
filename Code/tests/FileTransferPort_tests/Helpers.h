@@ -39,6 +39,8 @@
 
 extern spdlog::level::level_enum log_level;
 
+inline static odc::LogHelpers Log("FileTransferPort");
+
 inline void TestSetup()
 {
 	auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -108,8 +110,7 @@ inline Json::Value GetConfigJSON(bool TX)
 	bool parse_success = Json::parseFromStream(JSONReader,iss, &json_conf, &err_str);
 	if (!parse_success)
 	{
-		if(auto log = odc::spdlog_get("FileTransferPort"))
-			log->error("Failed to parse configuration: '{}'", err_str);
+		Log.Error("Failed to parse configuration: '{}'", err_str);
 	}
 	return json_conf;
 }
@@ -202,8 +203,8 @@ public:
 			{
 				//drop data
 				case 1:
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->trace("DROPPED: {} {} Payload {} Event {} => DROP", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
+					if(Log.ShouldLog(spdlog::level::trace))
+						Log.Trace("DROPPED: {} {} Payload {} Event {} => DROP", ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name);
 					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
 					return;
 
@@ -233,8 +234,8 @@ public:
 private:
 	inline void PublishEvent(const std::shared_ptr<const odc::EventInfo> event, const std::shared_ptr<odc::DataPort> Sendee, const odc::SharedStatusCallback_t pStatusCallback)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, Sendee->GetName());
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, Sendee->GetName());
 		Sendee->Event(event,Name,pStatusCallback);
 	}
 	std::shared_ptr<odc::DataPort> Port1;

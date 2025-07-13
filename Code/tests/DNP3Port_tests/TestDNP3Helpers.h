@@ -27,11 +27,13 @@
 #ifndef DNPTESTHELPERS_H
 #define DNPTESTHELPERS_H
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/util.h>
 #include <opendatacon/Platform.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 extern spdlog::level::level_enum log_level;
+static inline odc::LogHelpers Log{"DNP3Port"};
 
 inline void TestSetup()
 {

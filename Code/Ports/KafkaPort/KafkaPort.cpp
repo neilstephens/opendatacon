@@ -28,6 +28,7 @@
 #include "KafkaPortConf.h"
 #include "CBORSerialiser.h"
 #include "EventTranslation.h"
+#include "Log.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
@@ -38,39 +39,79 @@ KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const
 {
 	pConf = std::make_unique<KafkaPortConf>(isProducer);
 	ProcessFile();
+
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	if(pConf->pPointMap && pConf->MustOverridePTMEntries)
+	{
+		PointTranslationMap ptm;
+		for(const auto& [tid,pte] : *pConf->pPointMap)
+		{
+			if(!pte.override)
+				continue;
+			ptm[tid].override = pte.override;
+			ptm[tid].pCBORer = pte.pCBORer ? std::make_unique<CBORSerialiser>(std::move(*pte.pCBORer)) : nullptr;
+			ptm[tid].pExtraFields = pte.pExtraFields ? std::make_unique<ExtraPointFields>(*pte.pExtraFields) : nullptr;
+			ptm[tid].pKey = pte.pKey ? std::make_unique<odc::OctetStringBuffer>(std::move(*pte.pKey)) : nullptr;
+			ptm[tid].pTemplate = pte.pTemplate ? std::make_unique<std::string>(std::move(*pte.pTemplate)) : nullptr;
+			ptm[tid].pTopic = pte.pTopic ? std::make_unique<kafka::Topic>(std::move(*pte.pTopic)) : nullptr;
+		}
+		pConf->pPointMap = std::make_unique<const PointTranslationMap>(std::move(ptm));
+	}
 }
 
 void KafkaPort::Enable()
 {
-	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
-	pStateSync->post([weak_self]()
+	auto weak_self = weak_from_this();
+	pStateSync->post([weak_self,this]()
 		{
 			if(auto self = weak_self.lock())
 			{
-				if(self->enabled)
+				if(enabled)
 					return;
-				auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
-				if(pConf->ServerType == server_type_t::PERSISTENT || (pConf->ServerType == server_type_t::ONDEMAND && self->InDemand()))
-					self->PortUp();
-				self->enabled = true;
-				self->PublishEvent(ConnectState::PORT_UP);
+				auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+				if(pConf->ServerType == server_type_t::PERSISTENT || (pConf->ServerType == server_type_t::ONDEMAND && InDemand()))
+					PortUp();
+				enabled = true;
+				PublishEvent(ConnectState::PORT_UP);
 			}
 		});
 }
 
 void KafkaPort::Disable()
 {
-	std::weak_ptr<KafkaPort> weak_self = std::static_pointer_cast<KafkaPort>(shared_from_this());
-	pStateSync->post([weak_self]()
+	auto weak_self = weak_from_this();
+	pStateSync->post([weak_self,this]()
 		{
 			if(auto self = weak_self.lock())
 			{
-				if(!self->enabled)
+				if(!enabled)
 					return;
-				self->enabled = false;
-				self->PortDown();
-				self->PublishEvent(ConnectState::PORT_DOWN);
+				enabled = false;
+				PortDown();
+				PublishEvent(ConnectState::PORT_DOWN);
 			}
+		});
+}
+
+void KafkaPort::ConnectionEvent(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback)
+{
+	auto weak_self = weak_from_this();
+	pStateSync->post([weak_self,this,event,pStatusCallback]()
+		{
+			if(auto self = weak_self.lock())
+			{
+				auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+				if(pConf->ServerType == server_type_t::ONDEMAND)
+				{
+					if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
+						PortUp();
+					else if(!InDemand())
+						PortDown();
+					(*pStatusCallback)(odc::CommandStatus::SUCCESS);
+					return;
+				}
+			}
+			(*pStatusCallback)(odc::CommandStatus::UNDEFINED);
 		});
 }
 
@@ -90,10 +131,8 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			{
 				pConf->NativeKafkaProperties.put(memberName, JSONRoot["NativeKafkaProperties"][memberName].asString());
 			}
-			else if(auto log = odc::spdlog_get("KafkaPort"))
-			{
-				log->error("NativeKafkaProperties member '{}' is not a simple value; ignoring.", memberName);
-			}
+			else
+				Log.Error("NativeKafkaProperties member '{}' is not a simple value; ignoring.", memberName);
 		}
 	}
 	if(JSONRoot.isMember("ShareKafkaClient"))
@@ -110,8 +149,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->ServerType = server_type_t::MANUAL;
 		else
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->warn("Invalid KafkaPort server type: '{}'.", JSONRoot["ServerType"].asString());
+			Log.Warn("Invalid KafkaPort server type: '{}'.", JSONRoot["ServerType"].asString());
 		}
 	}
 	if(JSONRoot.isMember("SharedKafkaClientKey"))
@@ -148,8 +186,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->TranslationMethod = EventTranslationMethod::CBOR;
 		else
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Unknown TranslationMethod '{}'. Defaulting to Template.", JSONRoot["TranslationMethod"].asString());
+			Log.Error("Unknown TranslationMethod '{}'. Defaulting to Template.", JSONRoot["TranslationMethod"].asString());
 			pConf->TranslationMethod = EventTranslationMethod::Template;
 		}
 	}
@@ -167,14 +204,21 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->PointTraslationSource = SourceLookupMethod::None;
 		else
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("Unknown PointTraslationSource '{}'. Defaulting to None.", JSONRoot["PointTraslationSource"].asString());
+			Log.Error("Unknown PointTraslationSource '{}'. Defaulting to None.", JSONRoot["PointTraslationSource"].asString());
 			pConf->PointTraslationSource = SourceLookupMethod::None;
 		}
 	}
 	if(JSONRoot.isMember("OverridesCreateNewPTMEntries"))
 	{
 		pConf->OverridesCreateNewPTMEntries = JSONRoot["OverridesCreateNewPTMEntries"].asBool();
+	}
+	if(JSONRoot.isMember("MustOverridePTMEntries"))
+	{
+		pConf->MustOverridePTMEntries = JSONRoot["MustOverridePTMEntries"].asBool();
+	}
+	if(JSONRoot.isMember("DeduplicateEvents"))
+	{
+		pConf->DeduplicateEvents = JSONRoot["DeduplicateEvents"].asBool();
 	}
 	if (JSONRoot.isMember("OctetStringFormat"))
 	{
@@ -185,12 +229,15 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			pConf->OctetStringFormat = DataToStringMethod::Raw;
 		else if(fmt == "Base64")
 			pConf->OctetStringFormat = DataToStringMethod::Base64;
-		else if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("Unknown OctetStringFormat '{}', should be Raw or Hex. Defaulting to Hex", fmt);
+		else Log.Error("Unknown OctetStringFormat '{}', should be Raw or Hex. Defaulting to Hex", fmt);
 	}
 	if(JSONRoot.isMember("DateTimeFormat"))
 	{
 		pConf->DateTimeFormat = JSONRoot["DateTimeFormat"].asString();
+	}
+	if(JSONRoot.isMember("DateTimeIsUTC"))
+	{
+		pConf->DateTimeIsUTC = JSONRoot["DateTimeIsUTC"].asBool();
 	}
 	if(JSONRoot.isMember("ConsumerFastForwardOffset"))
 	{
@@ -211,6 +258,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 		{
 			for(const auto& [tid,pte] : *pConf->pPointMap)
 			{
+				ptm[tid].override = pte.override;
 				ptm[tid].pCBORer = pte.pCBORer ? std::make_unique<CBORSerialiser>(std::move(*pte.pCBORer)) : nullptr;
 				ptm[tid].pExtraFields = pte.pExtraFields ? std::make_unique<ExtraPointFields>(*pte.pExtraFields) : nullptr;
 				ptm[tid].pKey = pte.pKey ? std::make_unique<odc::OctetStringBuffer>(std::move(*pte.pKey)) : nullptr;
@@ -225,18 +273,12 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 			auto eventType = EventTypeFromString(EventTypeStr);
 			if(eventType == odc::EventType::AfterRange)
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-				{
-					log->error("Unknown EventType '{}' in PointTranslationMap. Ignoring.", EventTypeStr);
-				}
+				Log.Error("Unknown EventType '{}' in PointTranslationMap. Ignoring.", EventTypeStr);
 				continue;
 			}
 			if(!JSON_PTM[EventTypeStr].isArray())
 			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-				{
-					log->error("PointTranslationMap member '{}' should be an array. Ignoring.", EventTypeStr);
-				}
+				Log.Error("PointTranslationMap member '{}' should be an array. Ignoring.", EventTypeStr);
 				continue;
 			}
 			for(auto& entry : JSON_PTM[EventTypeStr])
@@ -253,8 +295,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 				}
 				else
 				{
-					if(auto log = odc::spdlog_get("KafkaPort"))
-						log->error("A PointTranslationMap entry needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : skipping '{}'", entry.toStyledString());
+					Log.Error("A PointTranslationMap entry needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : skipping '{}'", entry.toStyledString());
 					continue;
 				}
 				for(size_t idx = start; idx <= stop; idx+=inc)
@@ -273,6 +314,9 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 
 					//Take a copy and update the existing entry, or create a new one
 					PointTranslationEntry pte = existing_point ? std::move(ptm.at(tid)) : PointTranslationEntry();
+
+					if(existing_point)
+						pte.override = true;
 
 					for(auto pte_member : entry.getMemberNames())
 					{
@@ -294,8 +338,7 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 							}
 							catch(std::exception& e)
 							{
-								if(auto log = odc::spdlog_get("KafkaPort"))
-									log->error("Failed to process 'CBORStructure': {}",e.what());
+								Log.Error("Failed to process 'CBORStructure': {}",e.what());
 							}
 						}
 						else
@@ -309,6 +352,6 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 				}
 			}
 		}
-		pConf->pPointMap = std::make_unique<PointTranslationMap>(std::move(ptm));
+		pConf->pPointMap = std::make_unique<const PointTranslationMap>(std::move(ptm));
 	}
 }

@@ -27,6 +27,7 @@
 #ifndef ONESHOTFUNC_H
 #define ONESHOTFUNC_H
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/util.h>
 #include <memory>
 #include <utility>
@@ -51,6 +52,7 @@ private:
 	using FnT = FnR(FnArgs...);
 	std::shared_ptr<std::function<FnT>> pFn;
 	std::atomic_bool called = false;
+	inline static LogHelpers Log{"opendatacon"};
 
 public:
 
@@ -77,11 +79,7 @@ protected:
 	{
 		if(!called.load())
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-			{
-				log->error("One-shot function not called before destruction. Dumping trace backlog if configured.");
-				log->dump_backtrace();
-			}
+			Log.Error("One-shot function not called before destruction.");
 		}
 	}
 
@@ -97,11 +95,7 @@ private:
 		//std::get_deleter returns a pointer, and lambda types are unique, so non-null means it's our 'tag', so convert direct to bool
 		bool has_oneshot_tag = std::get_deleter<decltype(oneshot_was_here)>(wrapee);
 		if(has_oneshot_tag)
-		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->trace("Attempted re-wrap of one-shot function detected; returning it as-is.");
 			return wrapee;
-		}
 
 		auto pOneShot = std::make_shared<OneShotFuncBuilder<FnT>>(wrapee);
 		return std::shared_ptr<std::function<FnT>>(new std::function<FnT>([pOneShot](FnArgs... args) -> FnR
@@ -115,11 +109,7 @@ private:
 	{
 		if(called.exchange(true))
 		{
-			if(auto log = odc::spdlog_get("opendatacon"))
-			{
-				log->error("One-shot function called more than once. Dumping trace backlog if configured.");
-				log->dump_backtrace();
-			}
+			Log.Error("One-shot function called more than once.");
 		}
 		return (*pFn)(std::forward<FnArgs>(args)...);
 	}

@@ -52,7 +52,7 @@ void require_equal(const T& thing1, const T& thing2)
 	if(!stop)
 		stop_timer->cancel();
 	else
-		odc::spdlog_get("opendatacon")->critical("Test timeout");
+		Log.Critical("Test timeout");
 
 	while(!stop)
 		odc::asio_service::Get()->poll_one();
@@ -68,10 +68,10 @@ TEST_CASE(SUITE("ListenClose"))
 	auto ReadHandler = [&](odc::buf_t&){};
 	auto StateHandler = [&](bool){};
 
-	odc::spdlog_get("opendatacon")->debug("Creating Sock");
+	Log.Debug("Creating Sock");
 	auto pSockMan = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler,StateHandler,10,true,0,0,0,0,
-		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
+		[](const std::string& level, const std::string& msg){ Log.GetLog()->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
 
 	auto pThreadPool = std::make_unique<ThreadPool>(2);
 
@@ -98,7 +98,7 @@ TEST_CASE(SUITE("OpenClose"))
 				  {
 					  auto& sockstate = sock1 ? state1 : state2;
 					  sockstate = state;
-					  odc::spdlog_get("opendatacon")->debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
+					  Log.Debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
 				  };
 
 	auto ReadHandler1 = std::bind(ReadHandler,true,std::placeholders::_1);
@@ -106,15 +106,15 @@ TEST_CASE(SUITE("OpenClose"))
 	auto StateHandler1 = std::bind(StateHandler,true,std::placeholders::_1);
 	auto StateHandler2 = std::bind(StateHandler,false,std::placeholders::_1);
 
-	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
+	Log.Debug("Creating Sock1");
 	auto pSockMan1 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,10,true,0,0,0,0,
-		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
+		[](const std::string& level, const std::string& msg){ Log.GetLog()->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
 
-	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
+	Log.Debug("Creating Sock2");
 	auto pSockMan2 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,10,true,0,0,0,0,
-		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock2: {}",msg);});
+		[](const std::string& level, const std::string& msg){ Log.GetLog()->log(spdlog::level::from_str(level),"Sock2: {}",msg);});
 
 	pSockMan1->Open();
 	pSockMan2->Open();
@@ -168,7 +168,7 @@ TEST_CASE(SUITE("SimpleStrings"))
 				  {
 					  auto& sockstate = sock1 ? state1 : state2;
 					  sockstate = state;
-					  odc::spdlog_get("opendatacon")->debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
+					  Log.Debug("Sock{} state: {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
 				  };
 
 	auto ReadHandler1 = std::bind(ReadHandler,true,std::placeholders::_1);
@@ -176,15 +176,15 @@ TEST_CASE(SUITE("SimpleStrings"))
 	auto StateHandler1 = std::bind(StateHandler,true,std::placeholders::_1);
 	auto StateHandler2 = std::bind(StateHandler,false,std::placeholders::_1);
 
-	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
+	Log.Debug("Creating Sock1");
 	auto pSockMan1 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,10,true,0,0,0,0,
-		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
+		[](const std::string& level, const std::string& msg){ Log.GetLog()->log(spdlog::level::from_str(level),"Sock1: {}",msg);});
 
-	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
+	Log.Debug("Creating Sock2");
 	auto pSockMan2 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,10,true,0,0,0,0,
-		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->log(spdlog::level::from_str(level),"Sock2: {}",msg);});
+		[](const std::string& level, const std::string& msg){ Log.GetLog()->log(spdlog::level::from_str(level),"Sock2: {}",msg);});
 
 	pSockMan1->Open();
 	pSockMan2->Open();
@@ -249,19 +249,19 @@ void interrupt(const std::string& description, std::unique_ptr<TCPSocketManager>
 	open = !open;
 	if(open)
 	{
-		odc::spdlog_get("opendatacon")->info("{}: Interrupt timer Open()",description);
+		Log.Info("{}: Interrupt timer Open()",description);
 		sock->Open();
 	}
 	else
 	{
-		odc::spdlog_get("opendatacon")->info("{}: Interrupt timer Close()",description);
+		Log.Info("{}: Interrupt timer Close()",description);
 		sock->Close();
 	}
 	timer->expires_from_now(std::chrono::milliseconds(std::uniform_int_distribution<uint16_t>(70,200)(RandNumGenerator)));
 	timer->async_wait([&](const asio::error_code& err)
 		{
 			if(err || stop)
-				odc::spdlog_get("opendatacon")->debug("Interrupt timer info: {}",err.message());
+				Log.Debug("Interrupt timer info: {}",err.message());
 			else
 				interrupt(description,sock,open,timer,stop);
 		});
@@ -271,7 +271,7 @@ TEST_CASE(SUITE("ManyStrings"))
 {
 	TestSetup();
 
-	odc::spdlog_get("opendatacon")->info("Start {}",SUITE("ManyStrings"));
+	Log.Info("Start {}",SUITE("ManyStrings"));
 
 	std::atomic<uint64_t> recv_count1 = 0;
 	std::atomic<uint64_t> recv_count2 = 0;
@@ -295,7 +295,7 @@ TEST_CASE(SUITE("ManyStrings"))
 				if((count+recv_offset)%256 != ch)
 				{
 					recv_offset = ch - count%256;
-					odc::spdlog_get("opendatacon")->critical("{}: Possible out of order or lost data. Received {}, count {} ({}), offset {}",sock1 ? "Sock1" : "Sock2",(uint8_t)ch,count,count%256,recv_offset);
+					Log.Critical("{}: Possible out of order or lost data. Received {}, count {} ({}), offset {}",sock1 ? "Sock1" : "Sock2",(uint8_t)ch,count,count%256,recv_offset);
 				}
 				buf.consume(1);
 			}
@@ -307,7 +307,7 @@ TEST_CASE(SUITE("ManyStrings"))
 			sock_state = state;
 			if(!state1 && !state2)
 				interrupt_count++;
-			odc::spdlog_get("opendatacon")->debug("Sock{}: state {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
+			Log.Debug("Sock{}: state {}",sock1 ? "1" : "2",state ? "OPEN" : "CLOSED");
 		};
 
 	auto ReadHandler1 = std::bind(ReadHandler,true,std::placeholders::_1);
@@ -315,16 +315,16 @@ TEST_CASE(SUITE("ManyStrings"))
 	auto StateHandler1 = std::bind(StateHandler,true,std::placeholders::_1);
 	auto StateHandler2 = std::bind(StateHandler,false,std::placeholders::_1);
 
-	odc::spdlog_get("opendatacon")->debug("Creating Sock1");
+	Log.Debug("Creating Sock1");
 	auto pSockMan1 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		true,"127.0.0.1","22222",ReadHandler1,StateHandler1,1000000,true,10,0,0,0,
-		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->debug("[{}] Sock1: {}",level,msg);});
+		[](const std::string& level, const std::string& msg){ Log.Debug("[{}] Sock1: {}",level,msg);});
 	//use debug for logs - we force lots of errors
 
-	odc::spdlog_get("opendatacon")->debug("Creating Sock2");
+	Log.Debug("Creating Sock2");
 	auto pSockMan2 = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),
 		false,"127.0.0.1","22222",ReadHandler2,StateHandler2,1000000,true,10,0,0,0,
-		[](const std::string& level, const std::string& msg){ odc::spdlog_get("opendatacon")->debug("[{}] Sock2: {}",level,msg);});
+		[](const std::string& level, const std::string& msg){ Log.Debug("[{}] Sock2: {}",level,msg);});
 	//use debug for logs - we force lots of errors
 
 	auto pThreadPool = std::make_unique<ThreadPool>(std::thread::hardware_concurrency());
@@ -381,7 +381,7 @@ TEST_CASE(SUITE("ManyStrings"))
 	pSockMan2.reset();
 	pThreadPool.reset();
 
-	odc::spdlog_get("opendatacon")->info("send_count1:{}, recv_count2:{}, send_count2:{}, recv_count1:{}",send_count1,recv_count2,send_count2,recv_count1);
-	odc::spdlog_get("opendatacon")->info("Interruption count: {}", interrupt_count);
+	Log.Info("send_count1:{}, recv_count2:{}, send_count2:{}, recv_count1:{}",send_count1,recv_count2,send_count2,recv_count1);
+	Log.Info("Interruption count: {}", interrupt_count);
 	TestTearDown();
 }

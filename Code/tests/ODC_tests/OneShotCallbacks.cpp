@@ -24,6 +24,7 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include "TestODCHelpers.h"
 #include <opendatacon/OneShotFunc.h>
 #include "../../opendatacon/DataConnector.h"
 #include <catch.hpp>
@@ -61,8 +62,7 @@ inline bool LogContains(const std::string& search_string)
 
 auto test_callback = std::make_shared<std::function<void(CommandStatus)>>([](CommandStatus)
 	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->debug("test callback");
+		Log.Debug("test callback");
 	});
 
 #define SUITE(name) "OneShotCallbacks - " name

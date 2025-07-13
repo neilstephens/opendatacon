@@ -41,10 +41,13 @@
 #include "DataConcentrator.h"
 #include "DaemonInterface.h"
 #include "ODCArgs.h"
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/Platform.h>
 #include <opendatacon/version.h>
 #include <csignal>
 #include <cstdio>
+
+LogHelpers Log{"opendatacon"};
 
 int main(int argc, char* argv[])
 {
@@ -123,8 +126,7 @@ int main(int argc, char* argv[])
 								 }
 								 catch(const std::exception& e)
 								 {
-									 if(auto log = odc::spdlog_get("opendatacon"))
-										 log->critical("Shutting down due to exception in config reload: {}", e.what());
+									 Log.Critical("Shutting down due to exception in config reload: {}", e.what());
 									 TheDataConcentrator->Shutdown();
 								 }
 							 }).detach();
@@ -155,8 +157,7 @@ int main(int argc, char* argv[])
 				}
 				catch(const std::exception& e)
 				{
-					if(auto log = odc::spdlog_get("opendatacon"))
-						log->critical("Shutting down due to exception in DataConcentrator::Run() thread: {}", e.what());
+					Log.Critical("Shutting down due to exception in DataConcentrator::Run() thread: {}", e.what());
 					TheDataConcentrator->Shutdown();
 				}
 			});
@@ -173,8 +174,7 @@ int main(int argc, char* argv[])
 			if(i == 140)
 				odc::asio_service::Get()->post([]
 					{
-						if(auto log = odc::spdlog_get("opendatacon"))
-							log->critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
+						Log.Critical("10s waiting on shutdown. Posted this message as asio wake-up call.");
 					});
 		}
 
@@ -193,26 +193,20 @@ int main(int argc, char* argv[])
 			ret_val = 1;
 		}
 
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->critical(msg);
-		else
+		if(!Log.Critical(msg))
 			std::cout << msg << std::endl;
 	}
 	catch (TCLAP::ArgException &e) // catch command line argument exceptions
 	{
 		std::string msg = "Command line error: " + e.error() +" for arg " + e.argId();
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->critical(msg);
-		else
+		if(!Log.Critical(msg))
 			std::cerr << msg << std::endl;
 		ret_val = 1;
 	}
 	catch (std::exception& e) // catch opendatacon runtime exceptions
 	{
 		std::string msg = std::string("Caught exception: ") + e.what();
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->critical(msg);
-		else
+		if(!Log.Critical(msg))
 			std::cerr << msg << std::endl;
 		ret_val = 1;
 	}
@@ -220,11 +214,10 @@ int main(int argc, char* argv[])
 	if(pidfile != "")
 	{
 		if(std::remove(pidfile.c_str()))
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->info("PID file removed");
+			Log.Info("PID file removed");
 	}
 
-	if(auto log = odc::spdlog_get("opendatacon"))
+	if(auto log = Log.GetLog())
 		log->flush();
 
 	odc::spdlog_flush_all();

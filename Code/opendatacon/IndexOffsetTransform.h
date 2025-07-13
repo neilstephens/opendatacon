@@ -27,6 +27,7 @@
 #ifndef INDEXOFFSETTRANSFORM_H_
 #define INDEXOFFSETTRANSFORM_H_
 
+#include "Log.h"
 #include <cstdint>
 #include <opendatacon/Transform.h>
 

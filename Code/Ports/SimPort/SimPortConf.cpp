@@ -26,6 +26,7 @@
  */
 
 #include "SimPortConf.h"
+#include "Log.h"
 
 SimPortConf::SimPortConf():
 	abs_analogs(false),
@@ -222,8 +223,7 @@ TimestampMode SimPortConf::m_ParseTimestampHandling(const std::string& ts_mode) 
 		tsm = TimestampMode::TOD | TimestampMode::FASTFORWARD;
 	else if(ts_mode == "RELATIVE_FIRST")
 		tsm = TimestampMode::FIRST;
-	else if(auto log = odc::spdlog_get("SimPort"))
-		log->error("Defaulting invalid SQLite3 'TimeStampHandling' mode '{}'.", ts_mode);
+	else Log.Error("Defaulting invalid SQLite3 'TimeStampHandling' mode '{}'.", ts_mode);
 	return tsm;
 }
 
@@ -240,8 +240,7 @@ bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, st
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", data.toStyledString());
+		Log.Error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", data.toStyledString());
 		result = false;
 	}
 	return result;
@@ -304,8 +303,7 @@ void SimPortConf::m_ProcessBinaries(const Json::Value& binaries)
 		}
 		else
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", binaries[n].toStyledString());
+			Log.Error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", binaries[n].toStyledString());
 			continue;
 		}
 		for(auto index = start; index <= stop; index++)
@@ -346,8 +344,7 @@ void SimPortConf::m_ProcessBinaryControls(const Json::Value& binary_controls)
 		}
 		else
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", binary_controls[n].toStyledString());
+			Log.Error("A point needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : '{}'", binary_controls[n].toStyledString());
 			continue;
 		}
 		for (auto index = start; index <= stop; index++)
@@ -379,29 +376,24 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string&
 	auto rv = sqlite3_open_v2(filename.c_str(),&db,SQLITE_OPEN_READONLY|SQLITE_OPEN_NOMUTEX|SQLITE_OPEN_EXRESCODE,nullptr);
 	if(rv != SQLITE_OK)
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("Failed to open sqlite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
+		Log.Error("Failed to open sqlite3 DB '{}' : '{}'", filename, sqlite3_errstr(rv));
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->debug("Opened sqlite3 DB '{}' for {} {}.", filename, type, index);
+		Log.Debug("Opened sqlite3 DB '{}' for {} {}.", filename, type, index);
 		sqlite3_stmt* stmt;
 		auto rv = sqlite3_prepare_v2(db,query.c_str(),-1,&stmt,nullptr);
 		if(rv != SQLITE_OK)
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->error("Failed to prepare SQLite3 query '{}' for {} {} : '{}'", query, type, index, sqlite3_errstr(rv));
+			Log.Error("Failed to prepare SQLite3 query '{}' for {} {} : '{}'", query, type, index, sqlite3_errstr(rv));
 		}
 		else if (sqlite3_column_count(stmt) != 2)
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
+			Log.Error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
 		}
 		else
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->debug("Prepared SQLite3 query '{}' for {} {}", query, type, index);
+			Log.Debug("Prepared SQLite3 query '{}' for {} {}", query, type, index);
 			auto deleter = [](sqlite3_stmt* st){sqlite3_finalize(st);};
 			m_db_stats[type+std::to_string(index)] = DB_STATEMENT(stmt,deleter);
 
@@ -411,14 +403,12 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string&
 				auto rv = sqlite3_bind_int(stmt, index_bind_index, index);
 				if(rv != SQLITE_OK)
 				{
-					if(auto log = odc::spdlog_get("SimPort"))
-						log->error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", index, query, sqlite3_errstr(rv));
+					Log.Error("Failed to bind index ({}) to prepared SQLite3 query '{}' : '{}'", index, query, sqlite3_errstr(rv));
 					m_db_stats.erase(type+std::to_string(index));
 				}
 				else
 				{
-					if(auto log = odc::spdlog_get("SimPort"))
-						log->debug("Bound index ({}) to prepared SQLite3 query '{}'", index, query, sqlite3_errstr(rv));
+					Log.Debug("Bound index ({}) to prepared SQLite3 query '{}'", index, query, sqlite3_errstr(rv));
 				}
 			}
 
@@ -428,14 +418,12 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string&
 				auto rv = sqlite3_bind_text(stmt, type_bind_index, type.c_str(), -1, SQLITE_TRANSIENT);
 				if(rv != SQLITE_OK)
 				{
-					if(auto log = odc::spdlog_get("SimPort"))
-						log->error("Failed to bind type ({}) to prepared SQLite3 query '{}' : '{}'", type, query, sqlite3_errstr(rv));
+					Log.Error("Failed to bind type ({}) to prepared SQLite3 query '{}' : '{}'", type, query, sqlite3_errstr(rv));
 					m_db_stats.erase(type+std::to_string(index));
 				}
 				else
 				{
-					if(auto log = odc::spdlog_get("SimPort"))
-						log->debug("Bound type ({}) to prepared SQLite3 query '{}'", type, query, sqlite3_errstr(rv));
+					Log.Debug("Bound type ({}) to prepared SQLite3 query '{}'", type, query, sqlite3_errstr(rv));
 				}
 			}
 
@@ -452,16 +440,14 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 	{
 		if (!feedback_binaries[fbn].isMember("Index"))
 		{
-			if (auto log = odc::spdlog_get("SimPort"))
-				log->error("An 'Index' is required for Binary feedback : '{}'", feedback_binaries[fbn].toStyledString());
+			Log.Error("An 'Index' is required for Binary feedback : '{}'", feedback_binaries[fbn].toStyledString());
 			continue;
 		}
 		auto fb_index = feedback_binaries[fbn]["Index"].asUInt();
 
 		if(!IsIndex(EventType::Binary,fb_index))
 		{
-			if (auto log = odc::spdlog_get("SimPort"))
-				log->error("Invalid 'Index' for Binary feedback (it must be a configured binary index) : '{}'", feedback_binaries[fbn].toStyledString());
+			Log.Error("Invalid 'Index' for Binary feedback (it must be a configured binary index) : '{}'", feedback_binaries[fbn].toStyledString());
 			continue;
 		}
 
@@ -496,8 +482,7 @@ void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries
 				mode = FeedbackMode::LATCH;
 			else
 			{
-				if (auto log = odc::spdlog_get("SimPort"))
-					log->warn("Unrecognised feedback mode: '{}'", feedback_binaries[fbn].toStyledString());
+				Log.Warn("Unrecognised feedback mode: '{}'", feedback_binaries[fbn].toStyledString());
 			}
 		}
 		if (feedback_binaries[fbn].isMember("Delayms"))
@@ -554,8 +539,7 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 
 	//warn if there's not at least one action
 	if(actions[ON] == PositionAction::UNDEFINED && actions[OFF] == PositionAction::UNDEFINED)
-		if (auto log = odc::spdlog_get("SimPort"))
-			log->warn("No valid actions defined for Postion feedback : '{}'", feedback_position.toStyledString());
+		Log.Warn("No valid actions defined for Postion feedback : '{}'", feedback_position.toStyledString());
 
 	EventType fb_type;
 	switch(type)
@@ -568,16 +552,14 @@ void SimPortConf::m_ProcessFeedbackPosition(const Json::Value& feedback_position
 			fb_type = EventType::Analog;
 			break;
 		default:
-			if (auto log = odc::spdlog_get("SimPort"))
-				log->error("Invalid 'Type' for Postion feedback : '{}'", feedback_position.toStyledString());
+			Log.Error("Invalid 'Type' for Postion feedback : '{}'", feedback_position.toStyledString());
 			return;
 	}
 
 	for(const auto& fb_index : indexes)
 		if(!IsIndex(fb_type,fb_index))
 		{
-			if (auto log = odc::spdlog_get("SimPort"))
-				log->error("Invalid 'Index(es)' for Postion feedback (they must be configured points) : '{}'", feedback_position.toStyledString());
+			Log.Error("Invalid 'Index(es)' for Postion feedback (they must be configured points) : '{}'", feedback_position.toStyledString());
 			return;
 		}
 

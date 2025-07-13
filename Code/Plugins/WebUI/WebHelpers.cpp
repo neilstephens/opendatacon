@@ -26,6 +26,7 @@
 //
 
 #include "WebHelpers.h"
+#include "Log.h"
 
 const std::unordered_map<std::string, const std::string> MimeTypeMap {
 	{ "json", "application/json" },
@@ -63,8 +64,8 @@ void read_and_send(const std::shared_ptr<WebServer::Response> response, const st
 				{
 					if(!ec)
 						read_and_send(response, ifs, buffer);
-					else if (auto log = odc::spdlog_get("WebUI"))
-						log->error("Connection interrupted");
+					else
+						Log.Error("Connection interrupted");
 				});
 		}
 	}

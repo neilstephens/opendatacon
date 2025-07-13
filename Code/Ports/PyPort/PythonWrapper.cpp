@@ -119,13 +119,13 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 		}
 		else
 		{
-			LOGDEBUG("odc.Log called from Python code for unknown PyPort object - {0:#x}", guid);
+			Log.Debug("odc.Log called from Python code for unknown PyPort object - {0:#x}", guid);
 		}
 
 		WholeMessage += message;
 
 		// Take appropriate action
-		if (auto log = odc::spdlog_get("PyPort"))
+		if (auto log = Log.GetLog())
 		{
 			// Ordinals match spdlog values - spdlog::level::level_enum::
 			switch (logtype)
@@ -151,7 +151,7 @@ static PyObject* odc_log(PyObject* self, PyObject* args)
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Excception Caught in odc_log - {}", e.what());
+		Log.Error("Excception Caught in odc_log - {}", e.what());
 	}
 	// Return a PyObject return value, in this case "none".
 	Py_RETURN_NONE;
@@ -186,18 +186,18 @@ static PyObject* odc_PublishEvent(PyObject* self, PyObject* args)
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			LOGDEBUG("Python Publish Event {}, {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload, SourcePort);
+			Log.Debug("Python Publish Event {}, {}, {}, {}, {}", EventType, ODCIndex, Quality, Payload, SourcePort);
 			auto fn = thisPyWrapper->GetPythonPortPublishEventCallFn();
 			fn(EventType, ODCIndex, Quality, Payload, SourcePort);
 		}
 		else
 		{
-			LOGDEBUG("odc.PublishEvent called from Python code for unknown PyPort object - ignored");
+			Log.Debug("odc.PublishEvent called from Python code for unknown PyPort object - ignored");
 		}
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Excception Caught in odc_PublishEvent() - {}", e.what());
+		Log.Error("Excception Caught in odc_PublishEvent() - {}", e.what());
 	}
 	// Return a PyObject return value. True is 1
 	return Py_BuildValue("i", 1);
@@ -230,12 +230,12 @@ static PyObject* odc_GetEventQueueSize(PyObject* self, PyObject* args)
 		}
 		else
 		{
-			LOGDEBUG("odc.GetEventQueueSize called from Python code for unknown PyPort object - ignored");
+			Log.Debug("odc.GetEventQueueSize called from Python code for unknown PyPort object - ignored");
 		}
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Excception Caught in odc_GetEventQueueSize() - {}", e.what());
+		Log.Error("Excception Caught in odc_GetEventQueueSize() - {}", e.what());
 	}
 	// Return a PyObject return value. True is 1
 	return Py_BuildValue("i",0);
@@ -265,18 +265,18 @@ static PyObject* odc_SetTimer(PyObject* self, PyObject* args)
 			// Will create an async wait and call the Python code at the correct time.
 			// At constrution, we have passed in a pointer to the PyPort SetTimer method, so we can call it
 			// The PyPort ensures that pyWrapper is managed within a strand
-			//LOGTRACE("Python SetTimer ID: {}, Delay {}", id, delay);
+			//if(Log.ShouldLog(spdlog::level::trace)) Log.Trace("Python SetTimer ID: {}, Delay {}", id, delay);
 			auto fn = thisPyWrapper->GetPythonPortSetTimerFn();
 			fn(id, delay);
 		}
 		else
 		{
-			LOGDEBUG("odc.setTimer called from Python code for unknown PyPort object - Ignored");
+			Log.Debug("odc.setTimer called from Python code for unknown PyPort object - Ignored");
 		}
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Excception Caught in odc_SetTimer - {}", e.what());
+		Log.Error("Excception Caught in odc_SetTimer - {}", e.what());
 	}
 	// Return a PyObject return value, in this case "none".
 	Py_RETURN_NONE;
@@ -308,7 +308,7 @@ static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
 			// The PyPort ensures that pyWrapper is managed within a strand
 			std::string eq = "";
 			bool empty = !thisPyWrapper->DequeueEvent(eq);
-			//LOGDEBUG("GetNextEvent {}", eq);
+			//Log.Debug("GetNextEvent {}", eq);
 
 			auto pyArgs = PyTuple_New(2);
 			auto pyJSONType = PyUnicode_FromString(eq.c_str()); // json string
@@ -321,12 +321,12 @@ static PyObject* odc_GetNextEvent(PyObject* self, PyObject* args)
 		}
 		else
 		{
-			LOGDEBUG("odc.GetNextEvent called from Python code for unknown PyPort object - ignored");
+			Log.Debug("odc.GetNextEvent called from Python code for unknown PyPort object - ignored");
 		}
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Excception Caught in odc_GetNextEvent() - {}", e.what());
+		Log.Error("Excception Caught in odc_GetNextEvent() - {}", e.what());
 	}
 
 	Py_RETURN_NONE; // This will throw an execption in the python code.
@@ -371,7 +371,7 @@ void ImportODCModule()
 {
 	if (PyImport_AppendInittab("odc", &PyInit_odc) != 0)
 	{
-		LOGERROR("Unable to import odc module to Python Interpreter");
+		Log.Error("Unable to import odc module to Python Interpreter");
 	}
 }
 
@@ -401,7 +401,7 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 
 	try
 	{
-		LOGDEBUG("Py_Initialize");
+		Log.Debug("Py_Initialize");
 
 		// Load our odc module exposing our internal methods to python (i.e. loggin commands)
 		ImportODCModule();
@@ -416,7 +416,7 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 			pythonhome += OSPATHSEP + pythonhome + "/" + PYTHON_LIBDIRPLAT;
 			#endif
 			PlatformSetEnv("PYTHONHOME", pythonhome.c_str(), 1);
-			LOGDEBUG("Set PYTHONHOME env var to: '{}'", pythonhome);
+			Log.Debug("Set PYTHONHOME env var to: '{}'", pythonhome);
 
 			std::string newpythonpath;
 			if (auto pythonpath = getenv("PYTHONPATH"))
@@ -425,9 +425,9 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 				newpythonpath = pythonhome;
 
 			PlatformSetEnv("PYTHONPATH", newpythonpath.c_str(), 1);
-			LOGDEBUG("Set PYTHONPATH env var to: '{}'", newpythonpath);
+			Log.Debug("Set PYTHONPATH env var to: '{}'", newpythonpath);
 			#else
-			LOGERROR("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true");
+			Log.Error("OpenDataCon was built without linked in Python support, must be run in UseSystemPython mode - use the follwing in the Python Port config file - GlobalUseSystemPython = true");
 			#endif
 		}
 
@@ -437,30 +437,30 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 		*/
 
 		Py_Initialize(); // Get the Python interpreter running
-		LOGDEBUG("Initialised Python");
+		Log.Debug("Initialised Python");
 
 		#ifndef PYTHON_34_ORLESS
-		LOGDEBUG("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),nullptr));
+		Log.Debug("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),nullptr));
 		#endif
 
 		// Now execute some commands to get the environment ready.
 		if (PyRun_SimpleString("import sys") != 0)
 		{
-			LOGERROR("Unable to import python sys library");
+			Log.Error("Unable to import python sys library");
 			return;
 		}
 
 		// Append current working directory to the sys.path variable - so we can find the module.
 		if (PyRun_SimpleString("sys.path.append(\".\")") != 0)
 		{
-			LOGERROR("Unable to append to sys path in python sys library");
+			Log.Error("Unable to append to sys path in python sys library");
 			return;
 		}
 
 		// Log the Python path for debugging (also write to a small file for running test code)
 		std::wstring path = Py_GetPath();
 		std::string spath(path.begin(), path.end());
-		LOGCRITICAL("Current Python sys.path - {}",spath);
+		Log.Critical("Current Python sys.path - {}",spath);
 
 		PyDateTime_IMPORT;
 
@@ -469,13 +469,13 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		#endif
 		if (!PyGILState_Check())
-			LOGERROR("About to release and save our GIL state - but apparently we dont have a GIL lock...");
+			Log.Error("About to release and save our GIL state - but apparently we dont have a GIL lock...");
 
 		threadState = PyEval_SaveThread(); // save the GIL, which also releases it.
 	}
 	catch(const std::exception& e)
 	{
-		LOGERROR("Exception on main Python thread Init - {}", e.what());
+		Log.Error("Exception on main Python thread Init - {}", e.what());
 	}
 
 	//Signal c'tor that init finished
@@ -494,16 +494,16 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 	{
 		// Restore the state as it was after we called Initialize()
 		// Supposed to acquire the GIL and restore the state...
-		LOGDEBUG("About to restore thread state - Have GIL {} ", PyGILState_Check());
+		Log.Debug("About to restore thread state - Have GIL {} ", PyGILState_Check());
 		PyEval_RestoreThread(threadState);
-		LOGDEBUG("Restored thread state - Have GIL {} ", PyGILState_Check());
+		Log.Debug("Restored thread state - Have GIL {} ", PyGILState_Check());
 
-		LOGDEBUG("About to Py_Finalize");
+		Log.Debug("About to Py_Finalize");
 		Py_Finalize();
 	}
 	catch (const std::exception& e)
 	{
-		LOGERROR("Exception on main Python thread De-init - {}", e.what());
+		Log.Error("Exception on main Python thread De-init - {}", e.what());
 	}
 	#ifdef PYTHON_LINK_WO
 	if(python_lib) dlclose(python_lib);
@@ -524,7 +524,7 @@ PythonInitWrapper::~PythonInitWrapper()
 
 PythonWrapper::~PythonWrapper()
 {
-	LOGDEBUG("Destructing PythonWrapper");
+	Log.Debug("Destructing PythonWrapper");
 
 	// Scope the GIL lock
 	{
@@ -579,7 +579,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 
 	if (!g.OkToContinue())
 	{
-		LOGERROR("Error - Interpreter Closing Down in ImportModuleAndCreateClassInstance");
+		Log.Error("Error - Interpreter Closing Down in ImportModuleAndCreateClassInstance");
 		return;
 	}
 
@@ -594,7 +594,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 	pyModule = PyImport_Import(pyUniCodeModuleName);
 	if (pyModule == nullptr)
 	{
-		LOGERROR("Could not load Python Module - {} from {}", pPortConf->pyModuleName, pyPathName);
+		Log.Error("Could not load Python Module - {} from {}", pPortConf->pyModuleName, pyPathName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Module");
 	}
@@ -603,7 +603,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 	PyObject* pyDict = PyModule_GetDict(pyModule);
 	if (pyDict == nullptr)
 	{
-		LOGERROR("Could not load Python Dictionary Reference");
+		Log.Error("Could not load Python Dictionary Reference");
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Dictionary Reference");
 	}
@@ -615,7 +615,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 
 	if (pyClass == nullptr)
 	{
-		LOGERROR("Could not load Python Class Reference - {}", pPortConf->pyClassName);
+		Log.Error("Could not load Python Class Reference - {}", pPortConf->pyClassName);
 		PyErrOutput();
 		throw std::runtime_error("Could not load Python Class");
 	}
@@ -631,7 +631,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 		pyInstance = PyObject_CallObject(pyClass, pyArgs);
 		if (pyInstance == nullptr)
 		{
-			LOGDEBUG("Could not get instance pointer for Python Class");
+			Log.Debug("Could not get instance pointer for Python Class");
 			PyErrOutput();
 
 			throw std::runtime_error("Could not get instance pointer for Python Class");
@@ -644,7 +644,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 	else
 	{
 		PyErrOutput();
-		LOGERROR("pyClass not callable");
+		Log.Error("pyClass not callable");
 		throw std::runtime_error("pyClass not callable");
 	}
 	// Py_XDECREF(pyClass);	// Borrowed reference, dont destruct
@@ -665,7 +665,7 @@ void PythonWrapper::Config(const std::string& JSONMain, const std::string& JSONO
 	GetPythonGIL g;
 	if (!g.OkToContinue())
 	{
-		LOGERROR("Error - Interpreter Closing Down in Config");
+		Log.Error("Error - Interpreter Closing Down in Config");
 		return;
 	}
 
@@ -686,7 +686,7 @@ void PythonWrapper::PortOperational()
 		GetPythonGIL g;
 		if (!g.OkToContinue())
 		{
-			LOGERROR("Error - Interpreter Closing Down in PortOperational");
+			Log.Error("Error - Interpreter Closing Down in PortOperational");
 			return;
 		}
 		auto pyArgs = PyTuple_New(0);
@@ -696,7 +696,7 @@ void PythonWrapper::PortOperational()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling pyPortOperational() - {}", e.what());
+		Log.Error("Exception Caught calling pyPortOperational() - {}", e.what());
 	}
 }
 void PythonWrapper::Enable()
@@ -707,7 +707,7 @@ void PythonWrapper::Enable()
 		GetPythonGIL g;
 		if (!g.OkToContinue())
 		{
-			LOGERROR("Error - Interpreter Closing Down in Enable");
+			Log.Error("Error - Interpreter Closing Down in Enable");
 			return;
 		}
 		auto pyArgs = PyTuple_New(0);
@@ -717,7 +717,7 @@ void PythonWrapper::Enable()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling pyEnable() - {}", e.what());
+		Log.Error("Exception Caught calling pyEnable() - {}", e.what());
 	}
 }
 
@@ -729,7 +729,7 @@ void PythonWrapper::Disable()
 		GetPythonGIL g;
 		if (!g.OkToContinue())
 		{
-			LOGERROR("Error - Interpreter Closing Down in Disable");
+			Log.Error("Error - Interpreter Closing Down in Disable");
 			return;
 		}
 		auto pyArgs = PyTuple_New(0);
@@ -739,7 +739,7 @@ void PythonWrapper::Disable()
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling pyDisable() - {}", e.what());
+		Log.Error("Exception Caught calling pyDisable() - {}", e.what());
 	}
 }
 
@@ -755,7 +755,7 @@ void PythonWrapper::QueueEvent(const std::string& jsonevent)
 		{
 			QueuePushErrorCount.store(5000);
 			size_t qsize = EventQueue->Size();
-			LOGERROR("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}. Will not be a repeat of this message until after 5000 messages have been queued successfully", qsize);
+			Log.Error("Failed to enqueue item into Event queue - insufficient memory or queue full. Queue Size {}. Will not be a repeat of this message until after 5000 messages have been queued successfully", qsize);
 		}
 	}
 	else
@@ -784,7 +784,7 @@ CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcev
 		GetPythonGIL g;
 		if (!g.OkToContinue())
 		{
-			LOGERROR("Error - Interpreter Closing Down in Event");
+			Log.Error("Error - Interpreter Closing Down in Event");
 			return CommandStatus::UNDEFINED;
 		}
 		auto pyArgs = PyTuple_New(6);
@@ -798,7 +798,7 @@ CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcev
 			std::string msg = "";
 			if(odcevent->GetEventType() == EventType::OctetString)
 				msg = "Consider using \"OctetStringFormat\":\"Hex\" to receive non-printable characters.";
-			LOGERROR("{}: Event(): PyUnicode_FromString(payload) failed.{}",Name,msg);
+			Log.Error("{}: Event(): PyUnicode_FromString(payload) failed.{}",Name,msg);
 			return CommandStatus::UNDEFINED;
 		}
 		auto pySender = PyUnicode_FromString(SenderName.c_str());
@@ -827,7 +827,7 @@ CommandStatus PythonWrapper::Event(const std::shared_ptr<const EventInfo>& odcev
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling pyFuncEvent() - {}", e.what());
+		Log.Error("Exception Caught calling pyFuncEvent() - {}", e.what());
 	}
 	return CommandStatus::UNDEFINED;
 }
@@ -840,7 +840,7 @@ void PythonWrapper::CallTimerHandler(uint32_t id)
 		GetPythonGIL g;
 		if (!g.OkToContinue())
 		{
-			LOGERROR("Error - Interpreter Closing Down in SetTimer");
+			Log.Error("Error - Interpreter Closing Down in SetTimer");
 			return;
 		}
 		auto pyArgs = PyTuple_New(1);
@@ -854,7 +854,7 @@ void PythonWrapper::CallTimerHandler(uint32_t id)
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling pyTimerHandler() - {}", e.what());
+		Log.Error("Exception Caught calling pyTimerHandler() - {}", e.what());
 	}
 }
 
@@ -868,7 +868,7 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 		GetPythonGIL g;
 		if (!g.OkToContinue())
 		{
-			LOGERROR("Error in Python Wrapper handling of Restful Request");
+			Log.Error("Error in Python Wrapper handling of Restful Request");
 			return "Error in Python Wrapper";
 		}
 		auto pyArgs = PyTuple_New(2);
@@ -894,7 +894,7 @@ std::string PythonWrapper::RestHandler(const std::string& url, const std::string
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling pyRestHandler() - {}", e.what());
+		Log.Error("Exception Caught calling pyRestHandler() - {}", e.what());
 	}
 	return "Did not get a response from Python RestHandler";
 }
@@ -903,7 +903,7 @@ void PythonWrapper::CallPublishCallback(const std::string& evt_type, const size_
 {
 	if(!pyPublishCallbackHandler)
 	{
-		LOGERROR("{}: EnablePublishCallbackHandler == true, but failed to find Python handler", Name);
+		Log.Error("{}: EnablePublishCallbackHandler == true, but failed to find Python handler", Name);
 		return;
 	}
 	try
@@ -911,7 +911,7 @@ void PythonWrapper::CallPublishCallback(const std::string& evt_type, const size_
 		GetPythonGIL g;
 		if (!g.OkToContinue())
 		{
-			LOGERROR("Error - Interpreter Closing Down in SetTimer");
+			Log.Error("Error - Interpreter Closing Down in SetTimer");
 			return;
 		}
 		auto pyArgs = PyTuple_New(6);
@@ -936,7 +936,7 @@ void PythonWrapper::CallPublishCallback(const std::string& evt_type, const size_
 	}
 	catch (std::exception& e)
 	{
-		LOGERROR("Exception Caught calling pyPublishCallbackHandler() - {}", e.what());
+		Log.Error("Exception Caught calling pyPublishCallbackHandler() - {}", e.what());
 	}
 }
 
@@ -953,7 +953,7 @@ PyObject* PythonWrapper::GetFunction(PyObject* pyInstance, const std::string& sF
 	if (!pyFunc || PyErr_Occurred() || !PyCallable_Check(pyFunc))
 	{
 		PyErrOutput();
-		LOGERROR("Cannot resolve function \"{}\"\n", sFunction);
+		Log.Error("Cannot resolve function \"{}\"\n", sFunction);
 		return nullptr;
 	}
 	return pyFunc;
@@ -979,7 +979,7 @@ void PythonWrapper::PyErrOutput()
 
 			if (err_msg)
 			{
-				LOGERROR("Python Error {}", err_msg);
+				Log.Error("Python Error {}", err_msg);
 			}
 		}
 		PyErr_Restore(ptype, pvalue, ptraceback); // Do we need to do this or DECREF the variables? This seems to work.
@@ -996,7 +996,7 @@ PyObject* PythonWrapper::PyCall(PyObject* pyFunction, PyObject* pyArgs)
 	}
 	else
 	{
-		LOGERROR("Python Method is not valid");
+		Log.Error("Python Method is not valid");
 		return nullptr;
 	}
 }

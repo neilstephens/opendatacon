@@ -28,6 +28,7 @@
 #ifndef LOGICINVTRANSFORM_H_
 #define LOGICINVTRANSFORM_H_
 
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
 #include <opendatacon/IOTypes.h>

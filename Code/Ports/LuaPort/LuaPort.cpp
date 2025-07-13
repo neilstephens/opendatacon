@@ -26,6 +26,7 @@
 
 #include "LuaPort.h"
 #include "LuaPortConf.h"
+#include "Log.h"
 #include <Lua/CLua.h>
 #include <Lua/Wrappers.h>
 #include <opendatacon/util.h>
@@ -107,8 +108,8 @@ void LuaPort::Build()
 //only called on Lua sync strand
 void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
-	if(auto log = odc::spdlog_get("LuaPort"))
-		log->trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
+	if(Log.ShouldLog(spdlog::level::trace))
+		Log.Trace("{}: {} event from {}", Name, ToString(event->GetEventType()), SenderName);
 
 	//Get ready to call the lua function
 	lua_getglobal(LuaState, "Event");
@@ -140,8 +141,7 @@ void LuaPort::Event_(std::shared_ptr<const EventInfo> event, const std::string& 
 	if(ret != LUA_OK)
 	{
 		std::string err = lua_tostring(LuaState, -1);
-		if(auto log = odc::spdlog_get("LuaPort"))
-			log->error("{}: Lua Event() call error: {}",Name,err);
+		Log.Error("{}: Lua Event() call error: {}",Name,err);
 		lua_pop(LuaState,1);
 	}
 }
@@ -198,8 +198,7 @@ void LuaPort::ExportLuaPublishEvent()
 						if(ret != LUA_OK)
 						{
 							std::string err = lua_tostring(L, -1);
-							if(auto log = odc::spdlog_get("LuaPort"))
-								log->error("{}: Lua PublishEvent() callback error: {}",self->Name,err);
+							Log.Error("{}: Lua PublishEvent() callback error: {}",self->Name,err);
 							lua_pop(L,1);
 						}
 						//release the reference to the callback
@@ -244,8 +243,7 @@ void LuaPort::CallLuaGlobalVoidVoidFunc(const std::string& FnName)
 	if(ret != LUA_OK)
 	{
 		std::string err = lua_tostring(LuaState, -1);
-		if(auto log = odc::spdlog_get("LuaPort"))
-			log->error("{}: Lua {}() call error: {}",Name,FnName,err);
+		Log.Error("{}: Lua {}() call error: {}",Name,FnName,err);
 		lua_pop(LuaState,1);
 	}
 }

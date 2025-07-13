@@ -27,6 +27,7 @@
 #ifndef RANDTRANSFORM_H_
 #define RANDTRANSFORM_H_
 
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <opendatacon/Transform.h>
 #include <random>

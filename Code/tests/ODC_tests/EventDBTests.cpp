@@ -96,7 +96,7 @@ TEST_CASE(SUITE("Thread Safety"))
 
 					//access the data - randomly print
 					if(std::stoi(ToString(old_evt->GetPayload<EventType::OctetString>(),DataToStringMethod::Raw))%10000 == 0 && old_evt->GetIndex() == 5)
-						odc::spdlog_get("opendatacon")->info("Replaced {} with {}",
+						Log.Info("Replaced {} with {}",
 							old_evt->GetPayloadString(),
 							new_evt->GetPayloadString());
 				}

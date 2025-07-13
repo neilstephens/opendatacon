@@ -31,6 +31,7 @@
 #include "MD3Utility.h"
 #include "MD3Connection.h"
 #include "MD3PointTableAccess.h"
+#include "Log.h"
 #include <unordered_map>
 #include <vector>
 #include <functional>
@@ -49,7 +50,7 @@ public:
 		if (DCPCalc != nullptr)
 			return DCPCalc();
 
-		LOGERROR("GetDigitalChangedFlag called without a handler being registered");
+		Log.Error("GetDigitalChangedFlag called without a handler being registered");
 		return false;
 	}
 
@@ -59,7 +60,7 @@ public:
 		if (HRPCalc != nullptr)
 			return HRPCalc();
 
-		LOGERROR("GetTimeTaggedDataAvailableFlag called without a handler being registered");
+		Log.Error("GetTimeTaggedDataAvailableFlag called without a handler being registered");
 		return false;
 	}
 

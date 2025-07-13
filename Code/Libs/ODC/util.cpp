@@ -25,6 +25,7 @@
  */
 
 #include <opendatacon/util.h>
+#include <opendatacon/Platform.h>
 #include <regex>
 #include <utility>
 #include <iostream>
@@ -32,22 +33,25 @@
 #include <iomanip>
 #include <exception>
 #include <filesystem>
+#include <atomic>
 
 const std::size_t bcd_pack_size = 4;
 
 namespace odc
 {
 static std::string ConfigVersion = "None";
-
 std::string GetConfigVersion()
 {
 	return ConfigVersion;
 }
-
 void SetConfigVersion(const std::string& Version)
 {
 	ConfigVersion = Version;
 }
+
+static std::atomic_size_t LogRefreshSequenceNum = 0;
+size_t GetLogRefreshSequenceNum(){ return LogRefreshSequenceNum.load(); }
+void BumpLogRefreshSequenceNum(){ LogRefreshSequenceNum++; }
 
 void spdlog_init_thread_pool(size_t q_size, size_t thread_count)
 {
@@ -274,9 +278,11 @@ std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size)
 	return decimal.substr(decimal.size() - size, size);
 }
 
-std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string format)
+std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string format, bool UTC)
 {
-	auto tm = spdlog::details::os::localtime(milliseconds / 1000);
+	auto tm = UTC
+	  ? spdlog::details::os::gmtime(milliseconds / 1000)
+	  : spdlog::details::os::localtime(milliseconds / 1000);
 
 	//do milliseconds ourself
 	std::string milli_padded = "000";
@@ -295,7 +301,7 @@ std::string since_epoch_to_datetime(msSinceEpoch_t milliseconds, std::string for
 	return ss.str();
 }
 
-msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format)
+msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format, bool UTC)
 {
 	//do milliseconds ourself
 	size_t msec = 0;
@@ -327,8 +333,11 @@ msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format)
 
 	//get_time leaves isdst undefined. -1 means let mktime decide
 	tm.tm_isdst = -1;
+	auto rawtime = time_t_from_tm_tz(tm,UTC);
+	if (rawtime == -1)
+		throw std::runtime_error("datetime_to_since_epoch("+format+"): Error converting to time_t.");
 
-	auto time_point = std::chrono::system_clock::from_time_t(mktime(&tm));
+	auto time_point = std::chrono::system_clock::from_time_t(rawtime);
 	return std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch()).count()+msec;
 }
 
@@ -503,5 +512,6 @@ std::shared_ptr<T> make_shared(T&& X)
 MAKE_SHARED(std::string);
 MAKE_SHARED(std::vector<char>);
 MAKE_SHARED(std::vector<uint8_t>);
+MAKE_SHARED(std::weak_ptr<spdlog::logger>);
 
 } // namespace odc

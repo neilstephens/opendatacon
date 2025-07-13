@@ -64,7 +64,7 @@ protected:
 	{
 		return weak_from_this();
 	}
-	std::unique_ptr<ChannelHandler> pChanH;
+	std::shared_ptr<ChannelHandler> pChanH;
 	std::shared_ptr<asio::steady_timer> pConnectionStabilityTimer;
 
 	virtual void ExtendCurrentState(Json::Value& state) const {}
@@ -78,6 +78,7 @@ private:
 	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 	std::atomic_bool stack_enabled;
 	std::unique_ptr<asio::io_service::strand> pStackSyncStrand;
+	bool connection_notification_pending;
 };
 
 #endif /* DNP3PORT_H_ */

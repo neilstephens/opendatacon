@@ -27,6 +27,7 @@
 #ifndef IOHANDLER_H_
 #define IOHANDLER_H_
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
@@ -125,9 +126,8 @@ protected:
 		auto multi_callback = SyncMultiCallback(Subscribers.size(),pStatusCallback);
 		for(const auto& IOHandler_pair: Subscribers)
 		{
-			//TODO: investigate log macro that won't evaluate args if it's not going to log
-			if(auto log = odc::spdlog_get("opendatacon"))
-				log->trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->GetPayloadString(), Name, IOHandler_pair.first);
+			if(IOHLog.ShouldLog(spdlog::level::trace))
+				IOHLog.Trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->HasPayload() ? event->GetPayloadString() : "", Name, IOHandler_pair.first);
 			if(shouldPost)
 				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, OneShotWrap(multi_callback));});
 			else
@@ -140,6 +140,7 @@ protected:
 private:
 	std::unordered_map<std::string,IOHandler*> Subscribers;
 	DemandMap mDemandMap;
+	inline static LogHelpers IOHLog{"opendatacon"};
 
 	// Important that this is private - for inter process memory management
 	static std::unordered_map<std::string, IOHandler*> IOHandlers;

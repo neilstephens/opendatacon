@@ -27,6 +27,7 @@
 #ifndef INDEXMAPTRANSFORM_H_
 #define INDEXMAPTRANSFORM_H_
 
+#include "Log.h"
 #include <opendatacon/Transform.h>
 
 using namespace odc;

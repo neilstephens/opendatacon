@@ -43,6 +43,21 @@ TEST_CASE(SUITE("DateTime"))
 	INFO("Milliseconds since epoch: " << since_epoch);
 	auto parsed_date = since_epoch_to_datetime(since_epoch);
 	CHECK(parsed_date == raw_date);
+
+	since_epoch = datetime_to_since_epoch(raw_date,"%Y-%m-%d %H:%M:%S.%e",true);
+	INFO("Milliseconds since epoch (UTC): " << since_epoch);
+	parsed_date = since_epoch_to_datetime(since_epoch,"%Y-%m-%d %H:%M:%S.%e",true);
+	CHECK(parsed_date == raw_date);
+}
+
+TEST_CASE(SUITE("DateTime - UTC"))
+{
+	std::string epoch_string = "1970-01-01 00:00:00.000";
+	auto since_epoch = datetime_to_since_epoch(epoch_string,"%Y-%m-%d %H:%M:%S.%e",true);
+	CHECK(since_epoch == 0);
+	auto parsed_date = since_epoch_to_datetime(since_epoch,"%Y-%m-%d %H:%M:%S.%e",true);
+	INFO("Parsed date: " << parsed_date);
+	CHECK(parsed_date == epoch_string);
 }
 
 TEST_CASE(SUITE("FileSystemTime"))

@@ -223,12 +223,7 @@ void SetupLoggers(spdlog::level::level_enum log_level)
 }
 void WriteStartLoggingMessage(const std::string& TestName)
 {
-	std::string msg = "Logging for '"+TestName+"' started..";
-
-	if (auto cblogger = odc::spdlog_get("CBPort"))
-		cblogger->info(msg);
-	else if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info("CBPort Logger Message: "+msg);
+	Log.Info("Logging for '{}' started..",TestName);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
@@ -239,7 +234,7 @@ void TestSetup(const std::string& TestName, bool writeconffiles = true)
 }
 void TestTearDown(void)
 {
-	LOGINFO("Test Finished");
+	Log.Info("Test Finished");
 }
 // Used for command line test setup
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level)
@@ -273,13 +268,13 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 	TestTearDown()
 
 #define START_IOS(ThreadCount) \
-	LOGINFO("Starting ASIO Threads"); \
+	Log.Info("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	std::vector<std::thread> threads; \
 	for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
-	LOGINFO("Shutting Down ASIO Threads");    \
+	Log.Info("Shutting Down ASIO Threads");    \
 	work.reset();     \
 	IOS->run();       \
 	for (auto& t : threads) t.join()
@@ -362,7 +357,7 @@ TEST_CASE("Util - ParsePayloadString")
 	REQUIRE(res == true);
 	REQUIRE(payloadlocation.Packet == 16);
 	REQUIRE(payloadlocation.Position == PayloadABType::PositionA);
-	LOGINFO("Ignore Next Three LOGGGED Errors");
+	Log.Info("Ignore Next Three LOGGGED Errors");
 
 	res = CBPointConf::ParsePayloadString("1A", payloadlocation);
 	REQUIRE(res == false);
@@ -460,7 +455,7 @@ TEST_CASE("Util - CBPort::BuildUpdateTimeMessage")
 
 	rxdmsec = (((uint64_t)hhin * 60 + (uint64_t)mmin) * 60 + (uint64_t)ssin) * 1000 + (uint64_t)msecin;
 
-	LOGDEBUG("Received Time Set Command, Decoded {}, {} msec, PacketStamp {}, {} msec", to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), rxdmsec, to_stringfromCBtime(epochtimemsecsfull),epochtimemsecs);
+	Log.Debug("Received Time Set Command, Decoded {}, {} msec, PacketStamp {}, {} msec", to_stringfromhhmmssmsec(hhin, mmin, ssin, msecin), rxdmsec, to_stringfromCBtime(epochtimemsecsfull),epochtimemsecs);
 
 	STANDARD_TEST_TEARDOWN();
 }
@@ -1978,7 +1973,7 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on CONTROL command result : {} ", static_cast<int>(command_stat));
+			Log.Debug("Callback on CONTROL command result : {} ", static_cast<int>(command_stat));
 			res = command_stat;
 		});
 
@@ -2043,7 +2038,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			Log.Debug("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
 			res = command_stat;
 		});
 
@@ -2068,7 +2063,7 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			Log.Debug("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
 			res2 = command_stat;
 		});
 
@@ -2263,7 +2258,7 @@ TEST_CASE("RTU - Binary Scan TO CB311 ON 172.21.136.80:5001 CB 0x20")
             CommandStatus res = CommandStatus::NOT_AUTHORIZED;
             auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
                           {
-                                      LOGDEBUG("Callback on POM command result : {}", std::to_string(static_cast<int>(command_stat)));
+                                      Log.Debug("Callback on POM command result : {}", std::to_string(static_cast<int>(command_stat)));
                                       res = command_stat;
                           });
 

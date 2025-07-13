@@ -27,6 +27,7 @@
 #ifndef CBENGINE_H_
 #define CBENGINE_H_
 #include "CB.h"
+#include "Log.h"
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
@@ -198,7 +199,7 @@ public:
 		else
 		{
 			// Not a valid length of string passed in..
-			LOGERROR("Illegal length passed into CBBlockData constructor - must be 8 or 4");
+			Log.Error("Illegal length passed into CBBlockData constructor - must be 8 or 4");
 		}
 	}
 
@@ -497,7 +498,7 @@ public:
 		// Check there is enough data for at least the short version of the packet.
 		if ((startbit + 30) > usedbits)
 		{
-			LOGDEBUG("SOEEventFormat constructor failed, only {} bits of data available", usedbits - startbit);
+			Log.Debug("SOEEventFormat constructor failed, only {} bits of data available", usedbits - startbit);
 			return;
 		}
 
@@ -517,7 +518,7 @@ public:
 				// Check there is enough data for the long version of the packet.
 				if ((startbit + 41) > usedbits)
 				{
-					LOGDEBUG("SOEEventFormat constructor failed in long version, only {} bits of data available", usedbits - startbit);
+					Log.Debug("SOEEventFormat constructor failed in long version, only {} bits of data available", usedbits - startbit);
 					return;
 				}
 				Hour = GetBits8(BitArray, startbit, 5);
@@ -545,7 +546,7 @@ public:
 		}
 		catch (const std::exception& e)
 		{
-			LOGERROR("SOEEventFormat constructor failed, probably array index exceeded. {}", e.what());
+			Log.Error("SOEEventFormat constructor failed, probably array index exceeded. {}", e.what());
 		}
 	}
 
@@ -661,7 +662,7 @@ public:
 
 		// We can fit this data - proceed
 		uint64_t bitdata = GetFormattedData();
-		LOGDEBUG("---PackedEventData {}", to_hexstring(bitdata));
+		Log.Debug("---PackedEventData {}", to_hexstring(bitdata));
 
 		for (uint8_t i = 0; i < numberofbits; i++) // 41 or 30 depending on TimeFormatBit
 		{

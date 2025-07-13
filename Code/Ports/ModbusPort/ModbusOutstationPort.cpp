@@ -27,6 +27,7 @@
 #define NOMINMAX
 
 #include "ModbusOutstationPort.h"
+#include "Log.h"
 #include <chrono>
 #include <iostream>
 #include <opendatacon/util.h>
@@ -67,8 +68,7 @@ void ModbusOutstationPort::Connect()
 
 	if (MBSync->isNull())
 	{
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->error("{}: Connect error: 'Modbus stack failed'", Name);
+		Log.Error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
@@ -77,16 +77,14 @@ void ModbusOutstationPort::Connect()
 			int s = modbus_tcp_pi_listen(mb, 1);
 			if (s == -1)
 			{
-				if(auto log = odc::spdlog_get("ModbusPort"))
-					log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+				Log.Warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 				return;
 			}
 
 			int r = modbus_tcp_pi_accept(mb, &s);
 			if (r == -1)
 			{
-				if(auto log = odc::spdlog_get("ModbusPort"))
-					log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+				Log.Warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 				return;
 			}
 			PublishEvent(ConnectState::CONNECTED);
@@ -129,8 +127,7 @@ void ModbusOutstationPort::Build()
 			modbus_new_tcp_pi(pConf->mAddrConf.IP.c_str(), std::to_string(pConf->mAddrConf.Port).c_str()),*pIOS);
 		if (MBSync->isNull())
 		{
-			if(auto log = odc::spdlog_get("ModbusPort"))
-				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
+			Log.Error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
@@ -142,8 +139,7 @@ void ModbusOutstationPort::Build()
 			modbus_new_rtu(pConf->mAddrConf.SerialDevice.c_str(),pConf->mAddrConf.BaudRate,(char)pConf->mAddrConf.Parity,pConf->mAddrConf.DataBits,pConf->mAddrConf.StopBits), *pIOS);
 		if (MBSync->isNull())
 		{
-			if(auto log = odc::spdlog_get("ModbusPort"))
-				log->error("{}: Stack error: 'Modbus stack creation failed'", Name);
+			Log.Error("{}: Stack error: 'Modbus stack creation failed'", Name);
 			//TODO: should this throw an exception instead of return?
 			return;
 		}
@@ -151,8 +147,7 @@ void ModbusOutstationPort::Build()
 			{
 				if(modbus_rtu_set_serial_mode(mb,MODBUS_RTU_RS232))
 				{
-					if(auto log = odc::spdlog_get("ModbusPort"))
-						log->error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
+					Log.Error("{}: Stack error: 'Failed to set Modbus serial mode to RS232'", Name);
 					//TODO: should this throw an exception instead of return?
 					return;
 				}
@@ -160,8 +155,7 @@ void ModbusOutstationPort::Build()
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->error("{}: No IP interface or serial device defined", Name);
+		Log.Error("{}: No IP interface or serial device defined", Name);
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
@@ -174,8 +168,7 @@ void ModbusOutstationPort::Build()
 		pConf->pPointConf->InputRegIndicies.Total());
 	if (mb_mapping == nullptr)
 	{
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
+		Log.Error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
 		//TODO: should this throw an exception instead of return?
 		return;
 	}
@@ -208,8 +201,7 @@ void ModbusOutstationPort::Event(std::shared_ptr<const EventInfo> event, const s
 		auto scaled_float = event->GetPayload<EventType::Analog>()*100;
 		if(scaled_float > std::numeric_limits<int16_t>::max() || scaled_float < std::numeric_limits<int16_t>::min())
 		{
-			if(auto log = odc::spdlog_get("ModbusPort"))
-				log->error("Scaled float overrange for 16-bit modbus load to index {}",index);
+			Log.Error("Scaled float overrange for 16-bit modbus load to index {}",index);
 			return (*pStatusCallback)(CommandStatus::OUT_OF_RANGE);
 		}
 

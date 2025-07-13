@@ -27,6 +27,7 @@
 #ifndef TRANSFORM_H_
 #define TRANSFORM_H_
 
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/IOHandler.h>
 #include <opendatacon/IOTypes.h>
 #include <json/json.h>

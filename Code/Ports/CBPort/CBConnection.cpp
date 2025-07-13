@@ -24,7 +24,7 @@
  *      Author: Scott Ellis - scott.ellis@novatex.com.au
  */
 
-#include "CB.h"
+#include "Log.h"
 #include "CBConnection.h"
 #include "CBUtility.h"
 #include <functional>
@@ -47,15 +47,15 @@ ConnectionTokenType::~ConnectionTokenType()
 	{
 		if (pConnection.use_count() <= 2)
 		{
-			LOGDEBUG("Use Count On ConnectionTok Shared_ptr down to 2 - Destroying the Map Connection - {}", ChannelID);
+			Log.Debug("Use Count On ConnectionTok Shared_ptr down to 2 - Destroying the Map Connection - {}", ChannelID);
 			pConnection->RemoveConnectionFromMap();
 			// Now release our shared_ptr - the last one.The CBConnection destructor should now be called.
 			pConnection.reset();
-			LOGDEBUG("Map Connection Destroyed - {}", ChannelID);
+			Log.Debug("Map Connection Destroyed - {}", ChannelID);
 		}
 		else
 		{
-			LOGDEBUG("Use Count On Connection Shared_ptr at {} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
+			Log.Debug("Use Count On Connection Shared_ptr at {} - The Map Connection Stays - {}", pConnection.use_count(), ChannelID);
 		}
 	}
 }
@@ -89,7 +89,7 @@ CBConnection::CBConnection
 	InternalChannelID = MakeChannelID(aEndPoint, aPort, aisServer);
 
 
-	LOGDEBUG("Opened an CBConnection object {} As a {} - {}",InternalChannelID, (IsServer ? "Server" : "Client"), (IsBakerDevice ? " Baker Device" : " Conitel Device"));
+	Log.Debug("Opened an CBConnection object {} As a {} - {}",InternalChannelID, (IsServer ? "Server" : "Client"), (IsBakerDevice ? " Baker Device" : " Conitel Device"));
 }
 
 // Static Method
@@ -119,7 +119,7 @@ ConnectionTokenType CBConnection::AddConnection
 		ConnectionMap[ChannelID] = std::make_shared<CBConnection>(apIOS, aisServer, aEndPoint, aPort, isbakerdevice, retry_time_ms, throttle_bitrate, throttle_chunksize, throttle_writedelay_ms);
 	}
 	else
-		LOGDEBUG("ConnectionTok already exists, using that connection - {}",ChannelID);
+		Log.Debug("ConnectionTok already exists, using that connection - {}",ChannelID);
 
 	return ConnectionTokenType(ChannelID, ConnectionMap[ChannelID]); // the use count on the Connection Map shared_ptr will go up by one.
 }
@@ -135,11 +135,11 @@ void CBConnection::AddOutstation(const ConnectionTokenType &ConnectionTok, uint8
 		{
 			if (pConnection->IsBakerDevice)
 			{
-				LOGERROR("Tried to add a Conitel outstation to a Baker ConnectionTok");
+				Log.Error("Tried to add a Conitel outstation to a Baker ConnectionTok");
 			}
 			else
 			{
-				LOGERROR("Tried to add a Baker outstation to a Conitel ConnectionTok");
+				Log.Error("Tried to add a Baker outstation to a Conitel ConnectionTok");
 			}
 		}
 		// Save the callbacks to two maps for the multidrop stations on this connection for quick access
@@ -148,7 +148,7 @@ void CBConnection::AddOutstation(const ConnectionTokenType &ConnectionTok, uint8
 	}
 	else
 	{
-		LOGERROR("Tried to add an Outstation when the connection was no longer valid");
+		Log.Error("Tried to add an Outstation when the connection was no longer valid");
 	}
 }
 //Static Method
@@ -161,7 +161,7 @@ void CBConnection::RemoveOutstation(const ConnectionTokenType &ConnectionTok, ui
 	}
 	else
 	{
-		LOGERROR("Tried to remove an Outstation when the connection was no longer valid");
+		Log.Error("Tried to remove an Outstation when the connection was no longer valid");
 	}
 }
 
@@ -176,11 +176,11 @@ void CBConnection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t T
 		{
 			if (pConnection->IsBakerDevice)
 			{
-				LOGERROR("Tried to add a Conitel Master to a Baker ConnectionTok");
+				Log.Error("Tried to add a Conitel Master to a Baker ConnectionTok");
 			}
 			else
 			{
-				LOGERROR("Tried to add a Baker Master to a Conitel ConnectionTok");
+				Log.Error("Tried to add a Baker Master to a Conitel ConnectionTok");
 			}
 		}
 		// Save the callbacks to two maps for the multidrop stations on this connection for quick access
@@ -189,7 +189,7 @@ void CBConnection::AddMaster(const ConnectionTokenType &ConnectionTok, uint8_t T
 	}
 	else
 	{
-		LOGERROR("Tried to add a Master when the connection was no longer valid");
+		Log.Error("Tried to add a Master when the connection was no longer valid");
 	}
 }
 // Static Method
@@ -202,7 +202,7 @@ void CBConnection::RemoveMaster(const ConnectionTokenType &ConnectionTok, uint8_
 	}
 	else
 	{
-		LOGERROR("Tried to remove a Master when the connection was no longer valid");
+		Log.Error("Tried to remove a Master when the connection was no longer valid");
 	}
 }
 
@@ -222,7 +222,7 @@ void CBConnection::Open(const ConnectionTokenType &ConnectionTok)
 	}
 	else
 	{
-		LOGERROR("Tried to open a connection when the connection was no longer valid");
+		Log.Error("Tried to open a connection when the connection was no longer valid");
 	}
 }
 
@@ -239,11 +239,11 @@ void CBConnection::Open()
 		{
 			pSockMan->Open();
 			opencount.fetch_add(1);
-			LOGDEBUG("ConnectionTok Opened: {}", InternalChannelID);
+			Log.Debug("ConnectionTok Opened: {}", InternalChannelID);
 		}
 		catch (std::exception& e)
 		{
-			LOGERROR("Problem opening connection :{} - {}", InternalChannelID, e.what());
+			Log.Error("Problem opening connection :{} - {}", InternalChannelID, e.what());
 			successfullyopened.exchange(false);
 			return;
 		}
@@ -251,7 +251,7 @@ void CBConnection::Open()
 	else
 	{
 		opencount.fetch_add(1);
-		LOGDEBUG("Connection increased open count: {} {}", opencount.load(), InternalChannelID);
+		Log.Debug("Connection increased open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }
 // Static Method
@@ -263,7 +263,7 @@ void CBConnection::Close(const ConnectionTokenType &ConnectionTok)
 	}
 	else
 	{
-		LOGERROR("Tried to close a connection when the connection was no longer valid");
+		Log.Error("Tried to close a connection when the connection was no longer valid");
 	}
 }
 
@@ -278,18 +278,18 @@ void CBConnection::Close()
 		pSockMan->Close();
 		successfullyopened.exchange(false);
 
-		LOGDEBUG("Connection open count 0, Closed: {}", InternalChannelID);
+		Log.Debug("Connection open count 0, Closed: {}", InternalChannelID);
 	}
 	else
 	{
-		LOGDEBUG("Connection reduced open count: {} {}", opencount.load(), InternalChannelID);
+		Log.Debug("Connection reduced open count: {} {}", opencount.load(), InternalChannelID);
 	}
 }
 
 CBConnection::~CBConnection()
 {
 	pSockMan.reset(); // Release our object - should be done anyway when as soon as we exit this method...
-	LOGDEBUG("Connection Destructor Complete : {}", InternalChannelID);
+	Log.Debug("Connection Destructor Complete : {}", InternalChannelID);
 }
 
 // Static method
@@ -297,7 +297,7 @@ void CBConnection::Write(const ConnectionTokenType &ConnectionTok,const CBMessag
 {
 	if (CompleteCBMessage.size() == 0)
 	{
-		LOGERROR("Tried to send an empty message to the TCP Port");
+		Log.Error("Tried to send an empty message to the TCP Port");
 		return;
 	}
 	// Turn the blocks into a binary string.
@@ -334,7 +334,7 @@ void CBConnection::Write(const ConnectionTokenType &ConnectionTok,const CBMessag
 	}
 	else
 	{
-		LOGERROR("Tried to write to a connection when the connection was no longer valid");
+		Log.Error("Tried to write to a connection when the connection was no longer valid");
 	}
 }
 //Static method
@@ -346,7 +346,7 @@ void CBConnection::SetSendTCPDataFn(const ConnectionTokenType &ConnectionTok, st
 	}
 	else
 	{
-		LOGERROR("Tried to setsendTCPdataFn when the connection was no longer valid");
+		Log.Error("Tried to setsendTCPdataFn when the connection was no longer valid");
 	}
 }
 
@@ -368,7 +368,7 @@ void CBConnection::InjectSimulatedTCPMessage(const ConnectionTokenType &Connecti
 	}
 	else
 	{
-		LOGERROR("Tried to InjectSimulatedTCPMessage when the connection was no longer valid");
+		Log.Error("Tried to InjectSimulatedTCPMessage when the connection was no longer valid");
 	}
 }
 
@@ -386,7 +386,7 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 
 	if (!successfullyopened.load())
 	{
-		LOGDEBUG("CBConnection called ReadCompletionHandler when not opened - ignoring");
+		Log.Debug("CBConnection called ReadCompletionHandler when not opened - ignoring");
 		return;
 	}
 
@@ -411,18 +411,18 @@ void CBConnection::ReadCompletionHandler(buf_t&readbuf)
 				// We know we are looking for the first block if CBMessage is empty.
 				if (CBMessage.size() != 0)
 				{
-					LOGDEBUG("Received a start block {} when we have not got to an end block - discarding data blocks - {} and storing this start block", ReadCompletionHandlerCBblock.ToString(), std::to_string(CBMessage.size()));
+					Log.Debug("Received a start block {} when we have not got to an end block - discarding data blocks - {} and storing this start block", ReadCompletionHandlerCBblock.ToString(), std::to_string(CBMessage.size()));
 					CBMessage.clear();
 				}
 				CBMessage.push_back(ReadCompletionHandlerCBblock); // Takes a copy of the block
 			}
 			else if (CBMessage.size() == 0)
 			{
-				LOGDEBUG("Received a non start block when we are waiting for a start block - discarding data - {}", ReadCompletionHandlerCBblock.ToString());
+				Log.Debug("Received a non start block when we are waiting for a start block - discarding data - {}", ReadCompletionHandlerCBblock.ToString());
 			}
 			else if (CBMessage.size() >= MAX_BLOCK_COUNT)
 			{
-				LOGDEBUG("Received more than 16 blocks in a single CB message - discarding data - {}", ReadCompletionHandlerCBblock.ToString());
+				Log.Debug("Received more than 16 blocks in a single CB message - discarding data - {}", ReadCompletionHandlerCBblock.ToString());
 				CBMessage.clear(); // Empty message block queue
 			}
 			else
@@ -463,26 +463,26 @@ void CBConnection::RouteCBMessage(CBMessage_t &CompleteCBMessage)
 	{
 		// If zero, route to all outstations!
 		// Most zero station address functions do not send a response
-		LOGDEBUG("Received a zero station address routing to all outstations - {}", CBMessageAsString(CompleteCBMessage));
+		Log.Debug("Received a zero station address routing to all outstations - {}", CBMessageAsString(CompleteCBMessage));
 		for (auto it = ReadCallbackMap.begin(); it != ReadCallbackMap.end(); ++it)
 			it->second(CBMessage_t(CompleteCBMessage));
 	}
 	else if (ReadCallbackMap.count(StationAddress) != 0)
 	{
 		// We have found a matching outstation, do read callback
-		LOGDEBUG("Routing Message to station - {} Message - {}",std::to_string(StationAddress),CBMessageAsString(CompleteCBMessage));
+		Log.Debug("Routing Message to station - {} Message - {}",std::to_string(StationAddress),CBMessageAsString(CompleteCBMessage));
 		ReadCallbackMap.at(StationAddress)(std::move(CompleteCBMessage));
 	}
 	else
 	{
 		// NO match
-		LOGDEBUG("Received non-matching outstation address - {} Message - {}", std::to_string(StationAddress), CBMessageAsString(CompleteCBMessage));
+		Log.Debug("Received non-matching outstation address - {} Message - {}", std::to_string(StationAddress), CBMessageAsString(CompleteCBMessage));
 	}
 }
 
 void CBConnection::SocketStateHandler(bool state)
 {
-	LOGDEBUG("ConnectionTok changed state {} As a {}", InternalChannelID , (state ? "Open" : "Close"));
+	Log.Debug("ConnectionTok changed state {} As a {}", InternalChannelID , (state ? "Open" : "Close"));
 
 	// Call all the OutStation State Callbacks
 	for (auto it = StateCallbackMap.begin(); it != StateCallbackMap.end(); ++it)

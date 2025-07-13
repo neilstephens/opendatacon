@@ -53,28 +53,6 @@
 // Filter for Conitel/Baker traffic - based on payload size, and Function code != 0
 // (tcp.PayloadLength != 0) && ((tcp.PayloadLength % 4) == 0) && (tcp.payload[0] > 0x0F)
 
-
-// Hide some of the code to make Logging cleaner
-#define LOGTRACE(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
-	log->trace(__VA_ARGS__)
-#define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
-	log->debug(__VA_ARGS__)
-#define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
-	log->error(__VA_ARGS__)
-#define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("CBPort"))  \
-	log->warn(__VA_ARGS__)
-#define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
-	log->info(__VA_ARGS__)
-#define LOGCRITICAL(...) \
-	if (auto log = odc::spdlog_get("CBPort")) \
-	log->critical(__VA_ARGS__)
-
-
 void CommandLineLoggingSetup(spdlog::level::level_enum log_level);
 void CommandLineLoggingCleanup();
 
