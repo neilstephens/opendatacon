@@ -216,12 +216,7 @@ void SetupLoggers(spdlog::level::level_enum loglevel)
 }
 void WriteStartLoggingMessage(const std::string& TestName)
 {
-	std::string msg = "Logging for '" + TestName + "' started..";
-
-	if (auto md3logger = odc::spdlog_get("MD3Port"))
-		md3logger->info(msg);
-	else if (auto odclogger = odc::spdlog_get("opendatacon"))
-		odclogger->info("MD3Port Logger Message: "+msg);
+	Log.Info("Logging for '{}' started..",TestName);
 }
 void TestSetup(const std::string& TestName, bool writeconffiles = true)
 {
@@ -297,13 +292,13 @@ void Wait(odc::asio_service &IOS, const size_t seconds)
 	TestSetup(Catch::getResultCapture().getCurrentTestName())
 
 #define START_IOS(ThreadCount) \
-	LOGINFO("Starting ASIO Threads"); \
+	Log.Info("Starting ASIO Threads"); \
 	auto work = IOS->make_work(); /* To keep run - running!*/\
 	std::vector<std::thread> threads; \
 	for (int i = 0; i < (ThreadCount); i++) threads.emplace_back([IOS] { IOS->run(); })
 
 #define STOP_IOS() \
-	LOGINFO("Shutting Down ASIO Threads");    \
+	Log.Info("Shutting Down ASIO Threads");    \
 	work.reset();     \
 	IOS->run();       \
 	for (auto& t : threads) t.join()
@@ -980,7 +975,7 @@ TEST_CASE("MD3Block - Fn43")
 	REQUIRE(b43_b2.CheckSumPasses());
 
 	MD3Time timebase = static_cast<uint64_t>(b43_b2.GetData()) * 1000 + b43_t1.GetMilliseconds(); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
+	Log.Debug("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 
 	TestTearDown();
 }
@@ -996,7 +991,7 @@ TEST_CASE("MD3Block - Fn44")
 	SIMPLE_TEST_SETUP();
 
 	MD3Time timebase = static_cast<uint64_t>(0x5ad6b75f) * 1000 + (0x252 & 0x03FF); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
+	Log.Debug("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 
 	MD3BlockFn44MtoS b44(0x38, 999);
 	REQUIRE(b44.GetMilliseconds() == 999);
@@ -1018,7 +1013,7 @@ TEST_CASE("MD3Block - Fn44")
 
 	int UTCOffset = b44_b3.GetFirstWord();
 	timebase = static_cast<uint64_t>(b44_b2.GetData()) * 1000 + b44_t1.GetMilliseconds(); //MD3Time msec since Epoch.
-	LOGDEBUG("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
+	Log.Debug("TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase)+ " UTC Offset Minutes "+std::to_string(UTCOffset));
 	TestTearDown();
 }
 TEST_CASE("MD3Block - Fn15 OK Packet")
@@ -1974,7 +1969,7 @@ TEST_CASE("Station - DigitalCOSFn11")
 	RBlock = MD3BlockData(BlockString);
 
 	MD3Time timebase = static_cast<uint64_t>(RBlock.GetData()) * 1000; //MD3Time msec since Epoch.
-	LOGDEBUG("Fn11 TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
+	Log.Debug("Fn11 TimeDate Packet Local : " + to_LOCALtimestringfromMD3time(timebase));
 	REQUIRE(timebase == 0x0000016338b6d400ULL);
 
 	// Then 4 COS blocks.
@@ -3760,7 +3755,7 @@ TEST_CASE("Master - POM Multi-drop Test Using TCP")
 	std::atomic_bool done_flag(false);
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res,&done_flag](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+			Log.Debug("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
 			res = command_stat;
 			done_flag = true;
 		});
@@ -3786,7 +3781,7 @@ TEST_CASE("Master - POM Multi-drop Test Using TCP")
 	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+			Log.Debug("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
 			res2 = command_stat;
 		});
 
@@ -3853,7 +3848,7 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 	std::atomic_bool done_flag(false);
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res,&done_flag](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			Log.Debug("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
 			res = command_stat;
 			done_flag = true;
 		});
@@ -3879,7 +3874,7 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
 	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
+			Log.Debug("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
 			res2 = command_stat;
 		});
 
@@ -4054,7 +4049,7 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 	std::atomic_bool done_flag(false);
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res,&done_flag](CommandStatus command_stat)
 		{
-			LOGDEBUG("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
+			Log.Debug("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
 			res = command_stat;
 			done_flag = true;
 		});

@@ -50,6 +50,7 @@ using ExtraPointFields = std::unordered_map<std::string, std::string>;
 class CBORSerialiser;
 struct PointTranslationEntry
 {
+	bool override = false;
 	std::unique_ptr<kafka::Topic> pTopic = nullptr;
 	std::unique_ptr<odc::OctetStringBuffer> pKey = nullptr;
 	std::unique_ptr<std::string> pTemplate = nullptr;

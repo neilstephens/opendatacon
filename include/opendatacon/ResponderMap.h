@@ -28,6 +28,7 @@
 #ifndef opendatacon_ResponderMap_h
 #define opendatacon_ResponderMap_h
 #include "IUIResponder.h"
+#include <opendatacon/LogHelpers.h>
 #include <memory>
 #include <regex>
 #include <opendatacon/util.h>
@@ -35,6 +36,8 @@
 template <class T>
 class ResponderMap: public std::unordered_map<std::string, T >, public IUIResponder
 {
+private:
+	inline static odc::LogHelpers Log{"opendatacon"};
 public:
 	ResponderMap()
 	{
@@ -91,10 +94,8 @@ public:
 			catch(std::exception& e)
 			{
 				std::string msg("Regex exception: '" + std::string(e.what()) + "'");
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->error(msg);
-				else
-					std::cout << msg << std::endl;
+				if(!Log.Error(msg))
+					std::cerr << msg << std::endl;
 			}
 		}
 		return targets;
@@ -123,9 +124,7 @@ public:
 			catch(std::exception& e)
 			{
 				std::string msg("Regex exception: '" + std::string(e.what()) + "'");
-				if(auto log = odc::spdlog_get("opendatacon"))
-					log->error(msg);
-				else
+				if(!Log.Error(msg))
 					std::cout << msg << std::endl;
 			}
 		}

@@ -27,6 +27,7 @@
 #ifndef MD3ENGINE_H_
 #define MD3ENGINE_H_
 #include "MD3.h"
+#include "Log.h"
 #include <cstddef>
 #include <cstdint>
 #include <cassert>
@@ -131,7 +132,7 @@ public:
 		else
 		{
 			// Not a valid length of string passed in..
-			LOGERROR("Illegal length passed into MD3BlockData constructor - must be 12 or 6");
+			Log.Error("Illegal length passed into MD3BlockData constructor - must be 12 or 6");
 		}
 	}
 	explicit MD3BlockData(const uint16_t firstword, const uint16_t secondword, bool lastblock = false)

@@ -12,7 +12,7 @@
 #include "reply.hpp"
 #include "request.hpp"
 #include "request_handler.hpp"
-#include <opendatacon/ODCLogMacros.h>
+#include "Log.h"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -26,7 +26,7 @@ void request_handler::register_handler(const std::string& uripattern, const pHan
 {
 	if (HandlerMap.find(uripattern) != HandlerMap.end())
 	{
-		LOGDEBUG("Trying to insert a handler twice {} ", uripattern);
+		Log.Debug("Trying to insert a handler twice {} ", uripattern);
 		return;
 	}
 	HandlerMap.emplace(std::make_pair(uripattern, handler));
@@ -35,13 +35,13 @@ size_t request_handler::deregister_handler(const std::string& uripattern)
 {
 	if (HandlerMap.find(uripattern) != HandlerMap.end())
 	{
-		LOGDEBUG("Removing a http handler {} ", uripattern);
+		Log.Debug("Removing a http handler {} ", uripattern);
 		HandlerMap.erase(uripattern);
 		return HandlerMap.size();
 	}
 	else
 	{
-		LOGDEBUG("Trying to remove a http handler that does not exist {} ", uripattern);
+		Log.Debug("Trying to remove a http handler that does not exist {} ", uripattern);
 		return HandlerMap.size();
 	}
 }
@@ -68,11 +68,11 @@ pHandlerCallbackType request_handler::find_matching_handler(const std::string& u
 	}
 	if (matchlength == 0)
 	{
-		LOGDEBUG("Failed to find a Handler {} ", uripattern);
+		Log.Debug("Failed to find a Handler {} ", uripattern);
 	}
 	else
 	{
-		LOGTRACE("Found Handler {} for {}", matchkey, uripattern);
+		if(Log.ShouldLog(spdlog::level::trace)) Log.Trace("Found Handler {} for {}", matchkey, uripattern);
 	}
 	return result;
 }
@@ -93,7 +93,7 @@ ParameterMapType request_handler::SplitParams(std::string &paramstring)
 {
 	// Split into a map of keys and values.
 	ParameterMapType p;
-	//LOGDEBUG("Splitting Params {}", paramstring);
+	//Log.Debug("Splitting Params {}", paramstring);
 	std::vector<std::string> tokens = split(paramstring, '&');
 
 	for (auto token : tokens)
@@ -114,23 +114,23 @@ ParameterMapType request_handler::SplitParams(std::string &paramstring)
 // Remembering that we are going to pass this into and back from Python code, so a little different than if we were planning to do everything
 void request_handler::handle_request(const request& req, reply& rep)
 {
-	LOGDEBUG("Request Method {} - Uri {}", req.method, req.uri);
+	Log.Debug("Request Method {} - Uri {}", req.method, req.uri);
 
 	// Decode url to path.
 	std::string request_path, request_params;
 	if (!url_decode(req.uri, request_path, request_params))
 	{
 		rep = reply::stock_reply(reply::bad_request);
-		LOGDEBUG("Bad Request");
+		Log.Debug("Bad Request");
 		return;
 	}
-	//LOGDEBUG("Path {} - Params {}", request_path, request_params);
+	//Log.Debug("Path {} - Params {}", request_path, request_params);
 
 	// Request path must be absolute and not contain "..".
 	if (request_path.empty() || request_path[0] != '/' || request_path.find("..") != std::string::npos)
 	{
 		rep = reply::stock_reply(reply::bad_request);
-		LOGDEBUG("Invalid Path/Url");
+		Log.Debug("Invalid Path/Url");
 		return;
 	}
 
@@ -146,7 +146,7 @@ void request_handler::handle_request(const request& req, reply& rep)
 
 	// If not found, return that
 	rep = reply::stock_reply(reply::bad_request);
-	LOGDEBUG("Matching Method/Url not found");
+	Log.Debug("Matching Method/Url not found");
 	return;
 }
 

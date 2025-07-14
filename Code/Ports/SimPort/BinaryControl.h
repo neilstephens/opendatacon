@@ -28,6 +28,7 @@
 #ifndef BINARYCONTROL_H
 #define BINARYCONTROL_H
 
+#include "Log.h"
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/asio.h>
 #include <json/json.h>
@@ -72,8 +73,8 @@ inline PositionAction ToPositionAction(const std::string& str_action)
 		action = PositionAction::RAISE;
 	else if (odc::to_lower(str_action) == "lower")
 		action = PositionAction::LOWER;
-	else if (auto log = odc::spdlog_get("SimPort"))
-		log->error("Invalid action for Postion feedback (use 'RAISE' or 'LOWER') : '{}'", str_action);
+	else
+		Log.Error("Invalid action for Postion feedback (use 'RAISE' or 'LOWER') : '{}'", str_action);
 	return action;
 }
 

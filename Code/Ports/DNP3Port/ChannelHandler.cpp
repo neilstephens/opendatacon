@@ -1,4 +1,5 @@
 #include "ChannelHandler.h"
+#include "Log.h"
 #include "ChannelStateSubscriber.h"
 #include "DNP3Port.h"
 #include <opendatacon/util.h>
@@ -8,6 +9,7 @@ ChannelHandler::ChannelHandler(DNP3Port *p):
 	pSyncStrand(pIOS->make_strand()),
 	handler_tracker(std::make_shared<char>()),
 	pPort(p),
+	ChannelID(""),
 	pChannel(nullptr),
 	pWatchdog(nullptr),
 	link_status(opendnp3::LinkStatus::UNRESET),
@@ -23,13 +25,14 @@ ChannelHandler::~ChannelHandler()
 	//wait til they're all gone, or harmless
 	while(!tracker.expired() && !pIOS->stopped() && !pSyncStrand->running_in_this_thread())
 		pIOS->poll_one();
+
+	ChannelStateSubscriber::Unsubscribe(ChannelID);
 }
 
 // Called by OpenDNP3 Thread Pool
 void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: ChannelState {}.", pPort->Name, opendnp3::ChannelStateSpec::to_human_string(state));
+	Log.Debug("{}: ChannelState {}.", pPort->Name, opendnp3::ChannelStateSpec::to_human_string(state));
 
 	auto previous_deadness = link_deadness.load();
 
@@ -45,12 +48,14 @@ void ChannelHandler::StateListener_(opendnp3::ChannelState state)
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
 		pWatchdog->LinkDown(pPort->ptr());
 	}
+
+	//redundant check for in-demand status
+	pPort->CheckStackState();
 }
 
 void ChannelHandler::SetLinkStatus_(opendnp3::LinkStatus status)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: LinkStatus {}.", pPort->Name, opendnp3::LinkStatusSpec::to_human_string(status));
+	Log.Debug("{}: LinkStatus {}.", pPort->Name, opendnp3::LinkStatusSpec::to_human_string(status));
 
 	link_status = status;
 }
@@ -64,6 +69,9 @@ void ChannelHandler::LinkDown_()
 		pPort->LinkDeadnessChange(previous_deadness,link_deadness);
 		pWatchdog->LinkDown(pPort->ptr());
 	}
+
+	//redundant check for in-demand status
+	pPort->CheckStackState();
 }
 void ChannelHandler::LinkUp_()
 {
@@ -83,7 +91,6 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 
 	auto pConf = static_cast<DNP3PortConf*>(pPort->pConf.get());
 
-	std::string ChannelID;
 	bool isSerial;
 
 	std::string remote_host = "";
@@ -114,8 +121,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 				local_interface = pConf->mAddrConf.IP;
 				if(!pConf->mAddrConf.BindIP.empty() && pConf->mAddrConf.BindIP != pConf->mAddrConf.IP)
 				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->warn("{}: Ignoring 'BindIP' for TCP server. 'IP' is used as bind addr for servers.", pPort->Name);
+					Log.Warn("{}: Ignoring 'BindIP' for TCP server. 'IP' is used as bind addr for servers.", pPort->Name);
 				}
 				local_port = pConf->mAddrConf.Port;
 				ChannelID = "TCPSERVER:"+local_interface +":"+ std::to_string(local_port);
@@ -133,7 +139,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 	//Create a channel listener that will subscribe this port to channel updates
 	//if we're the first port on the channel, this listener will get passed to the dnp3 stack below
 	//otherwise it can be destroyed, still leaving this port subscribed.
-	auto listener = std::make_shared<ChannelListener>(ChannelID,this);
+	auto listener = std::make_shared<ChannelListener>(ChannelID,weak_from_this());
 
 	//if there's already a channel, just take some pointers and return
 	if(Channels.count(ChannelID))
@@ -227,8 +233,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 				default:
 				{
 					const std::string msg(pPort->Name + ": Can't determine if TCP socket is client or server");
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->error(msg);
+					Log.Error(msg);
 					throw std::runtime_error(msg);
 				}
 			}

@@ -27,6 +27,7 @@
 #include "SimPort.h"
 #include "SimPortCollection.h"
 #include "SimPortConf.h"
+#include "Log.h"
 #include "sqlite3/sqlite3.h"
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/util.h>
@@ -204,14 +205,11 @@ std::vector<std::size_t> SimPort::IndexesFromString(const std::string& index_str
 
 bool SimPort::UILoad(EventType type, const std::string& index, const std::string& value, const std::string& quality, const std::string& timestamp, const bool force)
 {
-	auto log = odc::spdlog_get("SimPort");
-	if(log)
-		log->debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
+	Log.Debug("{} : UILoad : {}, {}, {}, {}, {}, {}", Name, ToString(type), index, value, quality, timestamp, force);
 
 	if(!enabled)
 	{
-		if (log)
-			log->error("{} : UILoad() when disabled.", Name);
+		Log.Error("{} : UILoad() when disabled.", Name);
 		return false;
 	}
 
@@ -273,9 +271,7 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 
 bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, const std::string& period)
 {
-	auto log = odc::spdlog_get("SimPort");
-	if(log)
-		log->debug("{} : UISetUpdateInterval : {}, {}, {}", Name, ToString(type), index, period);
+	Log.Debug("{} : UISetUpdateInterval : {}, {}, {}", Name, ToString(type), index, period);
 
 	unsigned int delta = 0;
 	try
@@ -482,13 +478,11 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 	}
 	else if(rv == SQLITE_DONE)
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
+		Log.Debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
 	}
 	else
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
+		Log.Error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
 	}
 	//no more records or error - wait forever
 	auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
@@ -550,13 +544,11 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 		event->SetPayload<EventType::Binary>(std::move(val));
 		interval = pSimConf->UpdateInterval(event->GetEventType(), event->GetIndex());
 	}
-	else if(auto log = odc::spdlog_get("SimPort"))
+	else
 	{
-		log->error("{} : Unsupported EventType : '{}'", Name, ToString(event->GetEventType()));
+		Log.Error("{} : Unsupported EventType : '{}'", Name, ToString(event->GetEventType()));
 		return;
 	}
-	else
-		return;
 
 	auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 	event->SetTimestamp(msSinceEpoch()+random_interval);
@@ -694,7 +686,7 @@ void SimPort::Build()
 				rep.headers[0].value = std::to_string(rep.content.size());
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = contenttype;
-				LOGDEBUG("{} Get Command {}, Resp {}", Name, absoluteuri, rep.content);
+				Log.Debug("{} Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
 		HttpServerManager::AddHandler(httpServerToken, "GET /" + Name, gethandler);
 
@@ -789,7 +781,7 @@ void SimPort::Build()
 				rep.headers[0].value = std::to_string(rep.content.size());
 				rep.headers[1].name = "Content-Type";
 				rep.headers[1].value = "text/html";
-				LOGDEBUG("{} Post/Get Command {}, Resp {}", Name, absoluteuri, rep.content);
+				Log.Debug("{} Post/Get Command {}, Resp {}", Name, absoluteuri, rep.content);
 			});
 		HttpServerManager::AddHandler(httpServerToken, "POST /" + Name, posthandler);
 		HttpServerManager::AddHandler(httpServerToken, "GET /post/" + Name, posthandler); // Allow the post functionality but using a get - easier for testing!
@@ -816,8 +808,6 @@ void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& S
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
 	std::string message = "Control not supported";
 	std::size_t index = 0;
-	//if(auto log = odc::spdlog_get("SimPort"))
-	//    log->trace("{}: Received control for Name {}", Name);
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
@@ -857,8 +847,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 	bool forced = false;
 	if(fb->mode == FeedbackMode::PULSE)
 	{
-		if(auto log = odc::spdlog_get("SimPort"))
-			log->trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{}: Control {}: Pulse feedback to Binary {}.", Name, index, fb->on_value->GetIndex());
 		switch(command.functionCode)
 		{
 			case ControlCode::PULSE_ON:
@@ -898,8 +888,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 	{
 		if (IsOnCommand(command.functionCode))
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: Latch on feedback to Binary {}.",
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: Control {}: Latch on feedback to Binary {}.",
 					Name, index,fb->on_value->GetIndex());
 			fb->on_value->SetTimestamp();
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
@@ -913,8 +903,8 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 		}
 		else if (IsOffCommand(command.functionCode))
 		{
-			if(auto log = odc::spdlog_get("SimPort"))
-				log->trace("{}: Control {}: Latch off feedback to Binary {}.",
+			if(Log.ShouldLog(spdlog::level::trace))
+				Log.Trace("{}: Control {}: Latch off feedback to Binary {}.",
 					Name, index, fb->off_value->GetIndex());
 			fb->off_value->SetTimestamp();
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
@@ -1155,8 +1145,8 @@ CommandStatus SimPort::HandlePositionFeedbackForBCD(const std::shared_ptr<Positi
 
 void SimPort::EventResponse(const std::string& message, std::size_t index, SharedStatusCallback_t pStatusCallback, CommandStatus status)
 {
-	if(auto log = odc::spdlog_get("SimPort"))
-		log->trace("{} : {} for Index {}", Name, message, index);
+	if(Log.ShouldLog(spdlog::level::trace))
+		Log.Trace("{} : {} for Index {}", Name, message, index);
 	(*pStatusCallback)(status);
 }
 

@@ -80,8 +80,8 @@ inline void read_and_send(const std::shared_ptr<WebServer::Response> response, c
 				{
 					if(!ec)
 						read_and_send(response, ifs, buffer);
-					else if (auto log = odc::spdlog_get("WebUI"))
-						log->error("Connection interrupted");
+					else if (auto log = odc::spdlog_get("opendatacon"))
+						log->error("Connection interrupted. SimpleWeb::error_code {}",ec);
 				});
 		}
 	}

@@ -49,10 +49,14 @@ public:
 	virtual void Build() override = 0;
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
+private:
+	std::unique_ptr<asio::io_service::strand> pStateSync = odc::asio_service::Get()->make_strand();
+
 protected:
 	std::atomic_bool enabled {false};
-	std::unique_ptr<asio::io_service::strand> pStateSync = odc::asio_service::Get()->make_strand();
 	std::shared_ptr<KafkaClientCache> pKafkaClientCache = KafkaClientCache::Get();
+	std::unordered_map<std::string,std::unique_ptr<EventDB>> pDBs;
+	void ConnectionEvent(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback);
 	template <class KafkaClientType> std::shared_ptr<KafkaClientType> Build(std::string TypeString = "") //TODO: make TypeString an enum with to_string helper
 	{
 		auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
@@ -60,34 +64,14 @@ protected:
 		if(!pConf->NativeKafkaProperties.contains("bootstrap.servers"))
 		{
 			pConf->NativeKafkaProperties.put("bootstrap.servers", "localhost:9092");
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("{}: bootstrap.servers property not found, defaulting to localhost:9092", Name);
+			Log.Error("{}: bootstrap.servers property not found, defaulting to localhost:9092", Name);
 		}
 
 		if(pConf->NativeKafkaProperties.getProperty("enable.manual.events.poll") == "false")
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->warn("{}: enable.manual.events.poll property is set to false, forcing to true", Name);
+			Log.Warn("{}: enable.manual.events.poll property is set to false, forcing to true", Name);
 		pConf->NativeKafkaProperties.put("enable.manual.events.poll", "true");
 
-		pConf->NativeKafkaProperties.put("error_cb", [this](const kafka::Error& error)
-			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->error("{}: {}",Name,error.toString());
-			});
-
-		pConf->NativeKafkaProperties.put("log_cb", [this](int level, const char* filename, int lineno, const char* msg)
-			{
-				auto spdlog_lvl = spdlog::level::level_enum(6-level);
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->log(spdlog_lvl,"{} ({}:{}): {}",Name,filename,lineno,msg);
-			});
-
-		pConf->NativeKafkaProperties.put("stats_cb", [this](const std::string& jsonString)
-			{
-				if(auto log = odc::spdlog_get("KafkaPort"))
-					log->info("{}: Statistics: {}",Name,jsonString);
-			});
-
+		auto LogEntryName = Name;
 		if(pConf->ShareKafkaClient)
 		{
 			if(pConf->SharedKafkaClientKey == "")
@@ -95,14 +79,29 @@ protected:
 				auto bs_servers = pConf->NativeKafkaProperties.getProperty("bootstrap.servers").value();
 				pConf->SharedKafkaClientKey = TypeString+":"+bs_servers;
 			}
-
-			return pKafkaClientCache->GetClient<KafkaClientType>(
-				pConf->SharedKafkaClientKey,
-				pConf->NativeKafkaProperties,
-				pConf->MaxPollIntervalms);
+			LogEntryName = pConf->SharedKafkaClientKey;
 		}
+
+		pConf->NativeKafkaProperties.put("error_cb", [LogEntryName](const kafka::Error& error)
+			{
+				Log.Error("{}: {}",LogEntryName,error.toString());
+			});
+
+		pConf->NativeKafkaProperties.put("log_cb", [LogEntryName](int level, const char* filename, int lineno, const char* msg)
+			{
+				auto spdlog_lvl = spdlog::level::level_enum(6-level);
+				if(auto log = Log.GetLog())
+					log->log(spdlog_lvl,"{} ({}:{}): {}",LogEntryName,filename,lineno,msg);
+			});
+
+		pConf->NativeKafkaProperties.put("stats_cb", [LogEntryName](const std::string& jsonString)
+			{
+				Log.Info("{}: Statistics: {}",LogEntryName,jsonString);
+			});
+
+
 		return pKafkaClientCache->GetClient<KafkaClientType>(
-			Name,
+			pConf->ShareKafkaClient ? pConf->SharedKafkaClientKey : Name,
 			pConf->NativeKafkaProperties,
 			pConf->MaxPollIntervalms);
 	}

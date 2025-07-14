@@ -27,6 +27,7 @@
 #ifndef KAFKACLIENTCACHE_H
 #define KAFKACLIENTCACHE_H
 
+#include "Log.h"
 #include <kafka/KafkaClient.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/util.h>
@@ -56,8 +57,7 @@ private:
 		}
 		catch(const kafka::KafkaException& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("KafkaClientID {}: Failed to poll events: {}", client->clientId(), e.what());
+			Log.Error("KafkaClientID {}: Failed to poll events: {}", client->clientId(), e.what());
 			return;
 		}
 
@@ -124,8 +124,7 @@ public:
 		}
 		catch(const kafka::KafkaException& e)
 		{
-			if(auto log = odc::spdlog_get("KafkaPort"))
-				log->error("{}: Failed to create KafkaClient: {}", client_key, e.what());
+			Log.Error("{}: Failed to create KafkaClient: {}", client_key, e.what());
 			return nullptr;
 		}
 	}

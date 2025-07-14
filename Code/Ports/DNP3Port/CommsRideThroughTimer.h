@@ -53,6 +53,7 @@ public:
 	void StopHeartBeat();
 
 private:
+	void StartTimer();
 	void HeartBeat();
 	const uint32_t Timeoutms;
 	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;

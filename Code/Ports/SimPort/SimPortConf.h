@@ -58,23 +58,6 @@ struct SQLite3Defaults
 	std::string db_query = "select timestamp,value from events where [index] = :INDEX and type = :TYPE";
 };
 
-// Hide some of the code to make Logging cleaner
-#define LOGTRACE(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-	log->trace(__VA_ARGS__)
-#define LOGDEBUG(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-	log->debug(__VA_ARGS__)
-#define LOGERROR(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-	log->error(__VA_ARGS__)
-#define LOGWARN(...) \
-	if (auto log = odc::spdlog_get("SimPort"))  \
-	log->warn(__VA_ARGS__)
-#define LOGINFO(...) \
-	if (auto log = odc::spdlog_get("SimPort")) \
-	log->info(__VA_ARGS__)
-
 class SimPortConf: public DataPortConf
 {
 public:

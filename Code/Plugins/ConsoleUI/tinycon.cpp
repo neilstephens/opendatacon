@@ -26,6 +26,7 @@
  */
 
 #include "tinycon.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 
 #if !defined(WIN32) && !defined(_WIN32) && !defined(__WIN32)
@@ -43,8 +44,7 @@ int GetCharTimeout (const uint8_t timeout_tenths_of_seconds)
 						auto now = odc::msSinceEpoch();
 						if(now >= last_error_time+100*err_backoff)
 						{
-							if(auto log = odc::spdlog_get("ConsoleUI"))
-								log->error("{}. Supressing next error for {} ms", msg, 100*err_backoff);
+							Log.Error("{}. Supressing next error for {} ms", msg, 100*err_backoff);
 							if(err_backoff < secinaday)
 								err_backoff *= 2;
 							else if(err_backoff > secinaday)

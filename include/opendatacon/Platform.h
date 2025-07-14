@@ -273,4 +273,25 @@ inline std::string GetLibFileName(const std::string& LibName)
 	return DYNLIBPRE + LibName + DYNLIBEXT;
 }
 
+// Convert std::tm to time_t, using UTC or local time as specified.
+// If UTC is true, uses timegm (if available), otherwise uses mktime.
+inline time_t time_t_from_tm_tz(const std::tm& tm, const bool UTC)
+{
+	#if defined(_WIN32) || defined(WIN32) || defined(__WIN32)
+	// Windows: _mkgmtime for UTC, mktime for local time
+	std::tm tm_copy = tm; // mktime/_mkgmtime may modify struct
+	if(UTC)
+		return _mkgmtime(&tm_copy);
+	else
+		return mktime(&tm_copy);
+	#else
+	// POSIX: timegm for UTC, mktime for local time
+	std::tm tm_copy = tm;
+	if(UTC)
+		return timegm(&tm_copy);
+	else
+		return mktime(&tm_copy);
+	#endif
+}
+
 #endif //ODC_PLATFORM_H_

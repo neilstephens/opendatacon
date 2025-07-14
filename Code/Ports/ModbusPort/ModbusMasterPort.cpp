@@ -25,6 +25,7 @@
  */
 
 #include "ModbusMasterPort.h"
+#include "Log.h"
 #include <array>
 #include <chrono>
 #include <opendatacon/IOTypes.h>
@@ -67,15 +68,13 @@ void ModbusMasterPort::Connect(modbus_t* mb)
 
 	if (mb == nullptr)
 	{
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->error("{}: Connect error: 'Modbus stack failed'", Name);
+		Log.Error("{}: Connect error: 'Modbus stack failed'", Name);
 		return;
 	}
 
 	if (modbus_connect(mb) == -1)
 	{
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
+		Log.Warn("{}: Connect error: '{}'", Name, modbus_strerror(errno));
 
 		//try again later - except for manual connections
 		if (pConf->mAddrConf.ServerType == server_type_t::PERSISTENT || pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
@@ -95,8 +94,7 @@ void ModbusMasterPort::Connect(modbus_t* mb)
 	}
 
 	stack_enabled = true;
-	if(auto log = odc::spdlog_get("ModbusPort"))
-		log->info("{}: Connect success!", Name);
+	Log.Info("{}: Connect success!", Name);
 
 	modbus_set_slave(mb, pConf->mAddrConf.OutstationAddr);
 
@@ -188,8 +186,7 @@ void ModbusMasterPort::Disconnect()
 
 void ModbusMasterPort::HandleError(int errnum, const std::string& source)
 {
-	if(auto log = odc::spdlog_get("ModbusPort"))
-		log->warn("{}: {} error: '{}'", Name, source, modbus_strerror(errno));
+	Log.Warn("{}: {} error: '{}'", Name, source, modbus_strerror(errno));
 
 	// If not a modbus error, tear down the connection?
 //    if (errnum < MODBUS_ENOBASE)
@@ -258,8 +255,7 @@ void ModbusMasterPort::Build()
 		if (MBSync->isNull())
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			if(auto log = odc::spdlog_get("ModbusPort"))
-				log->error(msg);
+			Log.Error(msg);
 			throw std::runtime_error(msg);
 		}
 	}
@@ -272,16 +268,14 @@ void ModbusMasterPort::Build()
 		if (MBSync->isNull())
 		{
 			std::string msg = Name + ": Stack error: 'Modbus stack creation failed'";
-			if(auto log = odc::spdlog_get("ModbusPort"))
-				log->error(msg);
+			Log.Error(msg);
 			throw std::runtime_error(msg);
 		}
 	}
 	else
 	{
 		std::string msg = Name + ": No IP address or serial device defined";
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->error(msg);
+		Log.Error(msg);
 		throw std::runtime_error(msg);
 	}
 }
@@ -503,8 +497,7 @@ CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const int32_t output, 
 
 	if(output > std::numeric_limits<int16_t>::max() || output < std::numeric_limits<int16_t>::min())
 	{
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->error("Analog overrange for 16-bit modbus write to index {}",index);
+		Log.Error("Analog overrange for 16-bit modbus write to index {}",index);
 		return CommandStatus::OUT_OF_RANGE;
 	}
 
@@ -530,8 +523,7 @@ CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const double output, u
 	auto scaled_float = output * 100;
 	if(scaled_float > std::numeric_limits<int16_t>::max() || scaled_float < std::numeric_limits<int16_t>::min())
 	{
-		if(auto log = odc::spdlog_get("ModbusPort"))
-			log->error("Scaled float overrange for 16-bit modbus write to index {}",index);
+		Log.Error("Scaled float overrange for 16-bit modbus write to index {}",index);
 		return CommandStatus::OUT_OF_RANGE;
 	}
 

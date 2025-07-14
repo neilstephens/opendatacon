@@ -27,6 +27,7 @@
 #ifndef EVENTSINKTRANSFORM_H_
 #define EVENTSINKTRANSFORM_H_
 
+#include "Log.h"
 #include <cstdint>
 #include <opendatacon/Transform.h>
 

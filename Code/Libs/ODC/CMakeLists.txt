@@ -36,15 +36,18 @@ endif()
 if(ODC_ASIO_SSL)
 	message("OpenSSL root dir: ${OPENSSL_ROOT_DIR}")
 
-	# First try with static libs
-	set(OPENSSL_USE_STATIC_LIBS TRUE)
-	set(OPENSSL_MSVC_STATIC_RT TRUE)
-	set(OPENSSL_USE_STATIC_LIBS TRUE PARENT_SCOPE)
-	set(OPENSSL_MSVC_STATIC_RT TRUE PARENT_SCOPE)
+	# If not explicitly set, first try with static libs
+	if(NOT DEFINED OPENSSL_USE_STATIC_LIBS)
+		set(OPENSSL_USE_STATIC_LIBS TRUE)
+		set(OPENSSL_MSVC_STATIC_RT TRUE)
+		set(OPENSSL_USE_STATIC_LIBS TRUE PARENT_SCOPE)
+		set(OPENSSL_MSVC_STATIC_RT TRUE PARENT_SCOPE)
+	endif()
+
 	find_package(OpenSSL 1.1.1 QUIET)
 
 	if(NOT OpenSSL_FOUND)
-	    message(STATUS "Static OpenSSL libraries not found, falling back to dynamic...")
+	    message(STATUS "OpenSSL libraries not found, setting dynamic libs and trying again...")
 	    set(OPENSSL_USE_STATIC_LIBS FALSE)
 	    set(OPENSSL_MSVC_STATIC_RT FALSE)
 	    set(OPENSSL_USE_STATIC_LIBS FALSE PARENT_SCOPE)

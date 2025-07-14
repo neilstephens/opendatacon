@@ -37,8 +37,32 @@
 #include <memory>
 #include <string>
 
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const bool utc, const DataToStringMethod D2S);
+
 void KafkaProducerPort::Build()
-{}
+{
+	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
+	std::unordered_map<std::string,std::vector<std::shared_ptr<const EventInfo>>> init_events;
+	if(pConf->pPointMap)
+	{
+		for(const auto& [tid, pte] : *pConf->pPointMap)
+		{
+			const auto& [source,index,ev_type] = tid;
+			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
+
+			//Log a message for each PTM entry for verification purposes
+			if(Log.ShouldLog(spdlog::level::trace))
+			{
+				auto dummy_event = std::make_shared<EventInfo>(*init_events[source].back());
+				dummy_event->SetPayload();
+				auto ev_str = FillTemplate(pConf->DefaultTemplate, dummy_event, "", *pte.pExtraFields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
+				Log.Trace("{} -> {}: {}", source, Name, ev_str);
+			}
+		}
+	}
+	for(const auto& [source,events] : init_events)
+		pDBs[source] = std::make_unique<EventDB>(events);
+}
 
 OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const EventInfo> event, const std::string& SenderName)
 {
@@ -60,7 +84,7 @@ OptionalPoint KafkaProducerPort::CheckPointTranslationMap(std::shared_ptr<const 
 	return mapping;
 }
 
-static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const DataToStringMethod D2S)
+static std::string FillTemplate(const std::string& template_str, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields, const std::string& dt_fmt, const bool utc, const DataToStringMethod D2S)
 {
 	std::string message = template_str;
 	auto find_and_replace = [&](const std::string& fnd, const auto& gen_replacement)
@@ -86,7 +110,7 @@ static std::string FillTemplate(const std::string& template_str, const std::shar
 
 	//these aren't static because they need to capture
 	auto SENDERNAME = [&](const std::shared_ptr<const EventInfo>& event){ return SenderName; };
-	auto DATETIME = [&](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp(),dt_fmt); };
+	auto DATETIME = [&](const std::shared_ptr<const EventInfo>& event){ return odc::since_epoch_to_datetime(event->GetTimestamp(),dt_fmt,utc); };
 	auto PAYLOAD = [&](const std::shared_ptr<const EventInfo>& event){ return event->GetPayloadString(D2S); };
 
 	find_and_replace("<EVENTTYPE>", EVENTTYPE);
@@ -118,8 +142,7 @@ void KafkaProducerPort::PortUp()
 	}
 	catch(const std::exception& e)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->error("{}: Failed to create Kafka Producer: {}", Name, e.what());
+		Log.Error("{}: Failed to create Kafka Producer: {}", Name, e.what());
 		return;
 	}
 }
@@ -141,24 +164,11 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 		return;
 	}
 
-	std::weak_ptr<KafkaProducerPort> weak_self = std::static_pointer_cast<KafkaProducerPort>(shared_from_this());
-	pStateSync->post([weak_self,event]()
-		{
-			if(auto self = weak_self.lock())
-			{
-				if(event->GetEventType() == EventType::ConnectState)
-				{
-					auto pConf = static_cast<KafkaPortConf*>(self->pConf.get());
-					if(pConf->ServerType == server_type_t::ONDEMAND)
-					{
-						if(event->GetPayload<EventType::ConnectState>() == ConnectState::CONNECTED)
-							self->PortUp();
-						else if(!self->InDemand())
-							self->PortDown();
-					}
-				}
-			}
-		});
+	if(event->GetEventType() == EventType::ConnectState)
+	{
+		ConnectionEvent(event,pStatusCallback);
+		return;
+	}
 
 	if(!pKafkaProducer)
 	{
@@ -168,21 +178,91 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
-	auto point_mapping = CheckPointTranslationMap(event, SenderName);
+	std::shared_ptr<EventInfo> ultimate_event;
+
+	auto DBkey = pConf->PointTraslationSource == SourceLookupMethod::None ? ""
+	                  : pConf->PointTraslationSource == SourceLookupMethod::SenderName ? SenderName
+	                        : event->GetSourcePort();
+	auto pDB_it = pDBs.find(DBkey);
+
+	if(pDB_it != pDBs.end())
+	{
+		switch(event->GetEventType())
+		{
+			case EventType::BinaryQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::Binary,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::Binary,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::BinaryQuality>());
+				break;
+			}
+			case EventType::AnalogQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::Analog,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::Analog,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::AnalogQuality>());
+				break;
+			}
+			case EventType::AnalogOutputStatusQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::AnalogOutputStatus,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::AnalogOutputStatus,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::AnalogOutputStatusQuality>());
+				break;
+			}
+			case EventType::BinaryOutputStatusQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::BinaryOutputStatus,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::BinaryOutputStatus,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::BinaryOutputStatusQuality>());
+				break;
+			}
+			case EventType::OctetStringQuality:
+			{
+				auto old_event = pDB_it->second->Get(EventType::OctetString,event->GetIndex());
+				ultimate_event = std::make_shared<EventInfo>(old_event ? *old_event : EventInfo(EventType::OctetString,event->GetIndex()));
+				ultimate_event->SetQuality(event->GetPayload<EventType::OctetStringQuality>());
+				break;
+			}
+			default:
+				ultimate_event = std::make_shared<EventInfo>(*event);
+				break;
+		}
+		auto prev_event = pDB_it->second->Swap(ultimate_event);
+		if(pConf->DeduplicateEvents && prev_event && *ultimate_event == *prev_event)
+		{
+			(*pStatusCallback)(odc::CommandStatus::SUCCESS);
+			return;
+		}
+	}
+	else
+		ultimate_event = std::make_shared<EventInfo>(*event);
+
+	if(!ultimate_event->HasPayload())
+	{
+		// if the point isn't ONLINE or if it's RESTART qual, then it's OK to not have a payload,
+		//	but we'll default it to avoid serialisation issues
+		if((ultimate_event->GetQuality() & QualityFlags::ONLINE) == QualityFlags::NONE
+		   || (ultimate_event->GetQuality() & QualityFlags::RESTART) != QualityFlags::NONE)
+			ultimate_event->SetPayload();
+		else //it doesn't have a payload when it should (probably), so we'll warn and drop it
+		{
+			Log.Warn("{}: Event from {}(Source: {}) does not have a payload: {}({}) Quality({})",
+				Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex(), ToString(ultimate_event->GetQuality()));
+			(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
+			return;
+		}
+	}
+
+	auto point_mapping = CheckPointTranslationMap(ultimate_event, SenderName);
 
 	if(!point_mapping.has_value() && pConf->BlockUnknownPoints)
 	{
-		if(auto log = odc::spdlog_get("KafkaPort"))
-			log->warn("{}: Event from unmapped point: SenderName({}), SourcePort({}), {}({})",
-				Name, SenderName, event->GetSourcePort(), ToString(event->GetEventType()), event->GetIndex());
+		Log.Warn("{}: Event from unmapped point: SenderName({}), SourcePort({}), {}({})",
+			Name, SenderName, ultimate_event->GetSourcePort(), ToString(ultimate_event->GetEventType()), ultimate_event->GetIndex());
 		(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
 		return;
 	}
-
-	//TODO: De-duplication option:
-	//	could initialise and use the point database DataPort::pDB
-	//	pDB->Swap() out the event and see if the quality or payload changed (optionally configurable change detection fields)
-	//	then only send to kafka if it changed
 
 	#define VAL_OR(X,D) (point_mapping.has_value() ? point_mapping->get().X ? *(point_mapping->get().X) : D : D)
 
@@ -192,13 +272,13 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 	if(pConf->TranslationMethod == EventTranslationMethod::Template)
 	{
 		const auto& template_str = VAL_OR(pTemplate,pConf->DefaultTemplate);
-		auto buf = FillTemplate(template_str, event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		auto buf = FillTemplate(template_str, ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
 	{
 		const auto& CBORer = VAL_OR(pCBORer,pConf->DefaultCBORSerialiser);
-		auto buf = CBORer.Encode(event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->OctetStringFormat);
+		auto buf = CBORer.Encode(ultimate_event, SenderName, extra_fields, pConf->DateTimeFormat, pConf->DateTimeIsUTC, pConf->OctetStringFormat);
 		Send(topic,key_buffer,std::move(buf),pStatusCallback);
 	}
 	else //Lua
@@ -215,17 +295,15 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 
 	auto deliveryCb = [this,key_buffer,val_buffer,pStatusCallback](const KCP::RecordMetadata& metadata, const kafka::Error& error)
 				{
-					auto log = odc::spdlog_get("KafkaPort");
 					if (!error)
 					{
-						if(log && log->should_log(spdlog::level::trace))
-							log->trace("{}: Message delivered: {}", Name, metadata.toString());
+						if(Log.ShouldLog(spdlog::level::trace))
+							Log.Trace("{}: Message delivered: {}", Name, metadata.toString());
 						(*pStatusCallback)(odc::CommandStatus::SUCCESS);
 					}
 					else
 					{
-						if(log)
-							log->error("{}: Message failed to be delivered: {}", metadata.toString());
+						Log.Error("{}: Message failed to be delivered: {}", metadata.toString());
 						(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
 					}
 				};
@@ -234,9 +312,7 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 	pKafkaProducer->send(record, deliveryCb, err);
 	if(err)
 	{
-		auto log = odc::spdlog_get("KafkaPort");
-		if(log)
-			log->error("{}: Failed to send message: {}", Name, err.toString());
+		Log.Error("{}: Failed to send message: {}", Name, err.toString());
 		(*pStatusCallback)(odc::CommandStatus::DOWNSTREAM_FAIL);
 	}
 
@@ -247,8 +323,6 @@ void KafkaProducerPort::Send(const kafka::Topic& topic, const OctetStringBuffer&
 	}
 	catch (const std::exception& e)
 	{
-		auto log = odc::spdlog_get("KafkaPort");
-		if(log)
-			log->error("{}: Failed to poll events: {}", Name, e.what());
+		Log.Error("{}: Failed to poll events: {}", Name, e.what());
 	}
 }

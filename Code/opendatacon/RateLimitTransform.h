@@ -27,6 +27,7 @@
 #ifndef RATELIMITTRANSFORM_H_
 #define RATELIMITTRANSFORM_H_
 
+#include "Log.h"
 #include <atomic>
 #include <opendatacon/Transform.h>
 #include <unordered_map>

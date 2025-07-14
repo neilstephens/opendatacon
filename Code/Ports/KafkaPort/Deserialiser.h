@@ -27,6 +27,7 @@
 #ifndef IDESERIALISER_H
 #define IDESERIALISER_H
 
+#include "Log.h"
 #include <opendatacon/IOTypes.h>
 #include <kafka/ConsumerRecord.h>
 #include <string>
@@ -37,8 +38,9 @@ namespace KCC = kafka::clients::consumer;
 class Deserialiser
 {
 public:
-	Deserialiser(const std::string& datetime_format):
-		datetime_format(datetime_format)
+	Deserialiser(const std::string& datetime_format, const bool utc):
+		datetime_format(datetime_format),
+		utc(utc)
 	{}
 	virtual ~Deserialiser()
 	{};
@@ -46,6 +48,7 @@ public:
 
 protected:
 	const std::string datetime_format;
+	const bool utc;
 };
 
 #endif // IDESERIALISER_H

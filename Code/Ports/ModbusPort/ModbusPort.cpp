@@ -25,6 +25,7 @@
  */
 
 #include "ModbusPort.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 
 ModbusPort::ModbusPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
@@ -56,8 +57,7 @@ void ModbusPort::ProcessElements(const Json::Value& JSONRoot)
 			static_cast<ModbusPortConf*>(pConf.get())->mAddrConf.Parity = SerialParity::NONE;
 		else
 		{
-			if(auto log = odc::spdlog_get("ModbusPort"))
-				log->warn("Invalid Modbus port parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
+			Log.Warn("Invalid Modbus port parity: {}, should be EVEN, ODD, or NONE.", JSONRoot["Parity"].asString());
 		}
 	}
 	if(JSONRoot.isMember("DataBits"))

@@ -25,6 +25,7 @@
  */
 #include "TypeConversion.h"
 #include "AppIINFlags.h"
+#include "Log.h"
 #include <opendatacon/IOTypes.h>
 #include <opendnp3/app/AnalogOutput.h>
 #include <opendnp3/app/ControlRelayOutputBlock.h>
@@ -875,8 +876,7 @@ template<> opendnp3::OctetString FromODC<opendnp3::OctetString>(const std::share
 	if(sizeData == 0 && dnp3.Size() != 0)
 		throw std::runtime_error("Data conversion ODC -> DNP3 OctetString failed for zero sized buffer");
 	else if(sizeData != dnp3.Size())
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->warn("Data conversion ODC -> DNP3 OctetString truncation: {} -> {}", sizeData, dnp3.Size());
+		Log.Warn("Data conversion ODC -> DNP3 OctetString truncation: {} -> {}", sizeData, dnp3.Size());
 	return dnp3;
 }
 template<> opendnp3::BinaryQuality FromODC<opendnp3::BinaryQuality>(const std::shared_ptr<const EventInfo>& event)

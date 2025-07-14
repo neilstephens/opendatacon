@@ -29,6 +29,7 @@
 #include "DNP3PortConf.h"
 #include "DNP3OutstationPortCollection.h"
 #include "TypeConversion.h"
+#include "Log.h"
 #include <opendnp3/outstation/UpdateBuilder.h>
 #include <opendnp3/outstation/Updates.h>
 #include <opendnp3/master/IUTCTimeSource.h>
@@ -76,7 +77,6 @@ DNP3OutstationPort::~DNP3OutstationPort()
 		pOutstation->Shutdown();
 		pOutstation.reset();
 	}
-	ChannelStateSubscriber::Unsubscribe(pChanH.get());
 	pChanH.reset();
 }
 
@@ -86,8 +86,7 @@ void DNP3OutstationPort::Enable()
 		return;
 	if(nullptr == pOutstation)
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("{}: DNP3 stack not configured.", Name);
+		Log.Error("{}: DNP3 stack not configured.", Name);
 
 		return;
 	}
@@ -116,8 +115,7 @@ void DNP3OutstationPort::Disable()
 // Called when a the reset/unreset status of the link layer changes (and on link up / channel down)
 void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
+	Log.Debug("{}: LinkStatus {}.", Name, opendnp3::LinkStatusSpec::to_human_string(status));
 	pChanH->SetLinkStatus(status);
 	//TODO: track a new statistic - reset count
 }
@@ -125,8 +123,7 @@ void DNP3OutstationPort::OnStateChange(opendnp3::LinkStatus status)
 // Called when a keep alive message (request link status) receives no response
 void DNP3OutstationPort::OnKeepAliveFailure()
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: KeepAliveFailure() called.", Name);
+	Log.Debug("{}: KeepAliveFailure() called.", Name);
 	pChanH->LinkDown();
 }
 
@@ -134,16 +131,14 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 {
 	if(to == LinkDeadness::LinkUpChannelUp) //must be on link up
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Link up.", Name);
+		Log.Debug("{}: Link up.", Name);
 
 		NotifyOfConnection();
 	}
 
 	if(from == LinkDeadness::LinkUpChannelUp) //must be on link down
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: Link down.", Name);
+		Log.Debug("{}: Link down.", Name);
 
 		NotifyOfDisconnection();
 	}
@@ -153,8 +148,7 @@ void DNP3OutstationPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 // Called when a keep alive message receives a valid response
 void DNP3OutstationPort::OnKeepAliveSuccess()
 {
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->debug("{}: KeepAliveSuccess() called.", Name);
+	Log.Debug("{}: KeepAliveSuccess() called.", Name);
 	pChanH->LinkUp();
 }
 
@@ -168,6 +162,7 @@ void DNP3OutstationPort::OnKeepAliveReset()
 // Called by OpenDNP3 Thread Pool
 bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp)
 {
+	CheckStackState(); //just in case
 	pChanH->LinkUp();
 	auto now = msSinceEpoch();
 	const auto& master_time = timestamp.msSinceEpoch;
@@ -181,8 +176,7 @@ bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timesta
 	constexpr const decltype(offset) signed_max = std::numeric_limits<int64_t>::max();
 	if(offset > signed_max)
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("{}: Time offset overflow - using max offset", Name);
+		Log.Error("{}: Time offset overflow - using max offset", Name);
 		offset = signed_max;
 		//also make sure the stack responds with param error
 		ret = false;
@@ -198,8 +192,7 @@ bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timesta
 	last_time_sync = msSinceEpoch();
 	ClearIINFlags(AppIINFlags::NEED_TIME);
 
-	if(auto log = odc::spdlog_get("DNP3Port"))
-		log->info("{}: Time offset from master = {}ms", Name, new_master_offset);
+	Log.Info("{}: Time offset from master = {}ms", Name, new_master_offset);
 
 	return ret;
 }
@@ -234,8 +227,7 @@ void DNP3OutstationPort::Build()
 
 	if (!pChanH->SetChannel())
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("{}: Channel not found for outstation.", Name);
+		Log.Error("{}: Channel not found for outstation.", Name);
 		return;
 	}
 
@@ -317,8 +309,7 @@ void DNP3OutstationPort::Build()
 
 	if (pOutstation == nullptr)
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->error("{}: Error creating outstation.", Name);
+		Log.Error("{}: Error creating outstation.", Name);
 		return;
 	}
 }
@@ -465,6 +456,26 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		return;
 	}
 
+	if(!event->HasPayload())
+	{
+		// if the point isn't ONLINE or if it's RESTART qual, then it's OK to not have a payload,
+		//	but we'll default it to avoid DNP3 conversion exceptions
+		if((event->GetQuality() & QualityFlags::ONLINE) == QualityFlags::NONE
+		   || (event->GetQuality() & QualityFlags::RESTART) != QualityFlags::NONE)
+		{
+			EventInfo info(*event);
+			info.SetPayload();
+			event = std::make_shared<const EventInfo>(info);
+		}
+		else //it doesn't have a payload when it should (probably), so we'll warn and drop it
+		{
+			Log.Warn("{}: Event from {}(Source: {}) does not have a payload: {}({}) Quality({})",
+				Name, SenderName, event->GetSourcePort(), ToString(event->GetEventType()), event->GetIndex(), ToString(event->GetQuality()));
+			(*pStatusCallback)(odc::CommandStatus::NOT_SUPPORTED);
+			return;
+		}
+	}
+
 	bool point_exists = pDB->Set(event);
 
 	switch(event->GetEventType())
@@ -513,8 +524,7 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	}
 	if(!point_exists)
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->warn("{}: {} received for unconfigured index ({})", Name, ToString(event->GetEventType()), event->GetIndex());
+		Log.Warn("{}: {} received for unconfigured index ({})", Name, ToString(event->GetEventType()), event->GetIndex());
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 		return;
 	}

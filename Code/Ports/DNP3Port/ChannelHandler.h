@@ -43,7 +43,7 @@ enum class LinkDeadness : uint8_t
 
 class DNP3Port;
 
-class ChannelHandler
+class ChannelHandler: public std::enable_shared_from_this<ChannelHandler>
 {
 private:
 	//Strand for synchronising channel/link state changes
@@ -92,6 +92,10 @@ public:
 	{
 		return link_deadness.load();
 	}
+	inline const std::string& GetChannelID() const
+	{
+		return ChannelID;
+	}
 	inline std::shared_ptr<opendnp3::IChannel> GetChannel() const
 	{
 		return pChannel;
@@ -106,6 +110,7 @@ private:
 
 	//data members
 	DNP3Port* const pPort;
+	std::string ChannelID;
 	std::shared_ptr<opendnp3::IChannel> pChannel;
 	std::shared_ptr<ChannelLinksWatchdog> pWatchdog;
 	//use atomic for status data - so the getters can read them concurrently

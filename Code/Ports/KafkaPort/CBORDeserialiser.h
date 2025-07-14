@@ -35,7 +35,7 @@ private:
 	const CBORSerialiser* const pSerialiser;
 
 public:
-	CBORDeserialiser(const CBORSerialiser* const serialiser, const std::string& datetime_format);
+	CBORDeserialiser(const CBORSerialiser* const serialiser, const std::string& datetime_format, const bool utc);
 	virtual ~CBORDeserialiser() = default;
 	std::shared_ptr<EventInfo> Deserialise(const KCC::ConsumerRecord& record) override;
 

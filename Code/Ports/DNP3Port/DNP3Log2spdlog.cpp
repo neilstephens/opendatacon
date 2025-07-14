@@ -25,6 +25,7 @@
  */
 
 #include "DNP3Log2spdlog.h"
+#include "Log.h"
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
 #include <opendnp3/logging/LogLevels.h>
@@ -49,6 +50,6 @@ void DNP3Log2spdlog::log(opendnp3::ModuleId module, const char* id, opendnp3::Lo
 	else
 		spdlevel = spdlog::level::trace;
 
-	if(auto log = odc::spdlog_get("DNP3Port"))
+	if(auto log = Log.GetLog())
 		log->log(spdlevel, "{} - {} - {}",DNP3LevelName,id,message);
 }

@@ -27,6 +27,7 @@
 #ifndef THRESHOLDTRANSFORM_H_
 #define THRESHOLDTRANSFORM_H_
 
+#include "Log.h"
 #include <cstdint>
 #include <cfloat>
 #include <opendatacon/Transform.h>

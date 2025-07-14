@@ -26,7 +26,6 @@
 
 #ifndef CBCONNECTION
 #define CBCONNECTION
-#include "CB.h"
 #include "CBUtility.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/TCPSocketManager.h>

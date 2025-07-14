@@ -26,6 +26,7 @@
 //
 
 #include "WebUI.h"
+#include "Log.h"
 #include <opendatacon/util.h>
 #include <opendatacon/asio.h>
 
@@ -79,18 +80,14 @@ void WebUI::LoadRequestParams(std::shared_ptr<WebServer::Request> request)
 					}
 					catch(std::exception& e)
 					{
-						if(auto log = odc::spdlog_get("WebUI"))
-							log->error("JSON POST paylod not suitable: {} : '{}'",e.what(),Payload.toStyledString());
+						Log.Error("JSON POST paylod not suitable: {} : '{}'",e.what(),Payload.toStyledString());
 					}
 				}
-				else if(auto log = odc::spdlog_get("WebUI"))
-					log->error("Failed to parse POST payload as JSON: {}",err_str);
+				else Log.Error("Failed to parse POST payload as JSON: {}",err_str);
 			}
-			else if(auto log = odc::spdlog_get("WebUI"))
-				log->error("unsupported POST 'Content-Type' : '{}'", type_pair_it->second);
+			else Log.Error("unsupported POST 'Content-Type' : '{}'", type_pair_it->second);
 		}
-		else if(auto log = odc::spdlog_get("WebUI"))
-			log->error("POST has no 'Content-Type'");
+		else Log.Error("POST has no 'Content-Type'");
 	}
 }
 
@@ -135,8 +132,7 @@ void WebUI::ReturnFile(std::shared_ptr<WebServer::Response> response,
 	{
 		const std::string msg = "Could not open path ("+ filepath +"): file open failed";
 		response->write(SimpleWeb::StatusCode::client_error_bad_request, msg);
-		if (auto log = odc::spdlog_get("WebUI"))
-			log->error(msg);
+		Log.Error(msg);
 	}
 	else
 	{
@@ -184,8 +180,7 @@ void WebUI::Enable()
 			// Start server
 			WebSrv.start([](unsigned short port)
 				{
-					if (auto log = odc::spdlog_get("WebUI"))
-						log->info("Simple Web Server listening on port {}.",port);
+					Log.Info("Simple Web Server listening on port {}.",port);
 				});
 		});
 
@@ -339,8 +334,7 @@ void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)
 
 void WebUI::ConnectionEvent(bool state)
 {
-	if (auto log = odc::spdlog_get("WebUI"))
-		log->debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
+	Log.Debug("Log sink connection on port {} {}",tcp_port,state ? "opened" : "closed");
 }
 
 Json::Value WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
@@ -365,8 +359,7 @@ Json::Value WebUI::ApplyLogFilter(const std::string& new_filter, bool is_regex)
 			}
 			catch (std::exception& e)
 			{
-				if (auto log = odc::spdlog_get("WebUI"))
-					log->error("Problem using '{}' as regex: {}",new_filter,e.what());
+				Log.Error("Problem using '{}' as regex: {}",new_filter,e.what());
 				value["Result"] = "Fail: " + std::string(e.what());
 			}
 		}

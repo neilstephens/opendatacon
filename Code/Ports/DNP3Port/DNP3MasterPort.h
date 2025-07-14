@@ -29,6 +29,7 @@
 #include "DNP3Port.h"
 #include "DNP3PortConf.h"
 #include "CommsRideThroughTimer.h"
+#include "Log.h"
 #include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
 #include <opendnp3/master/IMasterApplication.h>
@@ -78,24 +79,21 @@ protected:
 	/// Implement opendnp3::IMasterApplication
 	void OnTaskStart(opendnp3::MasterTaskType type, opendnp3::TaskId id) final
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: OnTaskStart(Type {}, ID {}) called.", Name, opendnp3::MasterTaskTypeSpec::to_human_string(type), id.GetId());
+		Log.Debug("{}: OnTaskStart(Type {}, ID {}) called.", Name, opendnp3::MasterTaskTypeSpec::to_human_string(type), id.GetId());
 	}
 	void OnTaskComplete(const opendnp3::TaskInfo& info) final
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: OnTaskComplete(Type {}, ID {}, Res {}) called.", Name, opendnp3::MasterTaskTypeSpec::to_human_string(info.type), info.id.GetId(), opendnp3::TaskCompletionSpec::to_human_string(info.result));
+		Log.Debug("{}: OnTaskComplete(Type {}, ID {}, Res {}) called.", Name, opendnp3::MasterTaskTypeSpec::to_human_string(info.type), info.id.GetId(), opendnp3::TaskCompletionSpec::to_human_string(info.result));
 	}
 	bool AssignClassDuringStartup() final
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->trace("{}: AssignClassDuringStartup() called.", Name);
+		if(Log.ShouldLog(spdlog::level::trace))
+			Log.Trace("{}: AssignClassDuringStartup() called.", Name);
 		return false;
 	}
 	void ConfigureAssignClassRequest(const opendnp3::WriteHeaderFunT& fun) final
 	{
-		if(auto log = odc::spdlog_get("DNP3Port"))
-			log->debug("{}: ConfigureAssignClassRequest() called.", Name);
+		Log.Debug("{}: ConfigureAssignClassRequest() called.", Name);
 	}
 	opendnp3::UTCTimestamp Now() final
 	{
@@ -146,8 +144,7 @@ private:
 				if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp &&
 				   pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
 				{
-					if(auto log = odc::spdlog_get("DNP3Port"))
-						log->debug("{}: Setting IntegrityScanNeeded for EnableStack.",Name);
+					Log.Debug("{}: Setting IntegrityScanNeeded for EnableStack.",Name);
 					IntegrityScanNeeded = true;
 				}
 			});

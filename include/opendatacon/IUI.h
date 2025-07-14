@@ -29,6 +29,7 @@
 #define opendatacon_IUI_h
 
 #include "IUIResponder.h"
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/util.h>
 #include <memory>
