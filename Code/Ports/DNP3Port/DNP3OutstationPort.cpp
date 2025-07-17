@@ -266,7 +266,7 @@ void DNP3OutstationPort::Build()
 	InitEventDB();
 
 	// Link layer configuration
-	opendnp3::LinkConfig link(false,pConf->pPointConf->LinkUseConfirms);
+	opendnp3::LinkConfig link(false);
 	link.LocalAddr = pConf->mAddrConf.OutstationAddr;
 	link.RemoteAddr = pConf->mAddrConf.MasterAddr;
 	link.Timeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkTimeoutms);

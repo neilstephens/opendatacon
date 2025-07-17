@@ -353,7 +353,7 @@ void DNP3MasterPort::Build()
 	InitEventDB();
 
 	opendnp3::MasterStackConfig StackConfig;
-	opendnp3::LinkConfig link(true,pConf->pPointConf->LinkUseConfirms);
+	opendnp3::LinkConfig link(true);
 
 	// Link layer configuration
 	link.LocalAddr = pConf->mAddrConf.MasterAddr;
