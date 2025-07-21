@@ -105,7 +105,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	StaticBinaryOutputStatusResponse(opendnp3::StaticBinaryOutputStatusVariation::Group10Var2),
 	// Default Event Variations
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
-	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
+	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var7),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
 	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
 	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
