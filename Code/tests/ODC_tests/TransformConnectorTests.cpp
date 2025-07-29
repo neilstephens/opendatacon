@@ -36,15 +36,17 @@ class DataConcentrator //because DataConcentrator is a freind class of DataConne
 public:
 	DataConcentrator(DataConnector& Con)
 	{
-		auto tx_cleanup = [=](Transform* tx)
-					{
-						delete tx;
-					};
+		Json::Value Tx1conf = Json::Value::nullSingleton();
 		Json::Value Tx2conf; Tx2conf["Add"]=2;
 		Json::Value Tx3conf; Tx3conf["Add"]=3;
-		Con.SenderTransforms["P1"].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new AddShiftTransform("Tx1",Json::Value::nullSingleton()),tx_cleanup));
-		Con.SenderTransforms["P1"].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new AddShiftTransform("Tx2",Tx2conf),tx_cleanup));
-		Con.SenderTransforms["P1"].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new AddShiftTransform("Tx3",Tx3conf),tx_cleanup));
+
+		auto tx1 = std::make_shared<AddShiftTransform>("Tx1",Tx1conf);
+		auto tx2 = std::make_shared<AddShiftTransform>("Tx2",Tx2conf);
+		auto tx3 = std::make_shared<AddShiftTransform>("Tx3",Tx3conf);
+
+		Con.SenderTransforms["P1"].push_back(tx1);
+		Con.SenderTransforms["P1"].push_back(tx2);
+		Con.SenderTransforms["P1"].push_back(tx3);
 	}
 };
 
