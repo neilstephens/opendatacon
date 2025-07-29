@@ -53,6 +53,7 @@ public:
 	uint32_t LinkNumRetry;
 	uint32_t LinkTimeoutms;
 	uint32_t LinkKeepAlivems;
+	bool NackConfirmedUDWhenUnreset;
 
 	/// Common application stack configuration
 	opendnp3::ServerAcceptMode ServerAcceptMode;

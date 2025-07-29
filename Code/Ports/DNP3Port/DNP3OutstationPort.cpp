@@ -274,6 +274,8 @@ void DNP3OutstationPort::Build()
 		link.KeepAliveTimeout = opendnp3::TimeDuration::Max();
 	else
 		link.KeepAliveTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+	link.NackConfirmedUDWhenUnreset = pConf->pPointConf->NackConfirmedUDWhenUnreset;
+
 	StackConfig.link = link;
 
 	// Outstation parameters

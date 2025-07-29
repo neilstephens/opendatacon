@@ -39,6 +39,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	// DNP3 Link Configuration
 	LinkTimeoutms(1000),
 	LinkKeepAlivems(10000),
+	NackConfirmedUDWhenUnreset(true),
 	// Common application stack configuration
 	ServerAcceptMode(opendnp3::ServerAcceptMode::CloseNew),
 	IPConnectRetryPeriodMinms(500),
@@ -189,6 +190,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
 	if (JSONRoot.isMember("LinkKeepAlivems"))
 		LinkKeepAlivems = JSONRoot["LinkKeepAlivems"].asUInt();
+	if (JSONRoot.isMember("NackConfirmedUDWhenUnreset"))
+		NackConfirmedUDWhenUnreset = JSONRoot["NackConfirmedUDWhenUnreset"].asBool();
 	if (JSONRoot.isMember("LinkUseConfirms"))
 		Log.Error("Use of 'LinkUseConfirms' is deprecated, opendnp3 no long support data-link layer confirms. They're always off '{}'", JSONRoot["LinkUseConfirms"].toStyledString());
 	if (JSONRoot.isMember("UseConfirms"))
