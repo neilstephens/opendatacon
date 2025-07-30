@@ -87,6 +87,7 @@ public:
 	bool StartupIntegrityClass1;
 	bool StartupIntegrityClass2;
 	bool StartupIntegrityClass3;
+	uint32_t LinkUpIntegrityGracePeriodms;
 	/// When will the startup integrity scan be triggered
 	enum class LinkUpIntegrityTrigger_t { NEVER, ON_FIRST, ON_EVERY };
 	LinkUpIntegrityTrigger_t LinkUpIntegrityTrigger;

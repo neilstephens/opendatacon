@@ -272,6 +272,13 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Notify subscribers that a connect event has occured
 		NotifyOfConnection();
 
+		pStartupIntegrityGraceTimer->expires_from_now(std::chrono::milliseconds(pConf->pPointConf->LinkUpIntegrityGracePeriodms));
+		pStartupIntegrityGraceTimer->async_wait([this](asio::error_code err)
+			{
+				if(err) return;
+				pChanH->Post([this](){ LinkUpIntegrityIfNeeded(); });
+			});
+
 		return;
 	}
 
@@ -283,6 +290,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		NotifyOfDisconnection();
 
 		IntegrityScanDone = false;
+		pStartupIntegrityGraceTimer->cancel();
 		return;
 	}
 }
@@ -316,20 +324,27 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 					Log.Debug("{}: Stack executed IIN triggered integrity scan for this link session.",Name);
 					IntegrityScanDone = true;
 				}
-				if(IntegrityScanNeeded)
-				{
-					IntegrityScanNeeded = false;
-					if(IntegrityScanDone)
-					{
-						Log.Debug("{}: Skipping startup integrity scan (stack already did one).",Name);
-						return;
-					}
-					Log.Debug("{}: Executing startup integrity scan.",Name);
-					pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
-					IntegrityScanDone = true;
-				}
+				LinkUpIntegrityIfNeeded();
 			}
 		});
+}
+
+//Only to be called by posting on the pChanH strand
+void DNP3MasterPort::LinkUpIntegrityIfNeeded()
+{
+	if(IntegrityScanNeeded)
+	{
+		IntegrityScanNeeded = false;
+		if(IntegrityScanDone)
+		{
+			Log.Debug("{}: Skipping startup integrity scan (stack already did one).",Name);
+			return;
+		}
+		Log.Debug("{}: Executing startup integrity scan.",Name);
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
+		IntegrityScanDone = true;
+	}
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()

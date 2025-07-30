@@ -68,6 +68,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	StartupIntegrityClass1(true),
 	StartupIntegrityClass2(true),
 	StartupIntegrityClass3(true),
+	LinkUpIntegrityGracePeriodms(10000), /// Grace period to allow for startup integrity to be triggered by IIN flags to avoid redundant scan
 	LinkUpIntegrityTrigger(LinkUpIntegrityTrigger_t::ON_FIRST),
 	/// Which classes should be requested for forced integrity scans
 	ForcedIntegrityClass0(true),
@@ -268,6 +269,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		StartupIntegrityClass2 = JSONRoot["StartupIntegrityClass2"].asBool();
 	if (JSONRoot.isMember("StartupIntegrityClass3"))
 		StartupIntegrityClass3 = JSONRoot["StartupIntegrityClass3"].asBool();
+	if (JSONRoot.isMember("LinkUpIntegrityGracePeriodms"))
+		LinkUpIntegrityGracePeriodms = JSONRoot["LinkUpIntegrityGracePeriodms"].asUInt();
 	if (JSONRoot.isMember("LinkUpIntegrityTrigger"))
 	{
 		auto trig_str = JSONRoot["LinkUpIntegrityTrigger"].asString();

@@ -43,6 +43,7 @@ public:
 		pMaster(nullptr),
 		IntegrityScanNeeded(false),
 		IntegrityScanDone(true), //init true because the stack does an initial integrity scan
+		pStartupIntegrityGraceTimer(pIOS->make_steady_timer()),
 		pCommsRideThroughTimer(nullptr)
 	{}
 	~DNP3MasterPort() override;
@@ -121,6 +122,7 @@ private:
 	//Don't access these outside that strand
 	bool IntegrityScanNeeded;
 	bool IntegrityScanDone;
+	std::shared_ptr<asio::steady_timer> pStartupIntegrityGraceTimer;
 
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
@@ -132,6 +134,7 @@ private:
 	void SetCommsFailedQuality(std::vector<uint16_t>& indexes);
 	void CommsHeartBeat(bool isFailed);
 	void LinkStatusListener(opendnp3::LinkStatus status);
+	void LinkUpIntegrityIfNeeded();
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}
 	void PortUp();
