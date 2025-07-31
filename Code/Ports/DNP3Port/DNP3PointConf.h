@@ -106,6 +106,8 @@ public:
 	bool RetryForcedIntegrity;
 	/// Time delay beforce retrying a failed task
 	uint32_t TaskRetryPeriodms;
+	/// Expiry time for one-off tasks (commands/scans) to start
+	uint32_t TaskStartTimeoutms;
 
 	// Master Station scanning configuration
 	size_t IntegrityScanRatems;

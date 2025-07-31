@@ -412,6 +412,7 @@ void DNP3MasterPort::Build()
 	//TODO?: have a separate max retry time to pass to opendnp3
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 	StackConfig.master.maxTaskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
+	StackConfig.master.taskStartTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskStartTimeoutms);
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
