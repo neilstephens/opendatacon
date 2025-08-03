@@ -34,6 +34,8 @@
 
 #define SUITE(name) "DNP3EventHandlingTestSuite - " name
 
+//TODO: Add TimeSync event handling tests
+
 constexpr size_t num_indexes = 1024; //needs a multiple of 4 for the Analog Output Types
 constexpr size_t test_timeout_ms = 10000;
 
