@@ -187,6 +187,27 @@ template<> SS PayloadFromString(const std::string& PayloadStr)
 
 	return {s1, s2};
 }
+template<> AbsTime_n_SysOffs PayloadFromString(const std::string& PayloadStr)
+{
+	std::istringstream is(PayloadStr);
+	msSinceEpoch_t AbsTime;
+	is >> AbsTime;
+	if(is.fail())
+		throw std::invalid_argument("Payload string is not convertable to time sync payload: "+PayloadStr);
+
+	auto next_ch = is.peek();
+	if(next_ch == ',' || next_ch == ';' || next_ch == '|' || next_ch == ':' || next_ch == ' ')
+		is.ignore();
+	else
+		throw std::invalid_argument("Payload string is not convertable to time sync payload: "+PayloadStr);
+
+	int64_t SysOffs;
+	is >> SysOffs;
+	if(is.fail())
+		throw std::invalid_argument("Payload string is not convertable to time sync payload: "+PayloadStr);
+
+	return {AbsTime, SysOffs};
+}
 template<> ControlRelayOutputBlock PayloadFromString(const std::string& PayloadStr)
 {
 	ControlCode functionCode = ControlCode::LATCH_ON;

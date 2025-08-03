@@ -763,6 +763,21 @@ template<> odc::ConnectState CBORDeserialiser::PopPayload(cbor::cbor_bytes_curso
 	cursor.next();
 	return state;
 }
+template<> odc::AbsTime_n_SysOffs CBORDeserialiser::PopPayload(cbor::cbor_bytes_cursor& cursor)
+{
+	odc::AbsTime_n_SysOffs ret;
+	auto& cbor_event = cursor.current();
+	if(cbor_event.event_type() != staj_event_type::uint64_value)
+		throw std::invalid_argument("Payload is not a timestamp (uint64 ms since epoch)");
+	ret.first = cbor_event.get<std::uint64_t>();
+	cursor.next();
+	auto& cbor_event2 = cursor.current();
+	if(cbor_event2.event_type() != staj_event_type::int64_value)
+		throw std::invalid_argument("Payload is not a time offset (int64 ms)");
+	ret.second = cbor_event2.get<std::int64_t>();
+	cursor.next();
+	return ret;
+}
 
 #define POP_PAYLOAD_CASE(T)\
 	case T:\
@@ -811,7 +826,7 @@ void CBORDeserialiser::PopPayload(cbor::cbor_bytes_cursor& cursor, std::shared_p
 		POP_PAYLOAD_CASE(odc::EventType::Reserved2                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved3                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved4                )
-		POP_PAYLOAD_CASE(odc::EventType::Reserved5                )
+		POP_PAYLOAD_CASE(odc::EventType::TimeSync                 )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved6                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved8                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved9                )
