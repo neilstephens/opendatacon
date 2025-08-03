@@ -31,6 +31,7 @@
 SimPortConf::SimPortConf():
 	abs_analogs(false),
 	std_dev_scaling(1),
+	ApplyTimeSyncEvents(true),
 	m_name("")
 {
 	m_pport_data = std::make_shared<SimPortData>();
@@ -44,6 +45,8 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		m_pport_data->HttpPort(json_root["HttpPort"].asString());
 	if (json_root.isMember("Version"))
 		m_pport_data->Version(json_root["Version"].asString());
+	if (json_root.isMember("ApplyTimeSyncEvents"))
+		ApplyTimeSyncEvents = json_root["ApplyTimeSyncEvents"].asBool();
 
 	if (json_root.isMember("AbsAnalogs"))
 		abs_analogs = json_root["AbsAnalogs"].asBool();

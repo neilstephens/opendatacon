@@ -99,6 +99,8 @@ public:
 	std::atomic_bool abs_analogs;
 	std::atomic<double> std_dev_scaling;
 
+	bool ApplyTimeSyncEvents;
+
 private:
 	std::string m_name;
 	SQLite3Defaults m_db_defaults;
