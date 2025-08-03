@@ -540,7 +540,7 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			// the offset (payload.second) is what needs adding to a system clock time point to be in sync
 			auto offset = event->GetPayload<EventType::TimeSync>().second;
 			auto abs_time = event->GetPayload<EventType::TimeSync>().first;
-			Log.Debug("{}: TimeSync event from upstream sync @ {}. Using system clock offset {} ms.", Name, since_epoch_to_datetime(abs_time), sys_time_offset);
+			Log.Debug("{}: TimeSync event from upstream sync @ {}. System clock offset {} ms.", Name, since_epoch_to_datetime(abs_time), sys_time_offset);
 			auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 			if(pConf->pPointConf->PassThroughTimeSync)
 				sys_time_offset = offset;
