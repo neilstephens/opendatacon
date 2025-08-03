@@ -56,8 +56,11 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	SetQualityOnLinkStatus(true),
 	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
+	FlagsToSetOnStale(odc::QualityFlags::RESTART),
+	FlagsToClearOnStale(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
 	CommsPointRideThroughDemandPause(true),
+	CommsPointStaleTimems(1800000), // assume points are stale after half an hour by default
 	CommsPointHeartBeatTimems(0),
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	EventScanOnEventsAvailableClass1(false),
@@ -253,6 +256,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		FlagsToSetOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToSetOnLinkStatus"].asString());
 	if (JSONRoot.isMember("FlagsToClearOnLinkStatus"))
 		FlagsToClearOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToClearOnLinkStatus"].asString());
+	if (JSONRoot.isMember("FlagsToSetOnStale"))
+		FlagsToSetOnStale = odc::QualityFlagsFromString(JSONRoot["FlagsToSetOnStale"].asString());
+	if (JSONRoot.isMember("FlagsToClearOnStale"))
+		FlagsToClearOnStale = odc::QualityFlagsFromString(JSONRoot["FlagsToClearOnStale"].asString());
 
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	if (JSONRoot.isMember("EventScanOnEventsAvailableClass1"))
@@ -332,6 +339,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			CommsPointRideThroughDemandPause = JSONRoot["CommsPoint"]["RideThroughDemandPause"].asBool();
 		if(JSONRoot["CommsPoint"].isMember("HeartBeatTimems"))
 			CommsPointHeartBeatTimems = JSONRoot["CommsPoint"]["HeartBeatTimems"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("StaleTimems"))
+			CommsPointStaleTimems = JSONRoot["CommsPoint"]["StaleTimems"].asUInt();
 	}
 
 	// Master Station scanning configuration

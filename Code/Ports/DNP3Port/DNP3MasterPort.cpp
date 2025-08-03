@@ -65,6 +65,8 @@ void DNP3MasterPort::Enable()
 			pConf->pPointConf->CommsPointRideThroughTimems,
 			[this](){SetCommsGood();},
 			[this](){SetCommsFailed();},
+			[this](){SetPointsStale();},
+			pConf->pPointConf->CommsPointStaleTimems,
 			[this](bool f){CommsHeartBeat(f);},
 			pConf->pPointConf->CommsPointHeartBeatTimems);
 
@@ -90,6 +92,7 @@ void DNP3MasterPort::Disable()
 	enabled = false;
 
 	pCommsRideThroughTimer->StopHeartBeat();
+	pCommsRideThroughTimer->Resume();
 	pCommsRideThroughTimer->FastForward();
 
 	CheckStackState();
@@ -188,13 +191,15 @@ void DNP3MasterPort::SetCommsFailed()
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
-		Log.Debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
+		const auto& Set = pConf->pPointConf->FlagsToSetOnLinkStatus;
+		const auto& Clear = pConf->pPointConf->FlagsToClearOnLinkStatus;
+		Log.Debug("{}: SetCommsFailed(): Setting {}, clearing {}, point quality.", Name, ToString(Set), ToString(Clear));
 
-		SetCommsFailedQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes);
-		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
-		SetCommsFailedQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes);
-		SetCommsFailedQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes);
-		SetCommsFailedQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes);
+		SetPointQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes, Set, Clear);
+		SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes, Set, Clear);
+		SetPointQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes, Set, Clear);
+		SetPointQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes, Set, Clear);
+		SetPointQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes, Set, Clear);
 
 		// An integrity scan will be needed when/if the link comes back
 		// It's the only way to get the true state upstream
@@ -207,14 +212,36 @@ void DNP3MasterPort::SetCommsFailed()
 	}
 }
 
-template <EventType etype, EventType qtype>
-void DNP3MasterPort::SetCommsFailedQuality(std::vector<uint16_t>& indexes)
+void DNP3MasterPort::SetPointsStale()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	const auto& Set = pConf->pPointConf->FlagsToSetOnStale;
+	const auto& Clear = pConf->pPointConf->FlagsToClearOnStale;
+
+	Log.Debug("{}: SetPointsStale(): Setting {}, clearing {}, point quality.", Name, ToString(Set), ToString(Clear));
+
+	SetPointQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes, Set, Clear);
+	SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes, Set, Clear);
+	SetPointQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes, Set, Clear);
+	SetPointQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes, Set, Clear);
+	SetPointQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes, Set, Clear);
+
+	// Stale means we assume things have become out-of-date and changed in the meantime
+	// An integrity scan will be needed on the next connection
+	pChanH->Post([this]()
+		{
+			Log.Debug("{}: Setting IntegrityScanNeeded after SetPointsStale().",Name);
+			IntegrityScanNeeded = true;
+		});
+}
+
+template <EventType etype, EventType qtype>
+void DNP3MasterPort::SetPointQuality(const std::vector<uint16_t>& indexes, const QualityFlags FlagsToSet, const QualityFlags FlagsToClear)
+{
 	for (auto index : indexes)
 	{
 		auto last_event = pDB->Get(etype,index);
-		auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
+		auto new_qual = (last_event->GetQuality() | FlagsToSet) & ~FlagsToClear;
 
 		auto event = std::make_shared<EventInfo>(qtype,index,Name);
 		event->SetPayload<qtype>(QualityFlags(new_qual));
