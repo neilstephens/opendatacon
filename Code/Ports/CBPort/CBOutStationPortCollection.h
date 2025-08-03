@@ -125,7 +125,6 @@ public:
 				if (!target)
 					return IUIResponder::GenerateResult("No CBOutstationPort matched");
 
-				//param 0: Probability 0 to 1
 				if (params.count("0") == 0)
 				{
 					return IUIResponder::GenerateResult("Bad parameter - Pass in the millisecond offset for RTU clock");
