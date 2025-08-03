@@ -40,6 +40,7 @@ class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public open
 public:
 	DNP3MasterPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 		DNP3Port(aName, aConfFilename, aConfOverrides,true),
+		sys_time_offset(0),
 		pMaster(nullptr),
 		IntegrityScanNeeded(false),
 		IntegrityScanDone(true), //init true because the stack does an initial integrity scan
@@ -98,7 +99,7 @@ protected:
 	}
 	opendnp3::UTCTimestamp Now() final
 	{
-		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() + sys_time_offset;
 		return opendnp3::UTCTimestamp(time);
 	}
 
@@ -114,6 +115,8 @@ protected:
 	void OnReceiveIIN(const opendnp3::IINField& iin) override;
 
 private:
+	std::atomic_int64_t sys_time_offset;
+
 	std::shared_ptr<opendnp3::ISOEHandler> ISOEHandle;
 	std::shared_ptr<opendnp3::IMasterApplication> MasterApp;
 	std::shared_ptr<opendnp3::IMaster> pMaster;

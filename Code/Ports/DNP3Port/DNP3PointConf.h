@@ -127,6 +127,7 @@ public:
 	bool WaitForCommandResponses;   // when responding to a command, wait for downstream command responses, otherwise returns success
 	bool TimeSyncOnStart;
 	uint64_t TimeSyncPeriodms;
+	bool PassThroughTimeSync;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;
@@ -145,6 +146,8 @@ public:
 	odc::EventType AnalogControlType;
 
 	// Timestamp override options
+	//	TODO: Make this a bitwise flag type. Then add 'FUTURE', remove NEVER. Add separate option for future time tollerance.
+	//	That way timestamps can be overriden if they're zero *and/or* in the future.
 	enum class TimestampOverride_t { ALWAYS, ZERO, NEVER };
 	TimestampOverride_t TimestampOverride;
 

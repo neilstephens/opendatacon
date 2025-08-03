@@ -128,6 +128,7 @@ void DNP3MasterPort::UpdateCommsPoint(bool isFailed)
 		auto commsEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
 		commsEvent->SetPayload<EventType::Binary>(isFailed ? failed_val : !failed_val);
+		commsEvent->SetTimestamp(msSinceEpoch()+sys_time_offset);
 		PublishEvent(commsEvent);
 		pDB->Set(commsEvent);
 	}
@@ -217,6 +218,7 @@ void DNP3MasterPort::SetCommsFailedQuality(std::vector<uint16_t>& indexes)
 
 		auto event = std::make_shared<EventInfo>(qtype,index,Name);
 		event->SetPayload<qtype>(QualityFlags(new_qual));
+		event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 		PublishEvent(event);
 
 		//update the EventDB event with the quality as well
@@ -464,7 +466,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 			if constexpr(!std::is_same<decltype(pair.value),opendnp3::OctetString>()) //OctetString has no time
 				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
 				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
-					event->SetTimestamp();
+					event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 
 			bool unknown_point = !pDB->Set(event);
 			bool publish = true;
@@ -526,6 +528,29 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		CheckStackState();
 
 		(*pStatusCallback)(CommandStatus::SUCCESS);
+		return;
+	}
+
+	if(event->GetEventType() == EventType::TimeSync)
+	{
+		if(event->HasPayload())
+		{
+			// upstream port sync'd it's time with an external source
+			// the absolute time (payload.first) is the time point that was sync'd to
+			// the offset (payload.second) is what needs adding to a system clock time point to be in sync
+			auto offset = event->GetPayload<EventType::TimeSync>().second;
+			auto abs_time = event->GetPayload<EventType::TimeSync>().first;
+			Log.Debug("{}: TimeSync event from upstream sync @ {}. Using system clock offset {} ms.", Name, since_epoch_to_datetime(abs_time), sys_time_offset);
+			auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+			if(pConf->pPointConf->PassThroughTimeSync)
+				sys_time_offset = offset;
+			(*pStatusCallback)(CommandStatus::SUCCESS);
+		}
+		else
+		{
+			Log.Warn("{}: TimeSync event without payload recieved from SourcePort {}", Name, event->GetSourcePort());
+			(*pStatusCallback)(CommandStatus::UNDEFINED);
+		}
 		return;
 	}
 

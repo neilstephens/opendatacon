@@ -159,6 +159,21 @@ void DNP3OutstationPort::OnKeepAliveReset()
 	pChanH->LinkUp();
 }
 
+void DNP3OutstationPort::AdjustTimeOffsetMilliSeconds(const int64_t ms_offset, const bool pass_through, msSinceEpoch_t abs)
+{
+	if(!abs) abs = msSinceEpoch()+ms_offset;
+	Log.Debug("Adjusting time offset to {} ms, to sync with absolute time {}", ms_offset, since_epoch_to_datetime(abs));
+	master_time_offset = ms_offset;
+	if(pass_through)
+	{
+		Log.Debug("{}: Publishing time sync event. AbsTime {}, SysOffset {} ms.", Name, since_epoch_to_datetime(abs), ms_offset);
+		auto event = std::make_shared<EventInfo>(EventType::TimeSync,0,Name);
+		event->SetPayload<EventType::TimeSync>(AbsTime_n_SysOffs(abs,ms_offset));
+		event->SetTimestamp(msSinceEpoch()+master_time_offset);
+		PublishEvent(event);
+	}
+}
+
 // Called by OpenDNP3 Thread Pool
 bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timestamp)
 {
@@ -188,11 +203,12 @@ bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timesta
 	if(now > master_time)
 		new_master_offset *= -1;
 
-	master_time_offset = new_master_offset;
 	last_time_sync = msSinceEpoch();
 	ClearIINFlags(AppIINFlags::NEED_TIME);
 
 	Log.Info("{}: Time offset from master = {}ms", Name, new_master_offset);
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	AdjustTimeOffsetMilliSeconds(new_master_offset,pConf->pPointConf->PassThroughTimeSync,master_time);
 
 	return ret;
 }
@@ -390,6 +406,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 		return opendnp3::CommandStatus::UNDEFINED;
 
 	auto event = ToODC(arCommand, aIndex, Name);
+	event->SetTimestamp(msSinceEpoch()+master_time_offset);
 	pDB->Set(event);
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
@@ -478,6 +495,15 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		}
 	}
 
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
+	    || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (event->GetTimestamp() == 0)))
+	{
+		EventInfo info(*event);
+		info.SetTimestamp(msSinceEpoch()+master_time_offset);
+		event = std::make_shared<const EventInfo>(info);
+	}
+
 	bool point_exists = pDB->Set(event);
 
 	switch(event->GetEventType())
@@ -544,14 +570,6 @@ inline void DNP3OutstationPort::EventT(T qual, uint16_t index, opendnp3::FlagsTy
 template<typename T>
 inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 {
-	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-
-	if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
-	    || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (meas.time.value == 0)))
-	{
-		meas.time = opendnp3::DNPTime(msSinceEpoch()+master_time_offset);
-	}
-
 	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index);
 	pOutstation->Apply(builder.Build());
