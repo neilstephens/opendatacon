@@ -36,15 +36,22 @@ class DataConcentrator //because DataConcentrator is a freind class of DataConne
 public:
 	DataConcentrator(DataConnector& Con)
 	{
-		auto tx_cleanup = [=](Transform* tx)
-					{
-						delete tx;
-					};
+		Json::Value Tx1conf = Json::Value::nullSingleton();
 		Json::Value Tx2conf; Tx2conf["Add"]=2;
 		Json::Value Tx3conf; Tx3conf["Add"]=3;
-		Con.SenderTransforms["P1"].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new AddShiftTransform("Tx1",Json::Value::nullSingleton()),tx_cleanup));
-		Con.SenderTransforms["P1"].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new AddShiftTransform("Tx2",Tx2conf),tx_cleanup));
-		Con.SenderTransforms["P1"].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new AddShiftTransform("Tx3",Tx3conf),tx_cleanup));
+
+		auto tx1 = std::make_shared<AddShiftTransform>("Tx1",Tx1conf);
+		auto tx2 = std::make_shared<AddShiftTransform>("Tx2",Tx2conf);
+		auto tx3 = std::make_shared<AddShiftTransform>("Tx3",Tx3conf);
+
+		Con.SenderTransforms["P0"].push_back(tx1);
+		Con.SenderTransforms["P0"].push_back(tx2);
+		Con.SenderTransforms["P0"].push_back(tx3);
+
+		//Transforms can be for multiple senders
+		Con.SenderTransforms["P1"].push_back(tx1);
+		Con.SenderTransforms["P1"].push_back(tx2);
+		Con.SenderTransforms["P1"].push_back(tx3);
 	}
 };
 
@@ -57,6 +64,7 @@ TEST_CASE("TransformTests")
 	auto ios = odc::asio_service::Get();
 	auto work = ios->make_work();
 
+	PublicPublishPort P0("P0","",Json::Value::nullSingleton());
 	PublicPublishPort P1("P1","",Json::Value::nullSingleton());
 	AnalogCheckPort P2("P2","",Json::Value::nullSingleton(),1230);
 	AnalogCheckPort P3("P3","",Json::Value::nullSingleton(),1230);
@@ -64,18 +72,31 @@ TEST_CASE("TransformTests")
 	AnalogCheckPort P5("P5","",Json::Value::nullSingleton(),1230);
 
 	Json::Value ConnConf;
-	ConnConf["Connections"][0]["Name"] = "P1toP2";
-	ConnConf["Connections"][0]["Port1"] = "P1";
+	ConnConf["Connections"][0]["Name"] = "P0toP2";
+	ConnConf["Connections"][0]["Port1"] = "P0";
 	ConnConf["Connections"][0]["Port2"] = "P2";
-	ConnConf["Connections"][1]["Name"] = "P1toP3";
-	ConnConf["Connections"][1]["Port1"] = "P1";
+	ConnConf["Connections"][1]["Name"] = "P0toP3";
+	ConnConf["Connections"][1]["Port1"] = "P0";
 	ConnConf["Connections"][1]["Port2"] = "P3";
-	ConnConf["Connections"][2]["Name"] = "P1toP4";
-	ConnConf["Connections"][2]["Port1"] = "P1";
+	ConnConf["Connections"][2]["Name"] = "P0toP4";
+	ConnConf["Connections"][2]["Port1"] = "P0";
 	ConnConf["Connections"][2]["Port2"] = "P4";
-	ConnConf["Connections"][3]["Name"] = "P1toP5";
-	ConnConf["Connections"][3]["Port1"] = "P1";
+	ConnConf["Connections"][3]["Name"] = "P0toP5";
+	ConnConf["Connections"][3]["Port1"] = "P0";
 	ConnConf["Connections"][3]["Port2"] = "P5";
+
+	ConnConf["Connections"][4]["Name"] = "P1toP2";
+	ConnConf["Connections"][4]["Port1"] = "P1";
+	ConnConf["Connections"][5]["Port2"] = "P2";
+	ConnConf["Connections"][5]["Name"] = "P1toP3";
+	ConnConf["Connections"][6]["Port1"] = "P1";
+	ConnConf["Connections"][6]["Port2"] = "P3";
+	ConnConf["Connections"][7]["Name"] = "P1toP4";
+	ConnConf["Connections"][7]["Port1"] = "P1";
+	ConnConf["Connections"][8]["Port2"] = "P4";
+	ConnConf["Connections"][8]["Name"] = "P1toP5";
+	ConnConf["Connections"][9]["Port1"] = "P1";
+	ConnConf["Connections"][9]["Port2"] = "P5";
 
 	DataConnector Conn("Conn","",ConnConf);
 
@@ -93,6 +114,14 @@ TEST_CASE("TransformTests")
 
 	auto event = std::make_shared<EventInfo>(EventType::Analog);
 	event->SetPayload<EventType::Analog>(0);
+
+	executed = false;
+	P0.PublicPublishEvent(event,StatusCallback);
+	while(!executed)
+	{
+		ios->run_one_for(std::chrono::milliseconds(10));
+	}
+	REQUIRE(cb_status == CommandStatus::SUCCESS);
 
 	executed = false;
 	P1.PublicPublishEvent(event,StatusCallback);

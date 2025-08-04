@@ -53,7 +53,7 @@ public:
 	uint32_t LinkNumRetry;
 	uint32_t LinkTimeoutms;
 	uint32_t LinkKeepAlivems;
-	bool LinkUseConfirms;
+	bool NackConfirmedUDWhenUnreset;
 
 	/// Common application stack configuration
 	opendnp3::ServerAcceptMode ServerAcceptMode;
@@ -73,8 +73,11 @@ public:
 	bool SetQualityOnLinkStatus;                /// Whether to set point quality when link down
 	odc::QualityFlags FlagsToSetOnLinkStatus;   /// The flags to Set when SetQualityOnLinkStatus is true
 	odc::QualityFlags FlagsToClearOnLinkStatus; /// The flags to Clear when SetQualityOnLinkStatus is true
+	odc::QualityFlags FlagsToSetOnStale;        /// The flags to Set when points go stale
+	odc::QualityFlags FlagsToClearOnStale;      /// The flags to Clear when points go stale
 	uint32_t CommsPointRideThroughTimems;       /// How long to wait before admitting the link is down
 	bool CommsPointRideThroughDemandPause;      /// Whether to pause the ridethrough timer if there's no 'demand'
+	uint32_t CommsPointStaleTimems;             /// Mark points as stale and require and integrity scan if ridethrough demand pause lasts this long (if non-zero)
 	uint32_t CommsPointHeartBeatTimems;         /// Send a periodic comms event with this period if non zero
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	opendnp3::ClassField GetEventScanOnEventsAvailableClassMask();
@@ -87,6 +90,7 @@ public:
 	bool StartupIntegrityClass1;
 	bool StartupIntegrityClass2;
 	bool StartupIntegrityClass3;
+	uint32_t LinkUpIntegrityGracePeriodms;
 	/// When will the startup integrity scan be triggered
 	enum class LinkUpIntegrityTrigger_t { NEVER, ON_FIRST, ON_EVERY };
 	LinkUpIntegrityTrigger_t LinkUpIntegrityTrigger;
@@ -105,6 +109,8 @@ public:
 	bool RetryForcedIntegrity;
 	/// Time delay beforce retrying a failed task
 	uint32_t TaskRetryPeriodms;
+	/// Expiry time for one-off tasks (commands/scans) to start
+	uint32_t TaskStartTimeoutms;
 
 	// Master Station scanning configuration
 	size_t IntegrityScanRatems;
@@ -124,6 +130,7 @@ public:
 	bool WaitForCommandResponses;   // when responding to a command, wait for downstream command responses, otherwise returns success
 	bool TimeSyncOnStart;
 	uint64_t TimeSyncPeriodms;
+	bool PassThroughTimeSync;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;
@@ -142,6 +149,8 @@ public:
 	odc::EventType AnalogControlType;
 
 	// Timestamp override options
+	//	TODO: Make this a bitwise flag type. Then add 'FUTURE', remove NEVER. Add separate option for future time tollerance.
+	//	That way timestamps can be overriden if they're zero *and/or* in the future.
 	enum class TimestampOverride_t { ALWAYS, ZERO, NEVER };
 	TimestampOverride_t TimestampOverride;
 

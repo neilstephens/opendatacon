@@ -301,7 +301,7 @@ void CBORSerialiser::EncodePayload(std::shared_ptr<const EventInfo> event, cbor:
 		ENCODE_PAYLOAD_CASE(odc::EventType::Reserved2                )
 		ENCODE_PAYLOAD_CASE(odc::EventType::Reserved3                )
 		ENCODE_PAYLOAD_CASE(odc::EventType::Reserved4                )
-		ENCODE_PAYLOAD_CASE(odc::EventType::Reserved5                )
+		ENCODE_PAYLOAD_CASE(odc::EventType::TimeSync                 )
 		ENCODE_PAYLOAD_CASE(odc::EventType::Reserved6                )
 		ENCODE_PAYLOAD_CASE(odc::EventType::Reserved8                )
 		ENCODE_PAYLOAD_CASE(odc::EventType::Reserved9                )
@@ -311,6 +311,13 @@ void CBORSerialiser::EncodePayload(std::shared_ptr<const EventInfo> event, cbor:
 		default:
 			break;
 	}
+}
+void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AbsTime_n_SysOffs payload) const
+{
+	encoder.begin_array(2);
+	encoder.uint64_value(payload.first);
+	encoder.int64_value(payload.second);
+	encoder.end_array();
 }
 void CBORSerialiser::EncodePayload(cbor::cbor_bytes_encoder& encoder, bool payload) const
 {

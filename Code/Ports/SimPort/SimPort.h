@@ -41,6 +41,7 @@ using days = std::chrono::duration<int, std::ratio_multiply<std::ratio<24>, std:
 class SimPortCollection;
 class SimPort: public DataPort
 {
+	friend class SimPortCollection;
 public:
 	//Implement DataPort interface
 	SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides);
@@ -137,12 +138,14 @@ private:
 	bool IsOnCommand(odc::ControlCode code) const;
 
 	std::shared_ptr<SimPortCollection> SimCollection;
+	void AdjustTimeOffsetMilliSeconds(int64_t offset);
 
 	std::unique_ptr<asio::io_service::strand> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;
 	ServerTokenType httpServerToken;
 	SimPortConf* pSimConf = nullptr; // Set in constructor
 	Json::Value JSONConf;
+	std::atomic_int64_t sys_time_offset;
 };
 
 #endif // SIMPORT_H

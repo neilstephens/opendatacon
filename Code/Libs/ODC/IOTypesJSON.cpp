@@ -414,6 +414,21 @@ template<> ConnectState PayloadFromJson(const Json::Value& JLoad)
 	}
 	throw std::invalid_argument("Payload not convertable to odc::ConnectState.");
 }
+template<> AbsTime_n_SysOffs PayloadFromJson(const Json::Value& JLoad)
+{
+	const auto err = "Payload is not a JSON object with 'AbsTime' and 'SysOffset' member (un)signed 64b integers.";
+
+	if(!JLoad.isObject())
+		throw std::invalid_argument(err);
+
+	if(!JLoad.isMember("AbsTime") || !JLoad["AbsTime"].isUInt64())
+		throw std::invalid_argument(err);
+
+	if(!JLoad.isMember("SysOffset") || !JLoad["SysOffset"].isInt64())
+		throw std::invalid_argument(err);
+
+	return { JLoad["AbsTime"].asUInt64(), JLoad["SysOffset"].asInt64() };
+}
 
 #define POP_PAYLOAD_CASE(T)\
 	case T:\
@@ -462,7 +477,7 @@ void PayloadFromJson(const Json::Value& JLoad, std::shared_ptr<EventInfo> event)
 		POP_PAYLOAD_CASE(EventType::Reserved2                )
 		POP_PAYLOAD_CASE(EventType::Reserved3                )
 		POP_PAYLOAD_CASE(EventType::Reserved4                )
-		POP_PAYLOAD_CASE(EventType::Reserved5                )
+		POP_PAYLOAD_CASE(EventType::TimeSync                 )
 		POP_PAYLOAD_CASE(EventType::Reserved6                )
 		POP_PAYLOAD_CASE(EventType::Reserved8                )
 		POP_PAYLOAD_CASE(EventType::Reserved9                )

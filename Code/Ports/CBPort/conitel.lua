@@ -1,3 +1,5 @@
+local bitop = bit
+
 BCH = {0x12,0x9,0x16,0xB,0x17,0x19,0x1E,0xF,0x15,0x18,0xC,0x6,0x3,
        0x13,0x1B,0x1F,0x1D,0x1C,0xE,0x7,0x11,0x1A,0xD,0x14,0xA,0x5}
 
@@ -18,6 +20,8 @@ f.data = ProtoField.bytes("conitel.data", "Packet Data")
 f.soedata = ProtoField.uint8("conitel.soedata", "SOE")
 --f.soegroup = ProtoField.uint8("conitel.soegroup","SOE Group", base.HEX)
 --f.soeindex = ProtoField.uint16("conitel.soeindex","SOE Index", base.HEX)
+
+f.firbdata = ProtoField.uint16("conitel.bdata","1B Full Data", base.HEX)
 
 -- create a function to dissect it
 function conitel_proto.dissector(buffer,pinfo,tree)
@@ -117,10 +121,6 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 		end
 	end
 
-    pinfo.cols.protocol = "conitel"
-	pinfo.cols.info:set("Stn: "..station.." Grp: "..group.." Fn: "..functionname )
-	pinfo.cols.info:fence()
-
     local subtree = tree:add(conitel_proto,buffer(),"Conitel/Baker Protocol Data")
 	subtree:append_text (" - Fn: " .. functionname)
 
@@ -143,6 +143,10 @@ function conitel_proto.dissector(buffer,pinfo,tree)
 	--	local datalenleaf = subtree:add("Data Length : " ..  pktlen)
 	local blockleaf = subtree:add("Payload Data")
 	local block1b = GetBlockB(buffer(0,4):uint())
+	
+	pinfo.cols.protocol = "conitel"
+	pinfo.cols.info:set("Stn: "..station.." Grp: "..group.." Fn: "..functionname.." 1B:"..string.format("0x%03x",block1b))
+	pinfo.cols.info:fence()
 	
 	if ((conitelfunction == 2) or (conitelfunction == 4)) then
 		blockleaf:add("1B " .. string.format("0x%03x",block1b) .. " Conitel Channel " .. string.format("0%d",12 - GetSetBitIndex(block1b,12)))
@@ -256,7 +260,7 @@ function GetSetBitIndex( payload, maxbit )
 	-- Will return the first set bit, if none set returns -1
 	for bit = maxbit-1, 0 ,-1
 	do
-		local bitvalue = bit32.band(bit32.rshift(payload,bit), 0x01)
+		local bitvalue = bitop.band(bitop.rshift(payload,bit), 0x01)
 		if bitvalue == 1 then
 			return bit -- A bit was set
 		end
@@ -272,9 +276,9 @@ function GetBit(payloads, payloadbitindex, bitleftshift)
 		return 0
 	end
 	
-	local bitvalue = bit32.band(bit32.rshift(payloads[block+1],11-bit), 0x01)
+	local bitvalue = bitop.band(bitop.rshift(payloads[block+1],11-bit), 0x01)
 	-- Now left shift to put the bit in the correct position for the answer
-	bitvalue = bit32.lshift(bitvalue, bitleftshift)
+	bitvalue = bitop.lshift(bitvalue, bitleftshift)
 	return bitvalue
 end
 
@@ -285,8 +289,9 @@ function CalculateBCH(block)
     -- xor each of the sub-remainders corresponding to set bits in the first 26 bits of the payload
 	for bit = 0, 25 ,1
 	do
-     if (bit32.band(bit32.lshift(block, bit),0x80000000) == 0x80000000)	then -- The bit is set
-            bch = bit32.band(bit32.bxor(bch,BCH[bit+1]),0x1F)	-- LUA Array index is 1 based, not 0. Limit to 5 bits
+     -- Fixed: Use bitop.tobit to normalize the result and ensure proper comparison
+     if (bitop.tobit(bitop.lshift(block, bit)) < 0) then -- The bit is set (checking sign bit)
+            bch = bitop.band(bitop.bxor(bch,BCH[bit+1]),0x1F)	-- LUA Array index is 1 based, not 0. Limit to 5 bits
 		end
 	end
 
@@ -294,31 +299,31 @@ function CalculateBCH(block)
 end
 
 function GetFunction(block)
-	return bit32.band(bit32.rshift(block,28),0x0f)
+	return bitop.band(bitop.rshift(block,28),0x0f)
 end
 function GetStation(block)
-	return bit32.band(bit32.rshift(block,24),0x0f)
+	return bitop.band(bitop.rshift(block,24),0x0f)
 end
 function GetGroup(block)
-	return bit32.band(bit32.rshift(block,20),0x0f)
+	return bitop.band(bitop.rshift(block,20),0x0f)
 end
 function GetBlockABit(block)
-	return bit32.band(bit32.rshift(block,19),0x01)
+	return bitop.band(bitop.rshift(block,19),0x01)
 end
 function GetBlockBBit(block)
-	return bit32.band(bit32.rshift(block,6),0x01)
+	return bitop.band(bitop.rshift(block,6),0x01)
 end
 function GetBlockA(block)
-	return bit32.band(bit32.rshift(block,20),0x0FFF)
+	return bitop.band(bitop.rshift(block,20),0x0FFF)
 end
 function GetBlockB(block)
-	return bit32.band(bit32.rshift(block,7),0x0FFF)
+	return bitop.band(bitop.rshift(block,7),0x0FFF)
 end
 function GetBCH(block)
-	return bit32.band(bit32.rshift(block,1),0x01F)
+	return bitop.band(bitop.rshift(block,1),0x01F)
 end
 function GetEOM(block)
-	return bit32.band(block,0x01)
+	return bitop.band(block,0x01)
 end
 
 --register as a heuristic dissector

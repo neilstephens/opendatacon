@@ -32,10 +32,13 @@
 const size_t testTimeout = 10000;
 
 const size_t msRideTime = 1000;
+const size_t msStaleTime = 1000;
 std::atomic_bool CommsIsBad = false;
 std::atomic_bool CommsToggled = false;
+std::atomic_bool Stale = false;
 const auto SetCommsBad = [](){ CommsIsBad = true; };
 const auto SetCommsGood = [](){ CommsIsBad = false; CommsToggled = true; };
+const auto SetStale = [](){ Stale = true; };
 
 inline void WaitFor(const std::atomic_bool& var, const bool state)
 {
@@ -54,14 +57,39 @@ inline void WaitFor(size_t ms)
 		pIOS->poll_one();
 }
 
+TEST_CASE(SUITE("Stale Timeout"))
+{
+	TestSetup();
+	auto pIOS = odc::asio_service::Get();
+	ThreadPool thread_pool(1);
+	CommsIsBad = false; CommsToggled = false; Stale = false;
+
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
+
+	auto trigger_time = odc::msSinceEpoch();
+	pCRTT->Pause();
+
+	WaitFor(Stale,true);
+
+	auto measured_duration = odc::msSinceEpoch() - trigger_time;
+	CHECK(measured_duration > 0.95*msStaleTime);
+	CHECK(measured_duration < 1.05*msStaleTime);
+	CHECK_FALSE(CommsToggled);
+
+	pCRTT->Cancel();
+	WaitFor(CommsIsBad,false);
+
+	TestTearDown();
+}
+
 TEST_CASE(SUITE("Simple Timeout"))
 {
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	auto trigger_time = odc::msSinceEpoch();
 	pCRTT->Trigger();
@@ -75,6 +103,7 @@ TEST_CASE(SUITE("Simple Timeout"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -84,9 +113,9 @@ TEST_CASE(SUITE("Cancel Trigger"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	const size_t msCancel = msRideTime*0.7;
 
@@ -103,6 +132,7 @@ TEST_CASE(SUITE("Cancel Trigger"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -112,9 +142,9 @@ TEST_CASE(SUITE("Trigger Pause Resume"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	const size_t msPause = msRideTime*0.7;
 
@@ -133,6 +163,7 @@ TEST_CASE(SUITE("Trigger Pause Resume"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -142,9 +173,9 @@ TEST_CASE(SUITE("Pause Trigger Resume"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	const size_t msPause = msRideTime*0.5;
 
@@ -163,6 +194,7 @@ TEST_CASE(SUITE("Pause Trigger Resume"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -172,9 +204,9 @@ TEST_CASE(SUITE("Pause Trigger Resume Cancel"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	const size_t msPause = msRideTime*0.2;
 
@@ -187,6 +219,7 @@ TEST_CASE(SUITE("Pause Trigger Resume Cancel"))
 	WaitFor(msRideTime*1.2);
 
 	CHECK_FALSE(CommsIsBad);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -196,9 +229,9 @@ TEST_CASE(SUITE("Pause Cancel Resume"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	const size_t msPause = msRideTime*0.5;
 
@@ -218,6 +251,7 @@ TEST_CASE(SUITE("Pause Cancel Resume"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -227,9 +261,9 @@ TEST_CASE(SUITE("Pause Resume Trigger"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 
 	pCRTT->Pause();
@@ -245,6 +279,7 @@ TEST_CASE(SUITE("Pause Resume Trigger"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -254,9 +289,9 @@ TEST_CASE(SUITE("Pause Resume Repeat"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	auto start_time = odc::msSinceEpoch();
 	pCRTT->Trigger();
@@ -274,6 +309,7 @@ TEST_CASE(SUITE("Pause Resume Repeat"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -283,9 +319,9 @@ TEST_CASE(SUITE("Pause Trigger Cancel Resume"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	const size_t msPause = msRideTime*0.5;
 
@@ -305,6 +341,7 @@ TEST_CASE(SUITE("Pause Trigger Cancel Resume"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -314,9 +351,9 @@ TEST_CASE(SUITE("Random"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	std::random_device rd;
 	std::mt19937 g(rd());
@@ -331,7 +368,7 @@ TEST_CASE(SUITE("Random"))
 
 	for(int i=0; i<10; i++)
 	{
-		CommsIsBad = false; CommsToggled = false;
+		CommsIsBad = false; CommsToggled = false; Stale = false;
 		bool paused; bool triggered;
 		for(int j=0; j<20; j++)
 		{
@@ -353,11 +390,14 @@ TEST_CASE(SUITE("Random"))
 			auto measured_duration = odc::msSinceEpoch() - start_time;
 			CHECK(measured_duration > 0.95*msRideTime);
 			CHECK(measured_duration < 1.05*msRideTime);
+			CHECK_FALSE(Stale);
 		}
 		else if(paused || !triggered)
 		{
 			WaitFor(msRideTime*1.2);
 			CHECK_FALSE(CommsIsBad);
+			if(paused)
+				CHECK(Stale);
 		}
 		else
 		{
@@ -381,9 +421,9 @@ TEST_CASE(SUITE("FastForward"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	auto start_time = odc::msSinceEpoch();
 	pCRTT->Trigger();
@@ -398,6 +438,7 @@ TEST_CASE(SUITE("FastForward"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -407,9 +448,9 @@ TEST_CASE(SUITE("Pause FastForward Resume"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	auto start_time = odc::msSinceEpoch();
 	pCRTT->Trigger();
@@ -428,6 +469,7 @@ TEST_CASE(SUITE("Pause FastForward Resume"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -437,9 +479,9 @@ TEST_CASE(SUITE("Trigger Cancel FastForward"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	pCRTT->Trigger();
 	pCRTT->Cancel();
@@ -455,6 +497,7 @@ TEST_CASE(SUITE("Trigger Cancel FastForward"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
@@ -464,9 +507,9 @@ TEST_CASE(SUITE("FastForward Pause Resume"))
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
-	CommsIsBad = false; CommsToggled = false;
+	CommsIsBad = false; CommsToggled = false; Stale = false;
 
-	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad);
+	auto pCRTT = std::make_shared<CommsRideThroughTimer>(*pIOS, msRideTime, SetCommsGood, SetCommsBad, SetStale, msStaleTime);
 
 	auto start_time = odc::msSinceEpoch();
 	pCRTT->Trigger();
@@ -482,6 +525,7 @@ TEST_CASE(SUITE("FastForward Pause Resume"))
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
+	CHECK_FALSE(Stale);
 
 	TestTearDown();
 }
