@@ -1,4 +1,31 @@
-# opendatacon version 1.10.1
+# opendatacon version 1.10.2
+
+## 1.10.2
+  * Transforms can now accept a list for the 'Sender' option
+    * Backwards compatible (String for single sender still works).
+  * New EventType 'TimeSync'
+    * Allows ports that synchronise time externally to send the correction (offset compared to system clock) as an event
+  * DNP3Port
+    * Exposed opendnp3 option TaskStartTimeoutms
+    * DNP3MasterPort: Backup to make sure the link up integrity scan happens if IIN flags aren't received from outstation with grace period
+    * Recieving confirmed user data has been fixed. Sending confirmed user data was removed from opendnp3, but it wasn't meant to break recieving it.
+      * Related option to send NACK to confirmed user data if link not reset
+    * Some default object variations have changed to include quality and time
+      * These were likely typos in the original defaults
+      * Including time and/or quality is usually desired
+      * BEWARE - this will change data sent back - may need setting explicitly for some applications that relied on the old defaults
+    * Support for TimeSync events
+      * If 'PassThroughTimeSync' option is set to true (defaults false for backwards compat):
+        * DNP3OutstationPort generates TimeSync event when time is written from it's master
+        * DNP3MasterPort recieves TimeSync events and uses the correction when writing time to outstations
+        * Ie. DNP3 time sync can effectively traverse the datacon
+    * DNP3MasterPort stale timer
+      * 'CommsPoint'->'StaleTimems' defines a period after which a 'paused' ridethrough timer (while it's not 'in demand') will deem it's points "stale"
+      * 'FlagsToSetOnStale' and 'FlagsToClearOnStale' options
+      * The major use case for this is in the case of redundant datacons
+        * The inactive datacon will mark it's points as stale and do an integrity scan if it becomes active
+      * Defaults to half an hour, sets RESTART, clears ONLINE
+  * Simport supports TimeSync events ('ApplyTimeSyncEvents'), and applies the correction to generated events by default
 
 ## 1.10.1
   * KafkaPort fixes
