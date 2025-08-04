@@ -37,6 +37,8 @@
 
 #define SUITE(name) "SimTests - " name
 
+//TODO: Add TimeSync event handling tests
+
 const std::vector<ControlCode> TRIP_CODES = {ControlCode::CLOSE_PULSE_ON, ControlCode::TRIP_PULSE_ON};
 const std::vector<std::vector<ControlCode>> CODES = {
 	{ControlCode::LATCH_OFF, ControlCode::TRIP_PULSE_ON, ControlCode::PULSE_OFF},

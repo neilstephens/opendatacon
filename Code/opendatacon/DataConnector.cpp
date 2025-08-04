@@ -96,111 +96,108 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					continue;
 				}
 				std::string txname = Transforms[n].isMember("Name") ? Transforms[n]["Name"].asString() : Name+" Transform "+std::to_string(n);
+				std::vector<std::string> tx_senders;
 
-				auto normal_delete = [] (Transform* pTx){delete pTx;};
-
-				if(Transforms[n]["Type"].asString() == "IndexOffset")
+				if(Transforms[n]["Sender"].isString())
+					tx_senders.push_back(Transforms[n]["Sender"].asString());
+				else if(Transforms[n]["Sender"].isArray())
 				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexOffsetTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
+					for(auto const& sender : Transforms[n]["Sender"])
+						tx_senders.push_back(sender.asString());
 				}
-				if(Transforms[n]["Type"].asString() == "IndexMap")
-				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new IndexMapTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
-				}
-				if(Transforms[n]["Type"].asString() == "Threshold")
-				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new ThresholdTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
-				}
-				if(Transforms[n]["Type"].asString() == "Rand")
-				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RandTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
-				}
-				if(Transforms[n]["Type"].asString() == "RateLimit")
-				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new RateLimitTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
-				}
-				if(Transforms[n]["Type"].asString() == "LogicInv")
-				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new LogicInvTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
-				}
-				if (Transforms[n]["Type"].asString() == "BlackHole")
-				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new BlackHoleTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
-				}
-				if (Transforms[n]["Type"].asString() == "AnalogScaling")
-				{
-					SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, void (*)(Transform*)>(new AnalogScalingTransform(txname,Transforms[n]["Parameters"]), normal_delete));
-					continue;
-				}
-
-				//Looks for a specific library (for libs that implement more than one class)
-				std::string libname;
-				if(Transforms[n].isMember("Library"))
-				{
-					libname = Transforms[n]["Library"].asString();
-				}
-				//Otherwise use the naming convention lib<Type>Transform.so to find the default lib that implements a type of transform
 				else
 				{
-					libname = Transforms[n]["Type"].asString()+"Transform";
-				}
-				auto libfilename = GetLibFileName(libname);
-
-				Log.Debug("Attempting to load library: {}, {}", libname, libfilename);
-
-				//try to load the lib
-				auto txlib = LoadModule(libfilename);
-
-				if(txlib == nullptr)
-				{
-					Log.Error("Failed to load library '{}' (Error: {}) skipping transform...", libfilename,LastSystemError());
+					Log.Error("Invalid Transform config: 'Sender' should be a string or array of strings: \n'{}\n' : ignoring", Transforms[n].toStyledString());
 					continue;
 				}
 
-				//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
-				//it should return a pointer to a heap allocated instance of a descendant of Transform
-				std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-				auto new_tx_func = reinterpret_cast<Transform*(*)(const std::string&,const Json::Value&)>(LoadSymbol(txlib, new_funcname));
-				std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
-				auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
+				std::function<void(Transform*)> tx_delete = [] (Transform* pTx){delete pTx;};
+				std::shared_ptr<Transform> tx_ptr;
 
-				if(new_tx_func == nullptr)
-					Log.Info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
-				if(delete_tx_func == nullptr)
-					Log.Info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
-				if(new_tx_func == nullptr || delete_tx_func == nullptr)
+				if(Transforms[n]["Type"].asString() == "IndexOffset")
+					tx_ptr.reset(new IndexOffsetTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if(Transforms[n]["Type"].asString() == "IndexMap")
+					tx_ptr.reset(new IndexMapTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if(Transforms[n]["Type"].asString() == "Threshold")
+					tx_ptr.reset(new ThresholdTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if(Transforms[n]["Type"].asString() == "Rand")
+					tx_ptr.reset(new RandTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if(Transforms[n]["Type"].asString() == "RateLimit")
+					tx_ptr.reset(new RateLimitTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if(Transforms[n]["Type"].asString() == "LogicInv")
+					tx_ptr.reset(new LogicInvTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if (Transforms[n]["Type"].asString() == "BlackHole")
+					tx_ptr.reset(new BlackHoleTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if (Transforms[n]["Type"].asString() == "AnalogScaling")
+					tx_ptr.reset(new AnalogScalingTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else
 				{
-					Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
-					continue;
-				}
 
-				//Create a logger if we haven't already
-				if(!odc::spdlog_get(libname))
-				{
-					if(auto log = Log.GetLog())
+					//Looks for a specific library (for libs that implement more than one class)
+					std::string libname;
+					if(Transforms[n].isMember("Library"))
 					{
-						auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
-							odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-						pLogger->set_level(log->level());
-						odc::spdlog_register_logger(pLogger);
+						libname = Transforms[n]["Library"].asString();
 					}
-				}
+					//Otherwise use the naming convention lib<Type>Transform.so to find the default lib that implements a type of transform
+					else
+					{
+						libname = Transforms[n]["Type"].asString()+"Transform";
+					}
+					auto libfilename = GetLibFileName(libname);
 
-				auto tx_cleanup = [=](Transform* tx)
+					Log.Debug("Attempting to load library: {}, {}", libname, libfilename);
+
+					//try to load the lib
+					auto txlib = LoadModule(libfilename);
+
+					if(txlib == nullptr)
+					{
+						Log.Error("Failed to load library '{}' (Error: {}) skipping transform...", libfilename,LastSystemError());
+						continue;
+					}
+
+					//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
+					//it should return a pointer to a heap allocated instance of a descendant of Transform
+					std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
+					auto new_tx_func = reinterpret_cast<Transform*(*)(const std::string&,const Json::Value&)>(LoadSymbol(txlib, new_funcname));
+					std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
+					auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
+
+					if(new_tx_func == nullptr)
+						Log.Info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
+					if(delete_tx_func == nullptr)
+						Log.Info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
+					if(new_tx_func == nullptr || delete_tx_func == nullptr)
+					{
+						Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
+						continue;
+					}
+
+					//Create a logger if we haven't already
+					if(!odc::spdlog_get(libname))
+					{
+						if(auto log = Log.GetLog())
+						{
+							auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
+								odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+							pLogger->set_level(log->level());
+							odc::spdlog_register_logger(pLogger);
+						}
+					}
+
+					tx_delete = [=](Transform* tx)
 							{
 								delete_tx_func(tx);
 								UnLoadModule(txlib);
 							};
 
-				//call the creation function and wrap the returned pointer
-				SenderTransforms[Transforms[n]["Sender"].asString()].push_back(std::unique_ptr<Transform, decltype(tx_cleanup)>(new_tx_func(txname,Transforms[n]["Parameters"]),tx_cleanup));
+					//call the creation function and wrap the returned pointer
+					tx_ptr.reset(new_tx_func(txname,Transforms[n]["Parameters"]),tx_delete);
+				}
+				//insert the transform into the chain of transforms for each applicable sender
+				for(const auto& sender : tx_senders)
+					SenderTransforms[sender].push_back(tx_ptr);
 			}
 			catch (std::exception& e)
 			{

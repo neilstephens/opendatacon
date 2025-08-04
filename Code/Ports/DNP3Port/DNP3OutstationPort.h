@@ -115,6 +115,7 @@ private:
 	void SetIINFlags(const std::string& flags) const;
 	void ClearIINFlags(const AppIINFlags& flags) const;
 	void ClearIINFlags(const std::string& flags) const;
+	void AdjustTimeOffsetMilliSeconds(const int64_t ms_offset, const bool pass_through, msSinceEpoch_t abs = 0);
 };
 
 template<> void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetString meas, uint16_t index);

@@ -39,7 +39,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	// DNP3 Link Configuration
 	LinkTimeoutms(1000),
 	LinkKeepAlivems(10000),
-	LinkUseConfirms(false),
+	NackConfirmedUDWhenUnreset(true),
 	// Common application stack configuration
 	ServerAcceptMode(opendnp3::ServerAcceptMode::CloseNew),
 	IPConnectRetryPeriodMinms(500),
@@ -56,8 +56,11 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	SetQualityOnLinkStatus(true),
 	FlagsToSetOnLinkStatus(odc::QualityFlags::COMM_LOST),
 	FlagsToClearOnLinkStatus(odc::QualityFlags::ONLINE),
+	FlagsToSetOnStale(odc::QualityFlags::RESTART),
+	FlagsToClearOnStale(odc::QualityFlags::ONLINE),
 	CommsPointRideThroughTimems(0),
 	CommsPointRideThroughDemandPause(true),
+	CommsPointStaleTimems(1800000), // assume points are stale after half an hour by default
 	CommsPointHeartBeatTimems(0),
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	EventScanOnEventsAvailableClass1(false),
@@ -68,6 +71,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	StartupIntegrityClass1(true),
 	StartupIntegrityClass2(true),
 	StartupIntegrityClass3(true),
+	LinkUpIntegrityGracePeriodms(10000), /// Grace period to allow for startup integrity to be triggered by IIN flags to avoid redundant scan
 	LinkUpIntegrityTrigger(LinkUpIntegrityTrigger_t::ON_FIRST),
 	/// Which classes should be requested for forced integrity scans
 	ForcedIntegrityClass0(true),
@@ -82,6 +86,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	RetryForcedIntegrity(false),
 	/// Time delay beforce retrying a failed task
 	TaskRetryPeriodms(5000),
+	TaskStartTimeoutms(10000),
 	// Master Station scanning configuration
 	IntegrityScanRatems(3600000),
 	EventClass1ScanRatems(1000),
@@ -98,15 +103,16 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	WaitForCommandResponses(false),
 	TimeSyncOnStart(false),
 	TimeSyncPeriodms(0),
+	PassThroughTimeSync(false),
 	// Default Static Variations
-	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var1),
+	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var2),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
 	StaticCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
-	StaticAnalogOutputStatusResponse(opendnp3::StaticAnalogOutputStatusVariation::Group40Var1),
+	StaticAnalogOutputStatusResponse(opendnp3::StaticAnalogOutputStatusVariation::Group40Var4),
 	StaticBinaryOutputStatusResponse(opendnp3::StaticBinaryOutputStatusVariation::Group10Var2),
 	// Default Event Variations
-	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var1),
-	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var5),
+	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var2),
+	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var7),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
 	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
 	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
@@ -190,10 +196,12 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		LinkTimeoutms = JSONRoot["LinkTimeoutms"].asUInt();
 	if (JSONRoot.isMember("LinkKeepAlivems"))
 		LinkKeepAlivems = JSONRoot["LinkKeepAlivems"].asUInt();
+	if (JSONRoot.isMember("NackConfirmedUDWhenUnreset"))
+		NackConfirmedUDWhenUnreset = JSONRoot["NackConfirmedUDWhenUnreset"].asBool();
 	if (JSONRoot.isMember("LinkUseConfirms"))
-		LinkUseConfirms = JSONRoot["LinkUseConfirms"].asBool();
+		Log.Error("Use of 'LinkUseConfirms' is deprecated, opendnp3 no long support data-link layer confirms. They're always off '{}'", JSONRoot["LinkUseConfirms"].toStyledString());
 	if (JSONRoot.isMember("UseConfirms"))
-		Log.Error("Use of 'UseConfirms' is deprecated, use 'LinkUseConfirms' instead : '{}'", JSONRoot["UseConfirms"].toStyledString());
+		Log.Error("Use of 'UseConfirms' is deprecated, opendnp3 no long support data-link layer confirms. They're always off '{}'", JSONRoot["UseConfirms"].toStyledString());
 
 	// Common application configuration
 	if (JSONRoot.isMember("ServerAcceptMode"))
@@ -248,6 +256,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		FlagsToSetOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToSetOnLinkStatus"].asString());
 	if (JSONRoot.isMember("FlagsToClearOnLinkStatus"))
 		FlagsToClearOnLinkStatus = odc::QualityFlagsFromString(JSONRoot["FlagsToClearOnLinkStatus"].asString());
+	if (JSONRoot.isMember("FlagsToSetOnStale"))
+		FlagsToSetOnStale = odc::QualityFlagsFromString(JSONRoot["FlagsToSetOnStale"].asString());
+	if (JSONRoot.isMember("FlagsToClearOnStale"))
+		FlagsToClearOnStale = odc::QualityFlagsFromString(JSONRoot["FlagsToClearOnStale"].asString());
 
 	/// Which classes should be scanned if IIN 1.1/2/3 flags are set
 	if (JSONRoot.isMember("EventScanOnEventsAvailableClass1"))
@@ -266,6 +278,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		StartupIntegrityClass2 = JSONRoot["StartupIntegrityClass2"].asBool();
 	if (JSONRoot.isMember("StartupIntegrityClass3"))
 		StartupIntegrityClass3 = JSONRoot["StartupIntegrityClass3"].asBool();
+	if (JSONRoot.isMember("LinkUpIntegrityGracePeriodms"))
+		LinkUpIntegrityGracePeriodms = JSONRoot["LinkUpIntegrityGracePeriodms"].asUInt();
 	if (JSONRoot.isMember("LinkUpIntegrityTrigger"))
 	{
 		auto trig_str = JSONRoot["LinkUpIntegrityTrigger"].asString();
@@ -301,6 +315,9 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	/// Time delay beforce retrying a failed task
 	if (JSONRoot.isMember("TaskRetryPeriodms"))
 		TaskRetryPeriodms = JSONRoot["TaskRetryPeriodms"].asUInt();
+	// Master Station task start timeout
+	if (JSONRoot.isMember("TaskStartTimeoutms"))
+		TaskStartTimeoutms = JSONRoot["TaskStartTimeoutms"].asUInt();
 
 	// Comms Point Configuration
 	if (JSONRoot.isMember("CommsPoint"))
@@ -322,6 +339,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			CommsPointRideThroughDemandPause = JSONRoot["CommsPoint"]["RideThroughDemandPause"].asBool();
 		if(JSONRoot["CommsPoint"].isMember("HeartBeatTimems"))
 			CommsPointHeartBeatTimems = JSONRoot["CommsPoint"]["HeartBeatTimems"].asUInt();
+		if(JSONRoot["CommsPoint"].isMember("StaleTimems"))
+			CommsPointStaleTimems = JSONRoot["CommsPoint"]["StaleTimems"].asUInt();
 	}
 
 	// Master Station scanning configuration
@@ -379,6 +398,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
 	if (JSONRoot.isMember("TimeSyncOnStart"))
 		TimeSyncOnStart = JSONRoot["TimeSyncOnStart"].asBool();
+	if (JSONRoot.isMember("PassThroughTimeSync"))
+		PassThroughTimeSync = JSONRoot["PassThroughTimeSync"].asBool();
 	if (JSONRoot.isMember("TimeSyncPeriodms"))
 		TimeSyncPeriodms = JSONRoot["TimeSyncPeriodms"].asUInt64();
 

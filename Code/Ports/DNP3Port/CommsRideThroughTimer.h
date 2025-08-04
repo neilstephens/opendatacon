@@ -40,6 +40,8 @@ public:
 		const uint32_t aTimeoutms,
 		std::function<void()>&& aCommsGoodCB,
 		std::function<void()>&& aCommsBadCB,
+		std::function<void()>&& aStaleCB = [] (){},
+		const uint32_t aStaleTimeoutms = 0,
 		std::function<void(bool CommsIsBad)>&& aHeartBeatCB = [] (bool){},
 		const uint32_t aHeartBeatTimems = 0);
 	~CommsRideThroughTimer();
@@ -54,6 +56,7 @@ public:
 
 private:
 	void StartTimer();
+	void StartStaleTimer();
 	void HeartBeat();
 	const uint32_t Timeoutms;
 	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
@@ -62,12 +65,16 @@ private:
 	bool Paused;
 	bool PendingTrigger;
 	size_t TimerHandlerSequence; //to track the valid (latest) handler
+	size_t StaleTimerSequence;   //to track the valid (latest) handler
 	odc::msSinceEpoch_t ExpiryTime;
 	uint32_t msRemaining;
 	std::unique_ptr<asio::steady_timer> pCommsRideThroughTimer;
 	std::unique_ptr<asio::steady_timer> pHeartBeatTimer;
+	std::unique_ptr<asio::steady_timer> pStaleTimer;
 	const std::function<void()> CommsGoodCB;
 	const std::function<void()> CommsBadCB;
+	const std::function<void()> StaleCB;
+	const uint32_t StaleTimems;
 	const std::function<void(bool CommsIsBad)> HeartBeatCB;
 	const uint32_t HeartBeatTimems;
 	bool HeartBeatStopped;

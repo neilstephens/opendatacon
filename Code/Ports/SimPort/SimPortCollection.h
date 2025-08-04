@@ -132,6 +132,26 @@ public:
 				return IUIResponder::GenerateResult(SQLITE_VERSION " " SQLITE_SOURCE_ID);
 
 			},"Returns the version of embedded SQLite3 code.");
+		this->AddCommand("AdjustTimeOffsetMilliSeconds", [this](const ParamCollection &params) -> const Json::Value
+			{
+				auto target = GetTarget(params).lock();
+				if(!target)
+					return IUIResponder::GenerateResult("No SimPort matched");
+				//check params
+				int64_t offset = 0;
+				try
+				{
+					if(params.count("0") == 0)
+						throw std::runtime_error("Too few args");
+					offset = std::stoll(params.at("0"));
+				}
+				catch(const std::exception& e)
+				{
+					return IUIResponder::GenerateResult(std::string("Bad parameter: ")+e.what());
+				}
+				target->AdjustTimeOffsetMilliSeconds(offset);
+				return IUIResponder::GenerateResult("Success");
+			},"Set the internal offset used when timestamping events. Usage: AdjustTimeOffsetMilliSeconds <port_regex> <ms_offset>");
 	}
 	const Json::Value PointCommand (const ParamCollection &params, const bool force)
 	{

@@ -205,20 +205,6 @@ const Json::Value DNP3Port::GetCurrentState() const
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 
-	//TODO: this wouldn't be needed if the overriden timestamp was stored in the point database
-	auto time_correction = [=](const auto& event)
-				     {
-					     auto ts = event->GetTimestamp();
-					     std::unordered_set<EventType> s = { EventType::ControlRelayOutputBlock, EventType::AnalogOutputInt16, EventType::AnalogOutputInt32, EventType::AnalogOutputFloat32, EventType::AnalogOutputDouble64 };
-					     if (s.count(event->GetEventType()))
-						     return since_epoch_to_datetime(ts);
-					     if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
-					         || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (ts == 0)))
-						     ts = msSinceEpoch();
-
-					     return since_epoch_to_datetime(ts);
-				     };
-
 	//TODO: change the structure to match the spoof_event command syntax - there are already JSON (de)serialisation helper functions
 	for(const auto index : pConf->pPointConf->BinaryIndexes)
 	{
@@ -232,7 +218,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch(std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 	for(const auto index : pConf->pPointConf->AnalogIndexes)
@@ -247,7 +233,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch(std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 	for(const auto index : pConf->pPointConf->OctetStringIndexes)
@@ -262,7 +248,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch(std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 	for(const auto index : pConf->pPointConf->ControlIndexes)
@@ -277,7 +263,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch(std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
@@ -294,7 +280,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch (std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 	for (const auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
@@ -309,7 +295,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch (std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 	for (const auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
@@ -324,7 +310,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch (std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
@@ -339,7 +325,7 @@ const Json::Value DNP3Port::GetCurrentState() const
 		catch(std::runtime_error&)
 		{}
 		state["Quality"] = ToString(event->GetQuality());
-		state["Timestamp"] = time_correction(event);
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
 		state["SourcePort"] = event->GetSourcePort();
 	}
 

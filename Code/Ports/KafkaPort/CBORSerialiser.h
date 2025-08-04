@@ -98,6 +98,7 @@ public:
 private:
 	void CheckForPlaceholder(const std::string_view& str, bool isKey = false);
 	void EncodePayload(std::shared_ptr<const EventInfo> event, cbor::cbor_bytes_encoder& encoder) const;
+	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::AbsTime_n_SysOffs payload) const;
 	void EncodePayload(cbor::cbor_bytes_encoder& encoder, bool payload) const;
 	void EncodePayload(cbor::cbor_bytes_encoder& encoder, odc::DBB payload) const;
 	void EncodePayload(cbor::cbor_bytes_encoder& encoder, double payload) const;

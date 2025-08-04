@@ -1534,7 +1534,7 @@ void MD3OutstationPort::DoSystemSignOnControl(MD3BlockFn40MtoS &Header)
 		Log.Error("Invalid SYSTEM_SIGNON_CONTROL message, On Station Address - " + std::to_string(Header.GetStationAddress()));
 	}
 }
-// Function 43
+// Function 43 - TODO: generate odc::EventType::TimeSync event for downstream ports to also correct their clocks
 void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS& Header, MD3Message_t& CompleteMD3Message)
 {
 	// We have two blocks incoming, not just one.
@@ -1580,7 +1580,7 @@ void MD3OutstationPort::DoSetDateTime(MD3BlockFn43MtoS& Header, MD3Message_t& Co
 		SendControlOK(Header);
 	SystemFlags.TimePacketReceived();
 }
-// Function 44
+// Function 44 - TODO: generate odc::EventType::TimeSync event for downstream ports to also correct their clocks
 void MD3OutstationPort::DoSetDateTimeNew(MD3BlockFn44MtoS& Header, MD3Message_t& CompleteMD3Message)
 {
 	// We have three blocks incoming, not just one.

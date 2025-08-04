@@ -39,6 +39,7 @@ void ExportPayloadFactory(lua_State* const L);
 void ExportToStringFunctions(lua_State* const L);
 
 void PushPayload(lua_State* const L, odc::EventType evt_type, std::shared_ptr<const odc::EventInfo> event = nullptr);
+void PushPayload(lua_State* const L, odc::AbsTime_n_SysOffs payload);
 void PushPayload(lua_State* const L, bool payload);
 void PushPayload(lua_State* const L, odc::DBB payload);
 void PushPayload(lua_State* const L, double payload);

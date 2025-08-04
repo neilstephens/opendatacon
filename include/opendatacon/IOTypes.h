@@ -71,7 +71,7 @@ enum class EventType: uint8_t
 	AnalogOutputDouble64      = 20,
 
 	Reserved4                 = 21,
-	Reserved5                 = 22,
+	TimeSync                  = 22,
 	Reserved6                 = 23,
 
 	//Quality (for when the quality changes, but not the value)
@@ -231,7 +231,7 @@ inline std::string ToString(const EventType et)
 	ENUMSTRING(et,EventType,Reserved2                )
 	ENUMSTRING(et,EventType,Reserved3                )
 	ENUMSTRING(et,EventType,Reserved4                )
-	ENUMSTRING(et,EventType,Reserved5                )
+	ENUMSTRING(et,EventType,TimeSync                 )
 	ENUMSTRING(et,EventType,Reserved6                )
 	ENUMSTRING(et,EventType,Reserved8                )
 	ENUMSTRING(et,EventType,Reserved9                )
@@ -470,6 +470,7 @@ template<EventType t> struct EventTypePayload { typedef void type; };
 //TODO: make these structs?
 typedef std::pair<bool,bool> DBB;
 typedef std::tuple<msSinceEpoch_t,uint32_t,uint8_t> TAI;
+typedef std::pair<msSinceEpoch_t,int64_t> AbsTime_n_SysOffs;
 typedef std::pair<uint16_t,uint32_t> SS;
 typedef std::pair<int16_t,CommandStatus> AO16;
 typedef std::pair<int32_t,CommandStatus> AO32;
@@ -562,7 +563,7 @@ EVENTPAYLOAD(EventType::Reserved1                , char) //stub
 EVENTPAYLOAD(EventType::Reserved2                , char) //stub
 EVENTPAYLOAD(EventType::Reserved3                , char) //stub
 EVENTPAYLOAD(EventType::Reserved4                , char) //stub
-EVENTPAYLOAD(EventType::Reserved5                , char) //stub
+EVENTPAYLOAD(EventType::TimeSync                 , AbsTime_n_SysOffs)
 EVENTPAYLOAD(EventType::Reserved6                , char) //stub
 EVENTPAYLOAD(EventType::Reserved8                , char) //stub
 EVENTPAYLOAD(EventType::Reserved9                , char) //stub
@@ -591,6 +592,11 @@ inline std::string ToString(const OctetStringBuffer& OSB, DataToStringMethod met
 	}
 }
 
+inline std::string ToString(const AbsTime_n_SysOffs& tsync_payload)
+{
+	return std::to_string(tsync_payload.first)+";"+std::to_string(tsync_payload.second);
+}
+
 //see IOTypesString.cpp for these implementations:
 template <typename T> T PayloadFromString(const std::string& PayloadStr);
 template <> bool PayloadFromString(const std::string& PayloadStr);
@@ -609,6 +615,7 @@ template<> AOD PayloadFromString(const std::string& PayloadStr);
 template<> QualityFlags PayloadFromString(const std::string& PayloadStr);
 template<> char PayloadFromString(const std::string& PayloadStr);
 template<> ConnectState PayloadFromString(const std::string& PayloadStr);
+template<> AbsTime_n_SysOffs PayloadFromString(const std::string& PayloadStr);
 
 #define DELETEPAYLOADCASE(T)\
 	case T: \
@@ -690,7 +697,7 @@ public:
 				COPYPAYLOADCASE(EventType::Reserved2                )
 				COPYPAYLOADCASE(EventType::Reserved3                )
 				COPYPAYLOADCASE(EventType::Reserved4                )
-				COPYPAYLOADCASE(EventType::Reserved5                )
+				COPYPAYLOADCASE(EventType::TimeSync                 )
 				COPYPAYLOADCASE(EventType::Reserved6                )
 				COPYPAYLOADCASE(EventType::Reserved8                )
 				COPYPAYLOADCASE(EventType::Reserved9                )
@@ -748,7 +755,7 @@ public:
 				DELETEPAYLOADCASE(EventType::Reserved2                )
 				DELETEPAYLOADCASE(EventType::Reserved3                )
 				DELETEPAYLOADCASE(EventType::Reserved4                )
-				DELETEPAYLOADCASE(EventType::Reserved5                )
+				DELETEPAYLOADCASE(EventType::TimeSync                 )
 				DELETEPAYLOADCASE(EventType::Reserved6                )
 				DELETEPAYLOADCASE(EventType::Reserved8                )
 				DELETEPAYLOADCASE(EventType::Reserved9                )
@@ -829,6 +836,8 @@ public:
 				return ToString(GetPayload<EventType::FrozenCounterQuality>());
 			case EventType::AnalogOutputStatusQuality:
 				return ToString(GetPayload<EventType::AnalogOutputStatusQuality>());
+			case EventType::TimeSync:
+				return ToString(GetPayload<EventType::TimeSync>());
 			default:
 				return "<no_string_representation>";
 		}
@@ -890,7 +899,7 @@ public:
 			STRINGPAYLOADCASE(EventType::Reserved2                )
 			STRINGPAYLOADCASE(EventType::Reserved3                )
 			STRINGPAYLOADCASE(EventType::Reserved4                )
-			STRINGPAYLOADCASE(EventType::Reserved5                )
+			STRINGPAYLOADCASE(EventType::TimeSync                 )
 			STRINGPAYLOADCASE(EventType::Reserved6                )
 			STRINGPAYLOADCASE(EventType::Reserved8                )
 			STRINGPAYLOADCASE(EventType::Reserved9                )
@@ -951,7 +960,7 @@ public:
 			DEFAULTPAYLOADCASE(EventType::Reserved2                )
 			DEFAULTPAYLOADCASE(EventType::Reserved3                )
 			DEFAULTPAYLOADCASE(EventType::Reserved4                )
-			DEFAULTPAYLOADCASE(EventType::Reserved5                )
+			DEFAULTPAYLOADCASE(EventType::TimeSync                 )
 			DEFAULTPAYLOADCASE(EventType::Reserved6                )
 			DEFAULTPAYLOADCASE(EventType::Reserved8                )
 			DEFAULTPAYLOADCASE(EventType::Reserved9                )
@@ -1041,6 +1050,8 @@ inline bool operator==(const odc::EventInfo& lhs, const odc::EventInfo& rhs)
 								  return lhs.GetPayload<odc::EventType::OctetStringQuality>() == rhs.GetPayload<odc::EventType::OctetStringQuality>();
 							  case odc::EventType::ConnectState:
 								  return lhs.GetPayload<odc::EventType::ConnectState>() == rhs.GetPayload<odc::EventType::ConnectState>();
+							  case odc::EventType::TimeSync:
+								  return lhs.GetPayload<odc::EventType::TimeSync>() == rhs.GetPayload<odc::EventType::TimeSync>();
 							  default:
 							  {
 								  if(auto log = odc::spdlog_get("opendatacon"))

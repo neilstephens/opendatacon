@@ -131,7 +131,7 @@ void SimPort::PublishBinaryEvents(const std::vector<std::size_t>& indexes, const
 	{
 		auto event = pSimConf->Event(odc::EventType::Binary, indexes[i]);
 		event->SetPayload<odc::EventType::Binary>(std::move(payload[i] - '0'));
-		event->SetTimestamp(msSinceEpoch());
+		event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 		PostPublishEvent(event);
 	}
 }
@@ -214,7 +214,7 @@ bool SimPort::UILoad(EventType type, const std::string& index, const std::string
 	}
 
 	double val = 0.0f;
-	msSinceEpoch_t ts = msSinceEpoch();
+	msSinceEpoch_t ts = msSinceEpoch()+sys_time_offset;
 	try
 	{
 		if(value != "StartVal")
@@ -360,7 +360,7 @@ template<odc::EventType event_type>
 void SimPort::ResetPoint(std::size_t index)
 {
 	auto event = pSimConf->Event(event_type, index);
-	event->SetTimestamp(msSinceEpoch());
+	event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 	event->SetPayload<event_type>(pSimConf->StartValue(event_type, index));
 	event->SetQuality(pSimConf->StartQuality(event_type, index));
 	PostPublishEvent(event);
@@ -377,7 +377,7 @@ void SimPort::PortUp()
 {
 	PublishEvent(ConnectState::PORT_UP);
 	PublishEvent(ConnectState::CONNECTED);
-	auto now = msSinceEpoch();
+	auto now = msSinceEpoch()+sys_time_offset;
 
 	for(const auto& type : {odc::EventType::Analog,odc::EventType::Binary})
 	{
@@ -391,7 +391,7 @@ void SimPort::PortUp()
 			//else do random events
 
 			auto event = pSimConf->Event(type, index);
-			event->SetTimestamp(msSinceEpoch());
+			event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 			if(!pSimConf->ForcedState(type,index))
 				PostPublishEvent(event);
 
@@ -551,7 +551,7 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	}
 
 	auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
-	event->SetTimestamp(msSinceEpoch()+random_interval);
+	event->SetTimestamp(msSinceEpoch()+random_interval+sys_time_offset);
 }
 
 void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTimer, int64_t time_offset)
@@ -560,12 +560,12 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTime
 	auto next_event = std::make_shared<EventInfo>(*event);
 	if (!pSimConf->ForcedState(event->GetEventType(), event->GetIndex()))
 	{
-		event->SetTimestamp(msSinceEpoch());
+		event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 		PostPublishEvent(event);
 	}
 
 	PopulateNextEvent(next_event, time_offset);
-	auto now = msSinceEpoch();
+	auto now = msSinceEpoch()+sys_time_offset;
 	msSinceEpoch_t delta;
 	if(now > next_event->GetTimestamp())
 		delta = 0;
@@ -803,11 +803,39 @@ void SimPort::ProcessElements(const Json::Value& json_root)
 		JSONConf[mn] = json_root[mn];
 }
 
+void SimPort::AdjustTimeOffsetMilliSeconds(int64_t offset)
+{
+	Log.Debug("{} : Applying time offset {} ms", Name, offset);
+	sys_time_offset = offset;
+}
+
 void SimPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	CommandStatus status = CommandStatus::NOT_SUPPORTED;
-	std::string message = "Control not supported";
+	std::string message = "Event not supported";
 	std::size_t index = 0;
+
+	if (event->GetEventType() == EventType::TimeSync)
+	{
+		if(event->HasPayload())
+		{
+			Log.Debug("{} : TimeSync event received. AbsTime {}, SysOffset {}", Name, event->GetPayload<EventType::TimeSync>().first, event->GetPayload<EventType::TimeSync>().second);
+			status = odc::CommandStatus::SUCCESS;
+			if (pSimConf->ApplyTimeSyncEvents)
+			{
+				message = "Time sync offset applied";
+				AdjustTimeOffsetMilliSeconds(event->GetPayload<EventType::TimeSync>().second);
+			}
+			else
+				message = "Time sync event ignored";
+		}
+		else
+		{
+			Log.Warn("{} : TimeSync event received without payload. Ignoring.", Name);
+			status = odc::CommandStatus::UNDEFINED;
+			message = "Time sync event without payload.";
+		}
+	}
 
 	if (event->GetEventType() == EventType::ControlRelayOutputBlock)
 	{
@@ -860,7 +888,7 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 				if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
 				{
 					auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
-					event->SetTimestamp();
+					event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 					PostPublishEvent(event);
 				}
 				else
@@ -872,7 +900,7 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 						if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
 						{
 							auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
-							event->SetTimestamp();
+							event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 							PostPublishEvent(event);
 						}
 					});
@@ -891,11 +919,11 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 			if(Log.ShouldLog(spdlog::level::trace))
 				Log.Trace("{}: Control {}: Latch on feedback to Binary {}.",
 					Name, index,fb->on_value->GetIndex());
-			fb->on_value->SetTimestamp();
+			fb->on_value->SetTimestamp(msSinceEpoch()+sys_time_offset);
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->on_value->GetIndex()))
 			{
 				auto event = std::make_shared<odc::EventInfo>(*fb->on_value);
-				event->SetTimestamp();
+				event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 				PostPublishEvent(event);
 			}
 			else
@@ -906,11 +934,11 @@ SimPort::SendOneBinaryFeedback(const std::shared_ptr<BinaryFeedback>& fb, const 
 			if(Log.ShouldLog(spdlog::level::trace))
 				Log.Trace("{}: Control {}: Latch off feedback to Binary {}.",
 					Name, index, fb->off_value->GetIndex());
-			fb->off_value->SetTimestamp();
+			fb->off_value->SetTimestamp(msSinceEpoch()+sys_time_offset);
 			if(!pSimConf->ForcedState(odc::EventType::Binary, fb->off_value->GetIndex()))
 			{
 				auto event = std::make_shared<odc::EventInfo>(*fb->off_value);
-				event->SetTimestamp();
+				event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 				PostPublishEvent(event);
 			}
 			else
@@ -991,7 +1019,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 				{
 					payload += binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
-					event->SetTimestamp(msSinceEpoch());
+					event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;
@@ -1008,7 +1036,7 @@ CommandStatus SimPort::HandlePositionFeedbackForAnalog(const std::shared_ptr<Pos
 				{
 					payload -= binary_position->tap_step;
 					event->SetPayload<odc::EventType::Analog>(std::move(payload));
-					event->SetTimestamp(msSinceEpoch());
+					event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 					PostPublishEvent(event);
 					message = "binary position event processing a success";
 					status = CommandStatus::SUCCESS;

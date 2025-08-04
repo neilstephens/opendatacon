@@ -65,6 +65,8 @@ void DNP3MasterPort::Enable()
 			pConf->pPointConf->CommsPointRideThroughTimems,
 			[this](){SetCommsGood();},
 			[this](){SetCommsFailed();},
+			[this](){SetPointsStale();},
+			pConf->pPointConf->CommsPointStaleTimems,
 			[this](bool f){CommsHeartBeat(f);},
 			pConf->pPointConf->CommsPointHeartBeatTimems);
 
@@ -90,6 +92,7 @@ void DNP3MasterPort::Disable()
 	enabled = false;
 
 	pCommsRideThroughTimer->StopHeartBeat();
+	pCommsRideThroughTimer->Resume();
 	pCommsRideThroughTimer->FastForward();
 
 	CheckStackState();
@@ -128,6 +131,7 @@ void DNP3MasterPort::UpdateCommsPoint(bool isFailed)
 		auto commsEvent = std::make_shared<EventInfo>(EventType::Binary, pConf->pPointConf->mCommsPoint.second, Name);
 		auto failed_val = pConf->pPointConf->mCommsPoint.first.value;
 		commsEvent->SetPayload<EventType::Binary>(isFailed ? failed_val : !failed_val);
+		commsEvent->SetTimestamp(msSinceEpoch()+sys_time_offset);
 		PublishEvent(commsEvent);
 		pDB->Set(commsEvent);
 	}
@@ -187,13 +191,15 @@ void DNP3MasterPort::SetCommsFailed()
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	if(pConf->pPointConf->SetQualityOnLinkStatus)
 	{
-		Log.Debug("{}: Setting {}, clearing {}, point quality.", Name, ToString(pConf->pPointConf->FlagsToSetOnLinkStatus), ToString(pConf->pPointConf->FlagsToClearOnLinkStatus));
+		const auto& Set = pConf->pPointConf->FlagsToSetOnLinkStatus;
+		const auto& Clear = pConf->pPointConf->FlagsToClearOnLinkStatus;
+		Log.Debug("{}: SetCommsFailed(): Setting {}, clearing {}, point quality.", Name, ToString(Set), ToString(Clear));
 
-		SetCommsFailedQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes);
-		SetCommsFailedQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes);
-		SetCommsFailedQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes);
-		SetCommsFailedQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes);
-		SetCommsFailedQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes);
+		SetPointQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes, Set, Clear);
+		SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes, Set, Clear);
+		SetPointQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes, Set, Clear);
+		SetPointQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes, Set, Clear);
+		SetPointQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes, Set, Clear);
 
 		// An integrity scan will be needed when/if the link comes back
 		// It's the only way to get the true state upstream
@@ -206,17 +212,40 @@ void DNP3MasterPort::SetCommsFailed()
 	}
 }
 
-template <EventType etype, EventType qtype>
-void DNP3MasterPort::SetCommsFailedQuality(std::vector<uint16_t>& indexes)
+void DNP3MasterPort::SetPointsStale()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	const auto& Set = pConf->pPointConf->FlagsToSetOnStale;
+	const auto& Clear = pConf->pPointConf->FlagsToClearOnStale;
+
+	Log.Debug("{}: SetPointsStale(): Setting {}, clearing {}, point quality.", Name, ToString(Set), ToString(Clear));
+
+	SetPointQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes, Set, Clear);
+	SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes, Set, Clear);
+	SetPointQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes, Set, Clear);
+	SetPointQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes, Set, Clear);
+	SetPointQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes, Set, Clear);
+
+	// Stale means we assume things have become out-of-date and changed in the meantime
+	// An integrity scan will be needed on the next connection
+	pChanH->Post([this]()
+		{
+			Log.Debug("{}: Setting IntegrityScanNeeded after SetPointsStale().",Name);
+			IntegrityScanNeeded = true;
+		});
+}
+
+template <EventType etype, EventType qtype>
+void DNP3MasterPort::SetPointQuality(const std::vector<uint16_t>& indexes, const QualityFlags FlagsToSet, const QualityFlags FlagsToClear)
+{
 	for (auto index : indexes)
 	{
 		auto last_event = pDB->Get(etype,index);
-		auto new_qual = (last_event->GetQuality() | pConf->pPointConf->FlagsToSetOnLinkStatus) & ~pConf->pPointConf->FlagsToClearOnLinkStatus;
+		auto new_qual = (last_event->GetQuality() | FlagsToSet) & ~FlagsToClear;
 
 		auto event = std::make_shared<EventInfo>(qtype,index,Name);
 		event->SetPayload<qtype>(QualityFlags(new_qual));
+		event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 		PublishEvent(event);
 
 		//update the EventDB event with the quality as well
@@ -272,6 +301,13 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Notify subscribers that a connect event has occured
 		NotifyOfConnection();
 
+		pStartupIntegrityGraceTimer->expires_from_now(std::chrono::milliseconds(pConf->pPointConf->LinkUpIntegrityGracePeriodms));
+		pStartupIntegrityGraceTimer->async_wait([this](asio::error_code err)
+			{
+				if(err) return;
+				pChanH->Post([this](){ LinkUpIntegrityIfNeeded(); });
+			});
+
 		return;
 	}
 
@@ -283,6 +319,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		NotifyOfDisconnection();
 
 		IntegrityScanDone = false;
+		pStartupIntegrityGraceTimer->cancel();
 		return;
 	}
 }
@@ -316,20 +353,27 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 					Log.Debug("{}: Stack executed IIN triggered integrity scan for this link session.",Name);
 					IntegrityScanDone = true;
 				}
-				if(IntegrityScanNeeded)
-				{
-					IntegrityScanNeeded = false;
-					if(IntegrityScanDone)
-					{
-						Log.Debug("{}: Skipping startup integrity scan (stack already did one).",Name);
-						return;
-					}
-					Log.Debug("{}: Executing startup integrity scan.",Name);
-					pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
-					IntegrityScanDone = true;
-				}
+				LinkUpIntegrityIfNeeded();
 			}
 		});
+}
+
+//Only to be called by posting on the pChanH strand
+void DNP3MasterPort::LinkUpIntegrityIfNeeded()
+{
+	if(IntegrityScanNeeded)
+	{
+		IntegrityScanNeeded = false;
+		if(IntegrityScanDone)
+		{
+			Log.Debug("{}: Skipping startup integrity scan (stack already did one).",Name);
+			return;
+		}
+		Log.Debug("{}: Executing startup integrity scan.",Name);
+		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+		pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
+		IntegrityScanDone = true;
+	}
 }
 
 TCPClientServer DNP3MasterPort::ClientOrServer()
@@ -353,7 +397,7 @@ void DNP3MasterPort::Build()
 	InitEventDB();
 
 	opendnp3::MasterStackConfig StackConfig;
-	opendnp3::LinkConfig link(true,pConf->pPointConf->LinkUseConfirms);
+	opendnp3::LinkConfig link(true);
 
 	// Link layer configuration
 	link.LocalAddr = pConf->mAddrConf.MasterAddr;
@@ -363,6 +407,7 @@ void DNP3MasterPort::Build()
 		link.KeepAliveTimeout = opendnp3::TimeDuration::Max();
 	else
 		link.KeepAliveTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->LinkKeepAlivems);
+	link.NackConfirmedUDWhenUnreset = pConf->pPointConf->NackConfirmedUDWhenUnreset;
 
 	StackConfig.link = link;
 
@@ -396,6 +441,7 @@ void DNP3MasterPort::Build()
 	//TODO?: have a separate max retry time to pass to opendnp3
 	StackConfig.master.taskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
 	StackConfig.master.maxTaskRetryPeriod = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskRetryPeriodms);
+	StackConfig.master.taskStartTimeout = opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->TaskStartTimeoutms);
 
 	//FIXME?: hack to create a toothless shared_ptr
 	//	this is needed because the main exe manages our memory
@@ -447,7 +493,7 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 			if constexpr(!std::is_same<decltype(pair.value),opendnp3::OctetString>()) //OctetString has no time
 				if (TSO == DNP3PointConf::TimestampOverride_t::ALWAYS
 				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
-					event->SetTimestamp();
+					event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 
 			bool unknown_point = !pDB->Set(event);
 			bool publish = true;
@@ -509,6 +555,29 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 		CheckStackState();
 
 		(*pStatusCallback)(CommandStatus::SUCCESS);
+		return;
+	}
+
+	if(event->GetEventType() == EventType::TimeSync)
+	{
+		if(event->HasPayload())
+		{
+			// upstream port sync'd it's time with an external source
+			// the absolute time (payload.first) is the time point that was sync'd to
+			// the offset (payload.second) is what needs adding to a system clock time point to be in sync
+			auto offset = event->GetPayload<EventType::TimeSync>().second;
+			auto abs_time = event->GetPayload<EventType::TimeSync>().first;
+			Log.Debug("{}: TimeSync event from upstream sync @ {}. System clock offset {} ms.", Name, since_epoch_to_datetime(abs_time), sys_time_offset);
+			auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+			if(pConf->pPointConf->PassThroughTimeSync)
+				sys_time_offset = offset;
+			(*pStatusCallback)(CommandStatus::SUCCESS);
+		}
+		else
+		{
+			Log.Warn("{}: TimeSync event without payload recieved from SourcePort {}", Name, event->GetSourcePort());
+			(*pStatusCallback)(CommandStatus::UNDEFINED);
+		}
 		return;
 	}
 

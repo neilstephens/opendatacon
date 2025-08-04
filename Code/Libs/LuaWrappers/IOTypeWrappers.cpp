@@ -270,7 +270,7 @@ void PushPayload(lua_State* const L, odc::EventType evt_type, std::shared_ptr<co
 		PUSH_PAYLOAD_CASE(odc::EventType::Reserved2                )
 		PUSH_PAYLOAD_CASE(odc::EventType::Reserved3                )
 		PUSH_PAYLOAD_CASE(odc::EventType::Reserved4                )
-		PUSH_PAYLOAD_CASE(odc::EventType::Reserved5                )
+		PUSH_PAYLOAD_CASE(odc::EventType::TimeSync                 )
 		PUSH_PAYLOAD_CASE(odc::EventType::Reserved6                )
 		PUSH_PAYLOAD_CASE(odc::EventType::Reserved8                )
 		PUSH_PAYLOAD_CASE(odc::EventType::Reserved9                )
@@ -283,6 +283,16 @@ void PushPayload(lua_State* const L, odc::EventType evt_type, std::shared_ptr<co
 	}
 }
 
+void PushPayload(lua_State* const L, odc::AbsTime_n_SysOffs payload)
+{
+	lua_newtable(L);
+	lua_pushstring(L, "AbsTime");
+	lua_pushboolean(L, payload.first);
+	lua_settable(L, -3);
+	lua_pushstring(L, "SysOffs");
+	lua_pushboolean(L, payload.second);
+	lua_settable(L, -3);
+}
 void PushPayload(lua_State* const L, bool payload)
 {
 	lua_pushboolean(L,payload);
@@ -718,6 +728,23 @@ template<> odc::ConnectState PopPayload(lua_State* const L)
 		throw std::invalid_argument("Payload is not a lua integer value.");
 	return static_cast<odc::ConnectState>(lua_tointeger(L,-1));
 }
+template<> odc::AbsTime_n_SysOffs PopPayload(lua_State* const L)
+{
+	const auto err = "Payload is not a lua table with 'AbsTime' and 'SysOffs' member (un)signed integers.";
+
+	if(!lua_istable(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -1, "AbsTime");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	lua_getfield(L, -2, "SysOffs");
+	if(!lua_isinteger(L,-1))
+		throw std::invalid_argument(err);
+
+	return { lua_tointeger(L,-2), lua_tointeger(L,-1) };
+}
 
 #define POP_PAYLOAD_CASE(T)\
 	case T:\
@@ -766,7 +793,7 @@ void PopPayload(lua_State* const L, std::shared_ptr<odc::EventInfo> event)
 		POP_PAYLOAD_CASE(odc::EventType::Reserved2                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved3                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved4                )
-		POP_PAYLOAD_CASE(odc::EventType::Reserved5                )
+		POP_PAYLOAD_CASE(odc::EventType::TimeSync                 )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved6                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved8                )
 		POP_PAYLOAD_CASE(odc::EventType::Reserved9                )

@@ -847,6 +847,8 @@ void CBOutstationPort::BuildPackedEventBitArray(std::array<bool, MaxSOEBits> &Bi
 }
 // We use this to calculate an offset, which is then used when packaging up the SOE time stamps (added or subtracted)
 // just echo message - normally it is UTC time of day in milliseconds since 1970 (CBTime()). Could be any time zone in practice.
+//	TODO: generate odc::EventType::TimeSync event for downstream ports to also correct their clocks
+//		don't forget there's a separate ms offset 'SystemClockOffsetMilliSeconds'
 void CBOutstationPort::ProcessUpdateTimeRequest(CBMessage_t& CompleteCBMessage)
 {
 	CBMessage_t ResponseCBMessage;
@@ -1043,6 +1045,8 @@ bool CBOutstationPort::UIRandomReponseDrops(const std::string& probability)
 }
 bool CBOutstationPort::UIAdjustTimeOffsetMilliSeconds(const std::string& millisecondoffset)
 {
+	//TODO: generate odc::EventType::TimeSync event for downstream ports to also correct their clocks
+	//	don't forget there's a separate minute offset 'SOETimeOffsetMinutes'
 	try
 	{
 		SystemClockOffsetMilliSeconds = std::stoi(millisecondoffset);

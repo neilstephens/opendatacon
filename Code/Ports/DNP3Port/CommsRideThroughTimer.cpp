@@ -23,6 +23,8 @@ CommsRideThroughTimer::CommsRideThroughTimer(odc::asio_service &ios,
 	const uint32_t aTimeoutms,
 	std::function<void()>&& aCommsGoodCB,
 	std::function<void()>&& aCommsBadCB,
+	std::function<void ()>&& aStaleCB,
+	const uint32_t aStaleTimeoutms,
 	std::function<void(bool)>&& aHeartBeatCB,
 	const uint32_t aHeartBeatTimems):
 	Timeoutms(aTimeoutms),
@@ -32,12 +34,16 @@ CommsRideThroughTimer::CommsRideThroughTimer(odc::asio_service &ios,
 	Paused(false),
 	PendingTrigger(false),
 	TimerHandlerSequence(0),
+	StaleTimerSequence(0),
 	ExpiryTime(0),
 	msRemaining(Timeoutms),
 	pCommsRideThroughTimer(ios.make_steady_timer()),
 	pHeartBeatTimer(ios.make_steady_timer()),
+	pStaleTimer(ios.make_steady_timer()),
 	CommsGoodCB(aCommsGoodCB),
 	CommsBadCB(aCommsBadCB),
+	StaleCB(aStaleCB),
+	StaleTimems(aStaleTimeoutms),
 	HeartBeatCB(aHeartBeatCB),
 	HeartBeatTimems(aHeartBeatTimems)
 {}
@@ -46,6 +52,7 @@ CommsRideThroughTimer::~CommsRideThroughTimer()
 {
 	pCommsRideThroughTimer->cancel();
 	pHeartBeatTimer->cancel();
+	pStaleTimer->cancel();
 }
 
 //Only called from on the strand in Trigger and Resume
@@ -69,6 +76,23 @@ void CommsRideThroughTimer::StartTimer()
 			}
 			self->RideThroughInProgress = false;
 			self->ExpiryTime = 0;
+		}));
+}
+
+//Only called from on the strand in Pause
+//	that's why it doesn't have to post
+void CommsRideThroughTimer::StartStaleTimer()
+{
+	if(StaleTimems == 0)
+		return;
+	pStaleTimer->expires_from_now(std::chrono::milliseconds(StaleTimems));
+	pStaleTimer->async_wait(pTimerAccessStrand->wrap([weak_self{weak_from_this()},seq{++StaleTimerSequence}](asio::error_code err)
+		{
+			auto self = weak_self.lock();
+			if(!self || seq != self->StaleTimerSequence || !self->Paused)
+				return;
+
+			self->StaleCB();
 		}));
 }
 
@@ -107,6 +131,7 @@ void CommsRideThroughTimer::Pause()
 				return;
 
 			self->Paused = true;
+			self->StartStaleTimer();
 
 			if(self->RideThroughInProgress)
 			{
@@ -136,6 +161,9 @@ void CommsRideThroughTimer::Resume()
 				return;
 
 			self->Paused = false;
+			//cancel the stale timer and bump the sequence number so the current handler does nothing
+			self->StaleTimerSequence++;
+			self->pStaleTimer->cancel();
 
 			if(self->PendingTrigger)
 			{
