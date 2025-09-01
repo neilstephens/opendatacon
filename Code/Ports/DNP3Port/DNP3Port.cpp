@@ -35,6 +35,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	DataPort(aName, aConfFilename, aConfOverrides),
 	pChanH(std::make_unique<ChannelHandler>(this)),
 	pConnectionStabilityTimer(pIOS->make_steady_timer()),
+	last_time_sync(msSinceEpoch()),
 	stack_enabled(false),
 	pStackSyncStrand(pIOS->make_strand()),
 	connection_notification_pending(false)

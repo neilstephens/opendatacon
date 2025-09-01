@@ -131,6 +131,7 @@ public:
 	bool TimeSyncOnStart;
 	uint64_t TimeSyncPeriodms;
 	bool PassThroughTimeSync;
+	bool PassThroughTimeSyncAction;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;

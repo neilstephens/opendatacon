@@ -66,6 +66,7 @@ protected:
 	}
 	std::shared_ptr<ChannelHandler> pChanH;
 	std::shared_ptr<asio::steady_timer> pConnectionStabilityTimer;
+	std::atomic<msSinceEpoch_t> last_time_sync;
 
 	virtual void ExtendCurrentState(Json::Value& state) const {}
 	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;

@@ -104,6 +104,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	TimeSyncOnStart(false),
 	TimeSyncPeriodms(0),
 	PassThroughTimeSync(false),
+	PassThroughTimeSyncAction(false),
 	// Default Static Variations
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var2),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
@@ -235,6 +236,14 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolClass2 = JSONRoot["UnsolClass2"].asBool();
 	if (JSONRoot.isMember("UnsolClass3"))
 		UnsolClass3 = JSONRoot["UnsolClass3"].asBool();
+	if (JSONRoot.isMember("TimeSyncOnStart"))
+		TimeSyncOnStart = JSONRoot["TimeSyncOnStart"].asBool();
+	if (JSONRoot.isMember("TimeSyncPeriodms"))
+		TimeSyncPeriodms = JSONRoot["TimeSyncPeriodms"].asUInt64();
+	if (JSONRoot.isMember("PassThroughTimeSync"))
+		PassThroughTimeSync = JSONRoot["PassThroughTimeSync"].asBool();
+	if (JSONRoot.isMember("PassThroughTimeSyncAction"))
+		PassThroughTimeSyncAction = JSONRoot["PassThroughTimeSyncAction"].asBool();
 
 	// Master Station configuration
 	if (JSONRoot.isMember("MasterResponseTimeoutms"))
@@ -396,12 +405,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
 	if (JSONRoot.isMember("WaitForCommandResponses"))
 		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
-	if (JSONRoot.isMember("TimeSyncOnStart"))
-		TimeSyncOnStart = JSONRoot["TimeSyncOnStart"].asBool();
-	if (JSONRoot.isMember("PassThroughTimeSync"))
-		PassThroughTimeSync = JSONRoot["PassThroughTimeSync"].asBool();
-	if (JSONRoot.isMember("TimeSyncPeriodms"))
-		TimeSyncPeriodms = JSONRoot["TimeSyncPeriodms"].asUInt64();
 
 	// Default Static Variations
 	if (JSONRoot.isMember("StaticBinaryResponse"))

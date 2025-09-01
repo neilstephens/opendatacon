@@ -46,7 +46,6 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 	pOutstation(nullptr),
 	master_time_offset(0),
 	IINFlags(AppIINFlags::NONE),
-	last_time_sync(msSinceEpoch()),
 	PeerCollection(nullptr)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
@@ -159,16 +158,24 @@ void DNP3OutstationPort::OnKeepAliveReset()
 	pChanH->LinkUp();
 }
 
-void DNP3OutstationPort::AdjustTimeOffsetMilliSeconds(const int64_t ms_offset, const bool pass_through, msSinceEpoch_t abs)
+void DNP3OutstationPort::AdjustTimeOffsetMilliSeconds(const int64_t ms_offset, const bool pass_through, const bool pass_through_action, msSinceEpoch_t abs)
 {
 	if(!abs) abs = msSinceEpoch()+ms_offset;
-	Log.Debug("Adjusting time offset to {} ms, to sync with absolute time {}", ms_offset, since_epoch_to_datetime(abs));
+	Log.Debug("{}: Adjusting time offset to {} ms, to sync with absolute time {}", Name, ms_offset, since_epoch_to_datetime(abs));
 	master_time_offset = ms_offset;
 	if(pass_through)
 	{
 		Log.Debug("{}: Publishing time sync event. AbsTime {}, SysOffset {} ms.", Name, since_epoch_to_datetime(abs), ms_offset);
 		auto event = std::make_shared<EventInfo>(EventType::TimeSync,0,Name);
 		event->SetPayload<EventType::TimeSync>(AbsTime_n_SysOffs(abs,ms_offset));
+		event->SetTimestamp(msSinceEpoch()+master_time_offset);
+		PublishEvent(event);
+	}
+	else if(pass_through_action)
+	{
+		Log.Debug("{}: Publishing time sync event action (no offset).", Name);
+		auto event = std::make_shared<EventInfo>(EventType::TimeSync,0,Name);
+		event->SetPayload<EventType::TimeSync>(AbsTime_n_SysOffs(abs,0));
 		event->SetTimestamp(msSinceEpoch()+master_time_offset);
 		PublishEvent(event);
 	}
@@ -208,7 +215,7 @@ bool DNP3OutstationPort::WriteAbsoluteTime(const opendnp3::UTCTimestamp& timesta
 
 	Log.Info("{}: Time offset from master = {}ms", Name, new_master_offset);
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
-	AdjustTimeOffsetMilliSeconds(new_master_offset,pConf->pPointConf->PassThroughTimeSync,master_time);
+	AdjustTimeOffsetMilliSeconds(new_master_offset,pConf->pPointConf->PassThroughTimeSync,pConf->pPointConf->PassThroughTimeSyncAction,master_time);
 
 	return ret;
 }
