@@ -254,19 +254,26 @@ void DNP3OutstationPort::Build()
 		return;
 	}
 
+	//set default object variations
+
+
 	opendnp3::OutstationStackConfig StackConfig;
 	for(auto index : pConf->pPointConf->AnalogIndexes)
 	{
 		StackConfig.database.analog_input[index].clazz = pConf->pPointConf->AnalogClasses[index];
-		StackConfig.database.analog_input[index].evariation = pConf->pPointConf->EventAnalogResponses[index];
-		StackConfig.database.analog_input[index].svariation = pConf->pPointConf->StaticAnalogResponses[index];
+		StackConfig.database.analog_input[index].evariation = pConf->pPointConf->EventAnalogResponses.count(index) ?
+		                                                      pConf->pPointConf->EventAnalogResponses.at(index) : pConf->pPointConf->EventAnalogResponse;
+		StackConfig.database.analog_input[index].svariation = pConf->pPointConf->StaticAnalogResponses.count(index) ?
+		                                                      pConf->pPointConf->StaticAnalogResponses.at(index) : pConf->pPointConf->StaticAnalogResponse;
 		StackConfig.database.analog_input[index].deadband = pConf->pPointConf->AnalogDeadbands[index];
 	}
 	for(auto index : pConf->pPointConf->BinaryIndexes)
 	{
 		StackConfig.database.binary_input[index].clazz = pConf->pPointConf->BinaryClasses[index];
-		StackConfig.database.binary_input[index].evariation = pConf->pPointConf->EventBinaryResponses[index];
-		StackConfig.database.binary_input[index].svariation = pConf->pPointConf->StaticBinaryResponses[index];
+		StackConfig.database.binary_input[index].evariation = pConf->pPointConf->EventBinaryResponses.count(index) ?
+		                                                      pConf->pPointConf->EventBinaryResponses.at(index) : pConf->pPointConf->EventBinaryResponse;
+		StackConfig.database.binary_input[index].svariation = pConf->pPointConf->StaticBinaryResponses.count(index) ?
+		                                                      pConf->pPointConf->StaticBinaryResponses.at(index) : pConf->pPointConf->StaticBinaryResponse;
 	}
 	for(auto index : pConf->pPointConf->OctetStringIndexes)
 	{
@@ -275,15 +282,19 @@ void DNP3OutstationPort::Build()
 	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
 	{
 		StackConfig.database.analog_output_status[index].clazz = pConf->pPointConf->AnalogOutputStatusClasses[index];
-		StackConfig.database.analog_output_status[index].evariation = pConf->pPointConf->EventAnalogOutputStatusResponses[index];
-		StackConfig.database.analog_output_status[index].svariation = pConf->pPointConf->StaticAnalogOutputStatusResponses[index];
+		StackConfig.database.analog_output_status[index].evariation = pConf->pPointConf->EventAnalogOutputStatusResponses.count(index) ?
+		                                                              pConf->pPointConf->EventAnalogOutputStatusResponses.at(index) : pConf->pPointConf->EventAnalogOutputStatusResponse;
+		StackConfig.database.analog_output_status[index].svariation = pConf->pPointConf->StaticAnalogOutputStatusResponses.count(index) ?
+		                                                              pConf->pPointConf->StaticAnalogOutputStatusResponses.at(index) : pConf->pPointConf->StaticAnalogOutputStatusResponse;
 		StackConfig.database.analog_output_status[index].deadband = pConf->pPointConf->AnalogOutputStatusDeadbands[index];
 	}
 	for(auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
 	{
 		StackConfig.database.binary_output_status[index].clazz = pConf->pPointConf->BinaryOutputStatusClasses[index];
-		StackConfig.database.binary_output_status[index].evariation = pConf->pPointConf->EventBinaryOutputStatusResponses[index];
-		StackConfig.database.binary_output_status[index].svariation = pConf->pPointConf->StaticBinaryOutputStatusResponses[index];
+		StackConfig.database.binary_output_status[index].evariation = pConf->pPointConf->EventBinaryOutputStatusResponses.count(index) ?
+		                                                              pConf->pPointConf->EventBinaryOutputStatusResponses.at(index) : pConf->pPointConf->EventBinaryOutputStatusResponse;
+		StackConfig.database.binary_output_status[index].svariation = pConf->pPointConf->StaticBinaryOutputStatusResponses.count(index) ?
+		                                                              pConf->pPointConf->StaticBinaryOutputStatusResponses.at(index) : pConf->pPointConf->StaticBinaryOutputStatusResponse;
 	}
 
 	InitEventDB();

@@ -4,6 +4,7 @@
   * More DNP3Port timesync functionality
     * Option "PassThroughTimeSyncAction" (do a downstream time sync if there's an upstream time sync)
     * DNP3Master now also honours: "TimeSyncOnStart" and "TimeSyncPeriodms"
+  * DNP3 ObjVar config parsing fix
 
 ## 1.10.2
   * Transforms can now accept a list for the 'Sender' option
