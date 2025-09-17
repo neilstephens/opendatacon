@@ -356,6 +356,17 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 				LinkUpIntegrityIfNeeded();
 			}
 		});
+	if(iin.IsSet(opendnp3::IINBit::NEED_TIME))
+	{
+		//Stack did a time sync - reset the time
+		last_time_sync = msSinceEpoch();
+	}
+	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+	if(pConf->pPointConf->TimeSyncPeriodms > 0 && (msSinceEpoch() - last_time_sync) > pConf->pPointConf->TimeSyncPeriodms)
+	{
+		last_time_sync = msSinceEpoch();
+		pMaster->DoTimeSync();
+	}
 }
 
 //Only to be called by posting on the pChanH strand
@@ -387,6 +398,9 @@ TCPClientServer DNP3MasterPort::ClientOrServer()
 void DNP3MasterPort::Build()
 {
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
+
+	if(pConf->pPointConf->TimeSyncOnStart)
+		last_time_sync = msSinceEpoch() - pConf->pPointConf->TimeSyncPeriodms - 1;
 
 	if (!pChanH->SetChannel())
 	{
@@ -571,6 +585,8 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 			if(pConf->pPointConf->PassThroughTimeSync)
 				sys_time_offset = offset;
+			if(pConf->pPointConf->PassThroughTimeSyncAction)
+				pMaster->DoTimeSync();
 			(*pStatusCallback)(CommandStatus::SUCCESS);
 		}
 		else

@@ -104,6 +104,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	TimeSyncOnStart(false),
 	TimeSyncPeriodms(0),
 	PassThroughTimeSync(false),
+	PassThroughTimeSyncAction(false),
 	// Default Static Variations
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var2),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
@@ -235,6 +236,14 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolClass2 = JSONRoot["UnsolClass2"].asBool();
 	if (JSONRoot.isMember("UnsolClass3"))
 		UnsolClass3 = JSONRoot["UnsolClass3"].asBool();
+	if (JSONRoot.isMember("TimeSyncOnStart"))
+		TimeSyncOnStart = JSONRoot["TimeSyncOnStart"].asBool();
+	if (JSONRoot.isMember("TimeSyncPeriodms"))
+		TimeSyncPeriodms = JSONRoot["TimeSyncPeriodms"].asUInt64();
+	if (JSONRoot.isMember("PassThroughTimeSync"))
+		PassThroughTimeSync = JSONRoot["PassThroughTimeSync"].asBool();
+	if (JSONRoot.isMember("PassThroughTimeSyncAction"))
+		PassThroughTimeSyncAction = JSONRoot["PassThroughTimeSyncAction"].asBool();
 
 	// Master Station configuration
 	if (JSONRoot.isMember("MasterResponseTimeoutms"))
@@ -396,12 +405,6 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		UnsolConfirmTimeoutms = JSONRoot["UnsolConfirmTimeoutms"].asUInt();
 	if (JSONRoot.isMember("WaitForCommandResponses"))
 		WaitForCommandResponses = JSONRoot["WaitForCommandResponses"].asBool();
-	if (JSONRoot.isMember("TimeSyncOnStart"))
-		TimeSyncOnStart = JSONRoot["TimeSyncOnStart"].asBool();
-	if (JSONRoot.isMember("PassThroughTimeSync"))
-		PassThroughTimeSync = JSONRoot["PassThroughTimeSync"].asBool();
-	if (JSONRoot.isMember("TimeSyncPeriodms"))
-		TimeSyncPeriodms = JSONRoot["TimeSyncPeriodms"].asUInt64();
 
 	// Default Static Variations
 	if (JSONRoot.isMember("StaticBinaryResponse"))
@@ -537,12 +540,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				AnalogClasses[index] = GetClass(Analogs[n]);
 				if (Analogs[n].isMember("StaticAnalogResponse"))
 					StaticAnalogResponses[index] = StringToStaticAnalogResponse(Analogs[n]["StaticAnalogResponse"].asString());
-				else
-					StaticAnalogResponses[index] = StaticAnalogResponse;
 				if (Analogs[n].isMember("EventAnalogResponse"))
 					EventAnalogResponses[index] = StringToEventAnalogResponse(Analogs[n]["EventAnalogResponse"].asString());
-				else
-					EventAnalogResponses[index] = EventAnalogResponse;
 
 				AnalogDeadbands[index] = deadband;
 
@@ -593,12 +592,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				BinaryClasses[index] = GetClass(Binaries[n]);
 				if (Binaries[n].isMember("StaticBinaryResponse"))
 					StaticBinaryResponses[index] = StringToStaticBinaryResponse(Binaries[n]["StaticBinaryResponse"].asString());
-				else
-					StaticBinaryResponses[index] = StaticBinaryResponse;
 				if (Binaries[n].isMember("EventBinaryResponse"))
 					EventBinaryResponses[index] = StringToEventBinaryResponse(Binaries[n]["EventBinaryResponse"].asString());
-				else
-					EventBinaryResponses[index] = EventBinaryResponse;
 
 				if(!InsertOrDeleteIndex(Binaries[n],BinaryIndexes,index))
 				{
@@ -653,12 +648,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				AnalogOutputStatusClasses[index] = GetClass(AnalogOutputStatuses[n]);
 				if (AnalogOutputStatuses[n].isMember("StaticAnalogOutputStatusResponse"))
 					StaticAnalogOutputStatusResponses[index] = StringToStaticAnalogOutputStatusResponse(AnalogOutputStatuses[n]["StaticAnalogOutputStatusResponse"].asString());
-				else
-					StaticAnalogOutputStatusResponses[index] = StaticAnalogOutputStatusResponse;
 				if (AnalogOutputStatuses[n].isMember("EventAnalogOutputStatusResponse"))
 					EventAnalogOutputStatusResponses[index] = StringToEventAnalogOutputStatusResponse(AnalogOutputStatuses[n]["EventAnalogOutputStatusResponse"].asString());
-				else
-					EventAnalogOutputStatusResponses[index] = EventAnalogOutputStatusResponse;
 
 				//TODO: make deadbands per point
 				AnalogOutputStatusDeadbands[index] = deadband;
@@ -701,12 +692,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 				BinaryOutputStatusClasses[index] = GetClass(BinaryOutputStatuses[n]);
 				if (BinaryOutputStatuses[n].isMember("StaticBinaryOutputStatusResponse"))
 					StaticBinaryOutputStatusResponses[index] = StringToStaticBinaryOutputStatusResponse(BinaryOutputStatuses[n]["StaticBinaryOutputStatusResponse"].asString());
-				else
-					StaticBinaryOutputStatusResponses[index] = StaticBinaryOutputStatusResponse;
 				if (BinaryOutputStatuses[n].isMember("EventBinaryOutputStatusResponse"))
 					EventBinaryOutputStatusResponses[index] = StringToEventBinaryOutputStatusResponse(BinaryOutputStatuses[n]["EventBinaryOutputStatusResponse"].asString());
-				else
-					EventBinaryOutputStatusResponses[index] = EventBinaryOutputStatusResponse;
 
 				if (std::find(BinaryOutputStatusIndexes.begin(),BinaryOutputStatusIndexes.end(),index) == BinaryOutputStatusIndexes.end())
 					BinaryOutputStatusIndexes.push_back(index);

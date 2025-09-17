@@ -97,7 +97,6 @@ private:
 	std::shared_ptr<opendnp3::IOutstation> pOutstation;
 	std::atomic<int64_t> master_time_offset;
 	mutable std::atomic<AppIINFlags> IINFlags;
-	std::atomic<msSinceEpoch_t> last_time_sync;
 	std::shared_ptr<DNP3OutstationPortCollection> PeerCollection;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
@@ -115,7 +114,7 @@ private:
 	void SetIINFlags(const std::string& flags) const;
 	void ClearIINFlags(const AppIINFlags& flags) const;
 	void ClearIINFlags(const std::string& flags) const;
-	void AdjustTimeOffsetMilliSeconds(const int64_t ms_offset, const bool pass_through, msSinceEpoch_t abs = 0);
+	void AdjustTimeOffsetMilliSeconds(const int64_t ms_offset, const bool pass_through, const bool pass_through_action = false, msSinceEpoch_t abs = 0);
 };
 
 template<> void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetString meas, uint16_t index);
