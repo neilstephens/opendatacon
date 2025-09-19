@@ -173,6 +173,7 @@ jobs:
           New-Item C:\libmodbus -ItemType Directory
           Move-Item .\libmodbus C:\libmodbus\libmodbus
         }
+        choco install nsis -y
         echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
 
     - if: contains(matrix.os,'macos')
