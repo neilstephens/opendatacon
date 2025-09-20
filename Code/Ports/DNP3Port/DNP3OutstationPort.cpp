@@ -583,16 +583,17 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
-
 template<typename T>
 inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 {
+	//Always generate an event for octet strings, so they can be used for 'streaming' arbitrary data
+	//TODO: make this configurable
 	constexpr auto mode = std::is_same<T,opendnp3::OctetString>() ? opendnp3::EventMode::Force : opendnp3::EventMode::Detect;
+
 	opendnp3::UpdateBuilder builder;
 	builder.Update(meas, index, mode);
 	pOutstation->Apply(builder.Build());
 }
-
 
 inline void DNP3OutstationPort::SetIINFlags(const AppIINFlags& flags) const
 {
