@@ -48,7 +48,7 @@ void KafkaProducerPort::Build()
 		for(const auto& [tid, pte] : *pConf->pPointMap)
 		{
 			const auto& [source,index,ev_type] = tid;
-			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
+			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART));
 
 			//Log a message for each PTM entry for verification purposes
 			if(Log.ShouldLog(spdlog::level::trace))
