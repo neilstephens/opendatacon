@@ -100,7 +100,7 @@ private:
 	std::shared_ptr<DNP3OutstationPortCollection> PeerCollection;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
-	bool UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual);
+	std::pair<bool,std::shared_ptr<const EventInfo>> UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual, const msSinceEpoch_t ts);
 	template<typename T> void EventT(T meas, uint16_t index);
 	template<typename T> void EventT(T qual, uint16_t index, opendnp3::FlagsType FT);
 	void Event(odc::ConnectState state);

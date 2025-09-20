@@ -455,14 +455,40 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 	return FromODC(cb_status);
 }
 
-inline bool DNP3OutstationPort::UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual)
+inline std::pair<bool,std::shared_ptr<const EventInfo>> DNP3OutstationPort::UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual, const msSinceEpoch_t ts)
 {
 	auto prev_event = pDB->Get(event_type,index);
-	if(!prev_event)
-		return false;
-	auto prev_event_copy = std::make_shared<EventInfo>(*prev_event);
-	prev_event_copy->SetQuality(qual);
-	return pDB->Set(prev_event_copy);
+	if(prev_event)
+	{
+		auto event_info = *prev_event;
+		event_info.SetQuality(qual);
+		event_info.SetTimestamp(ts);
+
+		//we'll never update the payload in the point db for a quality change
+		auto store_event = std::make_shared<const EventInfo>(event_info);
+
+		//the event we return may need a dummy payload (for conversion to opendnp3 object)
+		auto return_event = std::make_shared<EventInfo>(event_info);
+
+		if(!event_info.HasPayload())
+		{
+			//The point DB value is uninitialised - that's OK as long as the quality is OFFLINE or RESTART
+			if((qual & QualityFlags::ONLINE) != QualityFlags::NONE
+			   && (qual & QualityFlags::RESTART) == QualityFlags::NONE)
+			{
+				Log.Error("{}: Quality event for {}({}) neither RESTART nor OFFLINE, but payload is uninitialised - dropping", Name, ToString(event_type), index);
+				return {true,nullptr};
+			}
+			//set a dummy payload
+			return_event->SetPayload();
+		}
+
+		//ok to store now - the quality is compatible with the payload (or lack of)
+		pDB->Set(store_event);
+
+		return {true,return_event};
+	}
+	return {false,nullptr};
 }
 
 template<>
@@ -542,23 +568,23 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			if(point_exists) EventT(FromODC<opendnp3::BinaryOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::BinaryQuality:
-			point_exists = UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>());
-			if(point_exists) EventT(FromODC<opendnp3::BinaryQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryInput);
+			std::tie(point_exists,event) = UpdateQuality(EventType::Binary,event->GetIndex(),event->GetPayload<EventType::BinaryQuality>(),event->GetTimestamp());
+			if(event) EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::AnalogQuality:
-			point_exists = UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>());
-			if(point_exists) EventT(FromODC<opendnp3::AnalogQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogInput);
+			std::tie(point_exists,event) = UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>(),event->GetTimestamp());
+			if(event) EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
 			break;
 		case EventType::AnalogOutputStatusQuality:
-			point_exists = UpdateQuality(EventType::AnalogOutputStatus,event->GetIndex(),event->GetPayload<EventType::AnalogOutputStatusQuality>());
-			if(point_exists) EventT(FromODC<opendnp3::AnalogOutputStatusQuality>(event), event->GetIndex(), opendnp3::FlagsType::AnalogOutputStatus);
+			std::tie(point_exists,event) = UpdateQuality(EventType::AnalogOutputStatus,event->GetIndex(),event->GetPayload<EventType::AnalogOutputStatusQuality>(),event->GetTimestamp());
+			if(event) EventT(FromODC<opendnp3::AnalogOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::BinaryOutputStatusQuality:
-			point_exists = UpdateQuality(EventType::BinaryOutputStatus,event->GetIndex(),event->GetPayload<EventType::BinaryOutputStatusQuality>());
-			if(point_exists) EventT(FromODC<opendnp3::BinaryOutputStatusQuality>(event), event->GetIndex(), opendnp3::FlagsType::BinaryOutputStatus);
+			std::tie(point_exists,event) = UpdateQuality(EventType::BinaryOutputStatus,event->GetIndex(),event->GetPayload<EventType::BinaryOutputStatusQuality>(),event->GetTimestamp());
+			if(event) EventT(FromODC<opendnp3::BinaryOutputStatus>(event), event->GetIndex());
 			break;
 		case EventType::OctetStringQuality:
-			point_exists = UpdateQuality(EventType::OctetString,event->GetIndex(),event->GetPayload<EventType::OctetStringQuality>());
+			std::tie(point_exists,event) = UpdateQuality(EventType::OctetString,event->GetIndex(),event->GetPayload<EventType::OctetStringQuality>(),event->GetTimestamp());
 			//DNP3 OctetStrings don't have a quality, so the quality only goes in the local point DB
 			break;
 		case EventType::ConnectState:
