@@ -491,26 +491,6 @@ inline std::pair<bool,std::shared_ptr<const EventInfo>> DNP3OutstationPort::Upda
 	return {false,nullptr};
 }
 
-template<>
-inline void DNP3OutstationPort::EventT<opendnp3::BinaryQuality>(opendnp3::BinaryQuality qual, uint16_t index, opendnp3::FlagsType FT)
-{
-	if(auto prev_event = pDB->Get(EventType::Binary,index))
-	{
-		bool prev_state = false;
-		try
-		{ //GetPayload will throw for uninitialised payload
-			prev_state = prev_event->GetPayload<EventType::Binary>();
-		}
-		catch(std::runtime_error&)
-		{}
-		uint8_t qual_w_val = prev_state ? (static_cast<uint8_t>(qual) | static_cast<uint8_t>(opendnp3::BinaryQuality::STATE))
-		                     : static_cast<uint8_t>(qual);
-		opendnp3::UpdateBuilder builder;
-		builder.Modify(FT, index, index, qual_w_val);
-		pOutstation->Apply(builder.Build());
-	}
-}
-
 void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
 {
 	if (!enabled)
@@ -603,29 +583,16 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	(*pStatusCallback)(CommandStatus::SUCCESS);
 }
 
-template<typename T>
-inline void DNP3OutstationPort::EventT(T qual, uint16_t index, opendnp3::FlagsType FT)
-{
-	opendnp3::UpdateBuilder builder;
-	builder.Modify(FT, index, index, static_cast<uint8_t>(qual));
-	pOutstation->Apply(builder.Build());
-}
 
 template<typename T>
 inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 {
+	constexpr auto mode = std::is_same<T,opendnp3::OctetString>() ? opendnp3::EventMode::Force : opendnp3::EventMode::Detect;
 	opendnp3::UpdateBuilder builder;
-	builder.Update(meas, index);
+	builder.Update(meas, index, mode);
 	pOutstation->Apply(builder.Build());
 }
 
-template<>
-inline void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetString meas, uint16_t index)
-{
-	opendnp3::UpdateBuilder builder;
-	builder.Update(meas, index, opendnp3::EventMode::Force);
-	pOutstation->Apply(builder.Build());
-}
 
 inline void DNP3OutstationPort::SetIINFlags(const AppIINFlags& flags) const
 {
