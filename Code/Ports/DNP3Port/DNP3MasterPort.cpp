@@ -251,6 +251,7 @@ void DNP3MasterPort::SetPointQuality(const std::vector<uint16_t>& indexes, const
 		//update the EventDB event with the quality as well
 		auto new_event = std::make_shared<EventInfo>(*last_event);
 		new_event->SetQuality(std::move(new_qual));
+		new_event->SetTimestamp(event->GetTimestamp());
 		pDB->Set(new_event);
 	}
 }

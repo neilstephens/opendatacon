@@ -473,8 +473,8 @@ inline std::pair<bool,std::shared_ptr<const EventInfo>> DNP3OutstationPort::Upda
 		if(!event_info.HasPayload())
 		{
 			//The point DB value is uninitialised - that's OK as long as the quality is OFFLINE or RESTART
-			if((qual & QualityFlags::ONLINE) != QualityFlags::NONE
-			   && (qual & QualityFlags::RESTART) == QualityFlags::NONE)
+			if((qual & QualityFlags::ONLINE) == QualityFlags::ONLINE    // It's ONLINE
+			   && (qual & QualityFlags::RESTART) == QualityFlags::NONE) // And it's not RESTART
 			{
 				Log.Error("{}: Quality event for {}({}) neither RESTART nor OFFLINE, but payload is uninitialised - dropping", Name, ToString(event_type), index);
 				return {true,nullptr};
@@ -523,6 +523,7 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	if ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ALWAYS)
 	    || ((pConf->pPointConf->TimestampOverride == DNP3PointConf::TimestampOverride_t::ZERO) && (event->GetTimestamp() == 0)))
 	{
+		//TODO: log a message
 		EventInfo info(*event);
 		info.SetTimestamp(msSinceEpoch()+master_time_offset);
 		event = std::make_shared<const EventInfo>(info);
