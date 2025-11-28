@@ -279,11 +279,11 @@ DWORD spawn_detached(const std::string& cmd, const std::vector<std::string>& arg
 	std::string commandLine = cmd;
 	for (const auto& arg : args)
 		commandLine += " " + arg;
-	commandLine.append(0); //null terminator
+	commandLine.push_back('\0'); //null terminator
 
 	//full command needs to be writeable (.data(), not .c_str())
 	BOOL success = CreateProcessA(
-		NULL, cmd.data(), NULL, NULL, FALSE,
+		NULL, commandLine.data(), NULL, NULL, FALSE,
 		DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
 		NULL, NULL, &si, &pi
 		);
@@ -363,10 +363,15 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	for (auto &arg : args)
 	{
 		auto arg_pos = arg_data.size();
-		arg_data.resize(arg_pos+arg.size()+1,0); //include null terminator
+		arg_data.resize(arg_pos+arg.size()+1,'\0'); //include null terminator
 		std::strcpy(arg_data.data()+arg_pos,arg.c_str());
 		argv.push_back(arg_data.data()+arg_pos);
 	}
+
+	#ifdef APPLE
+	#include <crt_externs.h>
+	#define environ (*_NSGetEnviron())
+	#endif
 
 	int status = posix_spawn(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
 
