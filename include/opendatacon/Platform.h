@@ -305,6 +305,11 @@ inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::strin
 #include <sys/resource.h>
 #include <spawn.h>
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
+#endif
+
 inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions)
 {
 	#ifdef __linux__
@@ -367,11 +372,6 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		std::strcpy(arg_data.data()+arg_pos,arg.c_str());
 		argv.push_back(arg_data.data()+arg_pos);
 	}
-
-	#ifdef __APPLE__
-	#include <crt_externs.h>
-	#define environ (*_NSGetEnviron())
-	#endif
 
 	int status = posix_spawn(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
 
