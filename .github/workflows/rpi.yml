@@ -14,11 +14,19 @@ jobs:
       
       matrix:
         include:
-          - name: Raspbian Bookworm Release
+          - name: Raspbian Armv6 Bookworm Release
+            docker-file: RaspbianBookwormV6
+            build-type: Release
+            
+          - name: Raspbian Armv6 Bookworm Debug
+            docker-file: RaspbianBookwormV6
+            build-type: Debug
+            
+          - name: Raspbian Armv7 Bookworm Release
             docker-file: RaspbianBookworm
             build-type: Release
             
-          - name: Raspbian Bookworm Debug
+          - name: Raspbian Armv7 Bookworm Debug
             docker-file: RaspbianBookworm
             build-type: Debug
             
