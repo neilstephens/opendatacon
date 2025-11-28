@@ -45,6 +45,7 @@ jobs:
     - name: Dockerfile Build
       run: |
         docker build \
+        --platform=linux/arm/v6 \
         --build-arg BUILD_TYPE=${{ matrix.build-type }} \
         --build-arg BUILD_COMMIT=${{ github.sha }} \
         --output type=local,dest=./ \
