@@ -271,7 +271,7 @@ inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true,
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 
 /// args ignored on windows - put it all in the command
-DWORD spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
+inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
 {
 	STARTUPINFOA si = { sizeof(si) };
 	PROCESS_INFORMATION pi;
@@ -368,7 +368,7 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		argv.push_back(arg_data.data()+arg_pos);
 	}
 
-	#ifdef APPLE
+	#ifdef __APPLE__
 	#include <crt_externs.h>
 	#define environ (*_NSGetEnviron())
 	#endif
