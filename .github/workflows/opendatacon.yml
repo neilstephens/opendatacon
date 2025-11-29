@@ -91,7 +91,9 @@ jobs:
       if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       with:
         fetch-depth: 0
+    
     - run: git fetch --force --tags
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
     
     - name: Upload release text
       if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
