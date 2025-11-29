@@ -47,24 +47,28 @@ jobs:
             docker-file: RaspbianBookwormV6
             build-type: Release
             docker-args: --platform linux/arm/v6
+            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
             build-on: tags
             
           - name: RaspbianBookworm armhf Debug
             docker-file: RaspbianBookwormV6
             build-type: Debug
             docker-args: --platform linux/arm/v6
+            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
             build-on: tags
             
           - name: Bookworm arm64 Release
             docker-file: Debian12Bookworm
             build-type: Release
             docker-args: --platform linux/arm64
+            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
             build-on: tags
             
           - name: Bookworm arm64 Debug
             docker-file: Debian12Bookworm
             build-type: Debug
             docker-args: --platform linux/arm64
+            setup-cmds: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
             build-on: tags
             
           - name: Redhat Enterprise Linux 9 Release
