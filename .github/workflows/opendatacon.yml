@@ -287,9 +287,7 @@ jobs:
           merge-multiple: true
       
       - name: Create Debug Installers Archive
-        run: |
-          cd installers
-          zip -r opendatacon-debug-installers.zip opendatacon-*Debug.sh opendatacon-*Debug.exe
+        run: zip -r opendatacon-debug-installers.zip **/opendatacon-*Debug.sh **/opendatacon-*Debug.exe
           
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -297,9 +295,9 @@ jobs:
           draft: false
           body_path: installers/tag_annotation.txt
           files: |
-            installers/opendatacon-*.*.*-*-*-*-*-Release.sh
-            installers/opendatacon-*.*.*-*-*-*-*-Release.exe
-            installers/opendatacon-debug-installers.zip
+            **/opendatacon-*.*.*-*-*-*-*-Release.sh
+            **/opendatacon-*.*.*-*-*-*-*-Release.exe
+            opendatacon-debug-installers.zip
           fail_on_unmatched_files: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
