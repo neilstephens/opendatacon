@@ -43,25 +43,25 @@ jobs:
             docker-file: RaspbianBookwormV6
             build-type: Release
             docker-args: --platform linux/arm/v6
-            tags-only: true
+            tags-only: y
             
           - name: RaspbianBookworm armhf Debug
             docker-file: RaspbianBookwormV6
             build-type: Debug
             docker-args: --platform linux/arm/v6
-            tags-only: true
+            tags-only: y
             
           - name: Bookworm arm64 Release
             docker-file: Debian12Bookworm
             build-type: Release
             docker-args: --platform linux/arm64
-            tags-only: true
+            tags-only: y
             
           - name: Bookworm arm64 Debug
             docker-file: Debian12Bookworm
             build-type: Debug
             docker-args: --platform linux/arm64
-            tags-only: true
+            tags-only: y
             
           - name: Redhat Enterprise Linux 9 Release
             docker-file: RHEL9
@@ -74,7 +74,7 @@ jobs:
             docker-args:
     
     # Skip Rpi builds unless it's a tag
-    if: ${{ !matrix.tags-only || contains(github.ref, 'tag') }}
+    if: ${{ !contains(matrix.tags-only, 'y') || contains(github.ref, 'tag') }}
     
     runs-on: ubuntu-latest
     
