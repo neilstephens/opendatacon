@@ -1,8 +1,6 @@
 # syntax=docker/dockerfile:1.2
-
-ARG DOCKER_ARCH=
    
-FROM ${DOCKER_ARCH}debian:bookworm as builder
+FROM debian:bookworm as builder
 
 RUN apt-get update
 RUN apt-get install -y clang libc++-dev libc++abi-dev make cmake git libmodbus-dev libssl-dev socat python3-dev file
