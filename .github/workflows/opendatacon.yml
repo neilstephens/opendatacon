@@ -14,8 +14,6 @@ jobs:
   opendatacon-dockerfile-builds:
     name: ${{matrix.name}}
     
-    if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-    
     strategy:
       fail-fast: false
       
@@ -86,17 +84,21 @@ jobs:
     steps:
     
     - uses: actions/checkout@v4
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       with:
         fetch-depth: 0
     - run: git fetch --force --tags
     
     - name: Upload release text
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
       
     - name: Run Setup Commands
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       run: ${{ matrix.setup-cmds }}
       
     - name: Dockerfile Build
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       run: |
         docker build \
         --build-arg BUILD_TYPE=${{ matrix.build-type }} \
@@ -106,6 +108,7 @@ jobs:
         -t opendatacon-builder -f DockerFiles/${{ matrix.docker-file }} .
         
     - name: Upload Installer
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.name }} Installer
@@ -116,6 +119,7 @@ jobs:
           tag_annotation.txt
           
     - name: Upload Logs
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.run-os }} Logs
