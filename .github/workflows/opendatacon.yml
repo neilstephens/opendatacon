@@ -23,58 +23,64 @@ jobs:
             docker-file: Debian12Bookworm
             build-type: Release
             docker-args:
+            build-on: all
             
           - name: Bookworm amd64 Debug
             docker-file: Debian12Bookworm
             build-type: Debug
             docker-args:
+            build-on: all
             
           - name: Bookworm i386 Release
             docker-file: Debian12Bookworm
             build-type: Release
             docker-args: --platform linux/i386 --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            build-on: all
             
           - name: Bookworm i386 Debug
             docker-file: Debian12Bookworm
             build-type: Debug
             docker-args: --platform linux/i386 --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            build-on: all
           
           - name: RaspbianBookworm armhf Release
             docker-file: RaspbianBookwormV6
             build-type: Release
             docker-args: --platform linux/arm/v6
-            tags-only: y
+            build-on: tags
             
           - name: RaspbianBookworm armhf Debug
             docker-file: RaspbianBookwormV6
             build-type: Debug
             docker-args: --platform linux/arm/v6
-            tags-only: y
+            build-on: tags
             
           - name: Bookworm arm64 Release
             docker-file: Debian12Bookworm
             build-type: Release
             docker-args: --platform linux/arm64
-            tags-only: y
+            build-on: tags
             
           - name: Bookworm arm64 Debug
             docker-file: Debian12Bookworm
             build-type: Debug
             docker-args: --platform linux/arm64
-            tags-only: y
+            build-on: tags
             
           - name: Redhat Enterprise Linux 9 Release
             docker-file: RHEL9
             build-type: Release
             docker-args:
+            build-on: all
             
           - name: Redhat Enterprise Linux 9 Debug
             docker-file: RHEL9
             build-type: Debug
             docker-args:
+            build-on: all
     
     # Skip Rpi builds unless it's a tag
-    if: ${{ !contains(matrix.tags-only, 'y') || contains(github.ref, 'tag') }}
+    if: ${{ !contains(matrix.build-on, 'tag') || contains(github.ref, 'tag') }}
     
     runs-on: ubuntu-latest
     
