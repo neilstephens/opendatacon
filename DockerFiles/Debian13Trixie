@@ -3,7 +3,7 @@
 FROM debian:trixie as builder
 
 RUN apt-get update
-RUN apt-get install -y clang libc++-dev libc++abi-dev make cmake git libmodbus-dev libssl-dev socat python3-dev file
+RUN apt-get install -y clang libc++-dev libc++abi-dev make cmake git libmodbus-dev libssl-dev libzstd-dev socat python3-dev file
 
 RUN update-alternatives --set c++ /usr/bin/clang++
 RUN update-alternatives --set cc /usr/bin/clang
