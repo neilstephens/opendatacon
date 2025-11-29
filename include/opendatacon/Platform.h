@@ -267,6 +267,126 @@ inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true,
 }
 #endif
 
+/// Platform specific signal definitions
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+
+/// args ignored on windows - put it all in the command
+inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
+{
+	STARTUPINFOA si = { sizeof(si) };
+	PROCESS_INFORMATION pi;
+
+	std::string commandLine = cmd;
+	for (const auto& arg : args)
+		commandLine += " " + arg;
+	commandLine.push_back('\0'); //null terminator
+
+	//full command needs to be writeable (.data(), not .c_str())
+	BOOL success = CreateProcessA(
+		NULL, commandLine.data(), NULL, NULL, FALSE,
+		DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+		NULL, NULL, &si, &pi
+		);
+
+	if (!success)
+		throw std::runtime_error(std::string("CreateProcess failed: ") + std::to_string(GetLastError()));
+
+	DWORD pid = pi.dwProcessId;
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	return pid;
+}
+
+
+#else
+
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/resource.h>
+#include <spawn.h>
+
+#ifdef __APPLE__
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
+#endif
+
+inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions)
+{
+	#ifdef __linux__
+	DIR *dir = opendir("/proc/self/fd");
+	if (dir)
+	{
+		struct dirent *entry;
+		while ((entry = readdir(dir)) != NULL)
+		{
+			int fd = atoi(entry->d_name);
+			posix_spawn_file_actions_addclose(&actions, fd);
+		}
+		closedir(dir);
+		return;
+	}
+	#endif
+	// Fallback: use getrlimit
+	struct rlimit rl;
+	if (getrlimit(RLIMIT_NOFILE, &rl) == 0)
+	{
+		for (int fd = 0; fd < (int)rl.rlim_max; fd++)
+			posix_spawn_file_actions_addclose(&actions, fd);
+	}
+	else
+	{
+		// Last resort: assume 1,000,000
+		for (int fd = 0; fd < 1000000; fd++)
+			posix_spawn_file_actions_addclose(&actions, fd);
+	}
+}
+
+inline int spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
+{
+	pid_t pid;
+	posix_spawnattr_t attr;
+	posix_spawn_file_actions_t actions;
+
+	// Initialize attributes and file actions
+	posix_spawnattr_init(&attr);
+	posix_spawn_file_actions_init(&actions);
+
+	// Close all inherited file descriptors
+	add_actions_close_all_fds(actions);
+
+	// Set flags: new session, reset signals
+	short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
+	posix_spawnattr_setflags(&attr, flags);
+
+	sigset_t empty;
+	sigemptyset(&empty);
+	posix_spawnattr_setsigmask(&attr, &empty);
+	posix_spawnattr_setsigdefault(&attr, &empty);
+
+	std::vector<char> arg_data;
+	std::vector<char*> argv;
+	for (auto &arg : args)
+	{
+		auto arg_pos = arg_data.size();
+		arg_data.resize(arg_pos+arg.size()+1,'\0'); //include null terminator
+		std::strcpy(arg_data.data()+arg_pos,arg.c_str());
+		argv.push_back(arg_data.data()+arg_pos);
+	}
+
+	int status = posix_spawn(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
+
+	posix_spawn_file_actions_destroy(&actions);
+	posix_spawnattr_destroy(&attr);
+
+	if (status != 0)
+		throw std::runtime_error("posix_spawn() failed with return value: "+std::to_string(status));
+
+	return pid; // Detached PID
+}
+
+
+#endif
+
 
 inline std::string GetLibFileName(const std::string& LibName)
 {

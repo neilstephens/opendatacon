@@ -23,10 +23,10 @@ if(NOT ODC_ASIO_SSL)
 endif()
 
 if(MSVC)
-	set(NOWARN_C_FLAGS "/W0") #don't want warnings from external librdkafka code
+	set(NOWARN_C_FLAGS "${CMAKE_C_FLAGS} /W0") #don't want warnings from external librdkafka code
 	set(MSVC_OPTS "-DOPENSSL_MSVC_STATIC_RT=${OPENSSL_MSVC_STATIC_RT}")
 else()
-	set(NOWARN_C_FLAGS "-w") #don't want warnings from external librdkafka code
+	set(NOWARN_C_FLAGS "${CMAKE_C_FLAGS} -w") #don't want warnings from external librdkafka code
 endif()
 
 set(RDKAFKA_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/librdkafka")

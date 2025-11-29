@@ -27,6 +27,7 @@
 #include <Lua/CLua.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/Platform.h>
 #include <json/json.h>
 
 //Convert JSON to a Lua table on the Lua stack
@@ -478,5 +479,40 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					   return 1;
 				   }),4);
 	lua_setfield(L,-2,"msTimerCallback");
+
+	//SpawnDetached
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			int idx = 1;
+			if(lua_isstring(L,idx))
+			{
+				std::string cmd = lua_tostring(L,idx++);
+				std::vector<std::string> args;
+				while(lua_isstring(L,idx))
+					args.push_back(lua_tostring(L,idx++));
+				try
+				{
+					lua_pushinteger(L,spawn_detached(cmd,args));
+					return 1;
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+				err_msg = "No command string provided.";
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: SpawnDetached() called from lua; Exception '{}'.",name,err_msg);
+			lua_pushnil(L);
+			return 1;
+		},2);
+	lua_setfield(L,-2,"SpawnDetached");
 }
 

@@ -149,6 +149,25 @@ function do_example_stuff()
   local my_hello_module = require("hello");
   my_hello_module.go();
   
+  -- odc provides a helper for spawning detached processes too
+  -- it differs from io.popen() and os.execute() in a few ways:
+  --   doesn't block, gives you the spawned PID directly,
+  --   doesn't leak file handles, and doesn't require a shell
+  local pid;
+  local sep = package.config:sub(1,1); -- for figuring out the platform we're on
+  if sep == "\\" then
+    -- Windows
+    pid = odc.SpawnDetached('cmd.exe /C "echo Hello"');
+  else
+    -- POSIX
+    pid = odc.SpawnDetached('/bin/echo','Hello');
+  end
+  if pid == nil then
+    odc.log.error("Failed to SpawnDetached().");
+  else
+    odc.log.info("SpawnDetached() PID: " .. pid);
+  end
+
   odc.log.info("Here's everything under 'odc' for good measure: "..odc.EncodeJSON(odc));
   odc.log.info("...Plus all the default payloads from odc.MakePayload(): "..dump_default_payloads_json());
 

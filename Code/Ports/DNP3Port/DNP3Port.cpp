@@ -86,27 +86,27 @@ void DNP3Port::InitEventDB()
 		pConf->pPointConf->BinaryOutputStatusIndexes.size());
 
 	for(auto index : pConf->pPointConf->AnalogIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->BinaryIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->OctetStringIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::OctetString,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::OctetString,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->ControlIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART));
 	for (auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
 		// Need to work out which type of event we should be queuing - using the information from the configuration
 		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
-		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART, 0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART));
 	}
 	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputStatus,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputStatus,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::BinaryOutputStatus,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::BinaryOutputStatus,index,"",QualityFlags::RESTART));
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART));
 
-	init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ConnectState,0,"",QualityFlags::RESTART,0));
+	init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ConnectState,0,"",QualityFlags::RESTART));
 
 	pDB = std::make_unique<EventDB>(init_events);
 }
