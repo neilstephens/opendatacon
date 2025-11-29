@@ -14,6 +14,8 @@ jobs:
   opendatacon-dockerfile-builds:
     name: ${{matrix.name}}
     
+    if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
+    
     strategy:
       fail-fast: false
       
@@ -78,9 +80,6 @@ jobs:
             build-type: Debug
             docker-args:
             build-on: all
-    
-    # Skip Rpi builds unless it's a tag
-    if: ${{ !contains(matrix.build-on, 'tag') || contains(github.ref, 'tag') }}
     
     runs-on: ubuntu-latest
     
