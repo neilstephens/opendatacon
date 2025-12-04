@@ -343,6 +343,13 @@ if(CMAKE_USE_PTHREADS_INIT)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
+include(CheckFunctionExists)
+check_function_exists(closefrom HAVE_CLOSEFROM)
+check_function_exists(close_range HAVE_CLOSERANGE)
+if(HAVE_CLOSEFROM AND HAVE_CLOSERANGE)
+	add_definitions(-DHAVE_CLOSEHELPERS)
+endif()
+
 # the RPATH to be used when installing - allowing local libraries to be found for standalone installs,
 # as well as installed locations
 SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}"

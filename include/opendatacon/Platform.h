@@ -320,7 +320,8 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions)
 		while ((entry = readdir(dir)) != NULL)
 		{
 			int fd = atoi(entry->d_name);
-			posix_spawn_file_actions_addclose(&actions, fd);
+			if(fd > 2)
+				posix_spawn_file_actions_addclose(&actions, fd);
 		}
 		closedir(dir);
 		return;
@@ -330,13 +331,13 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions)
 	struct rlimit rl;
 	if (getrlimit(RLIMIT_NOFILE, &rl) == 0)
 	{
-		for (int fd = 0; fd < (int)rl.rlim_max; fd++)
+		for (int fd = 3; fd < (int)rl.rlim_max; fd++)
 			posix_spawn_file_actions_addclose(&actions, fd);
 	}
 	else
 	{
 		// Last resort: assume 1,000,000
-		for (int fd = 0; fd < 1000000; fd++)
+		for (int fd = 3; fd < 1000000; fd++)
 			posix_spawn_file_actions_addclose(&actions, fd);
 	}
 }
@@ -365,13 +366,17 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 
 	std::vector<char> arg_data;
 	std::vector<char*> argv;
-	for (auto &arg : args)
+	auto push_arg = [&](const std::string& arg)
 	{
 		auto arg_pos = arg_data.size();
 		arg_data.resize(arg_pos+arg.size()+1,'\0'); //include null terminator
 		std::strcpy(arg_data.data()+arg_pos,arg.c_str());
 		argv.push_back(arg_data.data()+arg_pos);
-	}
+	};
+	push_arg(cmd);
+	for (auto &arg : args)
+		push_arg(arg);
+	argv.push_back(nullptr);
 
 	int status = posix_spawn(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
 
