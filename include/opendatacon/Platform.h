@@ -278,6 +278,9 @@ struct spawn_attached_result
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 
+#include <io.h>
+#include <fcntl.h>
+
 /// args ignored on windows - put it all in the command
 inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
 {
@@ -323,9 +326,7 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 	pipe_res &= CreatePipe(&stderr_read, &stderr_write, &sa, 0);
 
 	if(!pipe_res)
-	{
 		throw std::runtime_error("CreatePipe failed.");
-	}
 
 	// Ensure the read/write handles that parent uses are not inherited
 	SetHandleInformation(stdin_write, HANDLE_FLAG_INHERIT, 0);
