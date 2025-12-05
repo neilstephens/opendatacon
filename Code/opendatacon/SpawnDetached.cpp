@@ -61,9 +61,9 @@ inline void close_all_fds(int except_fd = -1)
 	#endif
 	// fallback to getrlimit
 	struct rlimit rl;
-	if (getrlimit(RLIMIT_NOFILE, &rl) == 0)
+	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 1000000ULL)
 	{
-		for (int fd = 3; fd < (int)rl.rlim_max; fd++)
+		for (int fd = 3; fd < (int)rl.rlim_cur; fd++)
 			if(fd != except_fd) close(fd);
 		return;
 	}
@@ -72,63 +72,45 @@ inline void close_all_fds(int except_fd = -1)
 		if(fd != except_fd) close(fd);
 }
 
-//spawn a detached process using double fork pattern
-//not thread safe - only executed from special invocation of main.
+//spawn a detached process using double 'fork' pattern
+//  not thread safe - only executed from special invocation of main (re-exec from the real parent via posix_spawn).
+//  so we're single-threaded and the 'first' fork in the pattern is already achieved via re-exec
+//    launch straight into closing FDs and setsid()
 int spawn_detached(const char* cmd, char* argv[])
 {
 	// FD 3 is the pipe to the parent
 	int pid_pipe_fd = 3;
 
-	pid_t pid1 = fork();
-	if(pid1 < 0)
+	//close all descriptors except the pid pipe
+	close_all_fds(pid_pipe_fd);
+	//detach
+	if(setsid() < 0)
 	{
 		close(pid_pipe_fd);
 		_Exit(1);
 	}
 
-	if(pid1 == 0) //intermediate child process
-	{
-		//close all descriptors except the pid pipe write-end
-		close_all_fds(pid_pipe_fd);
-		//detach
-		if(setsid() < 0)
-		{
-			close(pid_pipe_fd);
-			_Exit(1);
-		}
-
-		pid_t pid2 = fork();
-		if(pid2 < 0)
-		{
-			close(pid_pipe_fd);
-			_Exit(1);
-		}
-
-		if(pid2 == 0) //final child proccess
-		{
-			int final_pid = getpid();
-			char pid_str[32] = {'\0'};
-			snprintf(pid_str, sizeof(pid_str), "%d\n", final_pid);
-			write(pid_pipe_fd, pid_str, strlen(pid_str));
-			close(pid_pipe_fd);
-			execvp(cmd, argv);
-			//exec only returns on fail
-			_Exit(1);
-		}
-
-		close(pid_pipe_fd);
-		_Exit(0);
-	}
-
-	int status; //get the status of the intermediate child
-	if(waitpid(pid1,&status,0) < 0)
+	pid_t pid = fork();
+	if(pid < 0)
 	{
 		close(pid_pipe_fd);
 		_Exit(1);
 	}
 
-	close(pid_pipe_fd); //close pid pipe write
-	return status;
+	if(pid == 0) //final child proccess
+	{
+		int final_pid = getpid();
+		char pid_str[32] = {'\0'};
+		snprintf(pid_str, sizeof(pid_str), "%d\n", final_pid);
+		write(pid_pipe_fd, pid_str, strlen(pid_str));
+		close(pid_pipe_fd);
+		execvp(cmd, argv);
+		//exec only returns on fail
+		_Exit(1);
+	}
+
+	close(pid_pipe_fd);
+	_Exit(0);
 }
 
 #endif

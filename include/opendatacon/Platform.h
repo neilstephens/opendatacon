@@ -307,11 +307,47 @@ inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::strin
 #include <spawn.h>
 #include <sys/wait.h>
 #include <filesystem>
+#include <csignal>
 
 #ifdef __APPLE__
 #include <crt_externs.h>
 #define environ (*_NSGetEnviron())
 #endif
+
+inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int except_fd = -1)
+{
+	#ifdef __linux__
+	DIR *dir = opendir("/proc/self/fd");
+	if (dir)
+	{
+		int dir_fd = dirfd(dir);
+		struct dirent *entry;
+		while ((entry = readdir(dir)) != NULL)
+		{
+			int fd = atoi(entry->d_name);
+			if(fd > 2 && fd != except_fd && fd != dir_fd)
+				posix_spawn_file_actions_addclose(&actions, fd);
+		}
+		closedir(dir);
+		return;
+	}
+	#endif
+	// Fallback: use getrlimit
+	struct rlimit rl;
+	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 1000000ULL)
+	{
+		for (int fd = 3; fd < (int)rl.rlim_cur; fd++)
+			if(fd != except_fd) posix_spawn_file_actions_addclose(&actions, fd);
+	}
+	else
+	{
+		// Last resort: assume 200,000
+		for (int fd = 3; fd < 200000; fd++)
+			if(fd != except_fd) posix_spawn_file_actions_addclose(&actions, fd);
+	}
+	// If we missed any, or more were opened in other threads,
+	//   it's OK because they'll be closed in the child anyway
+}
 
 inline int spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
 {
@@ -330,17 +366,18 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 
 	// the child can use the write end on FD 3
 	posix_spawn_file_actions_adddup2(&actions, pid_pipe_fd[1], 3);
-	// child doesn't need the read end
-	posix_spawn_file_actions_addclose(&actions, pid_pipe_fd[0]);
+	// close all fds except for pid pipe before exec
+	add_actions_close_all_fds(actions, 3);
 
 	// Set flags: new session, reset signals
 	short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
 	posix_spawnattr_setflags(&attr, flags);
 
-	sigset_t empty;
+	sigset_t empty, all_signals;
 	sigemptyset(&empty);
+	sigfillset(&all_signals);
 	posix_spawnattr_setsigmask(&attr, &empty);
-	posix_spawnattr_setsigdefault(&attr, &empty);
+	posix_spawnattr_setsigdefault(&attr, &all_signals);
 
 	std::vector<char *> argv;
 	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath()));
@@ -355,30 +392,35 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	sigset_t old_mask, block_mask;
 	sigemptyset(&block_mask);
 	sigaddset(&block_mask, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &block_mask, &old_mask);
+	pthread_sigmask(SIG_BLOCK, &block_mask, &old_mask);
 
 	int status = posix_spawn(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
 
-	//pos-spawn cleanup
+	//post-spawn cleanup
 	posix_spawn_file_actions_destroy(&actions);
 	posix_spawnattr_destroy(&attr);
 	close(pid_pipe_fd[1]); //don't need write-end of pipe in parent anymore
 
 	if (status != 0)
 	{
-		sigprocmask(SIG_SETMASK, &old_mask, NULL);
+		close(pid_pipe_fd[0]);
+		pthread_sigmask(SIG_SETMASK, &old_mask, NULL);
 		throw std::runtime_error("posix_spawn() failed with return value: "+std::to_string(status));
 	}
 
 	int child_status;
 	waitpid(pid, &child_status, 0);
-	sigprocmask(SIG_SETMASK, &old_mask, NULL);
-	if (child_status != 0)
+	pthread_sigmask(SIG_SETMASK, &old_mask, NULL);
+	if (!WIFEXITED(child_status) || WEXITSTATUS(child_status) != 0)
+	{
+		close(pid_pipe_fd[0]);
 		throw std::runtime_error("Intermediate child process failed to spawn detached process.");
+	}
 
 	char pid_str[33] = {'\0'};
 	for(size_t i=0; i<sizeof(pid_str)-1; i++)
 		if(read(pid_pipe_fd[0], &pid_str[i], 1) != 1 || pid_str[i]=='\0') break;
+	close(pid_pipe_fd[0]);
 
 	try
 	{
