@@ -320,13 +320,15 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 	HANDLE stdout_read = NULL, stdout_write = NULL;
 	HANDLE stderr_read = NULL, stderr_write = NULL;
 
-	bool pipe_res = true;
-	pipe_res &= CreatePipe(&stdin_read, &stdin_write, &sa, 0);
-	pipe_res &= CreatePipe(&stdout_read, &stdout_write, &sa, 0);
-	pipe_res &= CreatePipe(&stderr_read, &stderr_write, &sa, 0);
-
-	if(!pipe_res)
+	if(!CreatePipe(&stdin_read, &stdin_write, &sa, 0)
+	   || !CreatePipe(&stdout_read, &stdout_write, &sa, 0)
+	   || !CreatePipe(&stderr_read, &stderr_write, &sa, 0))
+	{
+		CloseHandle(stdin_read); CloseHandle(stdin_write);
+		CloseHandle(stdout_read); CloseHandle(stdout_write);
+		CloseHandle(stderr_read); CloseHandle(stderr_write);
 		throw std::runtime_error("CreatePipe failed.");
+	}
 
 	// Ensure the read/write handles that parent uses are not inherited
 	SetHandleInformation(stdin_write, HANDLE_FLAG_INHERIT, 0);
