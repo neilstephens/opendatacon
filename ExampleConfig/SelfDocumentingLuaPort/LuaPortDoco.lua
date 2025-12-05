@@ -181,7 +181,6 @@ function do_example_stuff()
   end
   if cmdout == nil then
     odc.log.error("Failed to SpawnAttached().");
-    return;
   else
     odc.log.info("SpawnAttached() PID: " .. pid_a);
     exited,status = odc.WaitPid(pid_a,true); --nohang true : non-blocking
