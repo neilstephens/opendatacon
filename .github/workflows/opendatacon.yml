@@ -10,6 +10,9 @@ on:
     branches:
       - '**'
 
+env:
+  LOG_LVL: ${{ secrets.ACTIONS_STEP_DEBUG == 'true' && 'debug' || 'error' }}
+
 jobs:
   opendatacon-dockerfile-builds:
     name: ${{matrix.name}}
