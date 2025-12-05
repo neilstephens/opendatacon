@@ -167,8 +167,8 @@ function do_example_stuff()
     pid_a, cmdin, cmdout, cmderr = odc.SpawnAttached('cmd.exe /C "echo Hello"');
   else
     -- POSIX
-    pid_d = odc.SpawnDetached('/usr/bin/sleep', '60');
-    pid_a, cmdin, cmdout, cmderr = odc.SpawnAttached('/usr/bin/echo','Hello');
+    pid_d = odc.SpawnDetached('sleep', '60');
+    pid_a, cmdin, cmdout, cmderr = odc.SpawnAttached('echo','Hello');
   end
   if pid_d == nil then
     odc.log.error("Failed to SpawnDetached().");

@@ -547,7 +547,7 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		argv.push_back(const_cast<char*>(arg.c_str()));
 	argv.push_back(nullptr);
 
-	int status = posix_spawn(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
+	int status = posix_spawnp(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
 
 	//post-spawn cleanup
 	posix_spawn_file_actions_destroy(&actions);
@@ -557,7 +557,7 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	if (status != 0)
 	{
 		close(pid_pipe_fd[0]);
-		throw std::runtime_error("posix_spawn() failed with return value: "+std::to_string(status));
+		throw std::runtime_error("posix_spawn(...'"+exe_path.string()+"'...) failed with return value: "+std::to_string(status));
 	}
 
 	int child_status;
@@ -614,7 +614,7 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 		argv.push_back(const_cast<char*>(arg.c_str()));
 	argv.push_back(nullptr);
 
-	int status = posix_spawn(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
+	int status = posix_spawnp(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
 
 	// Post-spawn cleanup
 	posix_spawn_file_actions_destroy(&actions);
@@ -629,7 +629,7 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 		close(stdin_pipe[1]);
 		close(stdout_pipe[0]);
 		close(stderr_pipe[0]);
-		throw std::runtime_error("posix_spawn() failed with return value: " + std::to_string(status));
+		throw std::runtime_error("posix_spawn(...'"+cmd+"'...) failed with return value: " + std::to_string(status));
 	}
 
 	// Convert fds to FILE*
