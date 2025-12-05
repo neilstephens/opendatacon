@@ -153,19 +153,39 @@ function do_example_stuff()
   -- it differs from io.popen() and os.execute() in a few ways:
   --   doesn't block, gives you the spawned PID directly,
   --   doesn't leak file handles, and doesn't require a shell
-  local pid;
+  local pid_d, pid_a, cmdin, cmdout, cmderr;
   local sep = package.config:sub(1,1); -- for figuring out the platform we're on
   if sep == "\\" then
     -- Windows
-    pid = odc.SpawnDetached('cmd.exe /C "echo Hello"');
+    pid_d = odc.SpawnDetached('cmd.exe /C "sleep 60"');
+    pid_a, cmdin, cmdout, cmderr = odc.SpawnAttached('cmd.exe /C "echo Hello"');
   else
     -- POSIX
-    pid = odc.SpawnDetached('/bin/echo','Hello');
+    pid_d = odc.SpawnDetached('/usr/bin/sleep', '60');
+    pid_a, cmdin, cmdout, cmderr = odc.SpawnAttached('/usr/bin/echo','Hello');
   end
-  if pid == nil then
+  if pid_d == nil then
     odc.log.error("Failed to SpawnDetached().");
   else
-    odc.log.info("SpawnDetached() PID: " .. pid);
+    odc.log.info("SpawnDetached() PID: " .. pid_d);
+    running = odc.KillPid(pid_d); --default signal 0 (exit status)
+    if running then
+      odc.KillPid(pid_d,odc.Kill.SIGTERM);
+    end
+  end
+  if cmdout == nil then
+    odc.log.error("Failed to SpawnAttached().");
+    return;
+  else
+    odc.log.info("SpawnAttached() PID: " .. pid_a);
+    exited,status = odc.WaitPid(pid_a,true); --nohang true : non-blocking
+    if not exited then
+      _, status = odc.WaitPid(pid_a); --nohang false : blocks til exit
+    end
+    odc.log.info("PID "..pid_a.." exited with status "..status);
+    --read output
+    local out_str = cmdout:read("*a");
+    odc.log.info("  STDOUT: "..out_str);
   end
 
   odc.log.info("Here's everything under 'odc' for good measure: "..odc.EncodeJSON(odc));

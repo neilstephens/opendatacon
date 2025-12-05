@@ -268,6 +268,14 @@ inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true,
 #endif
 
 /// Process Spawning
+struct spawn_attached_result
+{
+	int pid;
+	FILE* stdin_file;
+	FILE* stdout_file;
+	FILE* stderr_file;
+};
+
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 
 /// args ignored on windows - put it all in the command
@@ -297,6 +305,150 @@ inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::strin
 	return pid;
 }
 
+inline spawn_attached_result spawn_attached(const std::string& cmd, const std::vector<std::string>& args = {})
+{
+	SECURITY_ATTRIBUTES sa;
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = TRUE;
+	sa.lpSecurityDescriptor = NULL;
+
+	// Create pipes for stdin, stdout, stderr
+	HANDLE stdin_read = NULL, stdin_write = NULL;
+	HANDLE stdout_read = NULL, stdout_write = NULL;
+	HANDLE stderr_read = NULL, stderr_write = NULL;
+
+	bool pipe_res = true;
+	pipe_res &= CreatePipe(&stdin_read, &stdin_write, &sa, 0);
+	pipe_res &= CreatePipe(&stdout_read, &stdout_write, &sa, 0);
+	pipe_res &= CreatePipe(&stderr_read, &stderr_write, &sa, 0);
+
+	if(!pipe_res)
+	{
+		throw std::runtime_error("CreatePipe failed.");
+	}
+
+	// Ensure the read/write handles that parent uses are not inherited
+	SetHandleInformation(stdin_write, HANDLE_FLAG_INHERIT, 0);
+	SetHandleInformation(stdout_read, HANDLE_FLAG_INHERIT, 0);
+	SetHandleInformation(stderr_read, HANDLE_FLAG_INHERIT, 0);
+
+	STARTUPINFOA si = { sizeof(si) };
+	si.dwFlags = STARTF_USESTDHANDLES;
+	si.hStdInput = stdin_read;
+	si.hStdOutput = stdout_write;
+	si.hStdError = stderr_write;
+
+	PROCESS_INFORMATION pi;
+
+	std::string commandLine = cmd;
+	for (const auto& arg : args)
+		commandLine += " " + arg;
+	commandLine.push_back('\0');
+
+	BOOL success = CreateProcessA(
+		NULL, commandLine.data(), NULL, NULL, TRUE,
+		0, NULL, NULL, &si, &pi
+		);
+
+	// Close child's ends of pipes in parent
+	CloseHandle(stdin_read);
+	CloseHandle(stdout_write);
+	CloseHandle(stderr_write);
+
+	if (!success)
+	{
+		CloseHandle(stdin_write);
+		CloseHandle(stdout_read);
+		CloseHandle(stderr_read);
+		throw std::runtime_error(std::string("CreateProcess failed: ") + std::to_string(GetLastError()));
+	}
+
+	CloseHandle(pi.hThread);
+
+	// Convert Windows handles to C FILE*
+	int stdin_fd = _open_osfhandle((intptr_t)stdin_write, _O_WRONLY | _O_TEXT);
+	int stdout_fd = _open_osfhandle((intptr_t)stdout_read, _O_RDONLY | _O_TEXT);
+	int stderr_fd = _open_osfhandle((intptr_t)stderr_read, _O_RDONLY | _O_TEXT);
+
+	FILE* stdin_file = _fdopen(stdin_fd, "w");
+	FILE* stdout_file = _fdopen(stdout_fd, "r");
+	FILE* stderr_file = _fdopen(stderr_fd, "r");
+
+	if (!stdin_file || !stdout_file || !stderr_file)
+	{
+		if (stdin_file) fclose(stdin_file);else { _close(stdin_fd); CloseHandle(stdin_write); }
+		if (stdout_file) fclose(stdout_file);else { _close(stdout_fd); CloseHandle(stdout_read); }
+		if (stderr_file) fclose(stderr_file);else { _close(stderr_fd); CloseHandle(stderr_read); }
+		CloseHandle(pi.hProcess);
+		throw std::runtime_error("_fdopen failed");
+	}
+
+	return spawn_attached_result{(int)pi.dwProcessId, stdin_file, stdout_file, stderr_file};
+}
+
+inline std::pair<bool,int> spawn_wait(int pid, bool nohang)
+{
+	HANDLE hProcess = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION, FALSE, pid);
+	if (!hProcess)
+		throw std::runtime_error(std::string("OpenProcess failed: ") + std::to_string(GetLastError()));
+
+	DWORD timeout = nohang ? 0 : INFINITE;
+	DWORD result = WaitForSingleObject(hProcess, timeout);
+
+	if (result == WAIT_FAILED)
+	{
+		CloseHandle(hProcess);
+		throw std::runtime_error(std::string("WaitForSingleObject failed: ") + std::to_string(GetLastError()));
+	}
+
+	if (result == WAIT_TIMEOUT)
+	{
+		CloseHandle(hProcess);
+		return { false, 0 };
+	}
+
+	DWORD exitCode;
+	if (!GetExitCodeProcess(hProcess, &exitCode))
+	{
+		CloseHandle(hProcess);
+		throw std::runtime_error(std::string("GetExitCodeProcess failed: ") + std::to_string(GetLastError()));
+	}
+
+	CloseHandle(hProcess);
+	return { true, (int)exitCode };
+}
+
+inline void spawn_kill(int pid, int sig)
+{
+	DWORD access = (sig == 0) ? PROCESS_QUERY_INFORMATION : (PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION);
+	HANDLE hProcess = OpenProcess(access, FALSE, pid);
+	if (!hProcess)
+		throw std::runtime_error(std::string("OpenProcess failed: ") + std::to_string(GetLastError()));
+
+	if (sig == 0)
+	{
+		// sig 0 just checks if process exists/is running
+		DWORD exitCode;
+		if (GetExitCodeProcess(hProcess, &exitCode))
+		{
+			CloseHandle(hProcess);
+			if (exitCode == STILL_ACTIVE)
+				return; // Process is running
+			throw std::runtime_error("Process " + std::to_string(pid) + " is not running");
+		}
+		CloseHandle(hProcess);
+		throw std::runtime_error(std::string("GetExitCodeProcess failed: ") + std::to_string(GetLastError()));
+	}
+
+	// For non-zero signals, terminate the process
+	if (!TerminateProcess(hProcess, 1))
+	{
+		CloseHandle(hProcess);
+		throw std::runtime_error(std::string("TerminateProcess failed: ") + std::to_string(GetLastError()));
+	}
+
+	CloseHandle(hProcess);
+}
 
 #else
 
@@ -314,8 +466,10 @@ inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::strin
 #define environ (*_NSGetEnviron())
 #endif
 
-inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int except_fd = -1)
+inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int except_fd_fir = -1, int except_fd_fin = -1)
 {
+	if(except_fd_fin < except_fd_fir)
+		except_fd_fin = except_fd_fir;
 	#ifdef __linux__
 	DIR *dir = opendir("/proc/self/fd");
 	if (dir)
@@ -325,7 +479,7 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int e
 		while ((entry = readdir(dir)) != NULL)
 		{
 			int fd = atoi(entry->d_name);
-			if(fd > 2 && fd != except_fd && fd != dir_fd)
+			if(fd > 2 && (fd < except_fd_fir || fd > except_fd_fin) && fd != dir_fd)
 				posix_spawn_file_actions_addclose(&actions, fd);
 		}
 		closedir(dir);
@@ -337,16 +491,31 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int e
 	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 1000000ULL)
 	{
 		for (int fd = 3; fd < (int)rl.rlim_cur; fd++)
-			if(fd != except_fd) posix_spawn_file_actions_addclose(&actions, fd);
+			if(fd < except_fd_fir || fd > except_fd_fin) posix_spawn_file_actions_addclose(&actions, fd);
 	}
 	else
 	{
 		// Last resort: assume 200,000
 		for (int fd = 3; fd < 200000; fd++)
-			if(fd != except_fd) posix_spawn_file_actions_addclose(&actions, fd);
+			if(fd < except_fd_fir || fd > except_fd_fin) posix_spawn_file_actions_addclose(&actions, fd);
 	}
-	// If we missed any, or more were opened in other threads,
-	//   it's OK because they'll be closed in the child anyway
+}
+
+inline void spawn_init(posix_spawnattr_t& attr, posix_spawn_file_actions_t& actions)
+{
+	// Initialize attributes and file actions
+	posix_spawnattr_init(&attr);
+	posix_spawn_file_actions_init(&actions);
+
+	// Set flags: new session, reset signals
+	short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
+	posix_spawnattr_setflags(&attr, flags);
+
+	sigset_t empty, all_signals;
+	sigemptyset(&empty);
+	sigfillset(&all_signals);
+	posix_spawnattr_setsigmask(&attr, &empty);
+	posix_spawnattr_setsigdefault(&attr, &all_signals);
 }
 
 inline int spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
@@ -354,10 +523,7 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	pid_t pid;
 	posix_spawnattr_t attr;
 	posix_spawn_file_actions_t actions;
-
-	// Initialize attributes and file actions
-	posix_spawnattr_init(&attr);
-	posix_spawn_file_actions_init(&actions);
+	spawn_init(attr,actions);
 
 	//open a pipe so the dettached process can report it's pid
 	int pid_pipe_fd[2]; // [0] = read end, [1] = write end
@@ -369,16 +535,6 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	// close all fds except for pid pipe before exec
 	add_actions_close_all_fds(actions, 3);
 
-	// Set flags: new session, reset signals
-	short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
-	posix_spawnattr_setflags(&attr, flags);
-
-	sigset_t empty, all_signals;
-	sigemptyset(&empty);
-	sigfillset(&all_signals);
-	posix_spawnattr_setsigmask(&attr, &empty);
-	posix_spawnattr_setsigdefault(&attr, &all_signals);
-
 	std::vector<char *> argv;
 	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath()));
 	argv.push_back(const_cast<char*>(exe_path.c_str()));
@@ -387,12 +543,6 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	for (const auto &arg : args)
 		argv.push_back(const_cast<char*>(arg.c_str()));
 	argv.push_back(nullptr);
-
-	//temporarily block an existing SIGCHLD handler (not that there is one - but it's canonical)
-	sigset_t old_mask, block_mask;
-	sigemptyset(&block_mask);
-	sigaddset(&block_mask, SIGCHLD);
-	pthread_sigmask(SIG_BLOCK, &block_mask, &old_mask);
 
 	int status = posix_spawn(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
 
@@ -404,13 +554,11 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	if (status != 0)
 	{
 		close(pid_pipe_fd[0]);
-		pthread_sigmask(SIG_SETMASK, &old_mask, NULL);
 		throw std::runtime_error("posix_spawn() failed with return value: "+std::to_string(status));
 	}
 
 	int child_status;
 	waitpid(pid, &child_status, 0);
-	pthread_sigmask(SIG_SETMASK, &old_mask, NULL);
 	if (!WIFEXITED(child_status) || WEXITSTATUS(child_status) != 0)
 	{
 		close(pid_pipe_fd[0]);
@@ -434,6 +582,93 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	return pid;
 }
 
+inline spawn_attached_result spawn_attached(const std::string& cmd, const std::vector<std::string>& args = {})
+{
+	pid_t pid;
+	posix_spawnattr_t attr;
+	posix_spawn_file_actions_t actions;
+	spawn_init(attr,actions);
+
+	// Create pipes for stdin, stdout, stderr
+	int stdin_pipe[2]; // [0] = read, [1] = write
+	int stdout_pipe[2];
+	int stderr_pipe[2];
+
+	if (pipe(stdin_pipe) == -1 || pipe(stdout_pipe) == -1 || pipe(stderr_pipe) == -1)
+		throw std::runtime_error("stdin/out/err pipe() failed");
+
+	// Child reads from stdin_pipe[0], writes to stdout_pipe[1] and stderr_pipe[1]
+	// Parent writes to stdin_pipe[1], reads from stdout_pipe[0] and stderr_pipe[0]
+	posix_spawn_file_actions_adddup2(&actions, stdin_pipe[0], STDIN_FILENO);
+	posix_spawn_file_actions_adddup2(&actions, stdout_pipe[1], STDOUT_FILENO);
+	posix_spawn_file_actions_adddup2(&actions, stderr_pipe[1], STDERR_FILENO);
+	// Close all other fds except stdio
+	add_actions_close_all_fds(actions);
+
+	std::vector<char *> argv;
+	argv.push_back(const_cast<char*>(cmd.c_str()));
+	for (const auto &arg : args)
+		argv.push_back(const_cast<char*>(arg.c_str()));
+	argv.push_back(nullptr);
+
+	int status = posix_spawn(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
+
+	// Post-spawn cleanup
+	posix_spawn_file_actions_destroy(&actions);
+	posix_spawnattr_destroy(&attr);
+	// Close child's ends of pipes in parent
+	close(stdin_pipe[0]);
+	close(stdout_pipe[1]);
+	close(stderr_pipe[1]);
+
+	if (status != 0)
+	{
+		close(stdin_pipe[1]);
+		close(stdout_pipe[0]);
+		close(stderr_pipe[0]);
+		throw std::runtime_error("posix_spawn() failed with return value: " + std::to_string(status));
+	}
+
+	// Convert fds to FILE*
+	FILE* stdin_file = fdopen(stdin_pipe[1], "w");
+	FILE* stdout_file = fdopen(stdout_pipe[0], "r");
+	FILE* stderr_file = fdopen(stderr_pipe[0], "r");
+
+	if (!stdin_file || !stdout_file || !stderr_file)
+	{
+		// Clean up on failure
+		if (stdin_file) fclose(stdin_file);else close(stdin_pipe[1]);
+		if (stdout_file) fclose(stdout_file);else close(stdout_pipe[0]);
+		if (stderr_file) fclose(stderr_file);else close(stderr_pipe[0]);
+		throw std::runtime_error("fdopen() failed");
+	}
+
+	return spawn_attached_result{(int)pid, stdin_file, stdout_file, stderr_file};
+}
+
+inline std::pair<bool,int> spawn_wait(int pid, bool nohang)
+{
+	int status;
+	int options = 0;
+	if (nohang)
+		options |= WNOHANG;
+
+	pid_t result = waitpid(pid, &status, options);
+	if (result == -1)
+		throw std::runtime_error("waitpid() failed for PID " + std::to_string(pid));
+
+	if (result != 0)
+		return { true, status }
+	;
+
+	return { false, 0 };
+}
+
+inline void spawn_kill(int pid, int sig)
+{
+	if (kill(pid, sig) != 0)
+		throw std::runtime_error("kill() failed for PID " + std::to_string(pid) + " with signal " + std::to_string(sig));
+}
 
 #endif
 

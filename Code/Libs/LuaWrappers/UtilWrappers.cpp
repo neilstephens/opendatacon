@@ -175,6 +175,29 @@ Json::Value JSONFromLua(lua_State* const L, int idx, bool asKey)
 	}
 }
 
+// Helper to create a Lua FILE* userdata (like io.open does)
+inline void lua_pushfile(lua_State* L, FILE* fp)
+{
+	if (!fp) { lua_pushnil(L); return; }
+
+	// Allocate userdata of the correct size (luaL_Stream contains FILE* and int closef)
+	luaL_Stream *p = (luaL_Stream*)lua_newuserdata(L, sizeof(luaL_Stream));
+	p->f = fp;
+	p->closef = [](lua_State* const L) -> int
+			{
+				luaL_Stream* p = (luaL_Stream*)lua_touserdata(L, 1);
+				if (p && p->f)
+				{
+					fclose(p->f);
+					p->f = nullptr;
+				}
+				return 0;
+			};
+
+	// set the standard file metatable
+	luaL_setmetatable(L, LUA_FILEHANDLE);
+}
+
 extern "C" void ExportUtilWrappers(lua_State* const L,
 	std::shared_ptr<asio::io_service::strand> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
@@ -514,5 +537,172 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 			return 1;
 		},2);
 	lua_setfield(L,-2,"SpawnDetached");
+
+	//SpawnAttached
+	lua_pushstring(L, Name.c_str());
+	lua_pushstring(L, LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			int idx = 1;
+			if(lua_isstring(L, idx))
+			{
+				std::string cmd = lua_tostring(L, idx++);
+				std::vector<std::string> args;
+				while(lua_isstring(L, idx))
+					args.push_back(lua_tostring(L, idx++));
+				try
+				{
+					auto result = spawn_attached(cmd, args);
+
+					// Push pid
+					lua_pushinteger(L, result.pid);
+
+					// Create Lua file userdata objects from FILE*
+					lua_pushfile(L, result.stdin_file);
+					lua_pushfile(L, result.stdout_file);
+					lua_pushfile(L, result.stderr_file);
+
+					return 4; // pid, stdin, stdout, stderr
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+				err_msg = "No command string provided.";
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: SpawnAttached() called from lua; Exception '{}'.", name, err_msg);
+			lua_pushnil(L);
+			lua_pushnil(L);
+			lua_pushnil(L);
+			lua_pushnil(L);
+			return 4;
+		}, 2);
+	lua_setfield(L, -2, "SpawnAttached");
+
+	// Lua binding for KillPid
+	// KillPid(pid, [signal]) - send signal to process (default: 0 to check if alive)
+	// Returns: true on success, false on fail
+	lua_pushstring(L, Name.c_str());
+	lua_pushstring(L, LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			if(lua_isinteger(L, 1))
+			{
+				int pid = lua_tointeger(L, 1);
+				int sig = 0; // Default: check if process exists
+				if(lua_isinteger(L, 2))
+					sig = lua_tointeger(L, 2);
+				try
+				{
+					spawn_kill(pid, sig);
+					lua_pushboolean(L, 1);
+					return 1;
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+			{
+				err_msg = "First argument must be a PID (integer)";
+			}
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: Kill() called from lua; Error '{}'.", name, err_msg);
+			lua_pushboolean(L, 0);
+			return 1;
+		}, 2);
+	lua_setfield(L, -2, "KillPid");
+
+	//KillSignal
+	lua_newtable(L);
+	struct SigDef { const char* name; int value; };
+	const SigDef sigs[] =
+	{
+		#ifdef SIGSTOP
+		{ "SIGSTOP", SIGSTOP },
+		#endif
+		#ifdef SIGCONT
+		{ "SIGCONT", SIGCONT },
+		#endif
+		#ifdef SIGKILL
+		{ "SIGKILL", SIGKILL },
+		#endif
+		#ifdef SIGQUIT
+		{ "SIGQUIT", SIGQUIT },
+		#endif
+		#ifdef SIGHUP
+		{ "SIGHUP", SIGHUP },
+		#endif
+		{ "SIGINT",  SIGINT  },
+		{ "SIGABRT", SIGABRT },
+		{ "SIGTERM", SIGTERM },
+		{ "SIGEXIT", 0 },
+	};
+
+	for (const auto& s : sigs)
+	{
+		lua_pushstring(L, s.name);
+		lua_pushinteger(L, s.value);
+		lua_settable(L, -3);
+	}
+	lua_setfield(L, -2, "Kill");
+
+	// Lua binding for WaitPid
+	// WaitPid(pid, [nohang]) - wait for process to exit
+	// If nohang is true, returns immediately if child hasn't exited
+	// Returns on success: true, exit_code
+	// Returns if not exited yet (with nohang): false, nil
+	// Returns on error: nil, nil
+	lua_pushstring(L, Name.c_str());
+	lua_pushstring(L, LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			if(lua_isinteger(L, 1))
+			{
+				int pid = lua_tointeger(L, 1);
+				bool nohang = 0; // Default: wait
+				if(lua_isboolean(L, 2))
+					nohang = lua_toboolean(L, 2);
+				try
+				{
+					auto [exited,status] = spawn_wait(pid,nohang);
+					lua_pushboolean(L,exited);
+					if(exited)
+						lua_pushinteger(L,status);
+					else
+						lua_pushnil(L);
+					return 2;
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+			{
+				err_msg = "First argument must be a PID (integer)";
+			}
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: WaitPid() called from lua; Error '{}'.", name, err_msg);
+			lua_pushnil(L);
+			lua_pushstring(L, err_msg.c_str());
+			return 2;
+		}, 2);
+	lua_setfield(L, -2, "WaitPid");
 }
 
