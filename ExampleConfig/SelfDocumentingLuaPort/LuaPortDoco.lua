@@ -146,8 +146,14 @@ function do_example_stuff()
   --, and you can build onto the path with args
   local my_absolute_module_dir = odc.GetPath.ScriptDir("my_modules","?.lua");
   package.path = my_absolute_module_dir .. ";" .. package.path;
-  local my_hello_module = require("hello");
-  my_hello_module.go();
+  
+  -- Use pcall to attempt the 'require' safely
+  local success, my_hello_module = pcall(require, "hello");
+  if success then
+      my_hello_module.go();
+  else
+      odc.log.error("Failed to load module 'hello': " .. my_hello_module);
+  end
   
   -- odc provides a helper for spawning detached processes too
   -- it differs from io.popen() and os.execute() in a few ways:
