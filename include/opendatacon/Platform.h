@@ -489,6 +489,14 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int e
 		return;
 	}
 	#endif
+	#ifdef __APPLE__
+	posix_spawn_file_actions_addinherit_np(&actions,0);
+	posix_spawn_file_actions_addinherit_np(&actions,1);
+	posix_spawn_file_actions_addinherit_np(&actions,2);
+	for (int fd = except_fd_fir; fd <= except_fd_fin; fd++)
+		if(fd > 2) posix_spawn_file_actions_addinherit_np(&actions,fd);
+	return;
+	#endif
 	// Fallback: use getrlimit
 	struct rlimit rl;
 	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 200000)
@@ -512,6 +520,9 @@ inline void spawn_init(posix_spawnattr_t& attr, posix_spawn_file_actions_t& acti
 
 	// Set flags: new session, reset signals
 	short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
+	#ifdef __APPLE__
+	flags |= POSIX_SPAWN_CLOEXEC_DEFAULT;
+	#endif
 	posix_spawnattr_setflags(&attr, flags);
 
 	sigset_t empty, all_signals;
