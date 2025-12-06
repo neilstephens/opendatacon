@@ -231,6 +231,10 @@ jobs:
     - name: Install
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
 
+    - name: Setup tmate session (only runs if LOG_LVL is "debug")
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ env.LOG_LVL == 'debug' }}
+
     - name: ODC_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
