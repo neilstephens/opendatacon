@@ -547,7 +547,7 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		argv.push_back(const_cast<char*>(arg.c_str()));
 	argv.push_back(nullptr);
 
-	int status = posix_spawnp(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
+	int status = posix_spawn(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
 
 	//post-spawn cleanup
 	posix_spawn_file_actions_destroy(&actions);

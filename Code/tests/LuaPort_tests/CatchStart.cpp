@@ -21,6 +21,7 @@
  */
 #define CATCH_CONFIG_RUNNER
 
+#include "../Code/opendatacon/SpawnDetached.cpp"
 #include "Helpers.h"
 #include <opendatacon/util.h>
 #include <catch.hpp>
@@ -29,6 +30,9 @@ spdlog::level::level_enum log_level = spdlog::level::off;
 
 int main( int argc, char* argv[] )
 {
+	if(argc > 2 && strcmp(argv[1],"--spawn_detached")==0)
+		return spawn_detached(argv[2],&argv[2]);
+
 	int new_argc = argc;
 	char** new_argv = argv;
 	if (argc > 1)
