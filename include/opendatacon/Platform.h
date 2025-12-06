@@ -491,7 +491,7 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int e
 	#endif
 	// Fallback: use getrlimit
 	struct rlimit rl;
-	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 1000000ULL)
+	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 200000)
 	{
 		for (int fd = 3; fd < (int)rl.rlim_cur; fd++)
 			if(fd < except_fd_fir || fd > except_fd_fin) posix_spawn_file_actions_addclose(&actions, fd);

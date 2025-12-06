@@ -38,8 +38,9 @@ inline void close_all_fds(int except_fd = -1)
 	}
 
 	//close any inherrited file descriptors
-	#ifdef HAVE_CLOSEHELPERS
-	if (except_fd > 3) close_range(3,except_fd-1,0);
+	#ifdef HAVE_CLOSEFROM
+	for (int fd = 3; fd < except_fd; fd++)
+		close(fd);
 	closefrom((except_fd > 2) ? except_fd+1 : 3);
 	return;
 	#endif
@@ -61,7 +62,7 @@ inline void close_all_fds(int except_fd = -1)
 	#endif
 	// fallback to getrlimit
 	struct rlimit rl;
-	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 1000000ULL)
+	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 200000)
 	{
 		for (int fd = 3; fd < (int)rl.rlim_cur; fd++)
 			if(fd != except_fd) close(fd);
