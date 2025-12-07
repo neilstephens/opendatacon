@@ -469,10 +469,8 @@ inline void spawn_kill(int pid, int sig)
 #define environ (*_NSGetEnviron())
 #endif
 
-inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int except_fd_fir = -1, int except_fd_fin = -1)
+inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions)
 {
-	if(except_fd_fin < except_fd_fir)
-		except_fd_fin = except_fd_fir;
 	#ifdef __linux__
 	DIR *dir = opendir("/proc/self/fd");
 	if (dir)
@@ -482,7 +480,7 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int e
 		while ((entry = readdir(dir)) != NULL)
 		{
 			int fd = atoi(entry->d_name);
-			if(fd > 2 && (fd < except_fd_fir || fd > except_fd_fin) && fd != dir_fd)
+			if(fd > 2 && fd != dir_fd)
 				posix_spawn_file_actions_addclose(&actions, fd);
 		}
 		closedir(dir);
@@ -493,8 +491,6 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int e
 	posix_spawn_file_actions_addinherit_np(&actions,0);
 	posix_spawn_file_actions_addinherit_np(&actions,1);
 	posix_spawn_file_actions_addinherit_np(&actions,2);
-	for (int fd = except_fd_fir; fd <= except_fd_fin; fd++)
-		if(fd > 2) posix_spawn_file_actions_addinherit_np(&actions,fd);
 	return;
 	#endif
 	// Fallback: use getrlimit
@@ -502,13 +498,13 @@ inline void add_actions_close_all_fds(posix_spawn_file_actions_t& actions, int e
 	if (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 200000)
 	{
 		for (int fd = 3; fd < (int)rl.rlim_cur; fd++)
-			if(fd < except_fd_fir || fd > except_fd_fin) posix_spawn_file_actions_addclose(&actions, fd);
+			posix_spawn_file_actions_addclose(&actions, fd);
 	}
 	else
 	{
 		// Last resort: assume 200,000
 		for (int fd = 3; fd < 200000; fd++)
-			if(fd < except_fd_fir || fd > except_fd_fin) posix_spawn_file_actions_addclose(&actions, fd);
+			posix_spawn_file_actions_addclose(&actions, fd);
 	}
 }
 
@@ -540,19 +536,23 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	spawn_init(attr,actions);
 
 	//open a pipe so the dettached process can report it's pid
-	int pid_pipe_fd[2]; // [0] = read end, [1] = write end
-	if (pipe(pid_pipe_fd) == -1)
-		throw std::runtime_error("PID pipe() failed.");
+	int pid_pipe_fd[2], err_pipe_fd[2]; // [0] = read end, [1] = write end
+	if (pipe(pid_pipe_fd) == -1 || pipe(err_pipe_fd) == -1)
+	{
+		close(pid_pipe_fd[0]);close(pid_pipe_fd[1]);
+		close(err_pipe_fd[0]);close(err_pipe_fd[1]);
+		throw std::runtime_error("pipe() failed.");
+	}
 
-	// the child can use the write end on FD 3
-	posix_spawn_file_actions_adddup2(&actions, pid_pipe_fd[1], 3);
-	// close all fds except for pid pipe before exec
-	add_actions_close_all_fds(actions, 3);
+	// spawn_detached writes PID on stdout and errors on stderr
+	posix_spawn_file_actions_adddup2(&actions, pid_pipe_fd[1], STDOUT_FILENO);
+	posix_spawn_file_actions_adddup2(&actions, err_pipe_fd[1], STDERR_FILENO);
+	// close all child fds except for stdio
+	add_actions_close_all_fds(actions);
 
 	std::vector<char *> argv;
-	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath()));
+	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath().dirname())+"/spawn_detached");
 	argv.push_back(const_cast<char*>(exe_path.c_str()));
-	argv.push_back(const_cast<char*>("--spawn_detached"));
 	argv.push_back(const_cast<char*>(cmd.c_str()));
 	for (const auto &arg : args)
 		argv.push_back(const_cast<char*>(arg.c_str()));
@@ -563,11 +563,13 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	//post-spawn cleanup
 	posix_spawn_file_actions_destroy(&actions);
 	posix_spawnattr_destroy(&attr);
-	close(pid_pipe_fd[1]); //don't need write-end of pipe in parent anymore
+	close(pid_pipe_fd[1]); //don't need write-end of pipes in parent anymore
+	close(err_pipe_fd[1]);
 
 	if (status != 0)
 	{
 		close(pid_pipe_fd[0]);
+		close(err_pipe_fd[0]);
 		throw std::runtime_error("posix_spawn(...'"+exe_path.string()+"'...) failed with return value: "+std::to_string(status));
 	}
 
@@ -576,8 +578,14 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 	if (!WIFEXITED(child_status) || WEXITSTATUS(child_status) != 0)
 	{
 		close(pid_pipe_fd[0]);
-		throw std::runtime_error("Intermediate child process failed to spawn detached process.");
+		//read any error message from stderr
+		char err_msg[256] = {'\0'};
+		for(size_t i=0; i<sizeof(err_msg)-1; i++)
+			if(read(err_pipe_fd[0], &err_msg[i], 1) != 1 || err_msg[i]=='\0') break;
+		close(err_pipe_fd[0]);
+		throw std::runtime_error("spawn_detached process failed with message: "+std::string(err_msg));
 	}
+	close(err_pipe_fd[0]);
 
 	char pid_str[33] = {'\0'};
 	for(size_t i=0; i<sizeof(pid_str)-1; i++)

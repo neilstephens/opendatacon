@@ -48,13 +48,9 @@
 #include <cstdio>
 
 LogHelpers Log{"opendatacon"};
-int spawn_detached(const char* cmd, char* argv[]);
 
 int main(int argc, char* argv[])
 {
-	if(argc > 2 && strcmp(argv[1],"--spawn_detached")==0)
-		return spawn_detached(argv[2],&argv[2]);
-
 	int ret_val;
 	std::string pidfile = "";
 
