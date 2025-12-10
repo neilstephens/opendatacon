@@ -103,8 +103,8 @@ private:
 	std::pair<bool,std::shared_ptr<const EventInfo>> UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual, const msSinceEpoch_t ts);
 	template<typename T> void EventT(T meas, uint16_t index);
 	void Event(odc::ConnectState state);
-	inline void EnableStack() override { pOutstation->Enable(); }
-	inline void DisableStack() override { pOutstation->Disable(); }
+	inline void EnableStack(bool watchdog) override { pOutstation->Enable(); }
+	inline void DisableStack(bool watchdog) override { pOutstation->Disable(); }
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);

@@ -92,7 +92,7 @@ public:
 	bool StartupIntegrityClass3;
 	uint32_t LinkUpIntegrityGracePeriodms;
 	/// When will the startup integrity scan be triggered
-	enum class LinkUpIntegrityTrigger_t { NEVER, ON_FIRST, ON_EVERY };
+	enum class LinkUpIntegrityTrigger_t: uint8_t { NEVER=0, ON_FIRST=1, ON_DEMAND=2, ON_EVERY=3 };
 	LinkUpIntegrityTrigger_t LinkUpIntegrityTrigger;
 	/// Which classes should be requested for forced integrity scans
 	opendnp3::ClassField GetForcedIntegrityClassMask();

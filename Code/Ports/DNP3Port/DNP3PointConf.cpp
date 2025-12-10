@@ -296,11 +296,13 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::NEVER;
 		else if(trig_str == "ON_FIRST")
 			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::ON_FIRST;
+		else if(trig_str == "ON_DEMAND")
+			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::ON_DEMAND;
 		else if(trig_str == "ON_EVERY")
 			LinkUpIntegrityTrigger = LinkUpIntegrityTrigger_t::ON_EVERY;
 		else
 		{
-			Log.Error("Invalid LinkUpIntegrityTrigger: {}, should be NEVER, ON_FIRST, or ON_EVERY - defaulting to ON_FIRST", trig_str);
+			Log.Error("Invalid LinkUpIntegrityTrigger: {}, should be NEVER, ON_FIRST, ON_DEMAND, or ON_EVERY - defaulting to ON_FIRST", trig_str);
 		}
 	}
 	/// Which classes should be requested for forced integrity scans
