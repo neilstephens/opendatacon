@@ -176,7 +176,7 @@ Json::Value JSONFromLua(lua_State* const L, int idx, bool asKey)
 }
 
 // Helper to create a Lua FILE* userdata (like io.open does)
-inline void lua_pushfile(lua_State* L, FILE* fp)
+inline void PushFile(lua_State* L, FILE* fp)
 {
 	if (!fp) { lua_pushnil(L); return; }
 
@@ -196,6 +196,53 @@ inline void lua_pushfile(lua_State* L, FILE* fp)
 
 	// set the standard file metatable
 	luaL_setmetatable(L, LUA_FILEHANDLE);
+}
+
+// Helper to repeatedly call a coroutine,
+//  using the return/yield value as number of ms before calling again
+//  the loop stops on a negative return or asio error (cancelled timer)
+inline void CoroutineLoop(lua_State* const L,
+	const std::string& Name,
+	const std::string& LogName,
+	const int LuaCRref,
+	std::shared_ptr<asio::steady_timer> pTimer,
+	std::shared_ptr<asio::io_service::strand> pSyncStrand)
+{
+	//get coroutine from the registry back on stack
+	lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCRref);
+
+	//and call it
+	const int argc = 0; const int retc = 1;
+	auto ret = lua_pcall(L,argc,retc,0);
+	if(ret == LUA_OK)
+	{
+		if(lua_isinteger(L,-1))
+		{
+			auto ms = lua_tointeger(L,-1);
+			lua_pop(L,retc);
+			if(ms >= 0)
+			{
+				pTimer->expires_from_now(std::chrono::milliseconds(ms));
+				pTimer->async_wait(pSyncStrand->wrap([=](asio::error_code err)
+					{
+						if(!err)
+							CoroutineLoop(L,Name,LogName,LuaCRref,pTimer,pSyncStrand);
+					}));
+				return;
+			}
+		}
+		else
+			lua_pop(L,retc);
+	}
+	else
+	{
+		std::string call_err = lua_tostring(L, -1);
+		if(auto log = odc::spdlog_get(LogName))
+			log->error("{}: Error calling lua coroutine: {}",Name,call_err);
+		lua_pop(L,1);
+	}
+	//release the reference to the callback
+	luaL_unref(L, LUA_REGISTRYINDEX, LuaCRref);
 }
 
 extern "C" void ExportUtilWrappers(lua_State* const L,
@@ -444,12 +491,6 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 	lua_pushstring(L,LogName.c_str());
 	lua_pushcclosure(L, ([](lua_State* const L) -> int
 				   {
-					   if(lua_gettop(L) != 2 || !lua_isinteger(L,1) || !lua_isfunction(L,2))
-					   {
-						   lua_pushnil(L);
-						   return 1;
-					   }
-					   auto timer_ms = lua_tointeger(L,1);
 					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
 					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
 					   auto ppTracker = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(2)));
@@ -461,11 +502,18 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					   {
 						   std::string msg("Something is terribly wrong. The Lua sync strand or the handler_tracker has been destroyed, while Lua is executing!");
 						   if(auto log = odc::spdlog_get(logname))
-							   log->error("{}: {}",name);
+							   log->error("{}: {}",name,msg);
 						   throw std::runtime_error(msg);
 					   }
 
-					   //pop callback off the top of the stack - we checked it's there (above)
+					   if(lua_gettop(L) != 2 || !lua_isinteger(L,1) || !lua_isfunction(L,2))
+					   {
+						   if(auto log = odc::spdlog_get(logname))
+							   log->error("{}: msTimerCallback() expects integer(ms) and function as parameters",name);
+						   lua_pushnil(L);
+						   return 1;
+					   }
+					   auto timer_ms = lua_tointeger(L,1);
 					   auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX);
 
 					   std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer();
@@ -486,6 +534,8 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 									   log->error("{}: Error calling timer lua callback: {}",name,call_err);
 								   lua_pop(L,1);
 							   }
+							   //release the reference to the callback
+							   luaL_unref(L, LUA_REGISTRYINDEX, LuaCBref);
 						   }));
 					   //return a cancel function
 					   auto p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
@@ -502,6 +552,61 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					   return 1;
 				   }),4);
 	lua_setfield(L,-2,"msTimerCallback");
+
+	//msCoroutineLoop() to run a coroutine in a timer loop
+	//One weak_ptr user data object, plus two strings, makes 3 upvalues
+	auto pUD = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
+	new(pUD) std::weak_ptr<void>(pSyncStrand);
+	luaL_getmetatable(L, "std_weak_ptr_void");
+	lua_setmetatable(L, -2);
+
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, ([](lua_State* const L) -> int
+				   {
+					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
+					   std::string name(lua_tostring(L, lua_upvalueindex(2)));
+					   std::string logname(lua_tostring(L, lua_upvalueindex(3)));
+
+					   if(!sync)
+					   {
+						   std::string msg("Something is terribly wrong. The Lua sync strand has been destroyed, while Lua is executing!");
+						   if(auto log = odc::spdlog_get(logname))
+							   log->error("{}: {}",name,msg);
+						   throw std::runtime_error(msg);
+					   }
+
+					   if(lua_gettop(L) != 1 || !lua_isfunction(L,1))
+					   {
+						   if(auto log = odc::spdlog_get(logname))
+							   log->error("{}: msCoroutineLoop() expects a single function/coroutine (that returns/yields ms to wait before re-calling/resuming)",name);
+						   lua_pushnil(L);
+						   return 1;
+					   }
+					   auto LuaCRref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+					   std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer();
+					   sync->post([=]()
+						   {
+							   CoroutineLoop(L,name,logname,LuaCRref,pTimer,sync);
+						   });
+
+					   //return a cancel function
+					   auto p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
+					   new(p) std::weak_ptr<void>(pTimer);
+					   luaL_getmetatable(L, "std_weak_ptr_void");
+					   lua_setmetatable(L, -2);
+					   lua_pushcclosure(L, [](lua_State* const L) -> int
+						   {
+							   auto ppTimer = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+							   auto pTimer = std::static_pointer_cast<asio::steady_timer>(ppTimer->lock());
+							   if(pTimer) pTimer->cancel();
+							   return 0;
+						   },1);
+					   return 1;
+				   }),3);
+	lua_setfield(L,-2,"msCoroutineLoop");
 
 	//SpawnDetached
 	lua_pushstring(L,Name.c_str());
@@ -559,9 +664,9 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					lua_pushinteger(L, result.pid);
 
 					// Create Lua file userdata objects from FILE*
-					lua_pushfile(L, result.stdin_file);
-					lua_pushfile(L, result.stdout_file);
-					lua_pushfile(L, result.stderr_file);
+					PushFile(L, result.stdin_file);
+					PushFile(L, result.stdout_file);
+					PushFile(L, result.stderr_file);
 
 					return 4; // pid, stdin, stdout, stderr
 				}
