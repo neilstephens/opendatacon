@@ -586,6 +586,8 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					   }
 					   auto LuaCRref = luaL_ref(L, LUA_REGISTRYINDEX);
 
+					   //TODO: work out if it's cheaper to store the logging names in the Lua registry,
+					   //  instead of repeatedly capturing them in the timer handlers
 					   std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer();
 					   sync->post([=]()
 						   {
@@ -809,5 +811,45 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 			return 2;
 		}, 2);
 	lua_setfield(L, -2, "WaitPid");
+
+	lua_pop(L,1); //pop odc global
+
+	// Now hide some unsafe Lua std lib functions
+
+	//io.popen()
+	lua_getglobal(L,"io");
+	if(lua_istable(L,-1))
+	{
+		lua_pushstring(L,Name.c_str());
+		lua_pushstring(L,LogName.c_str());
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				std::string name(lua_tostring(L, lua_upvalueindex(1)));
+				std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+				if(auto log = odc::spdlog_get(logname))
+					log->error("{}: Standard Lua io.popen() is unsafe for use in opendatacon (not threadsafe). Please use odc.SpawnAttached()+odc.WaitPid() instead.", name);
+				return 0;
+			},2);
+		lua_setfield(L,-2,"popen");
+	}
+	lua_pop(L,1);
+
+	//oe.execute()
+	lua_getglobal(L,"os");
+	if(lua_istable(L,-1))
+	{
+		lua_pushstring(L,Name.c_str());
+		lua_pushstring(L,LogName.c_str());
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				std::string name(lua_tostring(L, lua_upvalueindex(1)));
+				std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+				if(auto log = odc::spdlog_get(logname))
+					log->error("{}: Standard Lua os.execute is unsafe for use in opendatacon (not threadsafe). Please use odc.SpawnAttached()+odc.WaitPid() or odc.SpawnDetached() instead.", name);
+				return 0;
+			},2);
+		lua_setfield(L,-2,"execute");
+	}
+	lua_pop(L,1);
 }
 

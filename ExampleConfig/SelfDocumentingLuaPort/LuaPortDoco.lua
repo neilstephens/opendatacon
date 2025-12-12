@@ -193,6 +193,9 @@ function do_example_stuff()
     local out_str = cmdout:read("*a");
     odc.log.info("  STDOUT: "..out_str);
   end
+  -- using os.execute() or io.popen() is blocked
+  os.execute("echo hello"); --logs an error
+  io.popen("echo hello"); --logs an error
   
   -- odc has a helper for running coroutines
   local cancelCoroutine = odc.msCoroutineLoop(coroutine.wrap
