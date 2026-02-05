@@ -124,8 +124,9 @@ bool extract_delimited_string(std::istream& ist, std::string& extracted)
 	char delim;
 	//The first non-whitespace char is the delimiter
 	ist>>std::ws; //eat whitspace
-	if((delim = ist.peek()) == EOF)
+	if(ist.eof())
 		return false; //nothing to extract - return failed (no delimetered string)
+	delim = ist.peek();
 
 	auto reset_pos = ist.tellg();
 	size_t offset = 1;
@@ -157,8 +158,9 @@ bool extract_delimited_string(const std::string& delims, std::istream& ist, std:
 	char delim;
 	//The first non-whitespace char is the delimiter
 	ist>>std::ws; //eat whitspace
-	if((delim = ist.peek()) == EOF)
+	if(ist.eof())
 		return false; //nothing to extract - return failed
+	delim = ist.peek();
 
 	if(delims.find(delim) == std::string::npos)
 	{

@@ -566,4 +566,65 @@ TEST_CASE(SUITE("Multi Drop"))
 	TestTearDown();
 }
 
-
+TEST_CASE(SUITE("LinkUpIntegrityTrigger"))
+{
+	//TODO:
+	/*
+	 * Tests required for LinkUpIntegrityTrigger setting:
+	 *
+	 *	NEVER:
+	 *		Integrity scan occurs only when required by the standard (inc. reset point quality):
+	 *			- Master database initialisation - that is only when the opendnp3 stack is first created; merely disable/enable does't re-init underlying db.
+	 *				- uses StartupIntegrityClassX mask
+	 *			- IIN flags; when a OS DEVICE_RESTART or EVENT_BUFFER_OVERFLOW is recieved
+	 *				- uses ForcedIntegrityClassX mask
+	 *			- If upstream points have been set bad quality / stale etc (this counts as de-synchronised in terms of the standard)
+	 *
+	 *	ON_FIRST:
+	 *		Integrity scan occurs the first time the link comes up after the port has been disabled:
+	 *			- Uses StartupIntegrityClassX mask.
+	 *			- When port has been disabled/enabled
+	 *			- Not when demand has cycled.
+	 *			- Does NOT include watchdog reset.
+	 *				- stack disable/enable is only instantaneous, and for lack of a more direct channel/TCP reset
+	 *
+	 *	ON_DEMAND:
+	 *		Same as FIRST if the port is PERSISTENT, plus every time the demand cycles if ONDEMAND
+	 *
+	 *	ON_EVERY:
+	 *		Integrity scan occurs every time the link comes up, even if the demand didn't cycle (connection lost).
+	 *			- Uses StartupIntegrityClassX mask.
+	 *
+	 *
+	 *	Tests:
+	 *		build MS/OS pair
+	 *
+	 *		initial connection (unsynchronised: OS and MS both uninitialised)
+	 *			Expect (single) integrity for all cases (NEVER,FIRST,DEMAND_CHANGE,EVERY).
+	 *
+	 *		disable/enable OS (with and without watchdog enabled on master)
+	 *			NEVER: Don't expect integrity
+	 *			ON_FIRST: Don't expect integrity
+	 *			ON_DEMAND: Don't expect integrity
+	 *			ON_EVERY: Expect integrity
+	 *
+	 *		restart OS (IIN DEVICE_RESTART)
+	 *			Expect (single) integrity for all cases (NEVER,FIRST,DEMAND_CHANGE,EVERY).
+	 *
+	 *		disable/enable MS:
+	 *			NEVER: Don't expect integrity
+	 *			ON_FIRST: Expect integrity
+	 *			ON_DEMAND: Expect integrity
+	 *			ON_EVERY: Expect integrity
+	 *
+	 *		cycle MS demand:
+	 *			NEVER: Don't expect integrity
+	 *			ON_FIRST: Don't expect integrity
+	 *			ON_DEMAND: Expect integrity
+	 *			ON_EVERY: Expect integrity
+	 *
+	 *		cycle MS demand (goes stale in meantime):
+	 *			Expect (single) integrity for all cases (NEVER,FIRST,DEMAND_CHANGE,EVERY).
+	 *
+	 */
+}

@@ -38,6 +38,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	last_time_sync(msSinceEpoch()),
 	stack_enabled(false),
 	pStackSyncStrand(pIOS->make_strand()),
+	StackSyncWatchdogMtx(),
 	connection_notification_pending(false)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
@@ -146,12 +147,13 @@ void DNP3Port::NotifyOfDisconnection()
 void DNP3Port::ChannelWatchdogTrigger(bool on)
 {
 	Log.Debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	on ? StackSyncWatchdogMtx.lock() : StackSyncWatchdogMtx.unlock();
 	if(stack_enabled)
 	{
-		if(on)                //don't mark the stack as disabled, because this is just a restart
-			DisableStack(); //it will be enabled again shortly when the trigger is off
-		else
-			EnableStack();
+		if(on)
+			DisableStack(true); //don't mark the stack as disabled, because this is just a restart
+		else                      //it will be enabled again shortly when the trigger is off
+			EnableStack(true);  //watchdog==true so the Disable/Enable stack helpers avoid side-effects
 	}
 }
 
@@ -168,6 +170,7 @@ void DNP3Port::CheckStackState()
 
 			if(!enabled || (pConf->OnDemand && !InDemand()))
 			{
+				std::lock_guard watchdog_guard(StackSyncWatchdogMtx);
 				if(stack_enabled)
 				{
 					stack_enabled = false;
@@ -179,6 +182,7 @@ void DNP3Port::CheckStackState()
 
 			if(enabled && (!pConf->OnDemand || InDemand()))
 			{
+				std::lock_guard watchdog_guard(StackSyncWatchdogMtx);
 				if(!stack_enabled)
 				{
 					EnableStack();

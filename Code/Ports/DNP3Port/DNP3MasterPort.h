@@ -143,13 +143,19 @@ private:
 	inline void DoOverrideControlCode(T& arCommand){}
 	void PortUp();
 	void PortDown();
-	inline void EnableStack() override
+	inline void EnableStack(bool watchdog) override
 	{
+		if(watchdog)
+		{ //just a watchdog action - no side effects
+			pMaster->Enable();
+			return;
+		}
+
 		pChanH->Post([this]()
 			{
 				auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 				if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp &&
-				   pConf->pPointConf->LinkUpIntegrityTrigger != DNP3PointConf::LinkUpIntegrityTrigger_t::NEVER)
+				   pConf->pPointConf->LinkUpIntegrityTrigger >= DNP3PointConf::LinkUpIntegrityTrigger_t::ON_DEMAND)
 				{
 					Log.Debug("{}: Setting IntegrityScanNeeded for EnableStack.",Name);
 					IntegrityScanNeeded = true;
@@ -158,8 +164,14 @@ private:
 		pMaster->Enable();
 		pCommsRideThroughTimer->Resume();
 	}
-	inline void DisableStack() override
+	inline void DisableStack(bool watchdog) override
 	{
+		if(watchdog)
+		{ //just a watchdog action - no side effects
+			pMaster->Disable();
+			return;
+		}
+
 		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		if(enabled && pConf->OnDemand
 		   && pConf->pPointConf->CommsPointRideThroughTimems > 0

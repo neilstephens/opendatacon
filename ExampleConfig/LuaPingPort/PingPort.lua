@@ -51,30 +51,43 @@ end
 
 function DoPing()
   odc.log.debug("DoPing()");
-  local file_handle = io.popen(odc.Config.PingCommand);
-  if(not file_handle) then
+  local ping_pid, _, ping_out, ping_err = odc.SpawnAttached(table.unpack(odc.Config.PingCommand));
+  if(not ping_pid) then
     odc.log.error("Failed to execute ping command");
   else
-    PingWaitCancel = odc.msTimerCallback(odc.Config.PingDurationSecs*1000,function(err_code) if PingRunning then CheckPingResult(file_handle); end end);
+    PingWaitCancel = odc.msTimerCallback(odc.Config.PingDurationSecs*1000,
+      function(err_code)
+        if PingRunning then
+          CheckPingResult(ping_pid, ping_out, ping_err);
+        else
+          odc.log.info("Abort Ping.");
+          odc.KillPid(ping_pid,odc.Kill.SIGTERM);
+          odc.WaitPid(ping_pid);
+        end
+      end);
   end
   TimerCancel = odc.msTimerCallback(odc.Config.PingPeriodSecs*1000,function(err_code)if PingRunning then DoPing() end end);
 end
 
-function CheckPingResult(file_handle)
-  local executed, term, code = file_handle:close();
-  if executed and code == 0 then
-    odc.log.info("CheckPingResult(): Ping successful");
+function CheckPingResult(ping_pid, ping_out, ping_err)
+  local exited, status = odc.WaitPid(ping_pid,true); --nohang true : non-blocking
+  if not exited then
+    odc.KillPid(ping_pid,odc.Kill.SIGINT); --could use TERM, or KILL if system supports it
+    _, status = odc.WaitPid(ping_pid); --blocks til exit
+  end
+  
+  local err_str = ping_err:read("*a");
+  local out_str = ping_out:read("*a");
+  
+  if status == 0 then
+    odc.log.info("CheckPingResult(): Ping successful: "..out_str);
     if not Connected then
       Connected = true;
       local ConnectedEvent = { EventType = odc.EventType.ConnectState, Payload = odc.ConnectState.CONNECTED };
       odc.PublishEvent(ConnectedEvent);
     end
   else
-    if term and code then
-      odc.log.error("CheckPingResult(): Ping command failed. "..term..": "..code);
-    else
-      odc.log.error("CheckPingResult(): Ping command failed.");
-    end
+    odc.log.error("CheckPingResult(): Ping command failed: status "..status..". STDOUT: "..out_str..". STDERR: "..err_str);
     if Connected then
       Connected = false;
       local DisconnectedEvent = { EventType = odc.EventType.ConnectState, Payload = odc.ConnectState.DISCONNECTED };

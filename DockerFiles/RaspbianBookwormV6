@@ -20,7 +20,7 @@ ARG CMAKE_OPTIONS=
 
 RUN mkdir opendatacon-build
 
-RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTIONS \
           -DCMAKE_SYSTEM_VERSION=RaspbianBookworm \
           -DCMAKE_C_FLAGS="-target arm-linux-gnueabihf -march=armv6 -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard" \
           -DCMAKE_CXX_FLAGS="-target arm-linux-gnueabihf -march=armv6 -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard" \

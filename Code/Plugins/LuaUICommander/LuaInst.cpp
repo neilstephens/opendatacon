@@ -96,8 +96,8 @@ LuaInst::LuaInst(const std::string& lua_code,
 	}
 	lua_setglobal(L,"odc");
 
-	ExportWrappersToLua(L,pStrand,handler_tracker,ID,LoggerName);
 	luaL_openlibs(L);
+	ExportWrappersToLua(L,pStrand,handler_tracker,ID,LoggerName);
 
 	//load the lua code
 	auto ret = luaL_dostring(L, lua_code.c_str());

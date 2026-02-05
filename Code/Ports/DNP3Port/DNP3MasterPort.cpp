@@ -81,6 +81,15 @@ void DNP3MasterPort::Enable()
 	   && pConf->pPointConf->CommsPointRideThroughDemandPause)
 		pCommsRideThroughTimer->Pause();
 
+	pChanH->Post([this,pConf]()
+		{
+			if(pConf->pPointConf->LinkUpIntegrityTrigger >= DNP3PointConf::LinkUpIntegrityTrigger_t::ON_FIRST)
+			{
+				Log.Debug("{}: Setting IntegrityScanNeeded for Enable.",Name);
+				IntegrityScanNeeded = true;
+			}
+		});
+
 	CheckStackState();
 
 	PublishEvent(ConnectState::PORT_UP);

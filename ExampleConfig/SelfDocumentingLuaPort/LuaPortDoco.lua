@@ -146,27 +146,70 @@ function do_example_stuff()
   --, and you can build onto the path with args
   local my_absolute_module_dir = odc.GetPath.ScriptDir("my_modules","?.lua");
   package.path = my_absolute_module_dir .. ";" .. package.path;
-  local my_hello_module = require("hello");
-  my_hello_module.go();
   
-  -- odc provides a helper for spawning detached processes too
-  -- it differs from io.popen() and os.execute() in a few ways:
-  --   doesn't block, gives you the spawned PID directly,
-  --   doesn't leak file handles, and doesn't require a shell
-  local pid;
+  -- Use pcall to attempt the 'require' safely
+  local success, my_hello_module = pcall(require, "hello");
+  if success then
+      my_hello_module.go();
+  else
+      odc.log.error("Failed to load module 'hello': " .. my_hello_module);
+  end
+  
+  -- odc provides helpers for spawning processes too
+  -- they differ from io.popen() and os.execute() in a few ways:
+  --   non-blocking, gives you the spawned PID directly,
+  --   doesn't leak file handles, doesn't require a shell
+  --   and most importantly - safe to call from a multi-threaded application
+  local pid_d, pid_a, cmdin, cmdout, cmderr;
   local sep = package.config:sub(1,1); -- for figuring out the platform we're on
   if sep == "\\" then
     -- Windows
-    pid = odc.SpawnDetached('cmd.exe /C "echo Hello"');
+    pid_d = odc.SpawnDetached('cmd.exe /C "sleep 60"');
+    pid_a, cmdin, cmdout, cmderr = odc.SpawnAttached('cmd.exe /C "echo Hello"');
   else
     -- POSIX
-    pid = odc.SpawnDetached('/bin/echo','Hello');
+    pid_d = odc.SpawnDetached('sleep', '60');
+    pid_a, cmdin, cmdout, cmderr = odc.SpawnAttached('echo','Hello');
   end
-  if pid == nil then
+  if pid_d == nil then
     odc.log.error("Failed to SpawnDetached().");
   else
-    odc.log.info("SpawnDetached() PID: " .. pid);
+    odc.log.info("SpawnDetached() PID: " .. pid_d);
+    running = odc.KillPid(pid_d); --default signal 0 (checks if the process is still running)
+    if running then
+      odc.KillPid(pid_d,odc.Kill.SIGTERM);
+    end
   end
+  if cmdout == nil then
+    odc.log.error("Failed to SpawnAttached().");
+  else
+    odc.log.info("SpawnAttached() PID: " .. pid_a);
+    exited,status = odc.WaitPid(pid_a,true); --nohang true : non-blocking
+    if not exited then
+      _, status = odc.WaitPid(pid_a); --nohang false : blocks til exit
+    end
+    odc.log.info("PID "..pid_a.." exited with status "..status);
+    --read output
+    local out_str = cmdout:read("*a");
+    odc.log.info("  STDOUT: "..out_str);
+  end
+  -- using os.execute() or io.popen() is blocked
+  os.execute("echo hello"); --logs an error
+  io.popen("echo hello"); --logs an error
+  
+  -- odc has a helper for running coroutines
+  local cancelCoroutine = odc.msCoroutineLoop(coroutine.wrap
+    (
+      function()
+        -- you can use simple flow control, including loops
+        -- without blocking other execution, by yielding
+        for i=1,5 do
+          odc.log.info("Coroutine loop "..tostring(i));
+          coroutine.yield(100); --execution will resume after 100 ms
+          -- you could even yield for zero ms to resume as soon as possible after any other pending calls 
+        end
+      end
+    ));
 
   odc.log.info("Here's everything under 'odc' for good measure: "..odc.EncodeJSON(odc));
   odc.log.info("...Plus all the default payloads from odc.MakePayload(): "..dump_default_payloads_json());
