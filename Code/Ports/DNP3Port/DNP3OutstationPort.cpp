@@ -530,6 +530,8 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	}
 
 	bool point_exists = pDB->Set(event);
+	auto original_event_type = event->GetEventType();
+	auto original_index = event->GetIndex();
 
 	switch(event->GetEventType())
 	{
@@ -577,7 +579,7 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 	}
 	if(!point_exists)
 	{
-		Log.Warn("{}: {} received for unconfigured index ({})", Name, ToString(event->GetEventType()), event->GetIndex());
+		Log.Warn("{}: {} received for unconfigured index ({})", Name, ToString(original_event_type), original_index);
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 		return;
 	}
