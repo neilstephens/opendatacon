@@ -59,7 +59,8 @@ std::vector<std::string> split(const std::string& s, char delimiter)
 //Implement DataPort interface
 SimPort::SimPort(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	DataPort(Name, File, Overrides),
-	SimCollection(nullptr)
+	SimCollection(nullptr),
+	sys_time_offset(0)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
 	static std::weak_ptr<SimPortCollection> weak_collection;
@@ -429,14 +430,18 @@ bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, con
 	if(db_stat)
 	{
 		auto event = std::make_shared<EventInfo>(type,index,Name);
-		NextEventFromDB(event);
+		if(!NextEventFromDB(event))
+		{
+			Log.Warn("{} : No events from DB query for {} {}.", Name, ToString(type), index);
+			return true;
+		}
 		auto time_offset = InitDBTimestampHandling(event, now);
 
 		msSinceEpoch_t delta;
-		if(now > event->GetTimestamp())
+		if(now > event->GetTimestamp()+time_offset)
 			delta = 0;
 		else
-			delta = event->GetTimestamp() - now;
+			delta = event->GetTimestamp()+time_offset - now;
 		ptimer->expires_from_now(std::chrono::milliseconds(delta));
 		ptimer->async_wait([=](asio::error_code err_code)
 			{
@@ -450,7 +455,7 @@ bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, con
 	return false;
 }
 
-void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
+bool SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 {
 	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
 	auto rv = sqlite3_step(db_stat.get());
@@ -474,19 +479,28 @@ void SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
 			default:
 				break;
 		}
-		return;
+		return true;
 	}
 	else if(rv == SQLITE_DONE)
 	{
 		Log.Debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
+		const auto timestamp_handling = pSimConf->TimestampHandling(event->GetEventType(),event->GetIndex());
+		if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
+		{
+			//loop back to the start
+			Log.Debug("{} : Looping DB query for {} {} back to start.", Name, ToString(event->GetEventType()), event->GetIndex());
+			sqlite3_reset(db_stat.get());
+			auto now = msSinceEpoch()+sys_time_offset;
+			ptimer_t ptimer = pSimConf->Timer(ToString(event->GetEventType())+std::to_string(event->GetIndex()));
+			TryStartEventsFromDB(event->GetEventType(),event->GetIndex(),now,ptimer);
+		}
 	}
 	else
 	{
 		Log.Error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
 	}
-	//no more records or error - wait forever
-	auto forever = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::duration::max()).count();
-	event->SetTimestamp(forever);
+	//no more records or error
+	return false;
 }
 
 int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event, const msSinceEpoch_t now)
@@ -501,34 +515,47 @@ int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event
 		}
 		else if(!!(timestamp_handling & TimestampMode::TOD))
 		{
-			auto whole_days_ts = std::chrono::duration_cast<days>(std::chrono::milliseconds(event->GetTimestamp()));
-			auto whole_days_now = std::chrono::duration_cast<days>(std::chrono::milliseconds(now));
-			time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now).count()
-			              - std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_ts).count();
+			auto epoch_ts = std::chrono::milliseconds(event->GetTimestamp());
+			auto epoch_now = std::chrono::milliseconds(now);
+
+			auto whole_days_ts = std::chrono::duration_cast<days>(epoch_ts);
+			auto whole_days_now = std::chrono::duration_cast<days>(epoch_now);
+
+			time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now - whole_days_ts).count();
 		}
 		else
 		{
 			throw std::runtime_error("Invalid timestamp mode: Not absolute, but not relative either");
 		}
 	}
-	if(!(timestamp_handling & TimestampMode::FASTFORWARD))
+	if(!!(timestamp_handling & TimestampMode::FASTFORWARD))
 	{
 		//Find the first event that's not in the past
 		while(now > (event->GetTimestamp()+time_offset))
-			NextEventFromDB(event);
+		{
+			if(!NextEventFromDB(event))
+			{
+				Log.Warn("{} : TimestampMode::FASTFORWARD exhausted events from DB query for {} {}.", Name, ToString(event->GetEventType()), event->GetIndex());
+				break;
+			}
+		}
 	}
 	return time_offset;
 }
 
-void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
+bool SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
 {
 	//Check if we're configured to load this point from DB
 	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
 	if(db_stat)
 	{
-		NextEventFromDB(event);
+		if(!NextEventFromDB(event))
+		{
+			Log.Warn("{} : No more events from DB query for {} {}.", Name, ToString(event->GetEventType()), event->GetIndex());
+			return false;
+		}
 		event->SetTimestamp(event->GetTimestamp()+time_offset);
-		return;
+		return true;
 	}
 
 	//Otherwise do random
@@ -547,11 +574,12 @@ void SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 	else
 	{
 		Log.Error("{} : Unsupported EventType : '{}'", Name, ToString(event->GetEventType()));
-		return;
+		return false;
 	}
 
 	auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 	event->SetTimestamp(msSinceEpoch()+random_interval+sys_time_offset);
+	return true;
 }
 
 void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTimer, int64_t time_offset)
@@ -564,13 +592,18 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTime
 		PostPublishEvent(event);
 	}
 
-	PopulateNextEvent(next_event, time_offset);
+	if(!PopulateNextEvent(next_event, time_offset))
+		return;
+
 	auto now = msSinceEpoch()+sys_time_offset;
 	msSinceEpoch_t delta;
 	if(now > next_event->GetTimestamp())
 		delta = 0;
 	else
 		delta = next_event->GetTimestamp() - now;
+
+	if(Log.ShouldLog(spdlog::level::trace))
+		Log.Trace("{}: Waiting {} ms to spawn next event for {} {}", Name, delta, ToString(next_event->GetEventType()), next_event->GetIndex());
 	pTimer->expires_from_now(std::chrono::milliseconds(delta));
 	//wait til next time
 	if(enabled)

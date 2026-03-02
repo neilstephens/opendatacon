@@ -71,9 +71,9 @@ private:
 	void PublishBinaryEvents(const std::vector<std::size_t>& indexes, const std::string& payload);
 
 	bool TryStartEventsFromDB(const EventType type, const size_t index, const msSinceEpoch_t now, const ptimer_t ptimer);
-	void NextEventFromDB(const std::shared_ptr<odc::EventInfo>& event);
+	bool NextEventFromDB(const std::shared_ptr<odc::EventInfo>& event);
 	int64_t InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event, const msSinceEpoch_t now);
-	void PopulateNextEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset);
+	bool PopulateNextEvent(const std::shared_ptr<odc::EventInfo>& event, int64_t time_offset);
 	void SpawnEvent(const std::shared_ptr<odc::EventInfo>& event, ptimer_t pTimer, int64_t time_offset = 0);
 	inline void RandomiseAnalog(std::shared_ptr<odc::EventInfo> event)
 	{
