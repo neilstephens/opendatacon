@@ -1,4 +1,24 @@
-# opendatacon version 1.10.3
+# opendatacon version 1.10.4
+
+## 1.10.4
+  * LuaPort new process spawning API
+    * `odc.SpawnDetached()` - launch a process without blocking, returns PID directly, no shell required, no file handle leaks
+    * `odc.SpawnAttached()`, `odc.WaitPid()`, `odc.KillPid()` - for managing attached child processes
+    * `odc.msCoroutineLoop()` helper function;
+    * Blocked `os.exec()` and `io.popen()` for thread safety (use the new Spawn API instead)
+  * DNP3 quality handling improvements
+    * DNP3OutstationPort: new method to update quality, creating a new event with proper timestamp for the underlying point
+    * Even initialisation events now carry proper timestamps
+    * DNP3Master was not storing updated quality timestamps - fixed
+    * DNP3OutstationPort was crashing on quality updates for unknown indexes - fixed
+    * Tests for quality event handling (including timestamps)
+  * DNP3MasterPort: fixed watchdog integrity scan trigger
+  * New `LinkUpIntegrityTrigger` setting value "ON_DEMAND" to differentiate from "ON_FIRST" for connections triggered from a demand cycle
+  * SimPort: fixed SQLite3 event loading bug; more logging; support for looping of records
+  * Build/CI improvements
+    * Updated Debian CI builds to Trixie (latest stable)
+    * Added native arm64 and Raspberry Pi armv6l build targets
+    * Fixed Windows and MacOS builds
 
 ## 1.10.3
   * More DNP3Port timesync functionality
