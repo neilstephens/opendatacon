@@ -40,7 +40,8 @@ constexpr size_t num_indexes = 1024; //needs a multiple of 4 for the Analog Outp
 constexpr size_t test_timeout_ms = 10000;
 
 constexpr size_t comms_idx = num_indexes;
-const Json::UInt comms_ride_time_ms(500);
+constexpr size_t comms_ride_time_ms = 500;
+constexpr size_t demand_stale_time = 1000;
 
 constexpr const char* AnaOutTypes[] = {"AnalogOutputInt16", "AnalogOutputInt32", "AnalogOutputFloat32", "AnalogOutputDouble64"};
 
@@ -83,6 +84,7 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	conf["CommsPoint"]["FailValue"] = false;
 	conf["CommsPoint"]["RideThroughTimems"] = Json::UInt(comms_ride_time_ms);
 	conf["CommsPoint"]["RideThroughDemandPause"] = RideThroughDemandPause;
+	conf["CommsPoint"]["StaleTimems"] = Json::UInt(demand_stale_time);
 
 	//make an outstation port
 	conf["ServerType"] = OutstationServerType;
@@ -549,6 +551,20 @@ bool WaitForCommsPoint(std::shared_ptr<DataPort> pPort, bool val, size_t timeout
 	return ((odc::msSinceEpoch() - start_time) < timeout);
 }
 
+bool WaitForQualityFlags(std::shared_ptr<DataPort> pPort, odc::EventType ET, size_t idx, odc::QualityFlags qual, size_t timeout = test_timeout_ms)
+{
+	auto pIOS = odc::asio_service::Get();
+	auto start_time = odc::msSinceEpoch();
+	while((odc::msSinceEpoch() - start_time) < timeout)
+	{
+		auto event = pPort->pEventDB()->Get(ET, idx);
+		if((event->GetQuality() & qual) == qual)
+			break;
+		pIOS->poll_one();
+	}
+	return ((odc::msSinceEpoch() - start_time) < timeout);
+}
+
 TEST_CASE(SUITE("CommsPoint RideThrough"))
 {
 	TestSetup();
@@ -612,6 +628,139 @@ TEST_CASE(SUITE("CommsPoint RideThrough Pause"))
 		//turn things off
 		OPUT->Disable();
 		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("CommsPoint RideThrough Pause Stale"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports up and going
+		auto [OPUT, MPUT] = MakePorts(portlib,"ONDEMAND","ONDEMAND");
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+
+		//Load up an event in the OS
+		auto event = std::make_shared<EventInfo>(odc::EventType::Analog,42);
+		event->SetPayload<odc::EventType::Analog>(42.0);
+		OPUT->Event(event,"",std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}));
+
+		//Trigger on-demand enablement of the port DNP3 stacks
+		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+		CHECK(WaitForCommsPoint(MPUT,true));
+
+		//Wait for online point
+		CHECK(WaitForQualityFlags(MPUT,odc::EventType::Analog, 42, odc::QualityFlags::ONLINE));
+
+		//Get the MS to drop the connection and make sure the comms point doesn't go off (ride-through paused)
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::DISCONNECTED);
+		auto timer_start = msSinceEpoch();
+		CHECK(WaitForLink(MPUT,"Port enabled - link up (unreset)","Port enabled - link down"));
+		CHECK_FALSE(WaitForCommsPoint(MPUT,false,comms_ride_time_ms*1.2));
+		//should still be online
+		CHECK(WaitForQualityFlags(MPUT,odc::EventType::Analog, 42, odc::QualityFlags::ONLINE, 100));
+
+		//Wait for stale (RESTART quality) - The timestamp should have updated when it went stale
+		CHECK(WaitForQualityFlags(MPUT,odc::EventType::Analog, 42, odc::QualityFlags::RESTART));
+		auto stale_event = MPUT->pEventDB()->Get(odc::EventType::Analog, 42);
+		CHECK(stale_event->GetTimestamp()>timer_start);
+		CHECK(stale_event->GetTimestamp()-timer_start > 0.95*demand_stale_time);
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("Initial Point Timestamps"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports
+		auto [OPUT, MPUT] = MakePorts(portlib,"ONDEMAND","ONDEMAND");
+		auto now = msSinceEpoch();
+		ThreadPool thread_pool(1); //TODO: Use more threads
+
+		//Check the initial point db entries
+		auto init_event = MPUT->pEventDB()->Get(odc::EventType::Analog, 42);
+		CHECK(init_event->GetQuality() == odc::QualityFlags::RESTART);
+		CHECK(init_event->GetTimestamp() >= now-1000);
+		CHECK(init_event->GetTimestamp() <= now);
+
+		//Only enable the master
+		MPUT->Enable();
+		//Trigger on-demand enablement of the port DNP3 stack
+		SendEvent<odc::EventType::ConnectState>(MPUT, 0, ConnectState::CONNECTED);
+
+		//It has nothing to connect to, so wait for COMM_LOST after ride-through
+		CHECK(WaitForQualityFlags(MPUT,odc::EventType::Analog, 42, odc::QualityFlags::COMM_LOST));
+		auto comm_lost_event = MPUT->pEventDB()->Get(odc::EventType::Analog, 42);
+		//The timestamp should have updated when it went comm lost
+		CHECK_FALSE(comm_lost_event->GetTimestamp() == init_event->GetTimestamp());
+		CHECK(comm_lost_event->GetTimestamp() > init_event->GetTimestamp());
+		CHECK((comm_lost_event->GetTimestamp() - init_event->GetTimestamp()) > comms_ride_time_ms*0.9);
+
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("Quality Changes"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports
+		auto [OPUT, MPUT] = MakePorts(portlib,"ONDEMAND","ONDEMAND");
+		auto now = msSinceEpoch();
+		ThreadPool thread_pool(1); //TODO: Use more threads
+
+		//Check the initial point db entries
+		auto init_event = OPUT->pEventDB()->Get(odc::EventType::Analog, 42);
+		CHECK(init_event->GetQuality() == odc::QualityFlags::RESTART);
+		CHECK(init_event->GetTimestamp() >= now-1000);
+		CHECK(init_event->GetTimestamp() <= now);
+
+		//Only enable the outstation
+		OPUT->Enable();
+
+		//Leave disconnected, and feed it a quality change event
+		auto qchange_event = std::make_shared<odc::EventInfo>(odc::EventType::AnalogQuality,42,"");
+		qchange_event->SetPayload<odc::EventType::AnalogQuality>(init_event->GetQuality()|odc::QualityFlags::OVERRANGE);
+		OPUT->Event(qchange_event,"",std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}));
+
+		//Check to make sure the underlying point quality and timestamp got updated
+		auto latest_event = OPUT->pEventDB()->Get(odc::EventType::Analog, 42);
+		CHECK(latest_event->GetTimestamp() == qchange_event->GetTimestamp());
+		CHECK((latest_event->GetQuality()&odc::QualityFlags::OVERRANGE) == odc::QualityFlags::OVERRANGE);
+
+		//Send an ONLINE quality change, even though the point is still uninitialised
+		auto qonline_event = std::make_shared<odc::EventInfo>(odc::EventType::AnalogQuality,42,"");
+		qonline_event->SetPayload<odc::EventType::AnalogQuality>(odc::QualityFlags::ONLINE);
+		qonline_event->SetTimestamp(msSinceEpoch()+10);
+		OPUT->Event(qonline_event,"",std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}));
+
+		//Check that the quality change didn't apply - it also caused an error to be logged
+		latest_event = OPUT->pEventDB()->Get(odc::EventType::Analog, 42);
+		CHECK_FALSE(latest_event->GetQuality() == odc::QualityFlags::ONLINE);
+		CHECK_FALSE(latest_event->GetTimestamp() == qonline_event->GetTimestamp());
+
+		OPUT->Disable();
 	}
 	//Unload the library
 	UnLoadModule(portlib);

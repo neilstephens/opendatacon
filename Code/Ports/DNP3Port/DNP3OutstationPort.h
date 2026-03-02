@@ -100,12 +100,11 @@ private:
 	std::shared_ptr<DNP3OutstationPortCollection> PeerCollection;
 	void LinkStatusListener(opendnp3::LinkStatus status);
 
-	bool UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual);
+	std::pair<bool,std::shared_ptr<const EventInfo>> UpdateQuality(const EventType event_type, const uint16_t index, const QualityFlags qual, const msSinceEpoch_t ts);
 	template<typename T> void EventT(T meas, uint16_t index);
-	template<typename T> void EventT(T qual, uint16_t index, opendnp3::FlagsType FT);
 	void Event(odc::ConnectState state);
-	inline void EnableStack() override { pOutstation->Enable(); }
-	inline void DisableStack() override { pOutstation->Disable(); }
+	inline void EnableStack(bool watchdog) override { pOutstation->Enable(); }
+	inline void DisableStack(bool watchdog) override { pOutstation->Disable(); }
 
 	template<typename T> opendnp3::CommandStatus SupportsT(T& arCommand, uint16_t aIndex);
 	template<typename T> opendnp3::CommandStatus PerformT(T& arCommand, uint16_t aIndex);
@@ -116,7 +115,5 @@ private:
 	void ClearIINFlags(const std::string& flags) const;
 	void AdjustTimeOffsetMilliSeconds(const int64_t ms_offset, const bool pass_through, const bool pass_through_action = false, msSinceEpoch_t abs = 0);
 };
-
-template<> void DNP3OutstationPort::EventT<opendnp3::OctetString>(opendnp3::OctetString meas, uint16_t index);
 
 #endif /* DNP3SERVERPORT_H_ */

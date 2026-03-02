@@ -81,10 +81,10 @@ void LuaPort::Build()
 	}
 	lua_setglobal(LuaState,"odc");
 
+	luaL_openlibs(LuaState);
 	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaPort");
 	ExportLuaPublishEvent();
 	ExportLuaInDemand();
-	luaL_openlibs(LuaState);
 
 	//load the lua code
 	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());

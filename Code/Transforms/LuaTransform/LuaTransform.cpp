@@ -43,8 +43,8 @@ LuaTransform::LuaTransform(const std::string& Name, const Json::Value& params): 
 	}
 	lua_setglobal(LuaState,"odc");
 
-	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaTransform");
 	luaL_openlibs(LuaState);
+	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaTransform");
 
 	//load the lua code
 	auto ret = luaL_dofile(LuaState, params["LuaFile"].asCString());

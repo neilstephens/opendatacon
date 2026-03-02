@@ -27,6 +27,7 @@
 #include <Lua/CLua.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
+#include <opendatacon/Platform.h>
 #include <json/json.h>
 
 //Convert JSON to a Lua table on the Lua stack
@@ -172,6 +173,76 @@ Json::Value JSONFromLua(lua_State* const L, int idx, bool asKey)
 		default:
 			return "LUA_UNKNOWN_TYPE";
 	}
+}
+
+// Helper to create a Lua FILE* userdata (like io.open does)
+inline void PushFile(lua_State* L, FILE* fp)
+{
+	if (!fp) { lua_pushnil(L); return; }
+
+	// Allocate userdata of the correct size (luaL_Stream contains FILE* and int closef)
+	luaL_Stream *p = (luaL_Stream*)lua_newuserdata(L, sizeof(luaL_Stream));
+	p->f = fp;
+	p->closef = [](lua_State* const L) -> int
+			{
+				luaL_Stream* p = (luaL_Stream*)lua_touserdata(L, 1);
+				if (p && p->f)
+				{
+					fclose(p->f);
+					p->f = nullptr;
+				}
+				return 0;
+			};
+
+	// set the standard file metatable
+	luaL_setmetatable(L, LUA_FILEHANDLE);
+}
+
+// Helper to repeatedly call a coroutine,
+//  using the return/yield value as number of ms before calling again
+//  the loop stops on a negative return or asio error (cancelled timer)
+inline void CoroutineLoop(lua_State* const L,
+	const std::string& Name,
+	const std::string& LogName,
+	const int LuaCRref,
+	std::shared_ptr<asio::steady_timer> pTimer,
+	std::shared_ptr<asio::io_service::strand> pSyncStrand)
+{
+	//get coroutine from the registry back on stack
+	lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCRref);
+
+	//and call it
+	const int argc = 0; const int retc = 1;
+	auto ret = lua_pcall(L,argc,retc,0);
+	if(ret == LUA_OK)
+	{
+		if(lua_isinteger(L,-1))
+		{
+			auto ms = lua_tointeger(L,-1);
+			lua_pop(L,retc);
+			if(ms >= 0)
+			{
+				pTimer->expires_from_now(std::chrono::milliseconds(ms));
+				pTimer->async_wait(pSyncStrand->wrap([=](asio::error_code err)
+					{
+						if(!err)
+							CoroutineLoop(L,Name,LogName,LuaCRref,pTimer,pSyncStrand);
+					}));
+				return;
+			}
+		}
+		else
+			lua_pop(L,retc);
+	}
+	else
+	{
+		std::string call_err = lua_tostring(L, -1);
+		if(auto log = odc::spdlog_get(LogName))
+			log->error("{}: Error calling lua coroutine: {}",Name,call_err);
+		lua_pop(L,1);
+	}
+	//release the reference to the callback
+	luaL_unref(L, LUA_REGISTRYINDEX, LuaCRref);
 }
 
 extern "C" void ExportUtilWrappers(lua_State* const L,
@@ -420,12 +491,6 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 	lua_pushstring(L,LogName.c_str());
 	lua_pushcclosure(L, ([](lua_State* const L) -> int
 				   {
-					   if(lua_gettop(L) != 2 || !lua_isinteger(L,1) || !lua_isfunction(L,2))
-					   {
-						   lua_pushnil(L);
-						   return 1;
-					   }
-					   auto timer_ms = lua_tointeger(L,1);
 					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
 					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
 					   auto ppTracker = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(2)));
@@ -437,11 +502,18 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					   {
 						   std::string msg("Something is terribly wrong. The Lua sync strand or the handler_tracker has been destroyed, while Lua is executing!");
 						   if(auto log = odc::spdlog_get(logname))
-							   log->error("{}: {}",name);
+							   log->error("{}: {}",name,msg);
 						   throw std::runtime_error(msg);
 					   }
 
-					   //pop callback off the top of the stack - we checked it's there (above)
+					   if(lua_gettop(L) != 2 || !lua_isinteger(L,1) || !lua_isfunction(L,2))
+					   {
+						   if(auto log = odc::spdlog_get(logname))
+							   log->error("{}: msTimerCallback() expects integer(ms) and function as parameters",name);
+						   lua_pushnil(L);
+						   return 1;
+					   }
+					   auto timer_ms = lua_tointeger(L,1);
 					   auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX);
 
 					   std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer();
@@ -462,6 +534,8 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 									   log->error("{}: Error calling timer lua callback: {}",name,call_err);
 								   lua_pop(L,1);
 							   }
+							   //release the reference to the callback
+							   luaL_unref(L, LUA_REGISTRYINDEX, LuaCBref);
 						   }));
 					   //return a cancel function
 					   auto p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
@@ -478,5 +552,304 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					   return 1;
 				   }),4);
 	lua_setfield(L,-2,"msTimerCallback");
+
+	//msCoroutineLoop() to run a coroutine in a timer loop
+	//One weak_ptr user data object, plus two strings, makes 3 upvalues
+	auto pUD = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
+	new(pUD) std::weak_ptr<void>(pSyncStrand);
+	luaL_getmetatable(L, "std_weak_ptr_void");
+	lua_setmetatable(L, -2);
+
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, ([](lua_State* const L) -> int
+				   {
+					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
+					   std::string name(lua_tostring(L, lua_upvalueindex(2)));
+					   std::string logname(lua_tostring(L, lua_upvalueindex(3)));
+
+					   if(!sync)
+					   {
+						   std::string msg("Something is terribly wrong. The Lua sync strand has been destroyed, while Lua is executing!");
+						   if(auto log = odc::spdlog_get(logname))
+							   log->error("{}: {}",name,msg);
+						   throw std::runtime_error(msg);
+					   }
+
+					   if(lua_gettop(L) != 1 || !lua_isfunction(L,1))
+					   {
+						   if(auto log = odc::spdlog_get(logname))
+							   log->error("{}: msCoroutineLoop() expects a single function/coroutine (that returns/yields ms to wait before re-calling/resuming)",name);
+						   lua_pushnil(L);
+						   return 1;
+					   }
+					   auto LuaCRref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+					   //TODO: work out if it's cheaper to store the logging names in the Lua registry,
+					   //  instead of repeatedly capturing them in the timer handlers
+					   std::shared_ptr<asio::steady_timer> pTimer = odc::asio_service::Get()->make_steady_timer();
+					   sync->post([=]()
+						   {
+							   CoroutineLoop(L,name,logname,LuaCRref,pTimer,sync);
+						   });
+
+					   //return a cancel function
+					   auto p = lua_newuserdatauv(L,sizeof(std::weak_ptr<void>),0);
+					   new(p) std::weak_ptr<void>(pTimer);
+					   luaL_getmetatable(L, "std_weak_ptr_void");
+					   lua_setmetatable(L, -2);
+					   lua_pushcclosure(L, [](lua_State* const L) -> int
+						   {
+							   auto ppTimer = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
+							   auto pTimer = std::static_pointer_cast<asio::steady_timer>(ppTimer->lock());
+							   if(pTimer) pTimer->cancel();
+							   return 0;
+						   },1);
+					   return 1;
+				   }),3);
+	lua_setfield(L,-2,"msCoroutineLoop");
+
+	//SpawnDetached
+	lua_pushstring(L,Name.c_str());
+	lua_pushstring(L,LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			int idx = 1;
+			if(lua_isstring(L,idx))
+			{
+				std::string cmd = lua_tostring(L,idx++);
+				std::vector<std::string> args;
+				while(lua_isstring(L,idx))
+					args.push_back(lua_tostring(L,idx++));
+				try
+				{
+					lua_pushinteger(L,spawn_detached(cmd,args));
+					return 1;
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+				err_msg = "No command string provided.";
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: SpawnDetached() called from lua; Exception '{}'.",name,err_msg);
+			lua_pushnil(L);
+			return 1;
+		},2);
+	lua_setfield(L,-2,"SpawnDetached");
+
+	//SpawnAttached
+	lua_pushstring(L, Name.c_str());
+	lua_pushstring(L, LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			int idx = 1;
+			if(lua_isstring(L, idx))
+			{
+				std::string cmd = lua_tostring(L, idx++);
+				std::vector<std::string> args;
+				while(lua_isstring(L, idx))
+					args.push_back(lua_tostring(L, idx++));
+				try
+				{
+					auto result = spawn_attached(cmd, args);
+
+					// Push pid
+					lua_pushinteger(L, result.pid);
+
+					// Create Lua file userdata objects from FILE*
+					PushFile(L, result.stdin_file);
+					PushFile(L, result.stdout_file);
+					PushFile(L, result.stderr_file);
+
+					return 4; // pid, stdin, stdout, stderr
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+				err_msg = "No command string provided.";
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: SpawnAttached() called from lua; Exception '{}'.", name, err_msg);
+			lua_pushnil(L);
+			lua_pushnil(L);
+			lua_pushnil(L);
+			lua_pushnil(L);
+			return 4;
+		}, 2);
+	lua_setfield(L, -2, "SpawnAttached");
+
+	// Lua binding for KillPid
+	// KillPid(pid, [signal]) - send signal to process (default: 0 to check if alive)
+	// Returns: true on success, false on fail
+	lua_pushstring(L, Name.c_str());
+	lua_pushstring(L, LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			if(lua_isinteger(L, 1))
+			{
+				int pid = lua_tointeger(L, 1);
+				int sig = 0; // Default: check if process exists
+				if(lua_isinteger(L, 2))
+					sig = lua_tointeger(L, 2);
+				try
+				{
+					spawn_kill(pid, sig);
+					lua_pushboolean(L, 1);
+					return 1;
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+			{
+				err_msg = "First argument must be a PID (integer)";
+			}
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: Kill() called from lua; Error '{}'.", name, err_msg);
+			lua_pushboolean(L, 0);
+			return 1;
+		}, 2);
+	lua_setfield(L, -2, "KillPid");
+
+	//KillSignal
+	lua_newtable(L);
+	struct SigDef { const char* name; int value; };
+	const SigDef sigs[] =
+	{
+		#ifdef SIGSTOP
+		{ "SIGSTOP", SIGSTOP },
+		#endif
+		#ifdef SIGCONT
+		{ "SIGCONT", SIGCONT },
+		#endif
+		#ifdef SIGKILL
+		{ "SIGKILL", SIGKILL },
+		#endif
+		#ifdef SIGQUIT
+		{ "SIGQUIT", SIGQUIT },
+		#endif
+		#ifdef SIGHUP
+		{ "SIGHUP", SIGHUP },
+		#endif
+		{ "SIGINT",  SIGINT  },
+		{ "SIGABRT", SIGABRT },
+		{ "SIGTERM", SIGTERM },
+		{ "SIGEXIT", 0 },
+	};
+
+	for (const auto& s : sigs)
+	{
+		lua_pushstring(L, s.name);
+		lua_pushinteger(L, s.value);
+		lua_settable(L, -3);
+	}
+	lua_setfield(L, -2, "Kill");
+
+	// Lua binding for WaitPid
+	// WaitPid(pid, [nohang]) - wait for process to exit
+	// If nohang is true, returns immediately if child hasn't exited
+	// Returns on success: true, exit_code
+	// Returns if not exited yet (with nohang): false, nil
+	// Returns on error: nil, nil
+	lua_pushstring(L, Name.c_str());
+	lua_pushstring(L, LogName.c_str());
+	lua_pushcclosure(L, [](lua_State* const L) -> int
+		{
+			std::string err_msg;
+			if(lua_isinteger(L, 1))
+			{
+				int pid = lua_tointeger(L, 1);
+				bool nohang = 0; // Default: wait
+				if(lua_isboolean(L, 2))
+					nohang = lua_toboolean(L, 2);
+				try
+				{
+					auto [exited,status] = spawn_wait(pid,nohang);
+					lua_pushboolean(L,exited);
+					if(exited)
+						lua_pushinteger(L,status);
+					else
+						lua_pushnil(L);
+					return 2;
+				}
+				catch(const std::exception& e)
+				{
+					err_msg = e.what();
+				}
+			}
+			else
+			{
+				err_msg = "First argument must be a PID (integer)";
+			}
+
+			std::string name(lua_tostring(L, lua_upvalueindex(1)));
+			std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+			if(auto log = odc::spdlog_get(logname))
+				log->error("{}: WaitPid() called from lua; Error '{}'.", name, err_msg);
+			lua_pushnil(L);
+			lua_pushstring(L, err_msg.c_str());
+			return 2;
+		}, 2);
+	lua_setfield(L, -2, "WaitPid");
+
+	lua_pop(L,1); //pop odc global
+
+	// Now hide some unsafe Lua std lib functions
+
+	//io.popen()
+	lua_getglobal(L,"io");
+	if(lua_istable(L,-1))
+	{
+		lua_pushstring(L,Name.c_str());
+		lua_pushstring(L,LogName.c_str());
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				std::string name(lua_tostring(L, lua_upvalueindex(1)));
+				std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+				if(auto log = odc::spdlog_get(logname))
+					log->error("{}: Standard Lua io.popen() is unsafe for use in opendatacon (not threadsafe). Please use odc.SpawnAttached()+odc.WaitPid() instead.", name);
+				return 0;
+			},2);
+		lua_setfield(L,-2,"popen");
+	}
+	lua_pop(L,1);
+
+	//oe.execute()
+	lua_getglobal(L,"os");
+	if(lua_istable(L,-1))
+	{
+		lua_pushstring(L,Name.c_str());
+		lua_pushstring(L,LogName.c_str());
+		lua_pushcclosure(L, [](lua_State* const L) -> int
+			{
+				std::string name(lua_tostring(L, lua_upvalueindex(1)));
+				std::string logname(lua_tostring(L, lua_upvalueindex(2)));
+				if(auto log = odc::spdlog_get(logname))
+					log->error("{}: Standard Lua os.execute is unsafe for use in opendatacon (not threadsafe). Please use odc.SpawnAttached()+odc.WaitPid() or odc.SpawnDetached() instead.", name);
+				return 0;
+			},2);
+		lua_setfield(L,-2,"execute");
+	}
+	lua_pop(L,1);
 }
 

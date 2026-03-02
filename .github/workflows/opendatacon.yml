@@ -10,6 +10,9 @@ on:
     branches:
       - '**'
 
+env:
+  LOG_LVL: ${{ secrets.ACTIONS_STEP_DEBUG == 'true' && 'debug' || 'error' }}
+
 jobs:
   opendatacon-dockerfile-builds:
     name: ${{matrix.name}}
@@ -19,70 +22,98 @@ jobs:
       
       matrix:
         include:
-          - name: Debian 12 Bookworm Release
-            run-os: ubuntu-latest
-            docker-file: Debian12Bookworm
+          - name: Trixie amd64 Release
+            docker-file: Debian13Trixie
+            host-runner: ubuntu-latest
             build-type: Release
             docker-args:
+            build-on: all
             
-          - name: Debian 12 Bookworm Debug
-            run-os: ubuntu-latest
-            docker-file: Debian12Bookworm
+          - name: Trixie amd64 Debug
+            docker-file: Debian13Trixie
+            host-runner: ubuntu-latest
             build-type: Debug
             docker-args:
+            build-on: all
             
-          - name: Debian 12 Bookworm 32bit Release
-            run-os: ubuntu-latest
-            docker-file: Debian12Bookworm
+          - name: Trixie i386 Release
+            docker-file: Debian13Trixie
+            host-runner: ubuntu-latest
             build-type: Release
-            docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            docker-args: --platform linux/i386 --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            build-on: all
             
-          - name: Debian 12 Bookworm 32bit Debug
-            run-os: ubuntu-latest
-            docker-file: Debian12Bookworm
+          - name: Trixie i386 Debug
+            docker-file: Debian13Trixie
+            host-runner: ubuntu-latest
             build-type: Debug
-            docker-args: --build-arg DOCKER_ARCH='i386/' --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            docker-args: --platform linux/i386 --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
+            build-on: all
           
-          - name: Oracle Enterprise Linux 7 Release
-            run-os: ubuntu-latest
-            docker-file: OEL7
+          - name: RaspbianBookworm armhf Release
+            docker-file: RaspbianBookwormV6
+            host-runner: ubuntu-24.04-arm
+            build-type: Release
+            docker-args: --platform linux/arm/v6 --build-arg CMAKE_OPTIONS='-DARCH_DESC=armhf'
+            build-on: all
+            
+          - name: RaspbianBookworm armhf Debug
+            docker-file: RaspbianBookwormV6
+            host-runner: ubuntu-24.04-arm
+            build-type: Debug
+            docker-args: --platform linux/arm/v6 --build-arg CMAKE_OPTIONS='-DARCH_DESC=armhf'
+            build-on: all
+            
+          - name: Trixie arm64 Release
+            docker-file: Debian13Trixie
+            host-runner: ubuntu-24.04-arm
             build-type: Release
             docker-args:
+            build-on: all
             
-          - name: Oracle Enterprise Linux 7 Debug
-            run-os: ubuntu-latest
-            docker-file: OEL7
+          - name: Trixie arm64 Debug
+            docker-file: Debian13Trixie
+            host-runner: ubuntu-24.04-arm
             build-type: Debug
             docker-args:
+            build-on: all
             
           - name: Redhat Enterprise Linux 9 Release
-            run-os: ubuntu-latest
             docker-file: RHEL9
+            host-runner: ubuntu-latest
             build-type: Release
             docker-args:
+            build-on: all
             
           - name: Redhat Enterprise Linux 9 Debug
-            run-os: ubuntu-latest
             docker-file: RHEL9
+            host-runner: ubuntu-latest
             build-type: Debug
             docker-args:
-            
-    runs-on: ${{ matrix.run-os }}
+            build-on: all
+    
+    runs-on: ${{ matrix.host-runner }}
     
     steps:
     
     - uses: actions/checkout@v4
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       with:
         fetch-depth: 0
+    
     - run: git fetch --force --tags
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
     
     - name: Upload release text
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
       
     - name: Run Setup Commands
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       run: ${{ matrix.setup-cmds }}
       
     - name: Dockerfile Build
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       run: |
         docker build \
         --build-arg BUILD_TYPE=${{ matrix.build-type }} \
@@ -92,6 +123,7 @@ jobs:
         -t opendatacon-builder -f DockerFiles/${{ matrix.docker-file }} .
         
     - name: Upload Installer
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.name }} Installer
@@ -102,6 +134,7 @@ jobs:
           tag_annotation.txt
           
     - name: Upload Logs
+      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.run-os }} Logs
@@ -173,6 +206,7 @@ jobs:
           New-Item C:\libmodbus -ItemType Directory
           Move-Item .\libmodbus C:\libmodbus\libmodbus
         }
+        choco install nsis -y
         echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
 
     - if: contains(matrix.os,'macos')
@@ -190,6 +224,10 @@ jobs:
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 8
+
+    - name: Setup tmate session (if LOG_LVL is "debug")
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ env.LOG_LVL == 'debug' }}
 
     - name: Package
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target package
@@ -260,6 +298,9 @@ jobs:
           path: installers
           pattern: '*Installer'
           merge-multiple: true
+      
+      - name: Create Debug Installers Archive
+        run: zip -r opendatacon-debug-installers.zip **/opendatacon-*Debug.sh **/opendatacon-*Debug.exe
           
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -267,8 +308,9 @@ jobs:
           draft: false
           body_path: installers/tag_annotation.txt
           files: |
-            **/opendatacon-*.*.*-*-*-*-*-*.sh
-            **/opendatacon-*.*.*-*-*-*-*-*.exe
+            **/opendatacon-*.*.*-*-*-*-*-Release.sh
+            **/opendatacon-*.*.*-*-*-*-*-Release.exe
+            opendatacon-debug-installers.zip
           fail_on_unmatched_files: false
           token: ${{ secrets.GITHUB_TOKEN }}
 

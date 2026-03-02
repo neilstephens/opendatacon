@@ -81,6 +81,15 @@ void DNP3MasterPort::Enable()
 	   && pConf->pPointConf->CommsPointRideThroughDemandPause)
 		pCommsRideThroughTimer->Pause();
 
+	pChanH->Post([this,pConf]()
+		{
+			if(pConf->pPointConf->LinkUpIntegrityTrigger >= DNP3PointConf::LinkUpIntegrityTrigger_t::ON_FIRST)
+			{
+				Log.Debug("{}: Setting IntegrityScanNeeded for Enable.",Name);
+				IntegrityScanNeeded = true;
+			}
+		});
+
 	CheckStackState();
 
 	PublishEvent(ConnectState::PORT_UP);
@@ -251,6 +260,7 @@ void DNP3MasterPort::SetPointQuality(const std::vector<uint16_t>& indexes, const
 		//update the EventDB event with the quality as well
 		auto new_event = std::make_shared<EventInfo>(*last_event);
 		new_event->SetQuality(std::move(new_qual));
+		new_event->SetTimestamp(event->GetTimestamp());
 		pDB->Set(new_event);
 	}
 }

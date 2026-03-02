@@ -48,7 +48,7 @@ void KafkaProducerPort::Build()
 		for(const auto& [tid, pte] : *pConf->pPointMap)
 		{
 			const auto& [source,index,ev_type] = tid;
-			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART,0));
+			init_events[source].emplace_back(std::make_shared<const EventInfo>(ev_type,index,"",QualityFlags::RESTART));
 
 			//Log a message for each PTM entry for verification purposes
 			if(Log.ShouldLog(spdlog::level::trace))
@@ -229,6 +229,9 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 				break;
 		}
 		auto prev_event = pDB_it->second->Swap(ultimate_event);
+		//TODO: provide more options for de-duplication. For example,
+		//	the current logic compares timestamp, so an otherwise identical payload/quality isn't a duplicate
+		//	if timestamp is the only exception, maybe overload the spaceship operator...
 		if(pConf->DeduplicateEvents && prev_event && *ultimate_event == *prev_event)
 		{
 			(*pStatusCallback)(odc::CommandStatus::SUCCESS);

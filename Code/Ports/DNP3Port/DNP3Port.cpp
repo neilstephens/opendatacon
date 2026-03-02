@@ -38,6 +38,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	last_time_sync(msSinceEpoch()),
 	stack_enabled(false),
 	pStackSyncStrand(pIOS->make_strand()),
+	StackSyncWatchdogMtx(),
 	connection_notification_pending(false)
 {
 	static std::atomic_flag init_flag = ATOMIC_FLAG_INIT;
@@ -86,27 +87,27 @@ void DNP3Port::InitEventDB()
 		pConf->pPointConf->BinaryOutputStatusIndexes.size());
 
 	for(auto index : pConf->pPointConf->AnalogIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->BinaryIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->OctetStringIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::OctetString,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::OctetString,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->ControlIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART));
 	for (auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
 		// Need to work out which type of event we should be queuing - using the information from the configuration
 		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
-		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART, 0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART));
 	}
 	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputStatus,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputStatus,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->BinaryOutputStatusIndexes)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::BinaryOutputStatus,index,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::BinaryOutputStatus,index,"",QualityFlags::RESTART));
 	if (pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE))
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART,0));
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,pConf->pPointConf->mCommsPoint.second,"",QualityFlags::RESTART));
 
-	init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ConnectState,0,"",QualityFlags::RESTART,0));
+	init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ConnectState,0,"",QualityFlags::RESTART));
 
 	pDB = std::make_unique<EventDB>(init_events);
 }
@@ -146,12 +147,13 @@ void DNP3Port::NotifyOfDisconnection()
 void DNP3Port::ChannelWatchdogTrigger(bool on)
 {
 	Log.Debug("{}: ChannelWatchdogTrigger({}) called.", Name, on);
+	on ? StackSyncWatchdogMtx.lock() : StackSyncWatchdogMtx.unlock();
 	if(stack_enabled)
 	{
-		if(on)                //don't mark the stack as disabled, because this is just a restart
-			DisableStack(); //it will be enabled again shortly when the trigger is off
-		else
-			EnableStack();
+		if(on)
+			DisableStack(true); //don't mark the stack as disabled, because this is just a restart
+		else                      //it will be enabled again shortly when the trigger is off
+			EnableStack(true);  //watchdog==true so the Disable/Enable stack helpers avoid side-effects
 	}
 }
 
@@ -168,6 +170,7 @@ void DNP3Port::CheckStackState()
 
 			if(!enabled || (pConf->OnDemand && !InDemand()))
 			{
+				std::lock_guard watchdog_guard(StackSyncWatchdogMtx);
 				if(stack_enabled)
 				{
 					stack_enabled = false;
@@ -179,6 +182,7 @@ void DNP3Port::CheckStackState()
 
 			if(enabled && (!pConf->OnDemand || InDemand()))
 			{
+				std::lock_guard watchdog_guard(StackSyncWatchdogMtx);
 				if(!stack_enabled)
 				{
 					EnableStack();

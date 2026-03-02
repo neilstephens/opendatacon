@@ -71,14 +71,15 @@ protected:
 	virtual void ExtendCurrentState(Json::Value& state) const {}
 	virtual void LinkDeadnessChange(LinkDeadness from, LinkDeadness to) = 0;
 	virtual TCPClientServer ClientOrServer() = 0;
-	virtual void EnableStack() = 0;
-	virtual void DisableStack() = 0;
+	virtual void EnableStack(bool watchdog = false) = 0;
+	virtual void DisableStack(bool watchdog = false) = 0;
 
 private:
 	void ChannelWatchdogTrigger(bool on);
 	std::shared_ptr<opendnp3::DNP3Manager> IOMgr;
 	std::atomic_bool stack_enabled;
 	std::unique_ptr<asio::io_service::strand> pStackSyncStrand;
+	std::mutex StackSyncWatchdogMtx;
 	bool connection_notification_pending;
 };
 
