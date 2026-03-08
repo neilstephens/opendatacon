@@ -653,12 +653,18 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			{
 				Log.Debug("{}: Executing analog control to index: {}", Name, index);
 
-				// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command, for example
-				// We need to convert the event to the correct type
+				// The master station may be configured to send a fixed type of analog command
 				auto new_event_type = pConf->pPointConf->AnalogControlTypes[index];
+
+				// Pass through as the same type if override isn't valid/configured
+				if(new_event_type < EventType::AnalogOutputInt16 || new_event_type > EventType::AnalogOutputDouble64)
+					new_event_type = event->GetEventType();
+
 				try
 				{
+					// Convert to the new type if required
 					auto newevent = ConvertEvent(event, new_event_type);
+
 					switch(new_event_type)
 					{
 						case EventType::AnalogOutputInt16:

@@ -96,9 +96,10 @@ void DNP3Port::InitEventDB()
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART));
 	for (auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
-		// Need to work out which type of event we should be queuing - using the information from the configuration
+		// If analog controls have a fixed/expected type we can store events, otherwise don't bother
 		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
-		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART));
+		if(evttype >= EventType::AnalogOutputInt16 && evttype <= EventType::AnalogOutputDouble64)
+			init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART));
 	}
 	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputStatus,index,"",QualityFlags::RESTART));
@@ -273,11 +274,14 @@ const Json::Value DNP3Port::GetCurrentState() const
 	}
 	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
-		// Get the dnp3 type for the point, then get the ODC event type, then create an event of that type
+		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
+		state["Index"] = Json::UInt(index);
+
+		// Analog controls may not be stored due to dynamic types
 		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
 		auto event = pDB->Get(evttype, index);
-		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
-		state["Index"] = Json::UInt(event->GetIndex());
+		if(!event)
+			continue;
 		try
 		{
 			state["Value"] = event->GetPayloadString();

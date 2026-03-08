@@ -118,7 +118,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
 	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
 	// Default Analog Control Type
-	AnalogControlType(odc::EventType::AnalogOutputInt32),
+	AnalogControlType(odc::EventType::BeforeRange),
 	// Timestamp Override Alternatives
 	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
@@ -438,8 +438,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		AnalogControlType = odc::EventTypeFromString(JSONRoot["AnalogControlType"].asString());
 		if(AnalogControlType < odc::EventType::AnalogOutputInt16 || AnalogControlType > odc::EventType::AnalogOutputDouble64)
 		{
-			Log.Error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to AnalogOutputInt32", JSONRoot["AnalogControlType"].asString());
-			AnalogControlType = odc::EventType::AnalogOutputInt32;
+			Log.Error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to pass-through", JSONRoot["AnalogControlType"].asString());
+			AnalogControlType = odc::EventType::BeforeRange;
 		}
 	}
 
@@ -769,7 +769,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					AnalogControlTypes[index] = odc::EventTypeFromString(AnalogControls[n]["Type"].asString());
 					if(AnalogControlTypes[index] < odc::EventType::AnalogOutputInt16 || AnalogControlTypes[index] > odc::EventType::AnalogOutputDouble64)
 					{
-						Log.Error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port default {}", AnalogControls[n]["Type"].asString(),ToString(AnalogControlType));
+						Log.Error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port setting", AnalogControls[n]["Type"].asString());
 						AnalogControlTypes[index] = AnalogControlType;
 					}
 				}
