@@ -31,6 +31,7 @@
 
 JSONPointConf::JSONPointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),
+	AnalogControlType(odc::EventType::AnalogOutputDouble64),
 	pJOT(nullptr)
 {
 	ProcessFile();
@@ -51,6 +52,15 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 		return;
 
 	this->TimestampPath = JSONRoot["TimestampPath"];
+
+	if (JSONRoot.isMember("AnalogControlType"))
+	{
+		auto et = odc::EventTypeFromString(JSONRoot["AnalogControlType"].asString());
+		if(et < odc::EventType::AnalogOutputInt16 || et > odc::EventType::AnalogOutputDouble64)
+			Log.Error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting", JSONRoot["AnalogControlType"].asString());
+		else
+			AnalogControlType = et;
+	}
 
 	auto ind_marker = JSONRoot["TemplateIndex"].isString() ? JSONRoot["TemplateIndex"].asString() : "<INDEX>";
 	auto val_marker = JSONRoot["TemplateValue"].isString() ? JSONRoot["TemplateValue"].asString() : "<VALUE>";

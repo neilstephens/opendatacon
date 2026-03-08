@@ -26,10 +26,11 @@
 
 #include "JSONPort.h"
 #include "Log.h"
+#include <opendatacon/IOTypes.h>
+#include <opendatacon/EventConversion.h>
+#include <opendatacon/util.h>
 #include <chrono>
 #include <memory>
-#include <opendatacon/IOTypes.h>
-#include <opendatacon/util.h>
 
 using namespace odc;
 
@@ -141,7 +142,7 @@ void JSONPort::Build()
 	for(const auto& point : pConf->pPointConf->Controls)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,point.first,"",QualityFlags::RESTART));
 	for(const auto& point : pConf->pPointConf->AnalogControls)
-		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputDouble64,point.first,"",QualityFlags::RESTART));
+		init_events.emplace_back(std::make_shared<const EventInfo>(pConf->pPointConf->AnalogControlType,point.first,"",QualityFlags::RESTART));
 
 	pDB = std::make_unique<EventDB>(init_events);
 }
@@ -521,19 +522,19 @@ void JSONPort::ProcessBraced(const std::string& braced)
 			// Now decode the val JSON string to get the index and value and process that
 			if (!val.isNull())
 			{
-				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
-				AO16 analogpayload;
+				auto event = std::make_shared<EventInfo>(EventType::AnalogOutputDouble64, point_pair.first, Name, QualityFlags::ONLINE, timestamp);
+				AOD analogpayload;
 				analogpayload.second = CommandStatus::SUCCESS;
 
 				Log.Debug("JSON AnalogControl Command - {}", val.asString());
 
 				if (val.isNumeric())
-					analogpayload.first = val.asUInt();
+					analogpayload.first = val.asDouble();
 				else if (val.isString())
 				{
 					try
 					{
-						analogpayload.first = std::stoul(val.asString());
+						analogpayload.first = std::stod(val.asString());
 					}
 					catch (std::exception&)
 					{
@@ -545,7 +546,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					Log.Error("Error decoding AnalogControl value for index {}", point_pair.first);
 					return;
 				}
-				event->SetPayload<EventType::AnalogOutputInt16>(std::move(analogpayload));
+				event->SetPayload<EventType::AnalogOutputDouble64>(std::move(analogpayload));
 
 				auto pStatusCallback =
 					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
@@ -569,8 +570,18 @@ void JSONPort::ProcessBraced(const std::string& braced)
 							pWriter->write(result, &oss); oss << std::endl;
 							pSockMan->Write(oss.str());
 						});
-				pDB->Set(event);
-				PublishEvent(event, pStatusCallback);
+
+				try
+				{
+					// Convert to the configured type if required
+					auto newevent = ConvertEvent(event, pConf->pPointConf->AnalogControlType);
+					pDB->Set(newevent);
+					PublishEvent(newevent, pStatusCallback);
+				}
+				catch(const std::exception& e)
+				{
+					Log.Error("{}: Error converting event for analog control: {}", Name, e.what());
+				}
 			}
 		}
 	}
@@ -582,6 +593,9 @@ void JSONPort::ProcessBraced(const std::string& braced)
 
 inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, const std::string& SenderName) const
 {
+	if(!event)
+		return Json::Value::nullSingleton();
+
 	auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
 
 	auto i = event->GetIndex();
@@ -638,7 +652,7 @@ inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, cons
 			          : Json::Value::nullSingleton());
 			break;
 		}
-		case EventType::ControlRelayOutputBlock:
+		default:
 		{
 			std::string v = "";
 			try
@@ -653,8 +667,6 @@ inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, cons
 			          : Json::Value::nullSingleton());
 			break;
 		}
-		default:
-			return Json::Value::nullSingleton();
 	}
 	return output;
 }
@@ -666,6 +678,22 @@ void JSONPort::Event(std::shared_ptr<const EventInfo> event, const std::string& 
 		(*pStatusCallback)(CommandStatus::UNDEFINED);
 		return;
 	}
+
+	auto evttype = event->GetEventType();
+	//convert the type of analog controls
+	if(evttype >= EventType::AnalogOutputInt16 && evttype <= EventType::AnalogOutputDouble64)
+	{
+		auto pConf = static_cast<JSONPortConf*>(this->pConf.get());
+		try
+		{
+			event = ConvertEvent(event, pConf->pPointConf->AnalogControlType);
+		}
+		catch(const std::exception& e)
+		{
+			Log.Error("{}: Error converting event for analog control: {}", Name, e.what());
+		}
+	}
+
 	pDB->Set(event);
 
 	auto output = ToJSON(event,SenderName);
@@ -713,7 +741,7 @@ const Json::Value JSONPort::GetCurrentState() const
 	for(const auto& point : pConf->pPointConf->Controls)
 		ret[time_str]["Controls"].append(ToJSON(pDB->Get(EventType::ControlRelayOutputBlock,point.first)));
 	for(const auto& point : pConf->pPointConf->AnalogControls)
-		ret[time_str]["AnalogControls"].append(ToJSON(pDB->Get(EventType::AnalogOutputDouble64,point.first)));
+		ret[time_str]["AnalogControls"].append(ToJSON(pDB->Get(pConf->pPointConf->AnalogControlType,point.first)));
 
 	return ret;
 }
