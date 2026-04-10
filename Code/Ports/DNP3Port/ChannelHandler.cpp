@@ -109,10 +109,11 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 		if(pConf->mAddrConf.Transport == IPTransport::UDP)
 		{
 			local_interface = pConf->mAddrConf.BindIP.empty() ? "0.0.0.0" : pConf->mAddrConf.BindIP;
-			local_port = (pConf->mAddrConf.UDPListenPort == 0) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
+			local_port = (pConf->mAddrConf.SymmetricUDP) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
 			remote_host = pConf->mAddrConf.IP;
 			remote_port = pConf->mAddrConf.Port;
-			ChannelID = std::to_string(local_port)+":"+local_interface+":"+remote_host+":"+std::to_string(remote_port);
+			std::string id_prefex = local_port == 0 ? pPort->Name : std::to_string(local_port);
+			ChannelID = id_prefex+":"+local_interface+":"+remote_host+":"+std::to_string(remote_port);
 		}
 		else
 		{
