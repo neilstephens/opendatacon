@@ -67,6 +67,21 @@ inline std::pair<bool,std::string> ApplySinkFormat(const spdlog::sink_ptr& sink,
 	return {true,""};
 }
 
+// Parse an optional UTC/LOCAL time-zone token from a stream.
+// Returns true for UTC, false for LOCAL/absent (default = local time).
+// Leaves the stream position unchanged if the next token is neither UTC nor LOCAL.
+inline bool extract_UTC_LOCAL(std::stringstream& ss)
+{
+	std::string utc_local;
+	auto pos = ss.tellg();
+	if(ss >> utc_local)
+	{
+		if(utc_local == "UTC") return true;
+		if(utc_local != "LOCAL") ss.seekg(pos); // unknown token — put it back for the next consumer
+	}
+	return false;
+}
+
 /*
    Whenever needed we will ask for all the Sinks present,
    I don't like this personally, but due to the limitations with spdlogs,
@@ -206,7 +221,7 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 	interface->AddCommand("set_logformat",[this] (std::stringstream& ss) -> Json::Value
 		{
 			return this->SetLogFormat(ss);
-		},"Set the spdlog pattern formatter string for a log sink. Usage: set_logformat <sinkname> <pattern>");
+		},"Set the spdlog pattern formatter string for a log sink. Usage: set_logformat <sinkname> <pattern> [UTC|LOCAL]");
 	interface->AddCommand("whitelist_logfilter",[this] (std::stringstream& ss) -> Json::Value
 		{
 			return this->SetLogFilter(ss,true);
@@ -346,13 +361,14 @@ Json::Value DataConcentrator::SetLogFormat(std::stringstream& ss)
 		}
 		else
 		{
-			auto [success,err_str] = ApplySinkFormat(LogSinks[sinkname], fmt);
+			bool use_utc = extract_UTC_LOCAL(ss);
+			auto [success,err_str] = ApplySinkFormat(LogSinks[sinkname], fmt, use_utc);
 			result = success ? IUIResponder::GenerateResult("Success") : IUIResponder::GenerateResult(err_str);
 		}
 	}
 	else
 	{
-		result = IUIResponder::GenerateResult("Usage: set_logformat <sinkname> <pattern>");
+		result = IUIResponder::GenerateResult("Usage: set_logformat <sinkname> <pattern> [UTC|LOCAL]");
 		ListLogSinks(result);
 	}
 	return result;
@@ -528,7 +544,8 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 					std::string fmt;
 					if(extract_delimited_string("'`/",ss,fmt))
 					{
-						auto [success,err_str] = ApplySinkFormat(syslog_sink, fmt);
+						bool use_utc = extract_UTC_LOCAL(ss);
+						auto [success,err_str] = ApplySinkFormat(syslog_sink, fmt, use_utc);
 						if(!success)
 							return IUIResponder::GenerateResult(err_str);
 					}
@@ -537,7 +554,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 				}
 				else
 				{
-					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> SYSLOG <host> [ <port> [ <localhost> [ <appname> [ <category> [ <format_pattern> ]]]]]");
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> SYSLOG <host> [ <port> [ <localhost> [ <appname> [ <category> [ <format_pattern> [ UTC|LOCAL ]]]]]]");
 				}
 			}
 			else if(sinktype == "TCP")
@@ -558,7 +575,8 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 						std::string fmt;
 						if(extract_delimited_string("'`/",ss,fmt))
 						{
-							auto [success,err_str] = ApplySinkFormat(tcp, fmt);
+							bool use_utc = extract_UTC_LOCAL(ss);
+							auto [success,err_str] = ApplySinkFormat(tcp, fmt, use_utc);
 							if(!success)
 								return IUIResponder::GenerateResult(err_str);
 						}
@@ -568,7 +586,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 				}
 				else
 				{
-					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> TCP <host> <port> <CLIENT|SERVER> [ <format_pattern> ]");
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> TCP <host> <port> <CLIENT|SERVER> [ <format_pattern> [ UTC|LOCAL ]]");
 				}
 			}
 			else if(sinktype == "FILE")
@@ -592,7 +610,8 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 					std::string fmt;
 					if(extract_delimited_string("'`/",ss,fmt))
 					{
-						auto [success,err_str] = ApplySinkFormat(file_sink, fmt);
+						bool use_utc = extract_UTC_LOCAL(ss);
+						auto [success,err_str] = ApplySinkFormat(file_sink, fmt, use_utc);
 						if(!success)
 							return IUIResponder::GenerateResult(err_str);
 					}
@@ -601,7 +620,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 				}
 				else
 				{
-					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> FILE <base_filename> [ <filesize_kb:default=5*1024> [ <num_files_to_rotate:default=2> [ <format_pattern> ]]]");
+					return IUIResponder::GenerateResult("Usage: add_logsink <sinkname> <level> FILE <base_filename> [ <filesize_kb:default=5*1024> [ <num_files_to_rotate:default=2> [ <format_pattern> [ UTC|LOCAL ]]]]");
 				}
 			}
 			else if(sinktype == "LUA")
@@ -703,6 +722,8 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	auto console_level_name = JSONRoot.isMember("ConsoleLevel") ? JSONRoot["ConsoleLevel"].asString() : "err";
 	auto log_format = JSONRoot.isMember("LogFormat") ? JSONRoot["LogFormat"].asString() : "";
 	auto console_format = JSONRoot.isMember("ConsoleFormat") ? JSONRoot["ConsoleFormat"].asString() : "";
+	auto log_utc = JSONRoot.isMember("LogUTC") ? JSONRoot["LogUTC"].asBool() : false;
+	auto console_utc = JSONRoot.isMember("ConsoleUTC") ? JSONRoot["ConsoleUTC"].asBool() : false;
 
 	//these return level::off if no match
 	auto log_level = spdlog::level::from_str(log_level_name);
@@ -729,10 +750,10 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	file->set_level(log_level);
 	console->set_level(console_level);
 
-	auto [success,err_str] = ApplySinkFormat(file, log_format);
+	auto [success,err_str] = ApplySinkFormat(file, log_format, log_utc);
 	if(!success)
 		saved_errors.push_back("LogFormat: "+err_str);
-	auto [s,e] = ApplySinkFormat(console, console_format);
+	auto [s,e] = ApplySinkFormat(console, console_format, console_utc);
 	if(!s)
 		saved_errors.push_back("ConsoleFormat: "+e);
 
@@ -769,6 +790,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 			auto category = SyslogJSON.isMember("MsgCategory") ? SyslogJSON["MsgCategory"].asString() : "-";
 			auto syslog_level_name = SyslogJSON.isMember("LogLevel") ? SyslogJSON["LogLevel"].asString() : "";
 			auto syslog_format = SyslogJSON.isMember("Format") ? SyslogJSON["Format"].asString() : "";
+			auto syslog_utc = SyslogJSON.isMember("UTC") ? SyslogJSON["UTC"].asBool() : false;
 
 			auto syslog_level = spdlog::level::from_str(syslog_level_name);
 			//check for no match and set defaults
@@ -778,7 +800,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 			auto syslog_sink = std::make_shared<filter_syslog_sink>(
 				*pIOS,host,port,1,local_host,app,category);
 			syslog_sink->set_level(syslog_level);
-			auto [success,err_str] = ApplySinkFormat(syslog_sink, syslog_format);
+			auto [success,err_str] = ApplySinkFormat(syslog_sink, syslog_format, syslog_utc);
 			if(!success)
 				temp_logger->error("SyslogLog Format: {}",err_str);
 			LogSinks["syslog"] = syslog_sink;
@@ -822,6 +844,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 	//TODO: document these config options
 	std::string tcp_level_name = "";
 	std::string tcp_format = "";
+	bool tcp_utc = false;
 	if(JSONRoot.isMember("TCPLog"))
 	{
 		const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
@@ -845,6 +868,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 			pTCPostreams["tcp"] = std::make_unique<std::ostream>(&TCPbufs["tcp"]);
 			tcp_level_name = TCPLogJSON.isMember("LogLevel") ? TCPLogJSON["LogLevel"].asString() : "";
 			tcp_format = TCPLogJSON.isMember("Format") ? TCPLogJSON["Format"].asString() : "";
+			tcp_utc = TCPLogJSON.isMember("UTC") ? TCPLogJSON["UTC"].asBool() : false;
 		}
 	}
 
@@ -857,7 +881,7 @@ std::pair<spdlog::level::level_enum,spdlog::level::level_enum> DataConcentrator:
 
 		auto tcp = std::make_shared<filter_tcp_sink>(*pTCPostreams["tcp"], true);
 		tcp->set_level(tcp_level);
-		auto [success,err_str] = ApplySinkFormat(tcp, tcp_format);
+		auto [success,err_str] = ApplySinkFormat(tcp, tcp_format, tcp_utc);
 		if(!success)
 		{
 			const std::vector<spdlog::sink_ptr> sink_vec = GetAllSinks(LogSinks);
