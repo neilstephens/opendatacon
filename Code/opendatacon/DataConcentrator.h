@@ -100,6 +100,7 @@ private:
 	inline void ListLogSinks(Json::Value& out);
 	inline void ListLogLevels(Json::Value& out);
 	Json::Value SetLogLevel(std::stringstream& ss);
+	Json::Value SetLogFormat(std::stringstream& ss);
 	Json::Value SetLogFilter(std::stringstream& ss, bool isWhite);
 	Json::Value RemoveLogFilter(std::stringstream& ss);
 	Json::Value ListLogFilters();
