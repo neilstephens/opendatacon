@@ -50,14 +50,15 @@ using filter_syslog_sink = odc::filter_spdlog_sink_mt<odc::asio_syslog_spdlog_si
 using filter_tcp_sink = odc::filter_spdlog_sink_mt<spdlog::sinks::ostream_sink_mt>;
 
 // Apply an spdlog pattern formatter to a sink. No-op when fmt is empty (preserves spdlog default).
-inline std::pair<bool,std::string> ApplySinkFormat(const spdlog::sink_ptr& sink, const std::string& fmt)
+inline std::pair<bool,std::string> ApplySinkFormat(const spdlog::sink_ptr& sink, const std::string& fmt, const bool use_utc = false)
 {
-	if(fmt.empty())
-		return {true,""}
-	;
+	auto time_type = use_utc ? spdlog::pattern_time_type::utc : spdlog::pattern_time_type::local;
 	try
 	{
-		sink->set_formatter(std::make_unique<spdlog::pattern_formatter>(fmt));
+		if(fmt.empty())
+			sink->set_formatter(std::make_unique<spdlog::pattern_formatter>(time_type));
+		else
+			sink->set_formatter(std::make_unique<spdlog::pattern_formatter>(fmt,time_type));
 	}
 	catch(const spdlog::spdlog_ex& ex)
 	{
@@ -529,7 +530,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 					{
 						auto [success,err_str] = ApplySinkFormat(syslog_sink, fmt);
 						if(!success)
-							IUIResponder::GenerateResult(err_str);
+							return IUIResponder::GenerateResult(err_str);
 					}
 
 					LogSinks[sinkname] = syslog_sink;
@@ -559,7 +560,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 						{
 							auto [success,err_str] = ApplySinkFormat(tcp, fmt);
 							if(!success)
-								IUIResponder::GenerateResult(err_str);
+								return IUIResponder::GenerateResult(err_str);
 						}
 
 						LogSinks[sinkname] = tcp;
@@ -593,7 +594,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 					{
 						auto [success,err_str] = ApplySinkFormat(file_sink, fmt);
 						if(!success)
-							IUIResponder::GenerateResult(err_str);
+							return IUIResponder::GenerateResult(err_str);
 					}
 
 					LogSinks[sinkname] = file_sink;
