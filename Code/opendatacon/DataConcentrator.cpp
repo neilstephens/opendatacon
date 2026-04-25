@@ -182,7 +182,7 @@ void DataConcentrator::PrepInterface(std::shared_ptr<IUI> interface)
 	interface->AddCommand("reload_config",[this](std::stringstream& ss) -> Json::Value
 		{
 			std::string filename;
-			if(!extract_delimited_string("'`/",ss,filename))
+			if(!extract_delimited_string("\"'`",ss,filename))
 				filename = "";
 			size_t reload_delay;
 			bool delay = false;
@@ -347,7 +347,7 @@ Json::Value DataConcentrator::SetLogFormat(std::stringstream& ss)
 	std::string sinkname;
 	std::string fmt;
 	// Pattern strings contain spaces so use the same delimited extraction as regex filters.
-	if(ss >> sinkname && extract_delimited_string("'`/", ss, fmt))
+	if(ss >> sinkname && extract_delimited_string("\"'`/", ss, fmt))
 	{
 		bool valid_name = false;
 		for(const auto& sink : LogSinks)
@@ -379,7 +379,7 @@ Json::Value DataConcentrator::SetLogFilter(std::stringstream& ss, bool isWhite)
 	Json::Value result;
 	std::string sinkname;
 	std::string regx_str;
-	if(ss>>sinkname && extract_delimited_string("'`/",ss,regx_str))
+	if(ss>>sinkname && extract_delimited_string("\"'`/",ss,regx_str))
 	{
 		bool valid_name = false;
 		for(const auto& sink : LogSinks)
@@ -432,7 +432,7 @@ Json::Value DataConcentrator::RemoveLogFilter(std::stringstream& ss)
 	Json::Value result;
 	std::string sinkname;
 	std::string regx_str;
-	if(ss>>sinkname && extract_delimited_string("'`/",ss,regx_str))
+	if(ss>>sinkname && extract_delimited_string("\"'`/",ss,regx_str))
 	{
 		bool valid_name = false;
 		for(const auto& sink : LogSinks)
@@ -542,7 +542,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 					syslog_sink->set_level(spdlog::level::off);
 
 					std::string fmt;
-					if(extract_delimited_string("'`/",ss,fmt))
+					if(extract_delimited_string("\"'`/",ss,fmt))
 					{
 						bool use_utc = extract_UTC_LOCAL(ss);
 						auto [success,err_str] = ApplySinkFormat(syslog_sink, fmt, use_utc);
@@ -573,7 +573,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 						tcp->set_level(spdlog::level::off);
 
 						std::string fmt;
-						if(extract_delimited_string("'`/",ss,fmt))
+						if(extract_delimited_string("\"'`/",ss,fmt))
 						{
 							bool use_utc = extract_UTC_LOCAL(ss);
 							auto [success,err_str] = ApplySinkFormat(tcp, fmt, use_utc);
@@ -592,7 +592,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 			else if(sinktype == "FILE")
 			{
 				std::string filename;
-				if(extract_delimited_string("'`/",ss,filename))
+				if(extract_delimited_string("\"'`",ss,filename))
 				{
 					size_t filesize_kb, filenum = 2;
 					if(ss>>filesize_kb)
@@ -608,7 +608,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 					file_sink->set_level(spdlog::level::off);
 
 					std::string fmt;
-					if(extract_delimited_string("'`/",ss,fmt))
+					if(extract_delimited_string("\"'`/",ss,fmt))
 					{
 						bool use_utc = extract_UTC_LOCAL(ss);
 						auto [success,err_str] = ApplySinkFormat(file_sink, fmt, use_utc);
@@ -626,7 +626,7 @@ Json::Value DataConcentrator::AddLogSink(std::stringstream& ss, bool doReload)
 			else if(sinktype == "LUA")
 			{
 				std::string filename;
-				if(extract_delimited_string("'`/",ss,filename))
+				if(extract_delimited_string("\"'`",ss,filename))
 				{
 					try
 					{
@@ -2074,9 +2074,9 @@ Json::Value DataConcentrator::SpoofEvent(std::stringstream& ss, SharedStatusCall
 {
 	Json::Value result(Json::objectValue);
 	std::string snd_name,rcv_name,event_json_str;
-	if(extract_delimited_string("'`/",ss,snd_name)
-	   && extract_delimited_string("'`/",ss,rcv_name)
-	   && extract_delimited_string("'`/",ss,event_json_str))
+	if(extract_delimited_string("\"'`/",ss,snd_name)
+	   && extract_delimited_string("\"'`/",ss,rcv_name)
+	   && extract_delimited_string("\"'`/",ss,event_json_str))
 	{
 		auto rcv_it = IOHandler::GetIOHandlers().find(rcv_name);
 		auto end = IOHandler::GetIOHandlers().end();
