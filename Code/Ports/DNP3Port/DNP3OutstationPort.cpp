@@ -350,7 +350,7 @@ void DNP3OutstationPort::Build()
 		return;
 	}
 
-	pUpdateBuilder = std::make_shared<BufferedUpdateBuilder>(pOutstation,pConf->pPointConf->MaxUpdateBufferPeriodms,pConf->pPointConf->MaxUpdateBufferCount);
+	pUpdateBuilder = std::make_shared<BatchUpdateBuilder>(pOutstation,pConf->pPointConf->MaxUpdateBatchPeriodms,pConf->pPointConf->MaxUpdateBatchCount);
 }
 
 std::pair<std::string, const IUIResponder *> DNP3OutstationPort::GetUIResponder()

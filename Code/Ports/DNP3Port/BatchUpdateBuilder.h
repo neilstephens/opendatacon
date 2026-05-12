@@ -18,14 +18,14 @@
  *	limitations under the License.
  */
 /*
- * BufferedUpdateBuilder.h
+ * BatchUpdateBuilder.h
  *
  *  Created on: 11/05/2026
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
-#ifndef BUFFEREDUPDATEBUILDER_H
-#define BUFFEREDUPDATEBUILDER_H
+#ifndef BATCHUPDATEBUILDER_H
+#define BATCHUPDATEBUILDER_H
 
 #include <opendnp3/outstation/IOutstation.h>
 #include <opendnp3/outstation/UpdateBuilder.h>
@@ -33,25 +33,25 @@
 #include <opendatacon/util.h>
 #include <memory>
 
-class BufferedUpdateBuilder: public std::enable_shared_from_this<BufferedUpdateBuilder>
+class BatchUpdateBuilder: public std::enable_shared_from_this<BatchUpdateBuilder>
 {
 private:
 	const std::weak_ptr<opendnp3::IOutstation> wOutstation;
-	const size_t maxBufferPeriodms;
-	const size_t maxBufferCount;
+	const size_t maxBatchPeriodms;
+	const size_t maxBatchCount;
 	std::shared_ptr<asio::io_service::strand> pSyncStrand;
-	odc::msSinceEpoch_t bufferStartTime;
-	size_t bufferCount;
+	odc::msSinceEpoch_t batchStartTime;
+	size_t batchCount;
 	std::shared_ptr<opendnp3::UpdateBuilder> pBuilder;
 
 public:
-	BufferedUpdateBuilder(const std::weak_ptr<opendnp3::IOutstation> aOutstation, const size_t amaxBufferPeriodms, const size_t amaxBufferCount):
+	BatchUpdateBuilder(const std::weak_ptr<opendnp3::IOutstation> aOutstation, const size_t amaxBatchPeriodms, const size_t amaxBatchCount):
 		wOutstation(aOutstation),
-		maxBufferPeriodms(amaxBufferPeriodms),
-		maxBufferCount(amaxBufferCount),
+		maxBatchPeriodms(amaxBatchPeriodms),
+		maxBatchCount(amaxBatchCount),
 		pSyncStrand(odc::asio_service::Get()->make_strand()),
-		bufferStartTime(odc::msSinceEpoch()),
-		bufferCount(0),
+		batchStartTime(odc::msSinceEpoch()),
+		batchCount(0),
 		pBuilder(std::make_shared<opendnp3::UpdateBuilder>())
 	{}
 
@@ -68,20 +68,20 @@ public:
 				if(!os) return;
 
 				self->pBuilder->Update(meas, index, mode);
-				self->bufferCount++;
+				self->batchCount++;
 
 				auto now = odc::msSinceEpoch();
-				if(self->bufferStartTime + self->maxBufferPeriodms <= now
-				   || self->bufferCount > self->maxBufferCount)
+				if(self->batchStartTime + self->maxBatchPeriodms <= now
+				   || self->batchCount > self->maxBatchCount)
 				{
 					os->Apply(self->pBuilder->Build());
 					self->pBuilder.reset();
 					self->pBuilder = std::make_shared<opendnp3::UpdateBuilder>();
-					self->bufferCount = 0;
-					self->bufferStartTime = odc::msSinceEpoch();
+					self->batchCount = 0;
+					self->batchStartTime = odc::msSinceEpoch();
 				}
 			});
 	}
 };
 
-#endif // BUFFEREDUPDATEBUILDER_H
+#endif // BATCHUPDATEBUILDER_H

@@ -105,8 +105,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	TimeSyncPeriodms(0),
 	PassThroughTimeSync(false),
 	PassThroughTimeSyncAction(false),
-	MaxUpdateBufferCount(0),
-	MaxUpdateBufferPeriodms(0),
+	MaxUpdateBatchCount(0),
+	MaxUpdateBatchPeriodms(0),
 	// Default Static Variations
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var2),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
@@ -246,10 +246,10 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		PassThroughTimeSync = JSONRoot["PassThroughTimeSync"].asBool();
 	if (JSONRoot.isMember("PassThroughTimeSyncAction"))
 		PassThroughTimeSyncAction = JSONRoot["PassThroughTimeSyncAction"].asBool();
-	if (JSONRoot.isMember("MaxUpdateBufferCount"))
-		MaxUpdateBufferCount = JSONRoot["MaxUpdateBufferCount"].asUInt();
-	if (JSONRoot.isMember("MaxUpdateBufferPeriodms"))
-		MaxUpdateBufferPeriodms = JSONRoot["MaxUpdateBufferPeriodms"].asUInt();
+	if (JSONRoot.isMember("MaxUpdateBatchCount"))
+		MaxUpdateBatchCount = JSONRoot["MaxUpdateBatchCount"].asUInt();
+	if (JSONRoot.isMember("MaxUpdateBatchPeriodms"))
+		MaxUpdateBatchPeriodms = JSONRoot["MaxUpdateBatchPeriodms"].asUInt();
 
 	// Master Station configuration
 	if (JSONRoot.isMember("MasterResponseTimeoutms"))
