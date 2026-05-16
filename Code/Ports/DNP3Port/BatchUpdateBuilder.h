@@ -66,6 +66,7 @@ private:
 	std::chrono::time_point<std::chrono::steady_clock> lastArrivalTime;
 	size_t batchCount;
 	size_t flushSeq;
+	bool samplingActive;
 
 	void Flush()
 	{
@@ -96,7 +97,10 @@ private:
 				const double rate = (silence_ms > self->maxBatchPeriodms) ? 0.0 : self->instantRate;
 				self->smoothedArrivalRate = self->emaWeight * rate
 				                            + (1.0 - self->emaWeight) * self->smoothedArrivalRate;
-				self->emaSample();
+				if(self->BatchPeriodms() > 0)
+					self->emaSample();
+				else
+					self->samplingActive = false;
 			}));
 	}
 
@@ -119,13 +123,13 @@ public:
 		instantRate(0.0),
 		lastArrivalTime(std::chrono::steady_clock::now()),
 		batchCount(0),
-		flushSeq(0)
-	{
-		pSyncStrand->post([this](){ emaSample(); });
-	}
+		flushSeq(0),
+		samplingActive(false)
+	{}
 
 	~BatchUpdateBuilder()
 	{
+		Flush();
 		pFlushTimer->cancel();
 		pRateTimer->cancel();
 	}
@@ -150,6 +154,12 @@ public:
 				const auto dt_s = std::chrono::duration<double>(now - self->lastArrivalTime).count();
 				self->lastArrivalTime = now;
 				self->instantRate = 1.0 / (dt_s > 0.0 ? dt_s : tick_s);
+
+				if(!self->samplingActive)
+				{
+					self->samplingActive = true;
+					self->emaSample();
+				}
 
 				if(self->batchCount >= self->maxBatchCount)
 				{
