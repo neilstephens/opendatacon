@@ -32,32 +32,87 @@
 #include <opendatacon/asio.h>
 #include <opendatacon/util.h>
 #include <memory>
+#include <algorithm>
+#include <chrono>
+
+/*  Dynamic batching with Exponential Moving Average (EMA) based rate tracking
+ *  --------------------------------------------------------------------------
+ *  The batch window grows proportionally to the smoothed message arrival rate,
+ *  so high sustained rates produce fewer, larger packets,
+ *  while low rates shrink the window (minimises latency).
+ *
+ *  Separate rise/fall EMA weights to allow asymetric window response
+ */
 
 class BatchUpdateBuilder: public std::enable_shared_from_this<BatchUpdateBuilder>
 {
 private:
 	const std::weak_ptr<opendnp3::IOutstation> wOutstation;
+
+	// Hard limits
 	const size_t maxBatchPeriodms;
 	const size_t maxBatchCount;
+
+	// EMA parameters
+	const double riseWeight;
+	const double fallWeight;
+
 	std::shared_ptr<asio::io_service::strand> pSyncStrand;
-	odc::msSinceEpoch_t batchStartTime;
-	size_t batchCount;
+	std::shared_ptr<asio::steady_timer> pFlushTimer;
 	std::shared_ptr<opendnp3::UpdateBuilder> pBuilder;
 
+	// State
+	double smoothedArrivalRate;
+	std::chrono::time_point<std::chrono::steady_clock> lastArrivalTime;
+	size_t batchCount;
+	size_t flushSeq;
+
+	void Flush()
+	{
+		auto os = wOutstation.lock();
+		if(!os) return;
+		os->Apply(pBuilder->Build());
+		pBuilder = std::make_shared<opendnp3::UpdateBuilder>();
+		batchCount = 0;
+	}
+
+	size_t ComputeBatchPeriodms() const
+	{
+		auto periodms = static_cast<size_t>(smoothedArrivalRate/maxBatchCount*maxBatchPeriodms);
+		return std::min(periodms, maxBatchPeriodms);
+	}
+
 public:
-	BatchUpdateBuilder(const std::weak_ptr<opendnp3::IOutstation> aOutstation, const size_t amaxBatchPeriodms, const size_t amaxBatchCount):
+	BatchUpdateBuilder(
+		const std::weak_ptr<opendnp3::IOutstation> aOutstation,
+		const size_t amaxBatchPeriodms,
+		const size_t amaxBatchCount,
+		const double ariseWeight,
+		const double afallWeight
+		):
 		wOutstation(aOutstation),
 		maxBatchPeriodms(amaxBatchPeriodms),
 		maxBatchCount(amaxBatchCount),
+		riseWeight(ariseWeight),
+		fallWeight(afallWeight),
 		pSyncStrand(odc::asio_service::Get()->make_strand()),
-		batchStartTime(odc::msSinceEpoch()),
+		pFlushTimer(odc::asio_service::Get()->make_steady_timer()),
+		pBuilder(std::make_shared<opendnp3::UpdateBuilder>()),
+		smoothedArrivalRate(0.0),
+		lastArrivalTime(std::chrono::steady_clock::now()),
 		batchCount(0),
-		pBuilder(std::make_shared<opendnp3::UpdateBuilder>())
+		flushSeq(0)
 	{}
+
+	~BatchUpdateBuilder()
+	{
+		pFlushTimer->cancel();
+	}
 
 	template<typename T>
 	inline void Event(T meas, uint16_t index, opendnp3::EventMode mode)
 	{
+		static constexpr auto tick_s = std::chrono::duration<double>(std::chrono::steady_clock::duration(1)).count();
 		auto weak_self = weak_from_this();
 		pSyncStrand->post([weak_self,meas,index,mode]()
 			{
@@ -70,16 +125,36 @@ public:
 				self->pBuilder->Update(meas, index, mode);
 				self->batchCount++;
 
-				auto now = odc::msSinceEpoch();
-				if(self->batchStartTime + self->maxBatchPeriodms <= now
-				   || self->batchCount > self->maxBatchCount)
+				// --- Update EMA rate estimate ---
+				const auto now = std::chrono::steady_clock::now();
+				const auto dt_s = std::chrono::duration<double>(now - self->lastArrivalTime).count();
+				const auto instantRate = 1.0 / (dt_s > 0.0 ? dt_s : tick_s);
+				self->lastArrivalTime = now;
+
+				const double weight = (instantRate > self->smoothedArrivalRate)
+				                     ? self->riseWeight
+				                     : self->fallWeight;
+				self->smoothedArrivalRate = weight * instantRate + (1.0 - weight) * self->smoothedArrivalRate;
+
+				if(self->batchCount >= self->maxBatchCount)
 				{
-					os->Apply(self->pBuilder->Build());
-					self->pBuilder.reset();
-					self->pBuilder = std::make_shared<opendnp3::UpdateBuilder>();
-					self->batchCount = 0;
-					self->batchStartTime = odc::msSinceEpoch();
+					self->flushSeq++;
+					self->pFlushTimer->cancel();
+					self->Flush();
 				}
+				else if(self->batchCount == 1)
+				{
+					self->pFlushTimer->expires_from_now(std::chrono::milliseconds(self->ComputeBatchPeriodms()));
+					self->pFlushTimer->async_wait(self->pSyncStrand->wrap(
+						[weak_self,seq{self->flushSeq}](const asio::error_code& ec)
+						{
+							auto self = weak_self.lock();
+							if(!self) return;
+							if(seq == self->flushSeq)
+								self->Flush();
+						}));
+				}
+				// else: timer already running for this batch
 			});
 	}
 };
