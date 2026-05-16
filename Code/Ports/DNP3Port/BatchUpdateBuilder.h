@@ -30,7 +30,6 @@
 #include <opendnp3/outstation/IOutstation.h>
 #include <opendnp3/outstation/UpdateBuilder.h>
 #include <opendatacon/asio.h>
-#include <opendatacon/util.h>
 #include <memory>
 #include <algorithm>
 #include <chrono>
@@ -67,42 +66,6 @@ private:
 	size_t batchCount;
 	size_t flushSeq;
 	bool samplingActive;
-
-	void Flush()
-	{
-		auto os = wOutstation.lock();
-		if(!os) return;
-		os->Apply(pBuilder->Build());
-		pBuilder = std::make_shared<opendnp3::UpdateBuilder>();
-		batchCount = 0;
-	}
-
-	size_t BatchPeriodms() const
-	{
-		auto periodms = static_cast<size_t>(smoothedArrivalRate/maxBatchCount*maxBatchPeriodms);
-		return std::min(periodms, maxBatchPeriodms);
-	}
-
-	void emaSample()
-	{
-		auto weak_self = weak_from_this();
-		pRateTimer->expires_from_now(std::chrono::milliseconds(maxBatchPeriodms/maxBatchCount));
-		pRateTimer->async_wait(pSyncStrand->wrap([weak_self](const asio::error_code&)
-			{
-				auto self = weak_self.lock();
-				if(!self) return;
-
-				const auto now = std::chrono::steady_clock::now();
-				const auto silence_ms = std::chrono::duration<double,std::milli>(now - self->lastArrivalTime).count();
-				const double rate = (silence_ms > self->maxBatchPeriodms) ? 0.0 : self->instantRate;
-				self->smoothedArrivalRate = self->emaWeight * rate
-				                            + (1.0 - self->emaWeight) * self->smoothedArrivalRate;
-				if(self->BatchPeriodms() > 0)
-					self->emaSample();
-				else
-					self->samplingActive = false;
-			}));
-	}
 
 public:
 	BatchUpdateBuilder(
@@ -180,6 +143,43 @@ public:
 				}
 				// else: timer already running for this batch
 			});
+	}
+
+private:
+	void Flush()
+	{
+		auto os = wOutstation.lock();
+		if(!os) return;
+		os->Apply(pBuilder->Build());
+		pBuilder = std::make_shared<opendnp3::UpdateBuilder>();
+		batchCount = 0;
+	}
+
+	size_t BatchPeriodms() const
+	{
+		auto periodms = static_cast<size_t>(smoothedArrivalRate/maxBatchCount*maxBatchPeriodms);
+		return std::min(periodms, maxBatchPeriodms);
+	}
+
+	void emaSample()
+	{
+		auto weak_self = weak_from_this();
+		pRateTimer->expires_from_now(std::chrono::milliseconds(maxBatchPeriodms/maxBatchCount));
+		pRateTimer->async_wait(pSyncStrand->wrap([weak_self](const asio::error_code&)
+			{
+				auto self = weak_self.lock();
+				if(!self) return;
+
+				const auto now = std::chrono::steady_clock::now();
+				const auto silence_ms = std::chrono::duration<double,std::milli>(now - self->lastArrivalTime).count();
+				const double rate = (silence_ms > self->maxBatchPeriodms) ? 0.0 : self->instantRate;
+				self->smoothedArrivalRate = self->emaWeight * rate
+				                            + (1.0 - self->emaWeight) * self->smoothedArrivalRate;
+				if(self->BatchPeriodms() > 0)
+					self->emaSample();
+				else
+					self->samplingActive = false;
+			}));
 	}
 };
 
