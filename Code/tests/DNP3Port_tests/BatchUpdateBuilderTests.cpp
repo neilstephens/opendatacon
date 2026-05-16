@@ -142,12 +142,19 @@ TEST_CASE(SUITE("timer_batch_flush"))
 	ThreadPool thread_pool(4);
 
 	Fixture f;
-	f.sendEvents(3, 10ms);
+	// Prime the EMA over several ticks so the window opens
+	f.sendEvents(20, 5ms);
+	std::this_thread::sleep_for(GENEROUS_WAIT);
+	const size_t warmupFlushes = f.os->FlushCount();
+	const size_t warmupEvents  = f.os->TotalEvents();
+
+	// With a warm EMA, 3 rapid events should batch into one flush via the timer
+	f.sendEvents(3, 5ms);
 	std::this_thread::sleep_for(GENEROUS_WAIT);
 
-	CHECK(f.os->FlushCount()   == 1);
-	CHECK(f.os->TotalEvents()  == 3);
-	CHECK(f.os->MaxBatchSize() == 3);
+	CHECK(f.os->FlushCount()  == warmupFlushes + 1);
+	CHECK(f.os->TotalEvents() == warmupEvents + 3);
+	CHECK(f.os->batches.back() == 3);
 
 	TestTearDown();
 }
