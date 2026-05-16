@@ -134,6 +134,7 @@ public:
 	bool PassThroughTimeSyncAction;
 	size_t MaxUpdateBatchCount;
 	size_t MaxUpdateBatchPeriodms;
+	double UpdateBatchResponseWeight;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;

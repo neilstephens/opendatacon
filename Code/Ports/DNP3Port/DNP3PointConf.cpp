@@ -107,6 +107,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	PassThroughTimeSyncAction(false),
 	MaxUpdateBatchCount(0),
 	MaxUpdateBatchPeriodms(0),
+	UpdateBatchResponseWeight(0.1),
 	// Default Static Variations
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var2),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
@@ -250,6 +251,14 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MaxUpdateBatchCount = JSONRoot["MaxUpdateBatchCount"].asUInt();
 	if (JSONRoot.isMember("MaxUpdateBatchPeriodms"))
 		MaxUpdateBatchPeriodms = JSONRoot["MaxUpdateBatchPeriodms"].asUInt();
+	if (JSONRoot.isMember("UpdateBatchResponseWeight"))
+	{
+		double val = JSONRoot["UpdateBatchResponseWeight"].asDouble();
+		if(val < 0.0 || val > 1.0)
+			Log.Error("UpdateBatchResponseWeight should be between 0.0 and 1.0, got {}", val);
+		else
+			UpdateBatchResponseWeight = val;
+	}
 
 	// Master Station configuration
 	if (JSONRoot.isMember("MasterResponseTimeoutms"))
