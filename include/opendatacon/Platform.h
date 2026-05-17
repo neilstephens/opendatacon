@@ -616,8 +616,19 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 	int stdout_pipe[2];
 	int stderr_pipe[2];
 
-	if (pipe(stdin_pipe) == -1 || pipe(stdout_pipe) == -1 || pipe(stderr_pipe) == -1)
-		throw std::runtime_error("stdin/out/err pipe() failed");
+	if (pipe(stdin_pipe) == -1)
+		throw std::runtime_error("stdin pipe() failed");
+	else if (pipe(stdout_pipe) == -1)
+	{
+		close(stdin_pipe[0]);close(stdin_pipe[1]);
+		throw std::runtime_error("stdout pipe() failed");
+	}
+	else if (pipe(stderr_pipe) == -1)
+	{
+		close(stdin_pipe[0]);close(stdin_pipe[1]);
+		close(stdout_pipe[0]);close(stdout_pipe[1]);
+		throw std::runtime_error("stderr pipe() failed");
+	}
 
 	// Child reads from stdin_pipe[0], writes to stdout_pipe[1] and stderr_pipe[1]
 	// Parent writes to stdin_pipe[1], reads from stdout_pipe[0] and stderr_pipe[0]
