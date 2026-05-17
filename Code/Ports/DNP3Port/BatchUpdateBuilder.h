@@ -84,7 +84,7 @@ public:
 		pBuilder(std::make_shared<opendnp3::UpdateBuilder>()),
 		smoothedArrivalRate(0.0),
 		instantRate(0.0),
-		lastArrivalTime(std::chrono::steady_clock::now()),
+		lastArrivalTime(std::chrono::steady_clock::now()-std::chrono::milliseconds(maxBatchPeriodms)),
 		batchCount(0),
 		flushSeq(0),
 		samplingActive(false)
