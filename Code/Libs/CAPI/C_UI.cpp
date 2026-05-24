@@ -37,6 +37,21 @@ C_UI::C_UI(const std::string& aName, const std::string& aConfFilename,
 	p_create(nullptr), p_destroy(nullptr),
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr)
 {
+	// Check the API version matches
+	auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_c_api_version"));
+	if(!c_api_version)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("C_UI '{}': missing C API version symbol", aName);
+		throw std::runtime_error("C_UI missing C API version symbol");
+	}
+	if(std::string(c_api_version()) != ODC_C_API_VERSION)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("C_UI '{}': C API version mismatch (expected {}, got {})", aName, ODC_C_API_VERSION, c_api_version());
+		throw std::runtime_error("C_UI C API version mismatch");
+	}
+
 	p_create  = reinterpret_cast<void*(*)(const char*,const char*,const char*)>(LoadSymbol(lib_handle, "odc_plugin_create"));
 	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_destroy"));
 	p_build   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_build"));

@@ -43,6 +43,21 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 	p_stats_json(nullptr), p_state_json(nullptr),
 	p_status_json(nullptr), p_free_str(nullptr)
 {
+	// Check the API version matches
+	auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_c_api_version"));
+	if(!c_api_version)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("C_Port '{}': missing C API version symbol", aName);
+		throw std::runtime_error("C_Port missing C API version symbol");
+	}
+	if(std::string(c_api_version()) != ODC_C_API_VERSION)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("C_Port '{}': C API version mismatch (expected {}, got {})", aName, ODC_C_API_VERSION, c_api_version());
+		throw std::runtime_error("C_Port C API version mismatch");
+	}
+
 	// Resolve required symbols
 	p_create  = reinterpret_cast<void*(*)(const char*,const char*)>(LoadSymbol(lib_handle, "odc_port_create"));
 	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_destroy"));

@@ -37,6 +37,21 @@ C_Transform::C_Transform(const std::string& Name, const Json::Value& params, voi
 	p_create(nullptr), p_destroy(nullptr),
 	p_enable(nullptr), p_disable(nullptr), p_event(nullptr)
 {
+	// Check the API version matches
+	auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_c_api_version"));
+	if(!c_api_version)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("C_Transform '{}': missing C API version symbol", Name);
+		throw std::runtime_error("C_Transform missing C API version symbol");
+	}
+	if(std::string(c_api_version()) != ODC_C_API_VERSION)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->error("C_Transform '{}': C API version mismatch (expected {}, got {})", Name, ODC_C_API_VERSION, c_api_version());
+		throw std::runtime_error("C_Transform C API version mismatch");
+	}
+
 	p_create  = reinterpret_cast<void*(*)(const char*,const char*)>(LoadSymbol(lib_handle, "odc_transform_create"));
 	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_transform_destroy"));
 	p_enable  = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_transform_enable"));
