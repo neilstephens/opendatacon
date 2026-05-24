@@ -34,6 +34,8 @@
 #include "BlackHoleTransform.h"
 #include "AnalogScalingTransform.h"
 #include <iostream>
+
+#include "CAPI/C_Transform.h"
 #include <opendatacon/Platform.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
@@ -157,6 +159,17 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 						continue;
 					}
 
+					//Check for C API library
+					auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(txlib, "odc_c_api_version"));
+					if(c_api_version != nullptr)
+					{
+						Log.Info("{} : Detected C API (v{}) transform library — creating C_Transform wrapper", txname, c_api_version());
+						tx_ptr.reset(new odc::C_Transform(txname, Transforms[n]["Parameters"], txlib), tx_delete);
+						//Continue to sender registration below (skip C++ symbol lookup)
+					}
+					else
+					{
+
 					//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
 					//it should return a pointer to a heap allocated instance of a descendant of Transform
 					std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
@@ -194,6 +207,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 
 					//call the creation function and wrap the returned pointer
 					tx_ptr.reset(new_tx_func(txname,Transforms[n]["Parameters"]),tx_delete);
+					}
 				}
 				//insert the transform into the chain of transforms for each applicable sender
 				for(const auto& sender : tx_senders)
