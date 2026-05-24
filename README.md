@@ -916,6 +916,10 @@ void        odc_port_free_string(const char* str); // free() a string returned a
 ```c
 void* odc_transform_create(const char* type, const char* json_param_str);
 void  odc_transform_enable(void* inst);
+void odc_transform_event(void* inst,
+	struct C_EventInfo* event,
+	C_PassContext* pass_ctx,
+	void (*pass)(C_PassContext* ctx, struct C_EventInfo* evt));
 void  odc_transform_disable(void* inst);
 void  odc_transform_destroy(void* inst);
 ```
