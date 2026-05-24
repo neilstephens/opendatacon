@@ -953,7 +953,12 @@ void odc_PublishConnectState(void* inst, int state);
 const char* odc_GetConfigJSON(void* inst);
 
 // Log a message via the port's per-type logger.
+// level: C_LOG_LEVEL_TRACE (0) through C_LOG_LEVEL_OFF (6).
 void odc_Log(void* inst, uint8_t level, const char* message);
+
+// Check if a log level would produce output — avoids expensive formatting.
+// Returns non-zero if the level is enabled, zero otherwise.
+int odc_ShouldLog(void* inst, uint8_t level);
 
 // Schedule a one-shot timer on the port's strand. Returns an opaque handle
 // that can be passed to odc_cancelTimer(). callback fires with status.
@@ -963,13 +968,30 @@ void* odc_msTimerCallback(void* inst, uint64_t ms,
 // Cancel a pending timer (safe to call after it has already fired).
 void odc_cancelTimer(void* timer_handle);
 
+// Log level constants — avoid magic numbers in odc_Log() calls.
+#define C_LOG_LEVEL_TRACE     0
+#define C_LOG_LEVEL_DEBUG     1
+#define C_LOG_LEVEL_INFO      2
+#define C_LOG_LEVEL_WARN      3
+#define C_LOG_LEVEL_ERROR     4
+#define C_LOG_LEVEL_CRITICAL  5
+#define C_LOG_LEVEL_OFF       6
+
+// Convenience macros — no need to pass the level argument.
+#define odc_LogTrace(inst, msg)    odc_Log((inst), C_LOG_LEVEL_TRACE, (msg))
+#define odc_LogDebug(inst, msg)    odc_Log((inst), C_LOG_LEVEL_DEBUG, (msg))
+#define odc_LogInfo(inst, msg)     odc_Log((inst), C_LOG_LEVEL_INFO, (msg))
+#define odc_LogWarn(inst, msg)     odc_Log((inst), C_LOG_LEVEL_WARN, (msg))
+#define odc_LogError(inst, msg)    odc_Log((inst), C_LOG_LEVEL_ERROR, (msg))
+#define odc_LogCritical(inst, msg) odc_Log((inst), C_LOG_LEVEL_CRITICAL, (msg))
+
 ```
 
 ### Naming convention
 
 By default, the framework derives the library filename from the port type: `"Type" + "Port"`. For a port with `"Type": "MyCustom"`, it loads `libMyCustomPort.so` (or `.dylib`/`.dll`). This can be overridden with the `"Library"` config key, in which case the library may implement multiple types.
 
-A logger is created per type using the same name (`"MyCustomPort"`). Use `odc_Log()` from your C code to write to it.
+A logger is created per type using the same name (`"MyCustomPort"`). Use `odc_Log()` (or the `odc_LogTrace`/`Debug`/`Info`/`Warn`/`Error`/`Critical` convenience macros) from your C code to write to it. Check `odc_ShouldLog()` to avoid expensive string formatting when logging is disabled.
 
 ### Template / quick-start
 

@@ -396,3 +396,13 @@ extern "C" void odc_Log(void* inst, uint8_t level, const char* message)
 		return;
 	it->second->Log(level, message);
 }
+
+extern "C" int odc_ShouldLog(void* inst, uint8_t level)
+{
+	if(!inst)
+		return 0;
+	auto it = odc::C_Port_instances.find(inst);
+	if(it == odc::C_Port_instances.end())
+		return 0;
+	return it->second->ShouldLog(level) ? 1 : 0;
+}

@@ -129,8 +129,13 @@ void C_Port::Log(uint8_t level, const std::string& msg)
 {
 	if(auto log = odc::spdlog_get(Type+"Port"))
 		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
-	else if(auto log = odc::spdlog_get("opendatacon"))
-		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
+}
+
+bool C_Port::ShouldLog(uint8_t level) const
+{
+	if(auto log = odc::spdlog_get(Type+"Port"))
+		return log->should_log(static_cast<spdlog::level::level_enum>(level));
+	return false;
 }
 
 void C_Port::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,

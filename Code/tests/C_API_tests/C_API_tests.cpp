@@ -33,7 +33,125 @@
 
 #include "../ThreadPool.h"
 
+#include <spdlog/common.h>
+
 extern spdlog::level::level_enum log_level;
+
+// ---------------------------------------------------------------------------
+//  Compile-time alignment checks between C API types and IOTypes.h
+//  If any of these fail, the internal representation has changed and the
+//  C API must be updated to match.
+// ---------------------------------------------------------------------------
+
+// --- EventType ---
+static_assert(static_cast<uint8_t>(odc::EventType::Binary) == C_EventType_Binary, "");
+static_assert(static_cast<uint8_t>(odc::EventType::DoubleBitBinary) == C_EventType_DoubleBitBinary, "");
+static_assert(static_cast<uint8_t>(odc::EventType::Analog) == C_EventType_Analog, "");
+static_assert(static_cast<uint8_t>(odc::EventType::Counter) == C_EventType_Counter, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FrozenCounter) == C_EventType_FrozenCounter, "");
+static_assert(static_cast<uint8_t>(odc::EventType::BinaryOutputStatus) == C_EventType_BinaryOutputStatus, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogOutputStatus) == C_EventType_AnalogOutputStatus, "");
+static_assert(static_cast<uint8_t>(odc::EventType::BinaryCommandEvent) == C_EventType_BinaryCommandEvent, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogCommandEvent) == C_EventType_AnalogCommandEvent, "");
+static_assert(static_cast<uint8_t>(odc::EventType::OctetString) == C_EventType_OctetString, "");
+static_assert(static_cast<uint8_t>(odc::EventType::TimeAndInterval) == C_EventType_TimeAndInterval, "");
+static_assert(static_cast<uint8_t>(odc::EventType::SecurityStat) == C_EventType_SecurityStat, "");
+static_assert(static_cast<uint8_t>(odc::EventType::ControlRelayOutputBlock) == C_EventType_ControlRelayOutputBlock, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogOutputInt16) == C_EventType_AnalogOutputInt16, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogOutputInt32) == C_EventType_AnalogOutputInt32, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogOutputFloat32) == C_EventType_AnalogOutputFloat32, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogOutputDouble64) == C_EventType_AnalogOutputDouble64, "");
+static_assert(static_cast<uint8_t>(odc::EventType::TimeSync) == C_EventType_TimeSync, "");
+static_assert(static_cast<uint8_t>(odc::EventType::BinaryQuality) == C_EventType_BinaryQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::DoubleBitBinaryQuality) == C_EventType_DoubleBitBinaryQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogQuality) == C_EventType_AnalogQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::CounterQuality) == C_EventType_CounterQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::BinaryOutputStatusQuality) == C_EventType_BinaryOutputStatusQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FrozenCounterQuality) == C_EventType_FrozenCounterQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::AnalogOutputStatusQuality) == C_EventType_AnalogOutputStatusQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::OctetStringQuality) == C_EventType_OctetStringQuality, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FileAuth) == C_EventType_FileAuth, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FileCommand) == C_EventType_FileCommand, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FileCommandStatus) == C_EventType_FileCommandStatus, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FileTransport) == C_EventType_FileTransport, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FileTransportStatus) == C_EventType_FileTransportStatus, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FileDescriptor) == C_EventType_FileDescriptor, "");
+static_assert(static_cast<uint8_t>(odc::EventType::FileSpecString) == C_EventType_FileSpecString, "");
+static_assert(static_cast<uint8_t>(odc::EventType::ConnectState) == C_EventType_ConnectState, "");
+
+// --- CommandStatus ---
+static_assert(static_cast<uint8_t>(odc::CommandStatus::SUCCESS) == C_CommandStatus_SUCCESS, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::TIMEOUT) == C_CommandStatus_TIMEOUT, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::NO_SELECT) == C_CommandStatus_NO_SELECT, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::FORMAT_ERROR) == C_CommandStatus_FORMAT_ERROR, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::NOT_SUPPORTED) == C_CommandStatus_NOT_SUPPORTED, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::ALREADY_ACTIVE) == C_CommandStatus_ALREADY_ACTIVE, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::HARDWARE_ERROR) == C_CommandStatus_HARDWARE_ERROR, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::LOCAL) == C_CommandStatus_LOCAL, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::TOO_MANY_OPS) == C_CommandStatus_TOO_MANY_OPS, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::NOT_AUTHORIZED) == C_CommandStatus_NOT_AUTHORIZED, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::AUTOMATION_INHIBIT) == C_CommandStatus_AUTOMATION_INHIBIT, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::PROCESSING_LIMITED) == C_CommandStatus_PROCESSING_LIMITED, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::OUT_OF_RANGE) == C_CommandStatus_OUT_OF_RANGE, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::DOWNSTREAM_LOCAL) == C_CommandStatus_DOWNSTREAM_LOCAL, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::ALREADY_COMPLETE) == C_CommandStatus_ALREADY_COMPLETE, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::BLOCKED) == C_CommandStatus_BLOCKED, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::CANCELLED) == C_CommandStatus_CANCELLED, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::BLOCKED_OTHER_MASTER) == C_CommandStatus_BLOCKED_OTHER_MASTER, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::DOWNSTREAM_FAIL) == C_CommandStatus_DOWNSTREAM_FAIL, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::NON_PARTICIPATING) == C_CommandStatus_NON_PARTICIPATING, "");
+static_assert(static_cast<uint8_t>(odc::CommandStatus::UNDEFINED) == C_CommandStatus_UNDEFINED, "");
+
+// --- ControlCode ---
+static_assert(static_cast<uint8_t>(odc::ControlCode::NUL) == C_ControlCode_NUL, "");
+static_assert(static_cast<uint8_t>(odc::ControlCode::PULSE_ON) == C_ControlCode_PULSE_ON, "");
+static_assert(static_cast<uint8_t>(odc::ControlCode::PULSE_OFF) == C_ControlCode_PULSE_OFF, "");
+static_assert(static_cast<uint8_t>(odc::ControlCode::LATCH_ON) == C_ControlCode_LATCH_ON, "");
+static_assert(static_cast<uint8_t>(odc::ControlCode::LATCH_OFF) == C_ControlCode_LATCH_OFF, "");
+static_assert(static_cast<uint8_t>(odc::ControlCode::CLOSE_PULSE_ON) == C_ControlCode_CLOSE_PULSE_ON, "");
+static_assert(static_cast<uint8_t>(odc::ControlCode::TRIP_PULSE_ON) == C_ControlCode_TRIP_PULSE_ON, "");
+static_assert(static_cast<uint8_t>(odc::ControlCode::UNDEFINED) == C_ControlCode_UNDEFINED, "");
+
+// --- ConnectState ---
+static_assert(static_cast<int>(odc::ConnectState::PORT_UP) == C_ConnectState_PORT_UP, "");
+static_assert(static_cast<int>(odc::ConnectState::CONNECTED) == C_ConnectState_CONNECTED, "");
+static_assert(static_cast<int>(odc::ConnectState::DISCONNECTED) == C_ConnectState_DISCONNECTED, "");
+static_assert(static_cast<int>(odc::ConnectState::PORT_DOWN) == C_ConnectState_PORT_DOWN, "");
+static_assert(static_cast<int>(odc::ConnectState::UNDEFINED) == C_ConnectState_UNDEFINED, "");
+
+// --- QualityFlags ---
+static_assert(static_cast<uint16_t>(odc::QualityFlags::NONE) == C_QualityFlags_NONE, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::ONLINE) == C_QualityFlags_ONLINE, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::RESTART) == C_QualityFlags_RESTART, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::COMM_LOST) == C_QualityFlags_COMM_LOST, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::REMOTE_FORCED) == C_QualityFlags_REMOTE_FORCED, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::LOCAL_FORCED) == C_QualityFlags_LOCAL_FORCED, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::OVERRANGE) == C_QualityFlags_OVERRANGE, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::REFERENCE_ERR) == C_QualityFlags_REFERENCE_ERR, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::ROLLOVER) == C_QualityFlags_ROLLOVER, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::DISCONTINUITY) == C_QualityFlags_DISCONTINUITY, "");
+static_assert(static_cast<uint16_t>(odc::QualityFlags::CHATTER_FILTER) == C_QualityFlags_CHATTER_FILTER, "");
+
+// --- C_ControlRelayOutputBlock layout matches ControlRelayOutputBlock ---
+static_assert(sizeof(C_ControlRelayOutputBlock) == sizeof(odc::ControlRelayOutputBlock), "");
+static_assert(alignof(C_ControlRelayOutputBlock) == alignof(odc::ControlRelayOutputBlock), "");
+static_assert(offsetof(C_ControlRelayOutputBlock, function_code) == offsetof(odc::ControlRelayOutputBlock, functionCode), "");
+static_assert(offsetof(C_ControlRelayOutputBlock, count) == offsetof(odc::ControlRelayOutputBlock, count), "");
+static_assert(offsetof(C_ControlRelayOutputBlock, on_time_ms) == offsetof(odc::ControlRelayOutputBlock, onTimeMS), "");
+static_assert(offsetof(C_ControlRelayOutputBlock, off_time_ms) == offsetof(odc::ControlRelayOutputBlock, offTimeMS), "");
+static_assert(offsetof(C_ControlRelayOutputBlock, status) == offsetof(odc::ControlRelayOutputBlock, status), "");
+
+// --- C_Payload alignment is sufficient for largest scalar ---
+static_assert(alignof(C_Payload) >= alignof(double), "");
+
+// --- Log level #defines match spdlog level enum values ---
+static_assert(SPDLOG_LEVEL_TRACE    == C_LOG_LEVEL_TRACE, "");
+static_assert(SPDLOG_LEVEL_DEBUG    == C_LOG_LEVEL_DEBUG, "");
+static_assert(SPDLOG_LEVEL_INFO     == C_LOG_LEVEL_INFO, "");
+static_assert(SPDLOG_LEVEL_WARN     == C_LOG_LEVEL_WARN, "");
+static_assert(SPDLOG_LEVEL_ERROR    == C_LOG_LEVEL_ERROR, "");
+static_assert(SPDLOG_LEVEL_CRITICAL == C_LOG_LEVEL_CRITICAL, "");
+static_assert(SPDLOG_LEVEL_OFF      == C_LOG_LEVEL_OFF, "");
 
 // ---------------------------------------------------------------------------
 //  Test helpers
@@ -341,7 +459,7 @@ TEST_CASE("C_API - odc_GetConfigJSON")
 //  odc_Log
 // ---------------------------------------------------------------------------
 
-TEST_CASE("C_API - odc_Log")
+TEST_CASE("C_API - odc_Log, odc_ShouldLog, convenience macros")
 {
 	TestSetup();
 	ThreadPool pool;
@@ -354,14 +472,33 @@ TEST_CASE("C_API - odc_Log")
 	port->Build();
 	port->Enable();
 
-	// Log at various levels — verify no crash
-	odc_Log(port->GetCInst(), 0, "trace message");
-	odc_Log(port->GetCInst(), 2, "info message");
-	odc_Log(port->GetCInst(), 4, "error message");
-	odc_Log(port->GetCInst(), 6, nullptr); // null message — no crash
+	auto cinst = port->GetCInst();
+
+	// odc_Log at various levels — verify no crash
+	odc_Log(cinst, C_LOG_LEVEL_TRACE, "trace message");
+	odc_Log(cinst, C_LOG_LEVEL_INFO, "info message");
+	odc_Log(cinst, C_LOG_LEVEL_ERROR, "error message");
+	odc_Log(cinst, C_LOG_LEVEL_OFF, nullptr); // null message — no crash
 
 	// Null inst — no crash
-	odc_Log(nullptr, 2, "no instance");
+	odc_Log(nullptr, C_LOG_LEVEL_INFO, "no instance");
+
+	// odc_ShouldLog — not enabled by default (log_level = error from CatchMain)
+	if(log_level <= spdlog::level::err)
+	{
+		REQUIRE(odc_ShouldLog(cinst, C_LOG_LEVEL_ERROR));
+		REQUIRE(odc_ShouldLog(cinst, C_LOG_LEVEL_CRITICAL));
+	}
+	REQUIRE(!odc_ShouldLog(cinst, C_LOG_LEVEL_TRACE));
+	REQUIRE(!odc_ShouldLog(nullptr, C_LOG_LEVEL_INFO));
+
+	// Convenience macros — compile-time check via expansion
+	odc_LogTrace(cinst, "trace via macro");
+	odc_LogDebug(cinst, "debug via macro");
+	odc_LogInfo(cinst, "info via macro");
+	odc_LogWarn(cinst, "warn via macro");
+	odc_LogError(cinst, "error via macro");
+	odc_LogCritical(cinst, "critical via macro");
 
 	// Wait for log posts to drain
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));

@@ -103,6 +103,23 @@ enum C_ConnectState
 	C_ConnectState_UNDEFINED    = 4
 };
 
+/* Log levels — integer values match spdlog::level_enum                     */
+#define C_LOG_LEVEL_TRACE     0
+#define C_LOG_LEVEL_DEBUG     1
+#define C_LOG_LEVEL_INFO      2
+#define C_LOG_LEVEL_WARN      3
+#define C_LOG_LEVEL_ERROR     4
+#define C_LOG_LEVEL_CRITICAL  5
+#define C_LOG_LEVEL_OFF       6
+
+/* Convenience macros — no magic numbers needed in C code.                */
+#define odc_LogTrace(inst, msg)    odc_Log((inst), C_LOG_LEVEL_TRACE, (msg))
+#define odc_LogDebug(inst, msg)    odc_Log((inst), C_LOG_LEVEL_DEBUG, (msg))
+#define odc_LogInfo(inst, msg)     odc_Log((inst), C_LOG_LEVEL_INFO, (msg))
+#define odc_LogWarn(inst, msg)     odc_Log((inst), C_LOG_LEVEL_WARN, (msg))
+#define odc_LogError(inst, msg)    odc_Log((inst), C_LOG_LEVEL_ERROR, (msg))
+#define odc_LogCritical(inst, msg) odc_Log((inst), C_LOG_LEVEL_CRITICAL, (msg))
+
 /* Bit flags — values match odc::QualityFlags */
 enum C_QualityFlags
 {
@@ -308,8 +325,14 @@ void odc_PublishConnectState(void* inst, int state);
 const char* odc_GetConfigJSON(void* inst);
 
 /* Log a message using the port's logger.
-   level: 0=trace, 1=debug, 2=info, 3=warn, 4=error, 5=critical, 6=off */
+   level: C_LOG_LEVEL_TRACE etc. Use the odc_LogTrace/Debug/... convenience
+   macros to avoid magic numbers. */
 void odc_Log(void* inst, uint8_t level, const char* message);
+
+/* Check whether the given log level will produce output.
+   Returns non-zero if a message at this level would be logged, zero otherwise.
+   Use to avoid expensive string formatting when logging is disabled. */
+int odc_ShouldLog(void* inst, uint8_t level);
 
 /* Schedule a one-shot timer.
    inst is the void* returned by odc_port_create() (used for strand dispatch).

@@ -62,6 +62,7 @@ public:
 	void ProcessElements(const Json::Value& JSONRoot) override;
 
 	void Log(uint8_t level, const std::string& msg);
+	bool ShouldLog(uint8_t level) const;
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
 		SharedStatusCallback_t pStatusCallback) override
