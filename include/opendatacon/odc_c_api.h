@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 
+#define ODC_C_API_VERSION "1.0"
 /* ------------------------------------------------------------------ */
 /*  Version detection                                                  */
 /*  If a shared library exports this symbol, the loader treats it      */
@@ -216,16 +217,14 @@ typedef struct C_PassContext C_PassContext;
 /*  Required exports from a C Port library                             */
 /* ------------------------------------------------------------------ */
 
-/* Returns the port type string, e.g. "MyCustomPort". */
-const char* odc_port_type(void);
-
 /* Create a port instance. Returns an opaque handle that is the C
    code's own per-instance state. The C++ side uses this same pointer
    as a lookup key for publish helpers.
-   name, conf_filename, conf_overrides_json are borrowed — copy if needed. */
-void* odc_port_create(const char* name,
-	const char* conf_filename,
-	const char* conf_overrides_json);
+   type and name are borrowed — copy if needed.
+   type is the port type from the config (allows one library to
+   handle multiple types). name is the port's unique name. */
+void* odc_port_create(const char* type,
+	const char* name);
 
 /* Destroy a port instance created by odc_port_create(). */
 void odc_port_destroy(void* inst);
@@ -302,6 +301,15 @@ void odc_PublishEvent(void* inst, const struct C_EventInfo* event,
 
 /* Publish a connection state change. */
 void odc_PublishConnectState(void* inst, int state);
+
+/* Retrieve the full resolved config JSON for a port instance.
+   The returned string is owned by the C++ wrapper and valid for the
+   lifetime of the port. Valid from odc_port_build() onwards. */
+const char* odc_GetConfigJSON(void* inst);
+
+/* Log a message using the port's logger.
+   level: 0=trace, 1=debug, 2=info, 3=warn, 4=error, 5=critical, 6=off */
+void odc_Log(void* inst, uint8_t level, const char* message);
 
 /* Schedule a one-shot timer.
    inst is the void* returned by odc_port_create() (used for strand dispatch).

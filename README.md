@@ -51,10 +51,19 @@
         * [Example](#example-2)
         * [Config file keys](#config-file-keys-3)
     * [Elasticsearch](#elasticsearch)
-* [API](#api)
+* [C++ API](#c-api)
     * [Port](#port)
     * [Transform](#transform)
     * [User interface](#user-interface)
+* [C API (`odc_c_api.h`)](#c-api-odc_c_apih)
+    * [Version symbol](#version-symbol)
+    * [Port module — required symbols](#port-module-required-symbols)
+    * [Port module — optional symbols](#port-module-optional-symbols)
+    * [Transform module — required symbols](#transform-module-required-symbols)
+    * [UI plugin module — required symbols](#ui-plugin-module-required-symbols)
+    * [Helper functions](#helper-functions-callable-from-c-code)
+    * [Naming convention](#naming-convention)
+    * [Template / quick-start](#template-quick-start)
 
 ## Quickstart
 
@@ -815,7 +824,7 @@ The null port is simply created as follows:
 }
 ```
 
-## API
+## C++ API
 
 ### Port
 
@@ -857,3 +866,107 @@ See include/opendatacon/Transform.h
 See include/opendatacon/IUI.h 
 ```
 
+## C API (`odc_c_api.h`)
+
+opendatacon provides a pure C API (`include/opendatacon/odc_c_api.h`) that lets you write port, transform, and UI plugin modules as ordinary C shared libraries — no C++ inheritance or complex build setup required.
+
+A C plugin is a shared library that exports a fixed set of `odc_*` symbols. The C++ framework (`C_Port`, `C_Transform`, `C_UI` wrappers in the `CAPI` library) loads the library, resolves the symbols, and bridges between the C functions and the opendatacon event system.
+
+### Version symbol
+
+opendatacon detects a library as using the C API if it exports an appropiate version function:
+```c
+// Function to querie the C API version targeted by the library.
+const char* odc_c_api_version(void);
+```
+It should simply return the version defined in the API header (ODC_C_API_VERSION) :
+```c
+// All modules targeting the opendatacon C API should implement this:
+const char* odc_c_api_version(void)
+{
+    static const char * ver = ODC_C_API_VERSION;
+    return ver;
+}
+```
+
+### Port module — required symbols
+
+```c
+void* odc_port_create(const char* type, const char* name);
+void  odc_port_destroy(void* inst);
+void  odc_port_build(void* inst);
+void  odc_port_enable(void* inst);
+void  odc_port_disable(void* inst);
+void  odc_port_event(void* inst, const C_EventInfo* event, const char* sender, C_StatusCallback* cb);
+```
+
+`odc_port_create` receives the port type string (e.g. `"MyCustom"`) and the unique instance name. Return an opaque instance pointer (like a pointer to a strust storing the port instance's internal state). The remaining functions have that pointer passed back as `inst`. `odc_port_build` is called after config is fully resolved — use `odc_GetConfigJSON()` inside it to read the merged config. `odc_port_event` is called for incoming events; invoke the status callback via `odc_InvokeStatusCallback(&cb, status)` to respond.
+
+### Port module — optional symbols
+
+```c
+const char* odc_port_stats_json(void* inst);   // JSON statistics string (malloc'd)
+const char* odc_port_state_json(void* inst);    // JSON current state string (malloc'd)
+const char* odc_port_status_json(void* inst);   // JSON status string (malloc'd)
+void        odc_port_free_string(const char* str); // free() a string returned above
+```
+
+### Transform module — required symbols
+
+```c
+void* odc_transform_create(const char* type, const char* json_param_str);
+void  odc_transform_enable(void* inst);
+void  odc_transform_disable(void* inst);
+void  odc_transform_destroy(void* inst);
+```
+
+### UI plugin module — required symbols
+
+```c
+void* odc_plugin_create(const char* type, const char* conf_filename, const char* json_overrides_str);
+void  odc_plugin_build(void* inst);
+void  odc_plugin_enable(void* inst);
+void  odc_plugin_disable(void* inst);
+void  odc_plugin_destroy(void* inst);
+```
+
+### Helper functions (callable from C code)
+
+```c
+// Invoke the status callback returned to odc_port_event — marks the callback as consumed.
+void odc_InvokeStatusCallback(C_StatusCallback** cb, uint8_t status);
+
+// Publish an event to all subscribers. callback/handle may be null.
+typedef void (*C_StatusCallbackFunc_t)(uint8_t status, void* handle);
+void odc_PublishEvent(void* inst, const C_EventInfo* event,
+                      C_StatusCallbackFunc_t callback, void* handle);
+
+// Publish a connect-state change notification.
+void odc_PublishConnectState(void* inst, int state);
+
+// Get the full resolved config JSON (merged from inherits, file, overrides).
+// Valid from odc_port_build() onwards, owned by the framework.
+const char* odc_GetConfigJSON(void* inst);
+
+// Log a message via the port's per-type logger.
+void odc_Log(void* inst, uint8_t level, const char* message);
+
+// Schedule a one-shot timer on the port's strand. Returns an opaque handle
+// that can be passed to odc_cancelTimer(). callback fires with status.
+void* odc_msTimerCallback(void* inst, uint64_t ms,
+                          C_StatusCallbackFunc_t callback, void* handle);
+
+// Cancel a pending timer (safe to call after it has already fired).
+void odc_cancelTimer(void* timer_handle);
+
+```
+
+### Naming convention
+
+By default, the framework derives the library filename from the port type: `"Type" + "Port"`. For a port with `"Type": "MyCustom"`, it loads `libMyCustomPort.so` (or `.dylib`/`.dll`). This can be overridden with the `"Library"` config key, in which case the library may implement multiple types.
+
+A logger is created per type using the same name (`"MyCustomPort"`). Use `odc_Log()` from your C code to write to it.
+
+### Template / quick-start
+
+Copy `Code/tests/C_API_tests/mock_c_port.c` as a starting point. It implements all required symbols and demonstrates `odc_GetConfigJSON()` and `odc_Log()` usage. See `odc_c_api.h` for the full API reference.

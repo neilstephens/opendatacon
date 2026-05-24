@@ -174,6 +174,16 @@ static constexpr const char* OSPATHSEP = ":";
 
 #endif
 
+/// Get a module handle for the current executable, suitable for LoadSymbol().
+inline module_ptr GetCurrentModule()
+{
+	#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+	return GetModuleHandle(NULL);
+	#else
+	return dlopen(nullptr, RTLD_LAZY|RTLD_LOCAL);
+	#endif
+}
+
 /// Posix file system directory manipulation - e.g. chdir
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #include <direct.h>

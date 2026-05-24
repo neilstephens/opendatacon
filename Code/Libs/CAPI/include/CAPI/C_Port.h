@@ -31,6 +31,7 @@
 #include <opendatacon/DataPort.h>
 #include <opendatacon/odc_c_api.h>
 #include <opendatacon/Platform.h>
+#include <opendatacon/MergeJsonConf.h>
 #include <json/json.h>
 #include <string>
 #include <unordered_map>
@@ -45,8 +46,9 @@ extern std::unordered_map<void*, C_Port*> C_Port_instances;
 class C_Port: public DataPort
 {
 public:
-	C_Port(const std::string& aName, const std::string& aConfFilename,
-		const Json::Value& aConfOverrides, void* lib_handle);
+	C_Port(const std::string& aType, const std::string& aName,
+		const std::string& aConfFilename, const Json::Value& aConfOverrides,
+		void* lib_handle);
 	~C_Port() override;
 
 	void Enable() override
@@ -55,11 +57,11 @@ public:
 	void Disable() override
 	{ pSyncStrand->post([this,h{handler_tracker}](){Disable_();}); }
 
-	void Build() override
-	{ pSyncStrand->post([this,h{handler_tracker}](){Build_();}); }
+	void Build() override;
 
-	void ProcessElements(const Json::Value& JSONRoot) override
-	{ pSyncStrand->post([this,JSONRoot,h{handler_tracker}](){ProcessElements_(JSONRoot);}); }
+	void ProcessElements(const Json::Value& JSONRoot) override;
+
+	void Log(uint8_t level, const std::string& msg);
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
 		SharedStatusCallback_t pStatusCallback) override
@@ -75,6 +77,9 @@ public:
 	// Accessors for C helper functions
 	std::shared_ptr<asio::io_service::strand> GetStrand() const { return pSyncStrand; }
 	std::shared_ptr<void> GetHandlerTracker() const { return handler_tracker; }
+	void* GetCInst() const { return c_inst; }
+	const std::string& GetConfigStr() const { return configJSONstr; }
+	const std::string& GetType() const { return aType; }
 
 	const Json::Value GetStatistics() const override
 	{
@@ -106,8 +111,6 @@ private:
 
 	void Enable_();
 	void Disable_();
-	void Build_();
-	void ProcessElements_(const Json::Value& JSONRoot);
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
 		SharedStatusCallback_t pStatusCallback);
 
@@ -115,12 +118,14 @@ private:
 	const Json::Value GetCurrentState_() const;
 	const Json::Value GetStatus_() const;
 
+	std::string aType;
+	Json::Value configJSON;
+	std::string configJSONstr;
 	void* lib_handle;
 	void* c_inst;
 
 	// required function pointers
-	const char* (*p_port_type)();
-	void* (*p_create)(const char*, const char*, const char*);
+	void* (*p_create)(const char*, const char*);
 	void (*p_destroy)(void*);
 	void (*p_build)(void*);
 	void (*p_enable)(void*);

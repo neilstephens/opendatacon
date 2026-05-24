@@ -18,6 +18,7 @@
  #	limitations under the License.
  #
 add_subdirectory(ODC_tests)
+add_subdirectory(C_API_tests)
 
 if(DNP3PORT)
 add_subdirectory(DNP3Port_tests)

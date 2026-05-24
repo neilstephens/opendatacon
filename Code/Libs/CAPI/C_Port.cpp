@@ -30,25 +30,26 @@
 namespace odc
 {
 
-C_Port::C_Port(const std::string& aName, const std::string& aConfFilename,
-	const Json::Value& aConfOverrides, void* lib_handle):
+C_Port::C_Port(const std::string& aType, const std::string& aName,
+	const std::string& aConfFilename, const Json::Value& aConfOverrides,
+	void* lib_handle):
 	DataPort(aName, aConfFilename, aConfOverrides),
+	aType(aType),
 	lib_handle(lib_handle),
 	c_inst(nullptr),
-	p_port_type(nullptr), p_create(nullptr), p_destroy(nullptr),
+	p_create(nullptr), p_destroy(nullptr),
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr),
 	p_event(nullptr),
 	p_stats_json(nullptr), p_state_json(nullptr),
 	p_status_json(nullptr), p_free_str(nullptr)
 {
 	// Resolve required symbols
-	p_port_type = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_port_type"));
-	p_create    = reinterpret_cast<void*(*)(const char*,const char*,const char*)>(LoadSymbol(lib_handle, "odc_port_create"));
-	p_destroy   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_destroy"));
-	p_build     = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_build"));
-	p_enable    = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_enable"));
-	p_disable   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_disable"));
-	p_event     = reinterpret_cast<void (*)(void*,const C_EventInfo*,const char*,C_StatusCallback*)>(LoadSymbol(lib_handle, "odc_port_event"));
+	p_create  = reinterpret_cast<void*(*)(const char*,const char*)>(LoadSymbol(lib_handle, "odc_port_create"));
+	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_destroy"));
+	p_build   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_build"));
+	p_enable  = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_enable"));
+	p_disable = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_disable"));
+	p_event   = reinterpret_cast<void (*)(void*,const C_EventInfo*,const char*,C_StatusCallback*)>(LoadSymbol(lib_handle, "odc_port_event"));
 
 	// Resolve optional symbols
 	p_stats_json  = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_stats_json"));
@@ -56,19 +57,14 @@ C_Port::C_Port(const std::string& aName, const std::string& aConfFilename,
 	p_status_json = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_status_json"));
 	p_free_str    = reinterpret_cast<void (*)(const char*)>(LoadSymbol(lib_handle, "odc_port_free_string"));
 
-	if(!p_port_type || !p_create || !p_destroy || !p_build || !p_enable || !p_disable || !p_event)
+	if(!p_create || !p_destroy || !p_build || !p_enable || !p_disable || !p_event)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
 			log->error("C_Port '{}': missing required C API symbols", aName);
 		throw std::runtime_error("C_Port missing required C API symbols");
 	}
 
-	// Serialize config overrides to JSON string
-	std::string overrides_str;
-	if(!aConfOverrides.isNull())
-		overrides_str = Json::FastWriter().write(aConfOverrides);
-
-	c_inst = p_create(aName.c_str(), aConfFilename.c_str(), overrides_str.c_str());
+	c_inst = p_create(aType.c_str(), aName.c_str());
 	C_Port_instances[c_inst] = this;
 }
 
@@ -100,16 +96,26 @@ void C_Port::Disable_()
 		p_disable(c_inst);
 }
 
-void C_Port::Build_()
+void C_Port::Build()
 {
 	if(p_build)
 		p_build(c_inst);
 }
 
-void C_Port::ProcessElements_(const Json::Value&)
+void C_Port::ProcessElements(const Json::Value& JSONRoot)
 {
-	// Config is already parsed by ConfigParser base; C port receives
-	// JSON in odc_port_create() and processes in odc_port_build().
+	if(!JSONRoot.isObject())
+		return;
+	MergeJsonConf(configJSON, JSONRoot);
+	configJSONstr = Json::FastWriter().write(configJSON);
+}
+
+void C_Port::Log(uint8_t level, const std::string& msg)
+{
+	if(auto log = odc::spdlog_get(aType+"Port"))
+		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
+	else if(auto log = odc::spdlog_get("opendatacon"))
+		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
 }
 
 void C_Port::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,

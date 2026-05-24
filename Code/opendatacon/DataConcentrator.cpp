@@ -1097,7 +1097,8 @@ void DataConcentrator::ProcessPorts(const Json::Value& Ports)
 			auto port_cleanup = [](DataPort* port) { delete port; };
 			DataPorts.emplace(Ports[n]["Name"].asString(),
 				std::shared_ptr<DataPort>(
-					new odc::C_Port(Ports[n]["Name"].asString(),
+					new odc::C_Port(Ports[n]["Type"].asString(),
+						Ports[n]["Name"].asString(),
 						Ports[n]["ConfFilename"].asString(),
 						Ports[n]["ConfOverrides"],
 						portlib),

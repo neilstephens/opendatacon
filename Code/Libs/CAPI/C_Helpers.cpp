@@ -375,3 +375,24 @@ extern "C" void odc_PublishConnectState(void* inst, int state)
 	event->template SetPayload<odc::EventType::ConnectState>(std::move(cs));
 	it->second->PublicPublishEvent(event);
 }
+
+extern "C" const char* odc_GetConfigJSON(void* inst)
+{
+	if(!inst)
+		return nullptr;
+	auto it = odc::C_Port_instances.find(inst);
+	if(it == odc::C_Port_instances.end())
+		return nullptr;
+
+	return it->second->GetConfigStr().c_str();
+}
+
+extern "C" void odc_Log(void* inst, uint8_t level, const char* message)
+{
+	if(!inst || !message)
+		return;
+	auto it = odc::C_Port_instances.find(inst);
+	if(it == odc::C_Port_instances.end())
+		return;
+	it->second->Log(level, message);
+}
