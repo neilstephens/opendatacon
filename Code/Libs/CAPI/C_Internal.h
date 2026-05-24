@@ -31,6 +31,7 @@
 #include <opendatacon/IOHandler.h>
 #include <opendatacon/Transform.h>
 #include <opendatacon/LogHelpers.h>
+#include <atomic>
 #include <cstdint>
 #include <unordered_map>
 
@@ -40,14 +41,21 @@
 struct C_StatusCallback
 {
 	odc::SharedStatusCallback_t cb;
-	explicit C_StatusCallback(odc::SharedStatusCallback_t&& c) : cb(std::move(c)) {}
+	explicit C_StatusCallback(odc::SharedStatusCallback_t&& c): cb(std::move(c)) {}
 };
 
 //  Internal C_PassContext — opaque to C, wraps the pAllow callback
 struct C_PassContext
 {
 	odc::EvtHandler_ptr pAllow;
-	explicit C_PassContext(odc::EvtHandler_ptr&& a) : pAllow(std::move(a)) {}
+	explicit C_PassContext(odc::EvtHandler_ptr&& a): pAllow(std::move(a)) {}
+};
+
+//  Internal C_TimerHandle — opaque cancel handle for odc_msTimerCallback
+struct C_TimerHandle
+{
+	std::weak_ptr<asio::steady_timer> weak_timer;
+	std::shared_ptr<std::atomic<bool>> active;
 };
 
 namespace odc

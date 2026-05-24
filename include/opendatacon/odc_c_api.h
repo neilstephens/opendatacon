@@ -124,11 +124,11 @@ enum C_QualityFlags
 
 struct C_ControlRelayOutputBlock
 {
-	uint8_t function_code;  /* C_ControlCode */
+	uint8_t function_code; /* C_ControlCode */
 	uint8_t count;
 	uint32_t on_time_ms;
 	uint32_t off_time_ms;
-	uint8_t status;         /* C_CommandStatus */
+	uint8_t status; /* C_CommandStatus */
 };
 
 /* Tagged union covering every EventType payload.
@@ -148,7 +148,7 @@ union C_Payload
 	uint32_t counter_val;
 
 	/* BinaryCommandEvent, AnalogCommandEvent */
-	uint8_t cmd_status;  /* C_CommandStatus */
+	uint8_t cmd_status; /* C_CommandStatus */
 
 	/* OctetString — borrowed pointer, valid only during callback */
 	struct { const uint8_t* data; size_t size; } octet_string;
@@ -175,7 +175,7 @@ union C_Payload
 	struct { double value; uint8_t status; } aod64;
 
 	/* Quality event types: BinaryQuality, DoubleBitBinaryQuality, etc. */
-	uint16_t quality_val;  /* C_QualityFlags */
+	uint16_t quality_val; /* C_QualityFlags */
 
 	/* ConnectState */
 	uint8_t connect_state; /* C_ConnectState */
@@ -189,10 +189,10 @@ union C_Payload
 
 struct C_EventInfo
 {
-	uint8_t event_type;     /* C_EventType */
+	uint8_t event_type; /* C_EventType */
 	size_t index;
-	uint64_t timestamp;     /* ms since epoch */
-	uint16_t quality;       /* C_QualityFlags bitmask */
+	uint64_t timestamp;      /* ms since epoch */
+	uint16_t quality;        /* C_QualityFlags bitmask */
 	const char* source_port; /* borrowed, valid during callback */
 	union C_Payload payload;
 };
@@ -202,6 +202,11 @@ struct C_EventInfo
    Must be invoked exactly once via odc_InvokeStatusCallback(),
    then it is released and zeroed. */
 typedef struct C_StatusCallback C_StatusCallback;
+
+/* Function pointer for status/timer callbacks.
+   status: a C_CommandStatus value.
+   handle: user-provided context pointer (passed through from the caller). */
+typedef void (*C_StatusCallbackFunc_t)(uint8_t status, void* handle);
 
 /* Opaque pass context for transforms.
    Created by the C++ wrapper, passed to C code in odc_transform_event(). */
@@ -219,8 +224,8 @@ const char* odc_port_type(void);
    as a lookup key for publish helpers.
    name, conf_filename, conf_overrides_json are borrowed — copy if needed. */
 void* odc_port_create(const char* name,
-                      const char* conf_filename,
-                      const char* conf_overrides_json);
+	const char* conf_filename,
+	const char* conf_overrides_json);
 
 /* Destroy a port instance created by odc_port_create(). */
 void odc_port_destroy(void* inst);
@@ -233,13 +238,13 @@ void odc_port_disable(void* inst);
 
 /* Receive an event from other ports.
    cb is an opaque status callback handle. It MUST be invoked exactly
-   once via odc_InvokeStatusCallback(&cb, status) or passed to
-   odc_PublishEvent(). After invocation, *cb is nulled.
+   once via odc_InvokeStatusCallback(&cb, status).
+   After invocation, *cb is nulled.
    If C code does not need to report status, invoke with SUCCESS. */
 void odc_port_event(void* inst,
-                    const struct C_EventInfo* event,
-                    const char* sender,
-                    C_StatusCallback* cb);
+	const struct C_EventInfo* event,
+	const char* sender,
+	C_StatusCallback* cb);
 
 /* ------------------------------------------------------------------ */
 /*  Optional exports from a C Port library — return JSON strings       */
@@ -263,17 +268,17 @@ void  odc_transform_disable(void* inst);
 /* Transform an event. Call pass(pass_ctx, &event) to forward the
    (possibly modified) event downstream, or skip the call to drop it. */
 void odc_transform_event(void* inst,
-                         struct C_EventInfo* event,
-                         C_PassContext* pass_ctx,
-                         void (*pass)(C_PassContext* ctx, struct C_EventInfo* evt));
+	struct C_EventInfo* event,
+	C_PassContext* pass_ctx,
+	void (*pass)(C_PassContext* ctx, struct C_EventInfo* evt));
 
 /* ------------------------------------------------------------------ */
 /*  Required exports from a C Plugin (IUI) library                     */
 /* ------------------------------------------------------------------ */
 
 void* odc_plugin_create(const char* name,
-                        const char* conf_filename,
-                        const char* conf_overrides_json);
+	const char* conf_filename,
+	const char* conf_overrides_json);
 void  odc_plugin_destroy(void* inst);
 void  odc_plugin_build(void* inst);
 void  odc_plugin_enable(void* inst);
@@ -290,12 +295,28 @@ void odc_InvokeStatusCallback(C_StatusCallback** cb, uint8_t status);
 
 /* Publish an event from this port to all subscribers.
    inst is the void* returned by odc_port_create().
-   Returns a status callback for downstream response, or NULL.
-   If non-NULL, must be invoked exactly once via odc_InvokeStatusCallback(). */
-C_StatusCallback* odc_PublishEvent(void* inst, const struct C_EventInfo* event);
+   callback is an optional function pointer invoked once with the downstream
+   CommandStatus result. handle is passed back to callback unchanged. */
+void odc_PublishEvent(void* inst, const struct C_EventInfo* event,
+	C_StatusCallbackFunc_t callback, void* handle);
 
 /* Publish a connection state change. */
 void odc_PublishConnectState(void* inst, int state);
+
+/* Schedule a one-shot timer.
+   inst is the void* returned by odc_port_create() (used for strand dispatch).
+   After ms milliseconds, callback is invoked with C_CommandStatus_SUCCESS
+   (or C_CommandStatus_UNDEFINED if cancelled). handle is passed back.
+   Returns an opaque timer handle, or NULL on error.
+   The timer can be cancelled with odc_cancelTimer(). */
+void* odc_msTimerCallback(void* inst, uint64_t ms,
+	C_StatusCallbackFunc_t callback, void* handle);
+
+/* Cancel a timer created by odc_msTimerCallback().
+   timer_handle is the opaque pointer returned by odc_msTimerCallback().
+   After this call, the timer's callback will not fire.
+   The handle is freed by this function and must not be used again. */
+void odc_cancelTimer(void* timer_handle);
 
 #ifdef __cplusplus
 }

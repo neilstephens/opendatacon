@@ -160,13 +160,14 @@ extern "C" void odc_InvokeStatusCallback(C_StatusCallback** cb, uint8_t status)
 	*cb = nullptr;
 }
 
-extern "C" C_StatusCallback* odc_PublishEvent(void* inst, const struct C_EventInfo* cevt)
+extern "C" void odc_PublishEvent(void* inst, const struct C_EventInfo* cevt,
+	C_StatusCallbackFunc_t callback, void* handle)
 {
 	if(!inst || !cevt)
-		return nullptr;
+		return;
 	auto it = odc::C_Port_instances.find(inst);
 	if(it == odc::C_Port_instances.end())
-		return nullptr;
+		return;
 
 	// Deserialize C_EventInfo → EventInfo
 	auto event_type = static_cast<odc::EventType>(cevt->event_type);
@@ -301,15 +302,64 @@ extern "C" C_StatusCallback* odc_PublishEvent(void* inst, const struct C_EventIn
 			break;
 	}
 
-	// Build a status callback wrapper so the downstream result can be returned
-	auto status_cb = std::make_shared<std::function<void(odc::CommandStatus)>>(
-		[](odc::CommandStatus) {});
-	auto shared = std::make_shared<odc::SharedStatusCallback_t::element_type>(
-		[status_cb](odc::CommandStatus s) { (*status_cb)(s); });
-	auto cb_wrapper = new C_StatusCallback(std::move(shared));
+	if(callback)
+	{
+		// Wrap the C function pointer + handle into a SharedStatusCallback_t
+		auto sharedCb = std::make_shared<odc::SharedStatusCallback_t::element_type>(
+			[callback, handle](odc::CommandStatus s)
+			{
+				callback(static_cast<uint8_t>(s), handle);
+			});
+		it->second->PublicPublishEvent(event, sharedCb);
+	}
+	else
+	{
+		it->second->PublicPublishEvent(event);
+	}
+}
 
-	it->second->PublicPublishEvent(event, cb_wrapper->cb);
-	return cb_wrapper;
+extern "C" void* odc_msTimerCallback(void* inst, uint64_t ms,
+	C_StatusCallbackFunc_t callback, void* handle)
+{
+	if(!inst || !callback)
+		return nullptr;
+	auto it = odc::C_Port_instances.find(inst);
+	if(it == odc::C_Port_instances.end())
+		return nullptr;
+
+	auto* port = it->second;
+	auto sync = port->GetStrand();
+	auto tracker = port->GetHandlerTracker();
+
+	auto timer = odc::asio_service::Get()->make_steady_timer();
+	timer->expires_from_now(std::chrono::milliseconds(ms));
+
+	auto active = std::make_shared<std::atomic<bool>>(true);
+
+	auto pTimer = std::shared_ptr<asio::steady_timer>(std::move(timer));
+
+	pTimer->async_wait(sync->wrap(
+		[pTimer, active, callback, handle, tracker](asio::error_code err)
+		{
+			if(!active->exchange(false))
+				return;
+			callback(
+				static_cast<uint8_t>(err ? odc::CommandStatus::UNDEFINED : odc::CommandStatus::SUCCESS),
+				handle);
+		}));
+
+	return new C_TimerHandle{std::weak_ptr<asio::steady_timer>(pTimer), active};
+}
+
+extern "C" void odc_cancelTimer(void* timer_handle)
+{
+	if(!timer_handle)
+		return;
+	auto* handle = static_cast<C_TimerHandle*>(timer_handle);
+	handle->active->store(false);
+	if(auto timer = handle->weak_timer.lock())
+		timer->cancel();
+	delete handle;
 }
 
 extern "C" void odc_PublishConnectState(void* inst, int state)

@@ -72,6 +72,10 @@ public:
 	void PublicPublishEvent(const std::shared_ptr<const EventInfo>& event) const
 	{ PublishEvent(event); }
 
+	// Accessors for C helper functions
+	std::shared_ptr<asio::io_service::strand> GetStrand() const { return pSyncStrand; }
+	std::shared_ptr<void> GetHandlerTracker() const { return handler_tracker; }
+
 	const Json::Value GetStatistics() const override
 	{
 		auto p = std::make_shared<std::promise<Json::Value>>();
