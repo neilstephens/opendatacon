@@ -37,10 +37,14 @@
 namespace odc
 {
 
+class C_UI;
+extern std::unordered_map<void*, C_UI*> C_UI_instances;
+
 class C_UI: public IUI
 {
 public:
-	C_UI(const std::string& aName, const std::string& aConfFilename,
+	C_UI(const std::string& aType, const std::string& aName,
+		const std::string& aConfFilename,
 		const Json::Value& aConfOverrides, void* lib_handle);
 	~C_UI() override;
 
@@ -55,6 +59,10 @@ public:
 
 	void AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc) override {}
 
+	void Log(uint8_t level, const std::string& msg);
+	bool ShouldLog(uint8_t level) const;
+	void* GetCInst() const { return c_inst; }
+
 private:
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	std::shared_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
@@ -63,6 +71,7 @@ private:
 	void Enable_();
 	void Disable_();
 
+	std::string Type;
 	void* lib_handle;
 	void* c_inst;
 

@@ -25,6 +25,8 @@
  */
 
 #include "CAPI/C_Port.h"
+#include "CAPI/C_Transform.h"
+#include "CAPI/C_UI.h"
 #include "C_Internal.h"
 
 namespace odc
@@ -391,18 +393,22 @@ extern "C" void odc_Log(void* inst, uint8_t level, const char* message)
 {
 	if(!inst || !message)
 		return;
-	auto it = odc::C_Port_instances.find(inst);
-	if(it == odc::C_Port_instances.end())
-		return;
-	it->second->Log(level, message);
+	{   auto it = odc::C_Port_instances.find(inst);
+	    if(it != odc::C_Port_instances.end()) { it->second->Log(level, message); return; } }
+	{   auto it = odc::C_Transform_instances.find(inst);
+	    if(it != odc::C_Transform_instances.end()) { it->second->Log(level, message); return; } }
+	{   auto it = odc::C_UI_instances.find(inst);
+	    if(it != odc::C_UI_instances.end()) { it->second->Log(level, message); return; } }
 }
 
 extern "C" int odc_ShouldLog(void* inst, uint8_t level)
 {
-	if(!inst)
-		return 0;
-	auto it = odc::C_Port_instances.find(inst);
-	if(it == odc::C_Port_instances.end())
-		return 0;
-	return it->second->ShouldLog(level) ? 1 : 0;
+	if(!inst) return 0;
+	{   auto it = odc::C_Port_instances.find(inst);
+	    if(it != odc::C_Port_instances.end()) return it->second->ShouldLog(level) ? 1 : 0;}
+	{   auto it = odc::C_Transform_instances.find(inst);
+	    if(it != odc::C_Transform_instances.end()) return it->second->ShouldLog(level) ? 1 : 0;}
+	{   auto it = odc::C_UI_instances.find(inst);
+	    if(it != odc::C_UI_instances.end()) return it->second->ShouldLog(level) ? 1 : 0;}
+	return 0;
 }

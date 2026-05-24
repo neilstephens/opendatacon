@@ -38,10 +38,14 @@
 namespace odc
 {
 
+class C_Transform;
+extern std::unordered_map<void*, C_Transform*> C_Transform_instances;
+
 class C_Transform: public Transform
 {
 public:
-	C_Transform(const std::string& Name, const Json::Value& params, void* lib_handle);
+	C_Transform(const std::string& aType, const std::string& aName,
+		const Json::Value& params, void* lib_handle);
 	~C_Transform() override;
 
 	void Enable() override
@@ -53,6 +57,10 @@ public:
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{ pSyncStrand->post([=,h{handler_tracker}](){Event_(event,pAllow);}); }
 
+	void Log(uint8_t level, const std::string& msg);
+	bool ShouldLog(uint8_t level) const;
+	void* GetCInst() const { return c_inst; }
+
 private:
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	std::shared_ptr<asio_service> pIOS = asio_service::Get();
@@ -62,6 +70,7 @@ private:
 	void Disable_();
 	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
 
+	std::string Type;
 	void* lib_handle;
 	void* c_inst;
 

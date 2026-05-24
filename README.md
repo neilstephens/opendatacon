@@ -952,8 +952,8 @@ void odc_PublishConnectState(void* inst, int state);
 // Valid from odc_port_build() onwards, owned by the framework.
 const char* odc_GetConfigJSON(void* inst);
 
-// Log a message via the port's per-type logger.
-// level: C_LOG_LEVEL_TRACE (0) through C_LOG_LEVEL_OFF (6).
+// Log a message via the module's per-type logger (works for ports,
+// transforms, and UIs). level: C_LOG_LEVEL_TRACE (0) through C_LOG_LEVEL_OFF (6).
 void odc_Log(void* inst, uint8_t level, const char* message);
 
 // Check if a log level would produce output — avoids expensive formatting.
@@ -991,7 +991,7 @@ void odc_cancelTimer(void* timer_handle);
 
 By default, the framework derives the library filename from the port type: `"Type" + "Port"`. For a port with `"Type": "MyCustom"`, it loads `libMyCustomPort.so` (or `.dylib`/`.dll`). This can be overridden with the `"Library"` config key, in which case the library may implement multiple types.
 
-A logger is created per type using the same name (`"MyCustomPort"`). Use `odc_Log()` (or the `odc_LogTrace`/`Debug`/`Info`/`Warn`/`Error`/`Critical` convenience macros) from your C code to write to it. Check `odc_ShouldLog()` to avoid expensive string formatting when logging is disabled.
+A logger is created per type using the same name (`"MyCustomPort"`). Use `odc_Log()` (or the `odc_LogTrace`/`Debug`/`Info`/`Warn`/`Error`/`Critical` convenience macros) from your C code to write to it. Check `odc_ShouldLog()` to avoid expensive string formatting when logging is disabled. The same `odc_Log()` and `odc_ShouldLog()` functions work for all three module types (ports, transforms, UIs). For ports the logger name is `Type + "Port"`; for transforms and UIs it is just `Type` (no suffix).
 
 ### Template / quick-start
 

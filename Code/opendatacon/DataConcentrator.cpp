@@ -1247,7 +1247,7 @@ void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
 				AddLogger(libname, LogSinks);
 			auto plugin_cleanup = [](IUI* plugin) { delete plugin; };
 			Interfaces.emplace(PluginName, std::shared_ptr<IUI>(
-				new odc::C_UI(PluginName, Plugins[n]["ConfFilename"].asString(),
+				new odc::C_UI(Plugins[n]["Type"].asString(), PluginName, Plugins[n]["ConfFilename"].asString(),
 					Plugins[n]["ConfOverrides"], pluginlib),
 				plugin_cleanup));
 			continue;

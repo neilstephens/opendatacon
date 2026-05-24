@@ -165,10 +165,18 @@ static void TestSetup()
 	auto pLibLogger = std::make_shared<spdlog::logger>("opendatacon", console_sink);
 	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
-	// Per-type logger for mock C ports (matches aType used in tests)
+	// Per-type logger for mock C ports (matches Type+"Port")
 	auto pMockLogger = std::make_shared<spdlog::logger>("MockCPort", console_sink);
 	pMockLogger->set_level(log_level);
 	odc::spdlog_register_logger(pMockLogger);
+	// Per-type loggers for mock C transforms (Type, no suffix)
+	auto pTxLogger = std::make_shared<spdlog::logger>("TestTxType", console_sink);
+	pTxLogger->set_level(log_level);
+	odc::spdlog_register_logger(pTxLogger);
+	// Per-type logger for mock C UI plugins (Type, no suffix)
+	auto pUILogger = std::make_shared<spdlog::logger>("TestUIType", console_sink);
+	pUILogger->set_level(log_level);
+	odc::spdlog_register_logger(pUILogger);
 }
 
 static void TestTearDown()
@@ -471,23 +479,33 @@ TEST_CASE("C_API - odc_Log, odc_ShouldLog, convenience macros")
 	auto port = std::make_shared<odc::C_Port>("MockC", "LogPort", "conf.json", overrides, self);
 	port->Build();
 	port->Enable();
-
 	auto cinst = port->GetCInst();
 
-	// odc_Log at various levels — verify no crash
+	// Transform and UI instances
+	auto tx = std::make_shared<odc::C_Transform>("TestTxType", "LogTx", Json::objectValue, self);
+	tx->Enable();
+	auto ux = std::make_shared<odc::C_UI>("TestUIType", "LogUI", "conf.json", overrides, self);
+	ux->Build();
+	ux->Enable();
+
+	// odc_Log at various levels — verify no crash (port, transform, UI)
 	odc_Log(cinst, C_LOG_LEVEL_TRACE, "trace message");
 	odc_Log(cinst, C_LOG_LEVEL_INFO, "info message");
 	odc_Log(cinst, C_LOG_LEVEL_ERROR, "error message");
 	odc_Log(cinst, C_LOG_LEVEL_OFF, nullptr); // null message — no crash
+	odc_Log(tx->GetCInst(), C_LOG_LEVEL_ERROR, "tx error");
+	odc_Log(ux->GetCInst(), C_LOG_LEVEL_ERROR, "ui error");
 
 	// Null inst — no crash
 	odc_Log(nullptr, C_LOG_LEVEL_INFO, "no instance");
 
-	// odc_ShouldLog — not enabled by default (log_level = error from CatchMain)
+	// odc_ShouldLog on all three types
 	if(log_level <= spdlog::level::err)
 	{
 		REQUIRE(odc_ShouldLog(cinst, C_LOG_LEVEL_ERROR));
 		REQUIRE(odc_ShouldLog(cinst, C_LOG_LEVEL_CRITICAL));
+		REQUIRE(odc_ShouldLog(tx->GetCInst(), C_LOG_LEVEL_ERROR));
+		REQUIRE(odc_ShouldLog(ux->GetCInst(), C_LOG_LEVEL_ERROR));
 	}
 	REQUIRE(!odc_ShouldLog(cinst, C_LOG_LEVEL_TRACE));
 	REQUIRE(!odc_ShouldLog(nullptr, C_LOG_LEVEL_INFO));
@@ -503,6 +521,8 @@ TEST_CASE("C_API - odc_Log, odc_ShouldLog, convenience macros")
 	// Wait for log posts to drain
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	port->Disable();
+	tx->Disable();
+	ux->Disable();
 	TestTearDown();
 }
 
@@ -599,7 +619,7 @@ TEST_CASE("C_API - C_Transform wrapper")
 	REQUIRE(self != nullptr);
 
 	auto params = Json::Value(Json::objectValue);
-	auto tx = std::make_shared<odc::C_Transform>("TestTransform", params, self);
+	auto tx = std::make_shared<odc::C_Transform>("TestTxType", "TestTransform", params, self);
 	REQUIRE(tx != nullptr);
 
 	tx->Enable();
@@ -623,7 +643,7 @@ TEST_CASE("C_API - C_UI wrapper")
 	REQUIRE(self != nullptr);
 
 	auto overrides = Json::Value(Json::objectValue);
-	auto ui = std::make_shared<odc::C_UI>("TestUI", "conf.json", overrides, self);
+	auto ui = std::make_shared<odc::C_UI>("TestUIType", "TestUI", "conf.json", overrides, self);
 	REQUIRE(ui != nullptr);
 
 	ui->Build();

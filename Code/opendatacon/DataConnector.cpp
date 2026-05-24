@@ -164,49 +164,49 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					if(c_api_version != nullptr)
 					{
 						Log.Info("{} : Detected C API (v{}) transform library — creating C_Transform wrapper", txname, c_api_version());
-						tx_ptr.reset(new odc::C_Transform(txname, Transforms[n]["Parameters"], txlib), tx_delete);
+						tx_ptr.reset(new odc::C_Transform(Transforms[n]["Type"].asString(), txname, Transforms[n]["Parameters"], txlib), tx_delete);
 						//Continue to sender registration below (skip C++ symbol lookup)
 					}
 					else
 					{
 
-					//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
-					//it should return a pointer to a heap allocated instance of a descendant of Transform
-					std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-					auto new_tx_func = reinterpret_cast<Transform*(*)(const std::string&,const Json::Value&)>(LoadSymbol(txlib, new_funcname));
-					std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
-					auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
+						//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
+						//it should return a pointer to a heap allocated instance of a descendant of Transform
+						std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
+						auto new_tx_func = reinterpret_cast<Transform*(*)(const std::string&,const Json::Value&)>(LoadSymbol(txlib, new_funcname));
+						std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
+						auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
 
-					if(new_tx_func == nullptr)
-						Log.Info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
-					if(delete_tx_func == nullptr)
-						Log.Info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
-					if(new_tx_func == nullptr || delete_tx_func == nullptr)
-					{
-						Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
-						continue;
-					}
-
-					//Create a logger if we haven't already
-					if(!odc::spdlog_get(libname))
-					{
-						if(auto log = Log.GetLog())
+						if(new_tx_func == nullptr)
+							Log.Info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
+						if(delete_tx_func == nullptr)
+							Log.Info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
+						if(new_tx_func == nullptr || delete_tx_func == nullptr)
 						{
-							auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
-								odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-							pLogger->set_level(log->level());
-							odc::spdlog_register_logger(pLogger);
+							Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
+							continue;
 						}
-					}
 
-					tx_delete = [=](Transform* tx)
+						//Create a logger if we haven't already
+						if(!odc::spdlog_get(libname))
+						{
+							if(auto log = Log.GetLog())
 							{
-								delete_tx_func(tx);
-								UnLoadModule(txlib);
-							};
+								auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
+									odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+								pLogger->set_level(log->level());
+								odc::spdlog_register_logger(pLogger);
+							}
+						}
 
-					//call the creation function and wrap the returned pointer
-					tx_ptr.reset(new_tx_func(txname,Transforms[n]["Parameters"]),tx_delete);
+						tx_delete = [=](Transform* tx)
+								{
+									delete_tx_func(tx);
+									UnLoadModule(txlib);
+								};
+
+						//call the creation function and wrap the returned pointer
+						tx_ptr.reset(new_tx_func(txname,Transforms[n]["Parameters"]),tx_delete);
 					}
 				}
 				//insert the transform into the chain of transforms for each applicable sender

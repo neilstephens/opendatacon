@@ -30,8 +30,12 @@
 namespace odc
 {
 
-C_UI::C_UI(const std::string& aName, const std::string& aConfFilename,
+std::unordered_map<void*, C_UI*> C_UI_instances;
+
+C_UI::C_UI(const std::string& aType, const std::string& aName,
+	const std::string& aConfFilename,
 	const Json::Value& aConfOverrides, void* lib_handle):
+	Type(aType),
 	lib_handle(lib_handle),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
@@ -70,10 +74,12 @@ C_UI::C_UI(const std::string& aName, const std::string& aConfFilename,
 		overrides_str = Json::FastWriter().write(aConfOverrides);
 
 	c_inst = p_create(aName.c_str(), aConfFilename.c_str(), overrides_str.c_str());
+	C_UI_instances[c_inst] = this;
 }
 
 C_UI::~C_UI()
 {
+	C_UI_instances.erase(c_inst);
 	if(c_inst)
 	{
 		std::weak_ptr<void> tracker = handler_tracker;
@@ -103,6 +109,19 @@ void C_UI::Disable_()
 {
 	if(p_disable)
 		p_disable(c_inst);
+}
+
+void C_UI::Log(uint8_t level, const std::string& msg)
+{
+	if(auto log = odc::spdlog_get(Type))
+		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
+}
+
+bool C_UI::ShouldLog(uint8_t level) const
+{
+	if(auto log = odc::spdlog_get(Type))
+		return log->should_log(static_cast<spdlog::level::level_enum>(level));
+	return false;
 }
 
 } // namespace odc

@@ -30,8 +30,12 @@
 namespace odc
 {
 
-C_Transform::C_Transform(const std::string& Name, const Json::Value& params, void* lib_handle):
-	Transform(Name, params),
+std::unordered_map<void*, C_Transform*> C_Transform_instances;
+
+C_Transform::C_Transform(const std::string& aType, const std::string& aName,
+	const Json::Value& params, void* lib_handle):
+	Transform(aName, params),
+	Type(aType),
 	lib_handle(lib_handle),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
@@ -42,13 +46,13 @@ C_Transform::C_Transform(const std::string& Name, const Json::Value& params, voi
 	if(!c_api_version)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("C_Transform '{}': missing C API version symbol", Name);
+			log->error("C_Transform '{}': missing C API version symbol", aName);
 		throw std::runtime_error("C_Transform missing C API version symbol");
 	}
 	if(std::string(c_api_version()) != ODC_C_API_VERSION)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("C_Transform '{}': C API version mismatch (expected {}, got {})", Name, ODC_C_API_VERSION, c_api_version());
+			log->error("C_Transform '{}': C API version mismatch (expected {}, got {})", aName, ODC_C_API_VERSION, c_api_version());
 		throw std::runtime_error("C_Transform C API version mismatch");
 	}
 
@@ -61,7 +65,7 @@ C_Transform::C_Transform(const std::string& Name, const Json::Value& params, voi
 	if(!p_create || !p_destroy || !p_event)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("C_Transform '{}': missing required C API symbols", Name);
+			log->error("C_Transform '{}': missing required C API symbols", aName);
 		throw std::runtime_error("C_Transform missing required C API symbols");
 	}
 
@@ -69,11 +73,13 @@ C_Transform::C_Transform(const std::string& Name, const Json::Value& params, voi
 	if(!params.isNull())
 		params_str = Json::FastWriter().write(params);
 
-	c_inst = p_create(Name.c_str(), params_str.c_str());
+	c_inst = p_create(aName.c_str(), params_str.c_str());
+	C_Transform_instances[c_inst] = this;
 }
 
 C_Transform::~C_Transform()
 {
+	C_Transform_instances.erase(c_inst);
 	if(c_inst)
 	{
 		std::weak_ptr<void> tracker = handler_tracker;
@@ -253,6 +259,19 @@ void C_Transform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow
 			   };
 
 	p_event(c_inst, &cevt, pass_ctx.get(), pass_fn);
+}
+
+void C_Transform::Log(uint8_t level, const std::string& msg)
+{
+	if(auto log = odc::spdlog_get(Type))
+		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
+}
+
+bool C_Transform::ShouldLog(uint8_t level) const
+{
+	if(auto log = odc::spdlog_get(Type))
+		return log->should_log(static_cast<spdlog::level::level_enum>(level));
+	return false;
 }
 
 } // namespace odc
