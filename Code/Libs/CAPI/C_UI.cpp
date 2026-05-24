@@ -31,17 +31,17 @@ namespace odc
 {
 
 C_UI::C_UI(const std::string& aName, const std::string& aConfFilename,
-           const Json::Value& aConfOverrides, void* lib_handle):
+	const Json::Value& aConfOverrides, void* lib_handle):
 	lib_handle(lib_handle),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr)
 {
 	p_create  = reinterpret_cast<void*(*)(const char*,const char*,const char*)>(LoadSymbol(lib_handle, "odc_plugin_create"));
-	p_destroy = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_destroy"));
-	p_build   = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_build"));
-	p_enable  = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_enable"));
-	p_disable = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_disable"));
+	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_destroy"));
+	p_build   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_build"));
+	p_enable  = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_enable"));
+	p_disable = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_disable"));
 
 	if(!p_create || !p_destroy || !p_build || !p_enable || !p_disable)
 	{

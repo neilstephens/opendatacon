@@ -37,11 +37,11 @@
 namespace odc
 {
 
-class C_UI : public IUI
+class C_UI: public IUI
 {
 public:
 	C_UI(const std::string& aName, const std::string& aConfFilename,
-	     const Json::Value& aConfOverrides, void* lib_handle);
+		const Json::Value& aConfOverrides, void* lib_handle);
 	~C_UI() override;
 
 	void Build() override
@@ -67,10 +67,10 @@ private:
 	void* c_inst;
 
 	void* (*p_create)(const char*, const char*, const char*);
-	void  (*p_destroy)(void*);
-	void  (*p_build)(void*);
-	void  (*p_enable)(void*);
-	void  (*p_disable)(void*);
+	void (*p_destroy)(void*);
+	void (*p_build)(void*);
+	void (*p_enable)(void*);
+	void (*p_disable)(void*);
 };
 
 } // namespace odc

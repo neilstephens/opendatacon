@@ -42,11 +42,11 @@ class C_Port;
 
 extern std::unordered_map<void*, C_Port*> C_Port_instances;
 
-class C_Port : public DataPort
+class C_Port: public DataPort
 {
 public:
 	C_Port(const std::string& aName, const std::string& aConfFilename,
-	       const Json::Value& aConfOverrides, void* lib_handle);
+		const Json::Value& aConfOverrides, void* lib_handle);
 	~C_Port() override;
 
 	void Enable() override
@@ -62,12 +62,12 @@ public:
 	{ pSyncStrand->post([this,JSONRoot,h{handler_tracker}](){ProcessElements_(JSONRoot);}); }
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
-	           SharedStatusCallback_t pStatusCallback) override
+		SharedStatusCallback_t pStatusCallback) override
 	{ pSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);}); }
 
 	// Public wrappers around protected PublishEvent — callable from C helper functions
 	void PublicPublishEvent(const std::shared_ptr<const EventInfo>& event,
-	                        const SharedStatusCallback_t& pStatusCallback) const
+		const SharedStatusCallback_t& pStatusCallback) const
 	{ PublishEvent(event, pStatusCallback); }
 	void PublicPublishEvent(const std::shared_ptr<const EventInfo>& event) const
 	{ PublishEvent(event); }
@@ -105,7 +105,7 @@ private:
 	void Build_();
 	void ProcessElements_(const Json::Value& JSONRoot);
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
-	            SharedStatusCallback_t pStatusCallback);
+		SharedStatusCallback_t pStatusCallback);
 
 	const Json::Value GetStatistics_() const;
 	const Json::Value GetCurrentState_() const;
@@ -117,17 +117,17 @@ private:
 	// required function pointers
 	const char* (*p_port_type)();
 	void* (*p_create)(const char*, const char*, const char*);
-	void  (*p_destroy)(void*);
-	void  (*p_build)(void*);
-	void  (*p_enable)(void*);
-	void  (*p_disable)(void*);
-	void  (*p_event)(void*, const C_EventInfo*, const char*, C_StatusCallback*);
+	void (*p_destroy)(void*);
+	void (*p_build)(void*);
+	void (*p_enable)(void*);
+	void (*p_disable)(void*);
+	void (*p_event)(void*, const C_EventInfo*, const char*, C_StatusCallback*);
 
 	// optional function pointers
 	const char* (*p_stats_json)(void*);
 	const char* (*p_state_json)(void*);
 	const char* (*p_status_json)(void*);
-	void        (*p_free_str)(const char*);
+	void (*p_free_str)(const char*);
 };
 
 } // namespace odc

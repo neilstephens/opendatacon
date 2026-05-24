@@ -31,7 +31,7 @@ namespace odc
 {
 
 C_Port::C_Port(const std::string& aName, const std::string& aConfFilename,
-               const Json::Value& aConfOverrides, void* lib_handle):
+	const Json::Value& aConfOverrides, void* lib_handle):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	lib_handle(lib_handle),
 	c_inst(nullptr),
@@ -44,17 +44,17 @@ C_Port::C_Port(const std::string& aName, const std::string& aConfFilename,
 	// Resolve required symbols
 	p_port_type = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_port_type"));
 	p_create    = reinterpret_cast<void*(*)(const char*,const char*,const char*)>(LoadSymbol(lib_handle, "odc_port_create"));
-	p_destroy   = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_port_destroy"));
-	p_build     = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_port_build"));
-	p_enable    = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_port_enable"));
-	p_disable   = reinterpret_cast<void(*)(void*)>(LoadSymbol(lib_handle, "odc_port_disable"));
-	p_event     = reinterpret_cast<void(*)(void*,const C_EventInfo*,const char*,C_StatusCallback*)>(LoadSymbol(lib_handle, "odc_port_event"));
+	p_destroy   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_destroy"));
+	p_build     = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_build"));
+	p_enable    = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_enable"));
+	p_disable   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_disable"));
+	p_event     = reinterpret_cast<void (*)(void*,const C_EventInfo*,const char*,C_StatusCallback*)>(LoadSymbol(lib_handle, "odc_port_event"));
 
 	// Resolve optional symbols
 	p_stats_json  = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_stats_json"));
 	p_state_json  = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_state_json"));
 	p_status_json = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_status_json"));
-	p_free_str    = reinterpret_cast<void(*)(const char*)>(LoadSymbol(lib_handle, "odc_port_free_string"));
+	p_free_str    = reinterpret_cast<void (*)(const char*)>(LoadSymbol(lib_handle, "odc_port_free_string"));
 
 	if(!p_port_type || !p_create || !p_destroy || !p_build || !p_enable || !p_disable || !p_event)
 	{
@@ -113,7 +113,7 @@ void C_Port::ProcessElements_(const Json::Value&)
 }
 
 void C_Port::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
-                    SharedStatusCallback_t pStatusCallback)
+	SharedStatusCallback_t pStatusCallback)
 {
 	if(!p_event)
 	{
@@ -136,9 +136,9 @@ void C_Port::Event_(std::shared_ptr<const EventInfo> event, const std::string& S
 
 	// Wrap the status callback
 	auto* cb_wrapper = pStatusCallback
-		? new C_StatusCallback(std::make_shared<SharedStatusCallback_t::element_type>(
-			[pStatusCallback](CommandStatus s) { (*pStatusCallback)(s); }))
-		: nullptr;
+	      ? new C_StatusCallback(std::make_shared<SharedStatusCallback_t::element_type>(
+		[pStatusCallback](CommandStatus s) { (*pStatusCallback)(s); }))
+	      : nullptr;
 
 	p_event(c_inst, &cevt, SenderName.c_str(), cb_wrapper);
 }

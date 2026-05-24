@@ -38,7 +38,7 @@
 namespace odc
 {
 
-class C_Transform : public Transform
+class C_Transform: public Transform
 {
 public:
 	C_Transform(const std::string& Name, const Json::Value& params, void* lib_handle);
@@ -66,11 +66,11 @@ private:
 	void* c_inst;
 
 	void* (*p_create)(const char*, const char*);
-	void  (*p_destroy)(void*);
-	void  (*p_enable)(void*);
-	void  (*p_disable)(void*);
-	void  (*p_event)(void*, C_EventInfo*, C_PassContext*,
-	                 void (*)(C_PassContext*, C_EventInfo*));
+	void (*p_destroy)(void*);
+	void (*p_enable)(void*);
+	void (*p_disable)(void*);
+	void (*p_event)(void*, C_EventInfo*, C_PassContext*,
+		void (*)(C_PassContext*, C_EventInfo*));
 };
 
 } // namespace odc
