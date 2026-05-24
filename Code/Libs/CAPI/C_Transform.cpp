@@ -60,24 +60,32 @@ C_Transform::C_Transform(const std::string& Name, const Json::Value& params, voi
 
 C_Transform::~C_Transform()
 {
-	if(c_inst && p_destroy)
-		p_destroy(c_inst);
+	if(c_inst)
+	{
+		std::weak_ptr<void> tracker = handler_tracker;
+		handler_tracker.reset();
+		while(!tracker.expired() && !pIOS->stopped())
+			pIOS->poll_one();
+
+		if(p_destroy)
+			p_destroy(c_inst);
+	}
 	UnLoadModule(lib_handle);
 }
 
-void C_Transform::Enable()
+void C_Transform::Enable_()
 {
 	if(p_enable)
 		p_enable(c_inst);
 }
 
-void C_Transform::Disable()
+void C_Transform::Disable_()
 {
 	if(p_disable)
 		p_disable(c_inst);
 }
 
-void C_Transform::Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow)
+void C_Transform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow)
 {
 	if(!p_event || !event)
 	{

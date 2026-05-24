@@ -27,6 +27,7 @@
 #ifndef C_PORT_H
 #define C_PORT_H
 
+#include <future>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/odc_c_api.h>
 #include <opendatacon/Platform.h>
@@ -48,12 +49,21 @@ public:
 	       const Json::Value& aConfOverrides, void* lib_handle);
 	~C_Port() override;
 
-	void Enable() override;
-	void Disable() override;
-	void Build() override;
-	void ProcessElements(const Json::Value& JSONRoot) override;
+	void Enable() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Enable_();}); }
+
+	void Disable() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Disable_();}); }
+
+	void Build() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Build_();}); }
+
+	void ProcessElements(const Json::Value& JSONRoot) override
+	{ pSyncStrand->post([this,JSONRoot,h{handler_tracker}](){ProcessElements_(JSONRoot);}); }
+
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
-	           SharedStatusCallback_t pStatusCallback) override;
+	           SharedStatusCallback_t pStatusCallback) override
+	{ pSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);}); }
 
 	// Public wrappers around protected PublishEvent — callable from C helper functions
 	void PublicPublishEvent(const std::shared_ptr<const EventInfo>& event,
@@ -62,11 +72,45 @@ public:
 	void PublicPublishEvent(const std::shared_ptr<const EventInfo>& event) const
 	{ PublishEvent(event); }
 
-	const Json::Value GetStatistics() const override;
-	const Json::Value GetCurrentState() const override;
-	const Json::Value GetStatus() const override;
+	const Json::Value GetStatistics() const override
+	{
+		auto p = std::make_shared<std::promise<Json::Value>>();
+		auto f = p->get_future();
+		pSyncStrand->post([this,p,h{handler_tracker}](){p->set_value(GetStatistics_());});
+		return f.get();
+	}
+
+	const Json::Value GetCurrentState() const override
+	{
+		auto p = std::make_shared<std::promise<Json::Value>>();
+		auto f = p->get_future();
+		pSyncStrand->post([this,p,h{handler_tracker}](){p->set_value(GetCurrentState_());});
+		return f.get();
+	}
+
+	const Json::Value GetStatus() const override
+	{
+		auto p = std::make_shared<std::promise<Json::Value>>();
+		auto f = p->get_future();
+		pSyncStrand->post([this,p,h{handler_tracker}](){p->set_value(GetStatus_());});
+		return f.get();
+	}
 
 private:
+	mutable std::shared_ptr<void> handler_tracker = std::make_shared<char>();
+	mutable std::shared_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+
+	void Enable_();
+	void Disable_();
+	void Build_();
+	void ProcessElements_(const Json::Value& JSONRoot);
+	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
+	            SharedStatusCallback_t pStatusCallback);
+
+	const Json::Value GetStatistics_() const;
+	const Json::Value GetCurrentState_() const;
+	const Json::Value GetStatus_() const;
+
 	void* lib_handle;
 	void* c_inst;
 

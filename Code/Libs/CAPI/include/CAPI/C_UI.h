@@ -27,6 +27,7 @@
 #ifndef C_UI_H
 #define C_UI_H
 
+#include <future>
 #include <opendatacon/IUI.h>
 #include <opendatacon/odc_c_api.h>
 #include <opendatacon/Platform.h>
@@ -43,12 +44,25 @@ public:
 	     const Json::Value& aConfOverrides, void* lib_handle);
 	~C_UI() override;
 
-	void Build() override;
-	void Enable() override;
-	void Disable() override;
+	void Build() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Build_();}); }
+
+	void Enable() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Enable_();}); }
+
+	void Disable() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Disable_();}); }
+
 	void AddCommand(const std::string& name, CmdFunc_t callback, const std::string& desc) override {}
 
 private:
+	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
+	std::shared_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+
+	void Build_();
+	void Enable_();
+	void Disable_();
+
 	void* lib_handle;
 	void* c_inst;
 

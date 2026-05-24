@@ -75,37 +75,45 @@ C_Port::C_Port(const std::string& aName, const std::string& aConfFilename,
 C_Port::~C_Port()
 {
 	C_Port_instances.erase(c_inst);
-	if(c_inst && p_destroy)
-		p_destroy(c_inst);
+	if(c_inst)
+	{
+		std::weak_ptr<void> tracker = handler_tracker;
+		handler_tracker.reset();
+		while(!tracker.expired() && !pIOS->stopped())
+			pIOS->poll_one();
+
+		if(p_destroy)
+			p_destroy(c_inst);
+	}
 	UnLoadModule(lib_handle);
 }
 
-void C_Port::Enable()
+void C_Port::Enable_()
 {
 	if(p_enable)
 		p_enable(c_inst);
 }
 
-void C_Port::Disable()
+void C_Port::Disable_()
 {
 	if(p_disable)
 		p_disable(c_inst);
 }
 
-void C_Port::Build()
+void C_Port::Build_()
 {
 	if(p_build)
 		p_build(c_inst);
 }
 
-void C_Port::ProcessElements(const Json::Value&)
+void C_Port::ProcessElements_(const Json::Value&)
 {
 	// Config is already parsed by ConfigParser base; C port receives
 	// JSON in odc_port_create() and processes in odc_port_build().
 }
 
-void C_Port::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
-                   SharedStatusCallback_t pStatusCallback)
+void C_Port::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
+                    SharedStatusCallback_t pStatusCallback)
 {
 	if(!p_event)
 	{
@@ -135,7 +143,7 @@ void C_Port::Event(std::shared_ptr<const EventInfo> event, const std::string& Se
 	p_event(c_inst, &cevt, SenderName.c_str(), cb_wrapper);
 }
 
-const Json::Value C_Port::GetStatistics() const
+const Json::Value C_Port::GetStatistics_() const
 {
 	if(!p_stats_json)
 		return Json::Value();
@@ -149,7 +157,7 @@ const Json::Value C_Port::GetStatistics() const
 	return val;
 }
 
-const Json::Value C_Port::GetCurrentState() const
+const Json::Value C_Port::GetCurrentState_() const
 {
 	if(!p_state_json)
 		return Json::Value();
@@ -163,7 +171,7 @@ const Json::Value C_Port::GetCurrentState() const
 	return val;
 }
 
-const Json::Value C_Port::GetStatus() const
+const Json::Value C_Port::GetStatus_() const
 {
 	if(!p_status_json)
 		return Json::Value();

@@ -27,7 +27,9 @@
 #ifndef C_TRANSFORM_H
 #define C_TRANSFORM_H
 
+#include <future>
 #include <opendatacon/Transform.h>
+#include <opendatacon/asio.h>
 #include <opendatacon/odc_c_api.h>
 #include <opendatacon/Platform.h>
 #include <json/json.h>
@@ -42,11 +44,24 @@ public:
 	C_Transform(const std::string& Name, const Json::Value& params, void* lib_handle);
 	~C_Transform() override;
 
-	void Enable() override;
-	void Disable() override;
-	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override;
+	void Enable() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Enable_();}); }
+
+	void Disable() override
+	{ pSyncStrand->post([this,h{handler_tracker}](){Disable_();}); }
+
+	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
+	{ pSyncStrand->post([=,h{handler_tracker}](){Event_(event,pAllow);}); }
 
 private:
+	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
+	std::shared_ptr<asio_service> pIOS = asio_service::Get();
+	std::shared_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+
+	void Enable_();
+	void Disable_();
+	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
+
 	void* lib_handle;
 	void* c_inst;
 

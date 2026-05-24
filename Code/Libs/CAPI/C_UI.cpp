@@ -59,24 +59,32 @@ C_UI::C_UI(const std::string& aName, const std::string& aConfFilename,
 
 C_UI::~C_UI()
 {
-	if(c_inst && p_destroy)
-		p_destroy(c_inst);
+	if(c_inst)
+	{
+		std::weak_ptr<void> tracker = handler_tracker;
+		handler_tracker.reset();
+		while(!tracker.expired() && !pIOS->stopped())
+			pIOS->poll_one();
+
+		if(p_destroy)
+			p_destroy(c_inst);
+	}
 	UnLoadModule(lib_handle);
 }
 
-void C_UI::Build()
+void C_UI::Build_()
 {
 	if(p_build)
 		p_build(c_inst);
 }
 
-void C_UI::Enable()
+void C_UI::Enable_()
 {
 	if(p_enable)
 		p_enable(c_inst);
 }
 
-void C_UI::Disable()
+void C_UI::Disable_()
 {
 	if(p_disable)
 		p_disable(c_inst);
