@@ -125,19 +125,19 @@ private:
 	void* lib_handle;
 	void* c_inst;
 
-	// required function pointers
-	void* (*p_create)(const char*, const char*);
-	void (*p_destroy)(void*);
-	void (*p_build)(void*);
-	void (*p_enable)(void*);
-	void (*p_disable)(void*);
-	void (*p_event)(void*, const C_EventInfo*, const char*, C_StatusCallback*);
+	// required function pointers — types derived from odc_c_api.h
+	decltype(&odc_port_create) p_create;
+	decltype(&odc_port_destroy) p_destroy;
+	decltype(&odc_port_build) p_build;
+	decltype(&odc_port_enable) p_enable;
+	decltype(&odc_port_disable) p_disable;
+	decltype(&odc_port_event) p_event;
 
 	// optional function pointers
-	const char* (*p_stats_json)(void*);
-	const char* (*p_state_json)(void*);
-	const char* (*p_status_json)(void*);
-	void (*p_free_str)(const char*);
+	decltype(&odc_port_stats_json) p_stats_json;
+	decltype(&odc_port_state_json) p_state_json;
+	decltype(&odc_port_status_json) p_status_json;
+	decltype(&odc_port_free_string) p_free_str;
 };
 
 } // namespace odc

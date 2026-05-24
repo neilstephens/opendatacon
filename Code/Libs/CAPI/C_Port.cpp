@@ -44,7 +44,7 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 	p_status_json(nullptr), p_free_str(nullptr)
 {
 	// Check the API version matches
-	auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_c_api_version"));
+	auto c_api_version = reinterpret_cast<decltype(&odc_c_api_version)>(LoadSymbol(lib_handle, "odc_c_api_version"));
 	if(!c_api_version)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
@@ -58,19 +58,19 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 		throw std::runtime_error("C_Port C API version mismatch");
 	}
 
-	// Resolve required symbols
-	p_create  = reinterpret_cast<void*(*)(const char*,const char*)>(LoadSymbol(lib_handle, "odc_port_create"));
-	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_destroy"));
-	p_build   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_build"));
-	p_enable  = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_enable"));
-	p_disable = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_port_disable"));
-	p_event   = reinterpret_cast<void (*)(void*,const C_EventInfo*,const char*,C_StatusCallback*)>(LoadSymbol(lib_handle, "odc_port_event"));
+	// Resolve required symbols — types derived from odc_c_api.h via decltype
+	p_create  = reinterpret_cast<decltype(p_create)>(LoadSymbol(lib_handle, "odc_port_create"));
+	p_destroy = reinterpret_cast<decltype(p_destroy)>(LoadSymbol(lib_handle, "odc_port_destroy"));
+	p_build   = reinterpret_cast<decltype(p_build)>(LoadSymbol(lib_handle, "odc_port_build"));
+	p_enable  = reinterpret_cast<decltype(p_enable)>(LoadSymbol(lib_handle, "odc_port_enable"));
+	p_disable = reinterpret_cast<decltype(p_disable)>(LoadSymbol(lib_handle, "odc_port_disable"));
+	p_event   = reinterpret_cast<decltype(p_event)>(LoadSymbol(lib_handle, "odc_port_event"));
 
 	// Resolve optional symbols
-	p_stats_json  = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_stats_json"));
-	p_state_json  = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_state_json"));
-	p_status_json = reinterpret_cast<const char*(*)(void*)>(LoadSymbol(lib_handle, "odc_port_status_json"));
-	p_free_str    = reinterpret_cast<void (*)(const char*)>(LoadSymbol(lib_handle, "odc_port_free_string"));
+	p_stats_json  = reinterpret_cast<decltype(p_stats_json)>(LoadSymbol(lib_handle, "odc_port_stats_json"));
+	p_state_json  = reinterpret_cast<decltype(p_state_json)>(LoadSymbol(lib_handle, "odc_port_state_json"));
+	p_status_json = reinterpret_cast<decltype(p_status_json)>(LoadSymbol(lib_handle, "odc_port_status_json"));
+	p_free_str    = reinterpret_cast<decltype(p_free_str)>(LoadSymbol(lib_handle, "odc_port_free_string"));
 
 	if(!p_create || !p_destroy || !p_build || !p_enable || !p_disable || !p_event)
 	{

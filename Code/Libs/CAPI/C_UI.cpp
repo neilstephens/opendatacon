@@ -38,7 +38,7 @@ C_UI::C_UI(const std::string& aName, const std::string& aConfFilename,
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr)
 {
 	// Check the API version matches
-	auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_c_api_version"));
+	auto c_api_version = reinterpret_cast<decltype(&odc_c_api_version)>(LoadSymbol(lib_handle, "odc_c_api_version"));
 	if(!c_api_version)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
@@ -52,11 +52,11 @@ C_UI::C_UI(const std::string& aName, const std::string& aConfFilename,
 		throw std::runtime_error("C_UI C API version mismatch");
 	}
 
-	p_create  = reinterpret_cast<void*(*)(const char*,const char*,const char*)>(LoadSymbol(lib_handle, "odc_plugin_create"));
-	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_destroy"));
-	p_build   = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_build"));
-	p_enable  = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_enable"));
-	p_disable = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_plugin_disable"));
+	p_create  = reinterpret_cast<decltype(p_create)>(LoadSymbol(lib_handle, "odc_plugin_create"));
+	p_destroy = reinterpret_cast<decltype(p_destroy)>(LoadSymbol(lib_handle, "odc_plugin_destroy"));
+	p_build   = reinterpret_cast<decltype(p_build)>(LoadSymbol(lib_handle, "odc_plugin_build"));
+	p_enable  = reinterpret_cast<decltype(p_enable)>(LoadSymbol(lib_handle, "odc_plugin_enable"));
+	p_disable = reinterpret_cast<decltype(p_disable)>(LoadSymbol(lib_handle, "odc_plugin_disable"));
 
 	if(!p_create || !p_destroy || !p_build || !p_enable || !p_disable)
 	{

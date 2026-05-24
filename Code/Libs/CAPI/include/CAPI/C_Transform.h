@@ -65,12 +65,11 @@ private:
 	void* lib_handle;
 	void* c_inst;
 
-	void* (*p_create)(const char*, const char*);
-	void (*p_destroy)(void*);
-	void (*p_enable)(void*);
-	void (*p_disable)(void*);
-	void (*p_event)(void*, C_EventInfo*, C_PassContext*,
-		void (*)(C_PassContext*, C_EventInfo*));
+	decltype(&odc_transform_create) p_create;
+	decltype(&odc_transform_destroy) p_destroy;
+	decltype(&odc_transform_enable) p_enable;
+	decltype(&odc_transform_disable) p_disable;
+	decltype(&odc_transform_event) p_event;
 };
 
 } // namespace odc

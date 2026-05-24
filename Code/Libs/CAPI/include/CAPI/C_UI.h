@@ -66,11 +66,11 @@ private:
 	void* lib_handle;
 	void* c_inst;
 
-	void* (*p_create)(const char*, const char*, const char*);
-	void (*p_destroy)(void*);
-	void (*p_build)(void*);
-	void (*p_enable)(void*);
-	void (*p_disable)(void*);
+	decltype(&odc_plugin_create) p_create;
+	decltype(&odc_plugin_destroy) p_destroy;
+	decltype(&odc_plugin_build) p_build;
+	decltype(&odc_plugin_enable) p_enable;
+	decltype(&odc_plugin_disable) p_disable;
 };
 
 } // namespace odc

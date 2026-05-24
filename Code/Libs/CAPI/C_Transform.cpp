@@ -38,7 +38,7 @@ C_Transform::C_Transform(const std::string& Name, const Json::Value& params, voi
 	p_enable(nullptr), p_disable(nullptr), p_event(nullptr)
 {
 	// Check the API version matches
-	auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(lib_handle, "odc_c_api_version"));
+	auto c_api_version = reinterpret_cast<decltype(&odc_c_api_version)>(LoadSymbol(lib_handle, "odc_c_api_version"));
 	if(!c_api_version)
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
@@ -52,12 +52,11 @@ C_Transform::C_Transform(const std::string& Name, const Json::Value& params, voi
 		throw std::runtime_error("C_Transform C API version mismatch");
 	}
 
-	p_create  = reinterpret_cast<void*(*)(const char*,const char*)>(LoadSymbol(lib_handle, "odc_transform_create"));
-	p_destroy = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_transform_destroy"));
-	p_enable  = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_transform_enable"));
-	p_disable = reinterpret_cast<void (*)(void*)>(LoadSymbol(lib_handle, "odc_transform_disable"));
-	p_event   = reinterpret_cast<void (*)(void*,C_EventInfo*,C_PassContext*,void (*)(C_PassContext*,C_EventInfo*))>(
-		LoadSymbol(lib_handle, "odc_transform_event"));
+	p_create  = reinterpret_cast<decltype(p_create)>(LoadSymbol(lib_handle, "odc_transform_create"));
+	p_destroy = reinterpret_cast<decltype(p_destroy)>(LoadSymbol(lib_handle, "odc_transform_destroy"));
+	p_enable  = reinterpret_cast<decltype(p_enable)>(LoadSymbol(lib_handle, "odc_transform_enable"));
+	p_disable = reinterpret_cast<decltype(p_disable)>(LoadSymbol(lib_handle, "odc_transform_disable"));
+	p_event   = reinterpret_cast<decltype(p_event)>(LoadSymbol(lib_handle, "odc_transform_event"));
 
 	if(!p_create || !p_destroy || !p_event)
 	{
