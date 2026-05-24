@@ -79,7 +79,7 @@ public:
 	std::shared_ptr<void> GetHandlerTracker() const { return handler_tracker; }
 	void* GetCInst() const { return c_inst; }
 	const std::string& GetConfigStr() const { return configJSONstr; }
-	const std::string& GetType() const { return aType; }
+	const std::string& GetType() const { return Type; }
 
 	const Json::Value GetStatistics() const override
 	{
@@ -118,7 +118,7 @@ private:
 	const Json::Value GetCurrentState_() const;
 	const Json::Value GetStatus_() const;
 
-	std::string aType;
+	std::string Type;
 	Json::Value configJSON;
 	std::string configJSONstr;
 	void* lib_handle;

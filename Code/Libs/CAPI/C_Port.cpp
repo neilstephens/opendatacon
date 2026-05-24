@@ -34,7 +34,7 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 	const std::string& aConfFilename, const Json::Value& aConfOverrides,
 	void* lib_handle):
 	DataPort(aName, aConfFilename, aConfOverrides),
-	aType(aType),
+	Type(aType),
 	lib_handle(lib_handle),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
@@ -79,7 +79,7 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 		throw std::runtime_error("C_Port missing required C API symbols");
 	}
 
-	c_inst = p_create(aType.c_str(), aName.c_str());
+	c_inst = p_create(Type.c_str(), aName.c_str());
 	C_Port_instances[c_inst] = this;
 }
 
@@ -127,7 +127,7 @@ void C_Port::ProcessElements(const Json::Value& JSONRoot)
 
 void C_Port::Log(uint8_t level, const std::string& msg)
 {
-	if(auto log = odc::spdlog_get(aType+"Port"))
+	if(auto log = odc::spdlog_get(Type+"Port"))
 		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
 	else if(auto log = odc::spdlog_get("opendatacon"))
 		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
