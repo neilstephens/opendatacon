@@ -135,7 +135,9 @@ func (p *GoModbusPort) run() {
 			case opEvent:
 				p.doHandleEvent(&op.event, op.sender, op.cb)
 			case opShutdown:
-				p.shutdown()
+				p.stopTicker()
+				pollC = nil
+				p.doDisable()
 				return
 			}
 
@@ -149,20 +151,6 @@ func (p *GoModbusPort) stopTicker() {
 	if p.pollTick != nil {
 		p.pollTick.Stop()
 		p.pollTick = nil
-	}
-}
-
-func (p *GoModbusPort) shutdown() {
-	if p.enabled {
-		publishConnectState(p.inst, C.C_ConnectState_DISCONNECTED)
-	}
-	if p.pollTick != nil {
-		p.pollTick.Stop()
-	}
-	// Only Close if Open() was called (transport exists).
-	// modbus.Client.Close() panics on nil transport.
-	if p.enabled && p.client != nil {
-		p.client.Close()
 	}
 }
 
@@ -224,10 +212,6 @@ func (p *GoModbusPort) doDisable() {
 		return
 	}
 
-	if err := p.client.Close(); err != nil {
-		logWarn(p.inst, "modbus client close: %v", err)
-	}
-
 	p.enabled = false
 	publishConnectState(p.inst, C.C_ConnectState_DISCONNECTED)
 	logInfo(p.inst, "port disabled: %s", p.name)
@@ -236,6 +220,12 @@ func (p *GoModbusPort) doDisable() {
 func (p *GoModbusPort) destroy() {
 	p.ops <- operation{typ: opShutdown}
 	<-p.done // wait for run() to finish
+
+	// Close client after all goroutines have drained.
+	if p.client != nil {
+		p.client.Close()
+	}
+
 	removePort(p.inst)
 	logInfo(p.inst, "port destroyed: %s", p.name)
 }
