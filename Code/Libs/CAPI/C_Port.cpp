@@ -81,6 +81,8 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 
 	c_inst = p_create(Type.c_str(), aName.c_str());
 	C_Port_instances[c_inst] = this;
+
+	ProcessFile();
 }
 
 C_Port::~C_Port()

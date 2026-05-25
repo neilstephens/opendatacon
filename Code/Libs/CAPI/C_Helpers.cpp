@@ -40,8 +40,10 @@ void SerializePayload(const odc::EventInfo& src, union C_Payload* dst)
 	switch(src.GetEventType())
 	{
 		case EventType::Binary:
-		case EventType::BinaryOutputStatus:
 			dst->binary_val = src.GetPayload<EventType::Binary>() ? 1 : 0;
+			break;
+		case EventType::BinaryOutputStatus:
+			dst->binary_val = src.GetPayload<EventType::BinaryOutputStatus>() ? 1 : 0;
 			break;
 		case EventType::DoubleBitBinary:
 		{
@@ -51,16 +53,22 @@ void SerializePayload(const odc::EventInfo& src, union C_Payload* dst)
 			break;
 		}
 		case EventType::Analog:
-		case EventType::AnalogOutputStatus:
 			dst->analog_val = src.GetPayload<EventType::Analog>();
 			break;
+		case EventType::AnalogOutputStatus:
+			dst->analog_val = src.GetPayload<EventType::AnalogOutputStatus>();
+			break;
 		case EventType::Counter:
-		case EventType::FrozenCounter:
 			dst->counter_val = src.GetPayload<EventType::Counter>();
 			break;
+		case EventType::FrozenCounter:
+			dst->counter_val = src.GetPayload<EventType::FrozenCounter>();
+			break;
 		case EventType::BinaryCommandEvent:
-		case EventType::AnalogCommandEvent:
 			dst->cmd_status = static_cast<uint8_t>(src.GetPayload<EventType::BinaryCommandEvent>());
+			break;
+		case EventType::AnalogCommandEvent:
+			dst->cmd_status = static_cast<uint8_t>(src.GetPayload<EventType::AnalogCommandEvent>());
 			break;
 		case EventType::OctetString:
 		{
@@ -123,14 +131,28 @@ void SerializePayload(const odc::EventInfo& src, union C_Payload* dst)
 			break;
 		}
 		case EventType::BinaryQuality:
-		case EventType::DoubleBitBinaryQuality:
-		case EventType::AnalogQuality:
-		case EventType::CounterQuality:
-		case EventType::BinaryOutputStatusQuality:
-		case EventType::FrozenCounterQuality:
-		case EventType::AnalogOutputStatusQuality:
-		case EventType::OctetStringQuality:
 			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::BinaryQuality>());
+			break;
+		case EventType::DoubleBitBinaryQuality:
+			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::DoubleBitBinaryQuality>());
+			break;
+		case EventType::AnalogQuality:
+			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::AnalogQuality>());
+			break;
+		case EventType::CounterQuality:
+			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::CounterQuality>());
+			break;
+		case EventType::BinaryOutputStatusQuality:
+			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::BinaryOutputStatusQuality>());
+			break;
+		case EventType::FrozenCounterQuality:
+			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::FrozenCounterQuality>());
+			break;
+		case EventType::AnalogOutputStatusQuality:
+			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::AnalogOutputStatusQuality>());
+			break;
+		case EventType::OctetStringQuality:
+			dst->quality_val = static_cast<uint16_t>(src.GetPayload<EventType::OctetStringQuality>());
 			break;
 		case EventType::ConnectState:
 			dst->connect_state = static_cast<uint8_t>(src.GetPayload<EventType::ConnectState>());
@@ -184,8 +206,10 @@ extern "C" void odc_PublishEvent(void* inst, const struct C_EventInfo* cevt,
 	switch(event_type)
 	{
 		case odc::EventType::Binary:
-		case odc::EventType::BinaryOutputStatus:
 			event->template SetPayload<odc::EventType::Binary>(cevt->payload.binary_val != 0);
+			break;
+		case odc::EventType::BinaryOutputStatus:
+			event->template SetPayload<odc::EventType::BinaryOutputStatus>(cevt->payload.binary_val != 0);
 			break;
 		case odc::EventType::DoubleBitBinary:
 		{
@@ -194,22 +218,35 @@ extern "C" void odc_PublishEvent(void* inst, const struct C_EventInfo* cevt,
 			break;
 		}
 		case odc::EventType::Analog:
-		case odc::EventType::AnalogOutputStatus:
 		{
 			auto tmp_a = cevt->payload.analog_val;
 			event->template SetPayload<odc::EventType::Analog>(std::move(tmp_a));
 			break;
 		}
+		case odc::EventType::AnalogOutputStatus:
+		{
+			auto tmp_aos = cevt->payload.analog_val;
+			event->template SetPayload<odc::EventType::AnalogOutputStatus>(std::move(tmp_aos));
+			break;
+		}
 		case odc::EventType::Counter:
-		case odc::EventType::FrozenCounter:
 		{
 			auto tmp_c = cevt->payload.counter_val;
 			event->template SetPayload<odc::EventType::Counter>(std::move(tmp_c));
 			break;
 		}
+		case odc::EventType::FrozenCounter:
+		{
+			auto tmp_fc = cevt->payload.counter_val;
+			event->template SetPayload<odc::EventType::FrozenCounter>(std::move(tmp_fc));
+			break;
+		}
 		case odc::EventType::BinaryCommandEvent:
-		case odc::EventType::AnalogCommandEvent:
 			event->template SetPayload<odc::EventType::BinaryCommandEvent>(
+				static_cast<odc::CommandStatus>(cevt->payload.cmd_status));
+			break;
+		case odc::EventType::AnalogCommandEvent:
+			event->template SetPayload<odc::EventType::AnalogCommandEvent>(
 				static_cast<odc::CommandStatus>(cevt->payload.cmd_status));
 			break;
 		case odc::EventType::OctetString:
@@ -278,14 +315,35 @@ extern "C" void odc_PublishEvent(void* inst, const struct C_EventInfo* cevt,
 			break;
 		}
 		case odc::EventType::BinaryQuality:
-		case odc::EventType::DoubleBitBinaryQuality:
-		case odc::EventType::AnalogQuality:
-		case odc::EventType::CounterQuality:
-		case odc::EventType::BinaryOutputStatusQuality:
-		case odc::EventType::FrozenCounterQuality:
-		case odc::EventType::AnalogOutputStatusQuality:
-		case odc::EventType::OctetStringQuality:
 			event->template SetPayload<odc::EventType::BinaryQuality>(
+				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
+			break;
+		case odc::EventType::DoubleBitBinaryQuality:
+			event->template SetPayload<odc::EventType::DoubleBitBinaryQuality>(
+				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
+			break;
+		case odc::EventType::AnalogQuality:
+			event->template SetPayload<odc::EventType::AnalogQuality>(
+				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
+			break;
+		case odc::EventType::CounterQuality:
+			event->template SetPayload<odc::EventType::CounterQuality>(
+				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
+			break;
+		case odc::EventType::BinaryOutputStatusQuality:
+			event->template SetPayload<odc::EventType::BinaryOutputStatusQuality>(
+				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
+			break;
+		case odc::EventType::FrozenCounterQuality:
+			event->template SetPayload<odc::EventType::FrozenCounterQuality>(
+				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
+			break;
+		case odc::EventType::AnalogOutputStatusQuality:
+			event->template SetPayload<odc::EventType::AnalogOutputStatusQuality>(
+				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
+			break;
+		case odc::EventType::OctetStringQuality:
+			event->template SetPayload<odc::EventType::OctetStringQuality>(
 				static_cast<odc::QualityFlags>(cevt->payload.quality_val));
 			break;
 		case odc::EventType::ConnectState:
