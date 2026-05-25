@@ -56,6 +56,10 @@ if(KAFKAPORT)
 add_subdirectory(KafkaPort_tests)
 endif()
 
+if(GOMODBUSPORT)
+add_subdirectory(GoModbusPort_tests)
+endif()
+
 if(FULL)
 add_subdirectory(Integration_tests)
 endif()
