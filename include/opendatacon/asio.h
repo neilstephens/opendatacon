@@ -95,7 +95,7 @@ class shared_const_buffer: public asio::const_buffer
 public:
 	template <typename T> //T must be a container with a data(), size() and get_allocator() members
 	shared_const_buffer(std::shared_ptr<T> pCon):
-		asio::const_buffer(pCon->data(),pCon->size()*sizeof(pCon->get_allocator())),
+		asio::const_buffer(pCon->data(),pCon->size()*sizeof(typename decltype(pCon->get_allocator())::value_type)),
 		con(pCon)
 	{}
 	//Implement the ConstBufferSequence requirements
