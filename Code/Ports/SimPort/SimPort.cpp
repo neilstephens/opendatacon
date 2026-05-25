@@ -79,7 +79,7 @@ SimPort::SimPort(const std::string& Name, const std::string& File, const Json::V
 	else
 	{
 		while (!(this->SimCollection = weak_collection.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	pConf = std::make_unique<SimPortConf>();

@@ -55,7 +55,7 @@ void require_equal(const T& thing1, const T& thing2)
 		Log.Critical("Test timeout");
 
 	while(!stop)
-		odc::asio_service::Get()->poll_one();
+		if(!odc::asio_service::Get()->poll_one()) std::this_thread::yield();
 
 	if(thing1 != thing2)
 		CHECK(thing1 == thing2);

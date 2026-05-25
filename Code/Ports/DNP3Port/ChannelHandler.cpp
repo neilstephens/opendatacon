@@ -24,7 +24,7 @@ ChannelHandler::~ChannelHandler()
 
 	//wait til they're all gone, or harmless
 	while(!tracker.expired() && !pIOS->stopped() && !pSyncStrand->running_in_this_thread())
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 
 	ChannelStateSubscriber::Unsubscribe(ChannelID);
 }

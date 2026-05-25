@@ -112,7 +112,7 @@ TCPSocketManager::~TCPSocketManager()
 	handler_tracker.reset();
 
 	while(!tracker.expired() && !pIOS->stopped())
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 
 	LogCallback("debug","Write total "+std::to_string(write_count)+" bytes for "+host_name+":"+service_name);
 }

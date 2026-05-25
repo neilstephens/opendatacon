@@ -57,7 +57,7 @@ FileTransferPort::~FileTransferPort()
 	handler_tracker.reset();
 
 	while(!tracker.expired() && !pIOS->stopped())
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 }
 
 //called on strand by Disable_()

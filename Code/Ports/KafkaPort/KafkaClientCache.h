@@ -152,7 +152,7 @@ public:
 		else
 		{
 			while (!(shared_cache = weak_cache.lock()))
-			{} //init happens very seldom, so spin lock is good
+				std::this_thread::yield(); //init happens very seldom, so spin lock is good
 		}
 
 		return shared_cache;

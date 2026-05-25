@@ -86,7 +86,7 @@ void CBOutstationPort::UpdateOutstationPortCollection()
 		// PortCollection has already been created, so get a shared pointer to it.
 		// The last shared_ptr to get destructed will control its destruction. The weak_ptr will just no longer return a pointer.
 		while (!(this->CBOutstationCollection = weak_collection.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 }
 

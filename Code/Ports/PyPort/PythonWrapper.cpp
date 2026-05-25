@@ -570,7 +570,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 	{
 		//otherwise just make sure it's finished initialising and take a shared_ptr
 		while (!(this->PyMgr = weak_mgr.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	// Throws exceptions on fail

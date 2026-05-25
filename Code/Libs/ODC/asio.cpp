@@ -65,7 +65,7 @@ std::shared_ptr<asio_service> asio_service::Get(int concurrency_hint)
 	else
 	{
 		while (!(shared_service = weak_service.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	return shared_service;

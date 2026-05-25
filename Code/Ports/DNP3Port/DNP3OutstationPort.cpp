@@ -65,7 +65,7 @@ DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::stri
 	else
 	{
 		while (!(this->PeerCollection = weak_collection.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 }
 
@@ -450,7 +450,7 @@ inline opendnp3::CommandStatus DNP3OutstationPort::PerformT(T& arCommand, uint16
 		//This loop pegs a core and blocks the outstation strand,
 		//	but there's no other way to wait for the result.
 		//	We can maybe do some work while we wait.
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 	}
 	return FromODC(cb_status);
 }

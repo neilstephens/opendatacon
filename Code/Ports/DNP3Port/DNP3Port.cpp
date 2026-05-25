@@ -60,7 +60,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	else
 	{
 		while (!(this->IOMgr = weak_mgr.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	//the creation of a new DNP3PortConf will get the point details
