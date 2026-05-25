@@ -91,7 +91,7 @@ C_Port::~C_Port()
 		std::weak_ptr<void> tracker = handler_tracker;
 		handler_tracker.reset();
 		while(!tracker.expired() && !pIOS->stopped())
-			pIOS->poll_one();
+			if(!pIOS->poll_one()) std::this_thread::yield();
 
 		if(p_destroy)
 			p_destroy(c_inst);
