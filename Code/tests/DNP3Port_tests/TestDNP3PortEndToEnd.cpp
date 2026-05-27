@@ -108,6 +108,105 @@ TEST_CASE(SUITE("TCP link"))
 	TestTearDown();
 }
 
+static void TestUDP(const bool connectionless, const uint16_t osUDPListenPort, const uint16_t mUDPListenPort)
+{
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//make an outstation port
+		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
+		REQUIRE(newOutstation);
+		delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
+		REQUIRE(delOutstation);
+
+		Json::Value conf;
+		conf["LinkKeepAlivems"] = 200;
+		conf["LinkTimeoutms"] = 100;
+		conf["IPTransport"] = "UDP";
+		conf["IP"] = "127.0.0.1";
+		conf["UDPListenPort"] = osUDPListenPort;
+		conf["Port"] = mUDPListenPort;
+		if(connectionless)
+			conf["ConnectionlessUDP"] = true;
+		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", conf), delOutstation);
+		REQUIRE(OPUT);
+
+		//make a master port
+		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
+		REQUIRE(newMaster);
+		delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
+		REQUIRE(delMaster);
+
+		conf["ServerType"] = "PERSISTENT";
+		conf["UDPListenPort"] = mUDPListenPort;
+		conf["Port"] = osUDPListenPort;
+		auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", conf), delMaster);
+		REQUIRE(MPUT);
+
+		//get them to build themselves using their configs
+		OPUT->Build();
+		MPUT->Build();
+
+		ThreadPool thread_pool(1);
+
+		//turn them on
+		OPUT->Enable();
+		MPUT->Enable();
+
+		//TODO: write a better way to wait for GetStatus
+		unsigned int count = 0;
+		while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			count++;
+		}
+
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)");
+
+		//wait to actually recieve something
+		count = 0;
+		while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			count++;
+		}
+		REQUIRE(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() > 0);
+
+		//turn outstation off
+		OPUT->Disable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+		count = 0;
+		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			count++;
+		}
+
+		REQUIRE(MPUT->GetStatus()["Result"].asString() == "Port enabled - link down");
+		REQUIRE(OPUT->GetStatus()["Result"].asString() == "Port disabled");
+
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+}
+
+TEST_CASE(SUITE("UDP link"))
+{
+	TestSetup();
+	TestUDP(false, 20001, 20000);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("UDP link - connectionless"))
+{
+	TestSetup();
+	TestUDP(true, 20003, 20002);
+	TestTearDown();
+}
+
 
 TEST_CASE(SUITE("Serial link"))
 {
