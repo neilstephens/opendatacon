@@ -48,6 +48,11 @@ inline Json::Value MakeBaseDNP3Conf(size_t os_addr, size_t ms_addr, bool comms)
 	conf["LinkTimeoutms"] = Json::UInt(link_ka_period >> 1);
 	conf["IPConnectRetryPeriodMinms"] = 100;
 	conf["IPConnectRetryPeriodMaxms"] = 100;
+	//lower app-layer timeouts from 5s default to avoid UDP packet-drop delays in testing
+	conf["MasterResponseTimeoutms"] = 500;
+	conf["TaskRetryPeriodms"] = 500;
+	conf["SolConfirmTimeoutms"] = 500;
+	conf["UnsolConfirmTimeoutms"] = 500;
 
 	conf["Binaries"][0]["Range"]["Start"] = 0;
 	conf["Binaries"][0]["Range"]["Stop"] = comms ? 9 : 10;
@@ -353,9 +358,9 @@ void scenario_quality_full(const TrxCfg& cfg)
 		//we want the link status of a master to be presented on the
 		//corresponding outstation as bad quality points and a comms point
 
-		// | Downstream connection  |           | Upstream connection |
-		// |------------------------|           |---------------------|
-		// [OS] <------MITM------> [MS] <--ODC--> [OS] <---TCP---> [MS]
+		// | Downstream connection |           | Upstream connection |
+		// |-----------------------|           |---------------------|
+		// [OS] <-----MITM----> [MS] <--ODC--> [OS] <----TCP----> [MS]
 
 		{
 			INFO("Test objects liftime")
