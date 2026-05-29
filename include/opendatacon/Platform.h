@@ -544,14 +544,14 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		throw std::runtime_error("pipe() failed.");
 	}
 
-	// spawn_detached writes PID on stdout and errors on stderr
+	// odc_spawn writes PID on stdout and errors on stderr
 	posix_spawn_file_actions_adddup2(&actions, pid_pipe_fd[1], STDOUT_FILENO);
 	posix_spawn_file_actions_adddup2(&actions, err_pipe_fd[1], STDERR_FILENO);
 	// close all child fds except for stdio
 	add_actions_close_all_fds(actions);
 
 	std::vector<char *> argv;
-	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath().dirname())+"/spawn_detached");
+	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath().dirname())+"/odc_spawn");
 	argv.push_back(const_cast<char*>(exe_path.c_str()));
 	argv.push_back(const_cast<char*>(cmd.c_str()));
 	for (const auto &arg : args)
@@ -583,7 +583,7 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		for(size_t i=0; i<sizeof(err_msg)-1; i++)
 			if(read(err_pipe_fd[0], &err_msg[i], 1) != 1 || err_msg[i]=='\0') break;
 		close(err_pipe_fd[0]);
-		throw std::runtime_error("spawn_detached process failed with message: "+std::string(err_msg));
+		throw std::runtime_error("odc_spawn process failed with message: "+std::string(err_msg));
 	}
 	close(err_pipe_fd[0]);
 
@@ -638,13 +638,18 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 	// Close all other fds except stdio
 	add_actions_close_all_fds(actions);
 
+	auto exe_path = std::filesystem::canonical(
+		std::string(whereami::getExecutablePath().dirname())+"/odc_spawn");
+
 	std::vector<char *> argv;
+	argv.push_back(const_cast<char*>(exe_path.c_str()));
+	argv.push_back(const_cast<char*>("--attached"));
 	argv.push_back(const_cast<char*>(cmd.c_str()));
 	for (const auto &arg : args)
 		argv.push_back(const_cast<char*>(arg.c_str()));
 	argv.push_back(nullptr);
 
-	int status = posix_spawnp(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
+	int status = posix_spawn(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
 
 	// Post-spawn cleanup
 	posix_spawn_file_actions_destroy(&actions);
@@ -659,7 +664,7 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 		close(stdin_pipe[1]);
 		close(stdout_pipe[0]);
 		close(stderr_pipe[0]);
-		throw std::runtime_error("posix_spawn(...'"+cmd+"'...) failed with return value: " + std::to_string(status));
+		throw std::runtime_error("posix_spawn(...'"+exe_path.string()+"'...) failed with return value: " + std::to_string(status));
 	}
 
 	// Convert fds to FILE*
