@@ -343,10 +343,13 @@ if(CMAKE_USE_PTHREADS_INIT)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
-include(CheckFunctionExists)
-check_function_exists(closefrom HAVE_CLOSEFROM)
+include(CheckSymbolExists)
+set(_saved_required_defs "${CMAKE_REQUIRED_DEFINITIONS}")
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(closefrom "unistd.h" HAVE_CLOSEFROM)
+set(CMAKE_REQUIRED_DEFINITIONS "${_saved_required_defs}")
 if(HAVE_CLOSEFROM)
-	add_definitions(-DHAVE_CLOSEFROM)
+    add_definitions(-DHAVE_CLOSEFROM)
 endif()
 
 # the RPATH to be used when installing - allowing local libraries to be found for standalone installs,
