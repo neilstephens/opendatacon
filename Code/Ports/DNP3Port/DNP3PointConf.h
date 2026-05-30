@@ -132,6 +132,9 @@ public:
 	uint64_t TimeSyncPeriodms;
 	bool PassThroughTimeSync;
 	bool PassThroughTimeSyncAction;
+	size_t MaxUpdateBatchCount;
+	size_t MaxUpdateBatchPeriodms;
+	double UpdateBatchResponseWeight;
 
 	// Default Static Variations
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;

@@ -44,6 +44,7 @@
 DNP3OutstationPort::DNP3OutstationPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):
 	DNP3Port(aName, aConfFilename, aConfOverrides, false),
 	pOutstation(nullptr),
+	pUpdateBuilder(nullptr),
 	master_time_offset(0),
 	IINFlags(AppIINFlags::NONE),
 	PeerCollection(nullptr)
@@ -348,6 +349,9 @@ void DNP3OutstationPort::Build()
 		Log.Error("{}: Error creating outstation.", Name);
 		return;
 	}
+
+	if(pConf->pPointConf->MaxUpdateBatchPeriodms > 0 && pConf->pPointConf->MaxUpdateBatchCount > 0)
+		pUpdateBuilder = std::make_shared<BatchUpdateBuilder>(pOutstation,pConf->pPointConf->MaxUpdateBatchPeriodms,pConf->pPointConf->MaxUpdateBatchCount,pConf->pPointConf->UpdateBatchResponseWeight);
 }
 
 std::pair<std::string, const IUIResponder *> DNP3OutstationPort::GetUIResponder()
@@ -593,9 +597,15 @@ inline void DNP3OutstationPort::EventT(T meas, uint16_t index)
 	//TODO: make this configurable
 	constexpr auto mode = std::is_same<T,opendnp3::OctetString>() ? opendnp3::EventMode::Force : opendnp3::EventMode::Detect;
 
-	opendnp3::UpdateBuilder builder;
-	builder.Update(meas, index, mode);
-	pOutstation->Apply(builder.Build());
+	if(pUpdateBuilder == nullptr)
+	{
+		opendnp3::UpdateBuilder update_builder;
+		update_builder.Update(meas,index,mode);
+		pOutstation->Apply(update_builder.Build());
+	}
+	else
+		pUpdateBuilder->Event(meas,index,mode);
+
 }
 
 inline void DNP3OutstationPort::SetIINFlags(const AppIINFlags& flags) const

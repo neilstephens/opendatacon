@@ -22,3 +22,4 @@ project(DNP3Port_tests)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ../ManInTheMiddle.cpp ../ManInTheMiddle.h ../UDPMITM.cpp ../UDPMITM.h)
 
 add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+target_include_directories(${PROJECT_NAME} PRIVATE mock)

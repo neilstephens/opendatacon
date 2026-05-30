@@ -27,6 +27,7 @@
 #ifndef DNP3SERVERPORT_H_
 #define DNP3SERVERPORT_H_
 #include "DNP3Port.h"
+#include "BatchUpdateBuilder.h"
 #include "AppIINFlags.h"
 #include <unordered_map>
 #include <opendnp3/outstation/ICommandHandler.h>
@@ -95,6 +96,7 @@ protected:
 
 private:
 	std::shared_ptr<opendnp3::IOutstation> pOutstation;
+	std::shared_ptr<BatchUpdateBuilder> pUpdateBuilder;
 	std::atomic<int64_t> master_time_offset;
 	mutable std::atomic<AppIINFlags> IINFlags;
 	std::shared_ptr<DNP3OutstationPortCollection> PeerCollection;
