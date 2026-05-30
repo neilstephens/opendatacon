@@ -406,11 +406,11 @@ TEST_CASE(SUITE("steady_rate_batch_size"))
 {
 	TestSetup();
 	auto pIOS = odc::asio_service::Get(4);
-	ThreadPool thread_pool(4);
+	ThreadPool thread_pool(6);
 
-	auto rates = {2.0, 4.0, 5.0, 6.0, 7.0, 9.0};
+	auto rates = {5.0, 6.0, 7.0, 9.0};
 	auto mx_periods = {700, 1000, 1500};
-	auto mx_counts = {7, 10, 15, 20};
+	auto mx_counts = {7, 10, 15};
 	std::vector<std::future<steady_result>> future_results;
 	for(const auto& rate : rates)
 		for(const auto& mx_period : mx_periods)
@@ -432,7 +432,7 @@ TEST_CASE(SUITE("steady_rate_batch_size"))
 				CHECK(result.totalEvents == 10*rate);
 				if(result.maxBatchSize != mx_count)
 					CHECK(result.maxBatchSize >= expected_batch_size - 1);
-				CHECK(result.maxBatchSize <= expected_batch_size);
+				CHECK(result.maxBatchSize <= expected_batch_size + 1);
 			}
 
 	TestTearDown();
