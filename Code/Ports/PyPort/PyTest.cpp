@@ -177,7 +177,7 @@ bool WaitIOSResult(const std::shared_ptr<odc::asio_service>& IOS, int MaxWaitSec
 	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
 	while (cnt-- > 0)
 	{
-		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
+		timer->expires_at(timer->expiry() + std::chrono::milliseconds(50));
 		timer->wait();
 		if (res != InitialValue)
 			return true; // Value changed
@@ -191,7 +191,7 @@ bool WaitIOSFnResult(const std::shared_ptr<odc::asio_service>& IOS, int MaxWaitS
 	size_t cnt = MaxWaitSeconds * 20;                      // 50 msec * 20 = 1 second
 	while (cnt-- > 0)
 	{
-		timer->expires_at(timer->expires_at() + std::chrono::milliseconds(50));
+		timer->expires_at(timer->expiry() + std::chrono::milliseconds(50));
 		timer->wait();
 		if (Result())
 			return true; // Value changed

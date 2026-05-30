@@ -97,7 +97,7 @@ private:
 
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::unique_ptr<odc::strand_t, deleter> pSyncStrand = pIOS->make_strand();
+	std::unique_ptr<odc::strand_t, odc::deleter> pSyncStrand = pIOS->make_strand();
 	std::function<void()> ConfirmHandler = [] {};
 
 	bool enabled = false;

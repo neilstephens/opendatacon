@@ -73,6 +73,7 @@ public:
 	template<typename F> void post(F&& f)                { asio::post(strand_, std::forward<F>(f)); }
 	template<typename F> void dispatch(F&& f)            { asio::dispatch(strand_, std::forward<F>(f)); }
 	template<typename F> auto wrap(F&& f)                { return asio::bind_executor(strand_, std::forward<F>(f)); }
+	bool running_in_this_thread() const { return strand_.running_in_this_thread(); }
 
 private:
 	friend class asio_service;

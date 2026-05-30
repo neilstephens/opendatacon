@@ -206,7 +206,7 @@ private:
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 	void ProcessCBMessage_(CBMessage_t &&CompleteCBMessage);
 	//Strand to sync access to the above functions
-	std::unique_ptr<odc::strand_t, deleter> EventSyncExecutor = odc::asio_service::Get()->make_strand();
+	std::unique_ptr<odc::strand_t, odc::deleter> EventSyncExecutor = odc::asio_service::Get()->make_strand();
 
 	// UI Testing flags to cause misbehavior
 	bool FailControlResponse = false;

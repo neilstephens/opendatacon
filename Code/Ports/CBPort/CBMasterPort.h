@@ -107,7 +107,7 @@ public:
 	bool GetOutStationSOEBufferOverflowFlag() { return OutStationSOEBufferOverflow.getandset(false); };
 private:
 
-	std::unique_ptr<odc::strand_t, deleter> MasterCommandStrand;
+	std::unique_ptr<odc::strand_t, odc::deleter> MasterCommandStrand;
 	MasterCommandData MasterCommandProtectedData; // Must be protected by the MasterCommandStrand.
 
 	std::mutex DigitalCommandSequenceNumberMutex;

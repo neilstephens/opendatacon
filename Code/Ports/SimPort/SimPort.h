@@ -140,7 +140,7 @@ private:
 	std::shared_ptr<SimPortCollection> SimCollection;
 	void AdjustTimeOffsetMilliSeconds(int64_t offset);
 
-	std::unique_ptr<odc::strand_t, deleter> pEnableDisableSync;
+	std::unique_ptr<odc::strand_t, odc::deleter> pEnableDisableSync;
 	static thread_local std::mt19937 RandNumGenerator;
 	ServerTokenType httpServerToken;
 	SimPortConf* pSimConf = nullptr; // Set in constructor

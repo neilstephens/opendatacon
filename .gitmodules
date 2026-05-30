@@ -25,3 +25,6 @@
 [submodule "Code/submodules/jsoncons"]
 	path = Code/submodules/jsoncons
 	url = https://github.com/danielaparker/jsoncons.git
+[submodule "Code/submodules/exe4cpp"]
+	path = Code/submodules/exe4cpp
+	url = git@github.com:neilstephens/exe4cpp.git
