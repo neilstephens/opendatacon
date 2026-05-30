@@ -27,5 +27,5 @@
 	url = https://github.com/danielaparker/jsoncons.git
 [submodule "Code/submodules/exe4cpp"]
 	path = Code/submodules/exe4cpp
-	url = git@github.com:neilstephens/exe4cpp.git
+	url = https://github.com:neilstephens/exe4cpp.git
 	branch = asio-1-38-0
