@@ -59,9 +59,9 @@ private:
 	void ReceiveHandler(std::error_code ec, size_t num);
 
 	std::shared_ptr<odc::asio_service> ios;
-	std::unique_ptr<asio::io_service::strand> strand;
-	std::unique_ptr<asio::ip::udp::socket> sock;
-	std::unique_ptr<asio::steady_timer> phase_timer;
+	std::unique_ptr<odc::strand_t,odc::deleter> strand;
+	std::unique_ptr<asio::ip::udp::socket,odc::deleter> sock;
+	std::unique_ptr<asio::steady_timer,odc::deleter> phase_timer;
 	asio::ip::udp::endpoint local_ep;
 	asio::ip::udp::endpoint peer_ep;
 	std::vector<char> buf;
@@ -88,7 +88,7 @@ EvilRemote::~EvilRemote()
 {
 	shutting_down = true;
 	asio::error_code ec;
-	phase_timer->cancel(ec);
+	phase_timer->cancel();
 	sock->cancel(ec);
 	sock->close(ec);
 }
