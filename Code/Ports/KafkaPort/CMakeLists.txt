@@ -40,19 +40,16 @@ endif()
 
 #this is the actual port
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 if(WIN32 AND ODC_ASIO_SSL)
 		# We have to tell the linker to ignore default libs that librdkafka hard coded with pragmas!
 		target_link_options(${PROJECT_NAME} PRIVATE "/NODEFAULTLIB:libssl.lib" "/NODEFAULTLIB:libcrypto.lib")
 endif()
 
-target_link_libraries(${PROJECT_NAME} ODC RdKafka::rdkafka)
+target_link_libraries(${PROJECT_NAME} RdKafka::rdkafka)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
 	${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/include
 	${CMAKE_SOURCE_DIR}/Code/submodules/jsoncons/include)
-
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
 install(CODE
 "

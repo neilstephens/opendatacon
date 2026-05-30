@@ -56,12 +56,9 @@ if(PACKAGE_LIBMODBUS)
 	endif()
 endif()
 
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_include_directories(${PROJECT_NAME} PRIVATE "${MODBUS_INCLUDE_PATH}")
-target_link_libraries(${PROJECT_NAME} ODC modbus_target)
-
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
+target_link_libraries(${PROJECT_NAME} modbus_target)
 
 install(CODE
 "

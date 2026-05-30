@@ -86,5 +86,32 @@ if($return == 1)
 	print "\nEither:\n\t-merge the new formatting,\n\t-use git commit --no-verify (NOT RECOMMENDED),\n\t-Use comments containing '*INDENT-OFF*' and '*INDENT-ON*',\n\t\tto disable processing of parts of the source file\n\t\t(NOT RECOMMENDED, but better than --no-verify)\n";
 }
 
+# Check for direct includes of asio headers in port/plugin/transform/test source files
+my @asio_errors = ();
+foreach my $filename (@files)
+{
+	if($filename =~ m{^Code/(?:Ports|Plugins|Transforms|tests)/} && $filename =~ /\.(?:cpp|h)$/i)
+	{
+		open(my $fh, '-|', "git show :$filename") or next;
+		my $line_no = 0;
+		while (<$fh>)
+		{
+			$line_no++;
+			if (/^\s*#\s*include\s*[<"]asio/)
+			{
+				push @asio_errors, "$filename:$line_no";
+			}
+		}
+		close $fh;
+	}
+}
+if(@asio_errors)
+{
+	print "\nDirect asio includes are forbidden outside libODC:\n\t";
+	print join("\n\t", @asio_errors)."\n";
+	print "Include <opendatacon/asio.h> instead.\n";
+	$return = 1;
+}
+
 exit($return);
 

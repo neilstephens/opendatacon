@@ -406,6 +406,47 @@ else()
 	endif()
 endif()
 
+# Helper functions for port/plugin/transform/test targets
+# All force-include the asio direct include guard to prevent
+# direct #include <asio.hpp> outside libODC.
+function(_apply_guard target)
+  target_compile_options(${target} PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/FI${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-include ${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
+  )
+endfunction()
+
+function(add_port_library name)
+  add_library(${name} MODULE ${ARGN})
+  target_link_libraries(${name} ODC)
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER ports)
+endfunction()
+
+function(add_plugin_library name)
+  add_library(${name} MODULE ${ARGN})
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER plugins)
+endfunction()
+
+function(add_transform_library name)
+  add_library(${name} MODULE ${ARGN})
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER transforms)
+endfunction()
+
+function(add_test_executable name)
+  add_executable(${name} ${ARGN})
+  target_link_libraries(${name} ODC ${DL})
+  _apply_guard(${name})
+  install(TARGETS ${name} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+  set_target_properties(${name} PROPERTIES FOLDER tests)
+  add_test(NAME CTEST_${name} COMMAND ${name})
+endfunction()
+
 message("add subdir JSON")
 add_subdirectory(Code/Libs/JSON)
 message("add subdir ODC")

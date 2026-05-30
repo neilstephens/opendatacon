@@ -20,14 +20,11 @@
 project(libLua_tests)
 
 set(${PROJECT_NAME}_SRC CatchTestStart.cpp Loading.cpp)
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${DL})
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
-add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 
 add_library(LuaTestPlugin MODULE Plugin.cpp Plugin.def)
 target_link_libraries(LuaTestPlugin LuaWrappers)
+_apply_guard(LuaTestPlugin)
 install(TARGETS LuaTestPlugin LIBRARY DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(LuaTestPlugin PROPERTIES FOLDER tests)
 
@@ -39,6 +36,7 @@ else()
 endif()
 
 add_library(TestLuaModule MODULE LuaModule.cpp LuaModule.def)
+_apply_guard(TestLuaModule)
 install(TARGETS TestLuaModule LIBRARY DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(TestLuaModule PROPERTIES FOLDER tests)
 target_include_directories(TestLuaModule PRIVATE ${LUA_INCLUDES})

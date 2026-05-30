@@ -21,11 +21,7 @@ project(FileTransferPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC)
-
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 
 install(CODE
 "

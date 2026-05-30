@@ -137,15 +137,13 @@ if(PACKAGE_DNP3)
 	set(PACK_NAMES opendnp3)
 endif()
 
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-if(TARGET build_dnp3)
-	add_dependencies(${PROJECT_NAME} build_dnp3)
-endif()
-target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
-target_link_libraries(${PROJECT_NAME} ${opendnp3_libs} ODC)
+	add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+	if(TARGET build_dnp3)
+		add_dependencies(${PROJECT_NAME} build_dnp3)
+	endif()
+	target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
+	target_link_libraries(${PROJECT_NAME} ${opendnp3_libs})
 
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
 install(CODE
 "
