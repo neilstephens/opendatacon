@@ -177,12 +177,12 @@ jobs:
         fetch-depth: 0
     - run: git fetch --force --tags
     
-    - if: matrix.bits == 32 && contains(matrix.os,'windows') #FIXME: openssl version pinned to 1.1.1 because 3.x choco doesn't support 32bit
+    - if: matrix.bits == 32 && contains(matrix.os,'windows')
       name: Set 32-bit env
       run: |
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
         echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
-        choco install openssl --version=1.1.1.2100 --x86
+        choco install openssl --version=3.6.2 --x86
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13.exe" -OutFile "python-installer-x86.exe"
         Start-Process -FilePath "python-installer-x86.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x86" -Wait
         echo "C:\hostedtoolcache\windows\Python\3.9.13\x86" >> $env:GITHUB_PATH
@@ -192,7 +192,7 @@ jobs:
       run: |
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
         echo 'BITGEN=-Ax64' >> $env:GITHUB_ENV
-        choco install openssl
+        choco install openssl --version=3.6.2
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe" -OutFile "python-installer-x64.exe"
         Start-Process -FilePath "python-installer-x64.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x64" -Wait
     
