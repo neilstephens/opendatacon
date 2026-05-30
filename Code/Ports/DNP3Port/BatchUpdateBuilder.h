@@ -49,7 +49,7 @@ class BatchUpdateBuilder: public std::enable_shared_from_this<BatchUpdateBuilder
 {
 private:
 	const std::weak_ptr<opendnp3::IOutstation> wOutstation;
-	const std::shared_ptr<asio::io_service::strand> pSyncStrand;
+	const std::shared_ptr<odc::strand_t> pSyncStrand;
 	const std::shared_ptr<asio::steady_timer> pFlushTimer;
 	const std::shared_ptr<asio::steady_timer> pRateTimer;
 

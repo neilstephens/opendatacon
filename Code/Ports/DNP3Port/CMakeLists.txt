@@ -35,6 +35,16 @@ if(DNP3_TLS)
 	endif()
 endif()
 
+option(USE_EXE4CPP_SUBMODULE "Use git submodule to download exe4cpp header library" ON)
+set(EXE4CPP_HOME_INSTRUCTIONS "Choose the location of exe4cpp header library: where it was installed - there should be a src dir within")
+if(USE_EXE4CPP_SUBMODULE)
+	set(EXE4CPP_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/exe4cpp" CACHE PATH "Local exe4cpp source (disables FetchContent download)")
+	if(NOT EXISTS "${EXE4CPP_HOME}/.git")
+		execute_process(COMMAND git submodule update --init -- Code/submodules/exe4cpp
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
+endif()
+
 if(USE_DNP3_SUBMODULE)
 	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/dnp3")
 	set(DNP3_BUILD "${CMAKE_BINARY_DIR}/Code/submodules/dnp3")

@@ -391,12 +391,6 @@ else()
 	endif()
 endif()
 
-set(EXE4CPP_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/exe4cpp" CACHE PATH "Local exe4cpp source (disables FetchContent download)")
-if(NOT EXISTS "${EXE4CPP_HOME}/.git")
-	execute_process(COMMAND git submodule update --init -- Code/submodules/exe4cpp
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif()
-
 set(SPDLOG_HOME_INSTRUCTIONS "Choose the location of spdlog header library: where it was installed - there should be an include directory within")
 if(USE_SPDLOG_SUBMODULE)
 	set(SPDLOG_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/spdlog" CACHE PATH ${SPDLOG_HOME_INSTRUCTIONS} FORCE)
