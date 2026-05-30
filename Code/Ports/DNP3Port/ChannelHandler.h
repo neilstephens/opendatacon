@@ -48,7 +48,7 @@ class ChannelHandler: public std::enable_shared_from_this<ChannelHandler>
 private:
 	//Strand for synchronising channel/link state changes
 	std::shared_ptr<odc::asio_service> pIOS;
-	std::unique_ptr<asio::io_service::strand> pSyncStrand;
+	std::unique_ptr<odc::strand_t, deleter> pSyncStrand;
 	std::shared_ptr<void> handler_tracker;
 
 public:

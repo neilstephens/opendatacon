@@ -77,7 +77,7 @@ TCPSocketManager::TCPSocketManager
 	service_name(aPort),
 	EndpointIterator(),
 	resolve_time(msSinceEpoch()),
-	pAcceptor(nullptr)
+	pAcceptor()
 {}
 
 
@@ -123,8 +123,8 @@ TCPSocketManager::~TCPSocketManager()
 void TCPSocketManager::Write(shared_const_buffer buf)
 {
 	auto tracker = handler_tracker;
-	std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
-	auto write_execute = pSockStrand->wrap([this,tracker,buf,pTimer](asio::error_code)
+	std::shared_ptr<odc::steady_timer> pTimer = pIOS->make_steady_timer();
+	auto write_execute = pSockStrand->wrap([this,tracker,buf,pTimer](std::error_code)
 		{
 			if(!isConnected || manuallyClosed || pending_write)
 			{
@@ -145,7 +145,7 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 			auto pWriteSock = pSock;
 
 			std::string remote_addr_str;
-			asio::error_code addr_err;
+			std::error_code addr_err;
 			auto remote_end = pWriteSock->remote_endpoint(addr_err);
 			if(!addr_err)
 				remote_addr_str = remote_end.address().to_string()+":"+std::to_string(remote_end.port());
@@ -155,7 +155,7 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 			auto throttle_data = CheckThrottle(buf.size());
 
 			auto handler_id = GetHandlerID();
-			auto write_handler = pSockStrand->wrap([this,tracker,buf,pWriteSock,throttle_data,remote_addr_str,handler_id](asio::error_code err_code, std::size_t n)
+			auto write_handler = pSockStrand->wrap([this,tracker,buf,pWriteSock,throttle_data,remote_addr_str,handler_id](std::error_code err_code, std::size_t n)
 				{
 					LogCallback("trace","Executing async write handler "+handler_id);
 					write_count += n;
@@ -195,7 +195,7 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 		pTimer->async_wait(write_execute);
 	}
 	else
-		write_execute(asio::error_code());
+		write_execute(std::error_code());
 }
 
 void TCPSocketManager::Open(std::shared_ptr<void> tracker)
@@ -207,31 +207,28 @@ void TCPSocketManager::Open(std::shared_ptr<void> tracker)
 	if(!EndPointResolved(tracker))
 		return;
 
-	asio::ip::tcp::resolver::iterator end;
-	for(auto endpoint_it = EndpointIterator; endpoint_it != end; endpoint_it++)
+	for(const auto& entry : EndpointIterator)
 	{
-		auto addr_str = endpoint_it->endpoint().address().to_string()+":"+std::to_string(endpoint_it->endpoint().port());
-		std::shared_ptr<asio::ip::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
+		auto addr_str = entry.endpoint().address().to_string()+":"+std::to_string(entry.endpoint().port());
+		std::shared_ptr<odc::tcp::socket> pCandidateSock = pIOS->make_tcp_socket();
 
 		if(isServer)
-			ServerOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+			ServerOpen(pCandidateSock, entry.endpoint(), addr_str, tracker);
 		else
-			ClientOpen(pCandidateSock, endpoint_it, addr_str, tracker);
+			ClientOpen(pCandidateSock, entry.endpoint(), addr_str, tracker);
 	}
 }
 
 
 bool TCPSocketManager::EndPointResolved(std::shared_ptr<void> tracker)
 {
-	asio::ip::tcp::resolver::iterator end;
-
 	//resolve between connections or every 15mins
-	if(EndpointIterator == end || (msSinceEpoch()-resolve_time) > 900000)
+	if(EndpointIterator.empty() || (msSinceEpoch()-resolve_time) > 900000)
 	{
 		//need to resolve endpoint(s)
-		std::shared_ptr<asio::ip::tcp::resolver> res = pIOS->make_tcp_resolver();
+		std::shared_ptr<odc::tcp::resolver> res = pIOS->make_tcp_resolver();
 		res->async_resolve(host_name,service_name,pSockStrand->wrap(
-			[this,res,tracker](asio::error_code err_code, asio::ip::tcp::resolver::iterator endpoint_it)
+			[this,res,tracker](std::error_code err_code, odc::tcp::resolver::results_type results)
 			{
 				if(manuallyClosed)
 					return;
@@ -242,7 +239,7 @@ bool TCPSocketManager::EndPointResolved(std::shared_ptr<void> tracker)
 					return;
 				}
 				LogCallback("debug","Resolved endpoint(s).");
-				EndpointIterator = endpoint_it;
+				EndpointIterator = std::move(results);
 				resolve_time = msSinceEpoch();
 				AutoOpen(tracker);
 			}));
@@ -252,11 +249,11 @@ bool TCPSocketManager::EndPointResolved(std::shared_ptr<void> tracker)
 }
 
 
-void TCPSocketManager::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
+void TCPSocketManager::ServerOpen(std::shared_ptr<odc::tcp::socket> pCandidateSock, odc::tcp::endpoint endpoint, std::string addr_str, std::shared_ptr<void> tracker)
 {
 	try
 	{
-		pAcceptor = pIOS->make_tcp_acceptor(endpoint_it);
+		pAcceptor = pIOS->make_tcp_acceptor(endpoint);
 		LogCallback("info","Listening on "+addr_str);
 	}
 	catch(std::exception& e)
@@ -267,12 +264,12 @@ void TCPSocketManager::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandid
 		return;
 	}
 	CandidatepSocks.insert(pCandidateSock);
-	pAcceptor->async_accept(*pCandidateSock,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
+	pAcceptor->async_accept(*pCandidateSock,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](std::error_code err_code)
 		{
 			CandidatepSocks.erase(pCandidateSock);
 
 			std::string remote_addr_str;
-			asio::error_code addr_err;
+			std::error_code addr_err;
 			auto remote_end = pCandidateSock->remote_endpoint(addr_err);
 			if(!addr_err)
 				remote_addr_str = remote_end.address().to_string()+":"+std::to_string(remote_end.port());
@@ -288,16 +285,16 @@ void TCPSocketManager::ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandid
 }
 
 
-void TCPSocketManager::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker)
+void TCPSocketManager::ClientOpen(std::shared_ptr<odc::tcp::socket> pCandidateSock, odc::tcp::endpoint endpoint, std::string addr_str, std::shared_ptr<void> tracker)
 {
 	LogCallback("info","Connecting to "+addr_str);
 	CandidatepSocks.insert(pCandidateSock);
-	pCandidateSock->async_connect(*endpoint_it,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](asio::error_code err_code)
+	pCandidateSock->async_connect(endpoint,pSockStrand->wrap([this,pCandidateSock,addr_str,tracker](std::error_code err_code)
 		{
 			CandidatepSocks.erase(pCandidateSock);
 
 			std::string local_addr_str;
-			asio::error_code addr_err;
+			std::error_code addr_err;
 			auto local_end = pCandidateSock->local_endpoint(addr_err);
 			if(!addr_err)
 				local_addr_str = local_end.address().to_string()+":"+std::to_string(local_end.port());
@@ -312,7 +309,7 @@ void TCPSocketManager::ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandid
 }
 
 
-void TCPSocketManager::CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
+void TCPSocketManager::CheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	pending_write = false;
 	//if the connection is still the active one, keep writing
@@ -321,24 +318,24 @@ void TCPSocketManager::CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWr
 	else
 	{ //this socket is finished with - we're responsible for shutting down send
 		LogCallback("debug","Finished sending to "+remote_addr_str+" - shutting socket send");
-		asio::error_code err;
-		pWriteSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
+		std::error_code err;
+		pWriteSock->shutdown(odc::tcp::socket::shutdown_send,err);
 		if(err)
 			LogCallback("debug","Send shutdown failed from write handler: "+err.message());
 		AutoOpen(tracker);
 	}
 }
 
-void TCPSocketManager::ThrottleCheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, throttle_data_t throttle_data, std::shared_ptr<void> tracker)
+void TCPSocketManager::ThrottleCheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, throttle_data_t throttle_data, std::shared_ptr<void> tracker)
 {
 	if(throttle_data.is_active)
 	{
 		auto delay_so_far = std::chrono::system_clock::now() - throttle_data.time_before;
 		if(throttle_data.needed_delay > delay_so_far)
 		{
-			std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+			std::shared_ptr<odc::steady_timer> pTimer = pIOS->make_steady_timer();
 			pTimer->expires_from_now(throttle_data.needed_delay - delay_so_far);
-			pTimer->async_wait(pSockStrand->wrap([this,pTimer,pWriteSock,remote_addr_str,tracker](asio::error_code)
+			pTimer->async_wait(pSockStrand->wrap([this,pTimer,pWriteSock,remote_addr_str,tracker](std::error_code)
 				{
 					CheckLastWrite(pWriteSock,remote_addr_str,tracker);
 				}));
@@ -352,7 +349,7 @@ void TCPSocketManager::ThrottleCheckLastWrite(std::shared_ptr<asio::ip::tcp::soc
 	CheckLastWrite(pWriteSock,remote_addr_str,tracker);
 }
 
-void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
+void TCPSocketManager::WriteBuffer(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	//if there's anything in the buffer sequence, write it
 	if((queue_writebufs->size() || dispatch_writebufs->size()) && !pending_write)
@@ -374,7 +371,7 @@ void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWrite
 		auto throttle_data = CheckThrottle(data_size);
 
 		auto handler_id = GetHandlerID();
-		auto write_handler = pSockStrand->wrap([this,pWriteSock,data_size,throttle_data,remote_addr_str,handler_id,tracker](asio::error_code err_code, std::size_t n)
+		auto write_handler = pSockStrand->wrap([this,pWriteSock,data_size,throttle_data,remote_addr_str,handler_id,tracker](std::error_code err_code, std::size_t n)
 			{
 				LogCallback("trace","WriteBuffer() - Executing async write handler "+handler_id);
 				write_count += n;
@@ -416,7 +413,7 @@ void TCPSocketManager::WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWrite
 	//need to schedule another WriteBuffer()
 }
 
-void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str)
+void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, std::error_code err_code, std::shared_ptr<odc::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str)
 {
 	if(err_code)
 	{
@@ -451,7 +448,7 @@ void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, a
 	WriteBuffer(pSock,remote_addr_str,tracker);
 }
 
-void TCPSocketManager::ThrottleReadHandler(const size_t n, asio::error_code err_code, const std::string& remote_addr_str, std::shared_ptr<void> tracker)
+void TCPSocketManager::ThrottleReadHandler(const size_t n, std::error_code err_code, const std::string& remote_addr_str, std::shared_ptr<void> tracker)
 {
 	if(n)
 	{
@@ -464,9 +461,9 @@ void TCPSocketManager::ThrottleReadHandler(const size_t n, asio::error_code err_
 			auto delay_so_far = std::chrono::system_clock::now() - throttle_data.time_before;
 			if(throttle_data.needed_delay > delay_so_far)
 			{
-				std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+				std::shared_ptr<odc::steady_timer> pTimer = pIOS->make_steady_timer();
 				pTimer->expires_from_now(throttle_data.needed_delay - delay_so_far);
-				pTimer->async_wait(pSockStrand->wrap([this,pTimer,data_leftover,err_code,remote_addr_str,tracker](asio::error_code)
+				pTimer->async_wait(pSockStrand->wrap([this,pTimer,data_leftover,err_code,remote_addr_str,tracker](std::error_code)
 					{
 						ThrottleReadHandler(data_leftover,err_code,remote_addr_str,tracker);
 					}));
@@ -487,7 +484,7 @@ void TCPSocketManager::ThrottleReadHandler(const size_t n, asio::error_code err_
 	{
 		auto level = (err_code == asio::error::eof) ? "info" : "warning";
 		LogCallback(level,"Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) : "+err_code.message());
-		pSock->shutdown(asio::ip::tcp::socket::shutdown_receive,err_code);
+		pSock->shutdown(odc::tcp::socket::shutdown_receive,err_code);
 		if(err_code)
 			LogCallback("debug","Read shutdown failed: "+err_code.message());
 		AutoClose(tracker);
@@ -502,7 +499,7 @@ void TCPSocketManager::Read(std::string remote_addr_str, std::shared_ptr<void> t
 	pending_read = true;
 	auto handler_id = GetHandlerID();
 	LogCallback("trace","Posting async read, handler "+handler_id);
-	asio::async_read(*pSock, readbuf.prepare(65536), asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str,handler_id](asio::error_code err_code, std::size_t n)
+	asio::async_read(*pSock, readbuf.prepare(65536), asio::transfer_at_least(1), pSockStrand->wrap([this,tracker,remote_addr_str,handler_id](std::error_code err_code, std::size_t n)
 		{
 			LogCallback("trace","Executing async read handler "+handler_id);
 			ThrottleReadHandler(n,err_code,remote_addr_str,tracker);
@@ -531,7 +528,7 @@ void TCPSocketManager::AutoOpen(std::shared_ptr<void> tracker)
 			else
 			{
 				pRetryTimer->expires_from_now(std::chrono::milliseconds(ramp_time_ms));
-				pRetryTimer->async_wait(pSockStrand->wrap([this,tracker](asio::error_code err_code)
+				pRetryTimer->async_wait(pSockStrand->wrap([this,tracker](std::error_code err_code)
 					{
 						if(manuallyClosed || err_code)
 							return;
@@ -556,24 +553,24 @@ void TCPSocketManager::AutoClose(std::shared_ptr<void> tracker)
 			if(!pending_write) //if there's a pending write - the write handler will shutdown sending
 			{
 				LogCallback("debug","Not sending - shutting socket send from auto-close");
-				asio::error_code err;
-				pSock->shutdown(asio::ip::tcp::socket::shutdown_send,err);
+				std::error_code err;
+				pSock->shutdown(odc::tcp::socket::shutdown_send,err);
 				if(err)
 					LogCallback("debug","Send shutdown failed from auto-close: "+err.message());
 			}
 			else if(!pending_read) //only time there's no pending read is if other side sent fin
 			{
-				asio::error_code err;
+				std::error_code err;
 				pSock->cancel(err);
 				if(err)
 					LogCallback("debug","Cancel pending write failed from auto-close: "+err.message());
 				//sometimes cancelling write tasks fails silently under windows
 				//post a backup task 3s in the future to call close if needed
 				//close will cause the gracefull socket::shutdown_send in the write handler to fail, but nothing better to do
-				std::weak_ptr<asio::ip::tcp::socket> pSockWeak = pSock;
-				std::shared_ptr<asio::steady_timer> pTimer = pIOS->make_steady_timer();
+				std::weak_ptr<odc::tcp::socket> pSockWeak = pSock;
+				std::shared_ptr<odc::steady_timer> pTimer = pIOS->make_steady_timer();
 				pTimer->expires_from_now(std::chrono::seconds(3));
-				pTimer->async_wait(pSockStrand->wrap([this,pSockWeak,pTimer,tracker](asio::error_code)
+				pTimer->async_wait(pSockStrand->wrap([this,pSockWeak,pTimer,tracker](std::error_code)
 					{
 						if(auto pSock = pSockWeak.lock())
 						{
@@ -585,7 +582,7 @@ void TCPSocketManager::AutoClose(std::shared_ptr<void> tracker)
 			isConnected = false;
 			StateCallback(isConnected);
 			//Force endpoint(s) resolution between connections
-			EndpointIterator = asio::ip::tcp::resolver::iterator();
+			EndpointIterator = {};
 		});
 }
 

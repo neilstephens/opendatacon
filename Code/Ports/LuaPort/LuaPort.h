@@ -63,7 +63,7 @@ private:
 
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::shared_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pLuaSyncStrand = pIOS->make_strand();
 
 	//synchronised versions of pubil counterparts above
 	void Enable_();

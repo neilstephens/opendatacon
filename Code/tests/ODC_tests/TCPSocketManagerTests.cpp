@@ -243,7 +243,7 @@ TEST_CASE(SUITE("SimpleStrings"))
 	TestTearDown();
 }
 
-void interrupt(const std::string& description, std::unique_ptr<TCPSocketManager>& sock, std::atomic_bool& open, std::unique_ptr<asio::steady_timer>& timer, const std::atomic_bool& stop)
+void interrupt(const std::string& description, std::unique_ptr<TCPSocketManager>& sock, std::atomic_bool& open, std::unique_ptr<odc::steady_timer, deleter>& timer, const std::atomic_bool& stop)
 {
 	thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
 	open = !open;

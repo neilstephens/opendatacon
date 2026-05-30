@@ -26,7 +26,7 @@ private:
   std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 
   /// The strand used to synchronise access to the connection set below
-  std::unique_ptr<asio::io_service::strand> pSetStrand = pIOS->make_strand();
+  std::unique_ptr<odc::strand_t, odc::deleter> pSetStrand = pIOS->make_strand();
 
 public:
   connection_manager(const connection_manager&) = delete;

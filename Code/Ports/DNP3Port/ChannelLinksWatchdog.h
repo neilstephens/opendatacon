@@ -42,7 +42,7 @@ class ChannelLinksWatchdog: public std::enable_shared_from_this<ChannelLinksWatc
 private:
 	//Strand for synchronising access to sets
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
-	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	std::unique_ptr<odc::strand_t, odc::deleter> pSyncStrand = pIOS->make_strand();
 
 public:
 	ChannelLinksWatchdog(const WatchdogBark& mode);

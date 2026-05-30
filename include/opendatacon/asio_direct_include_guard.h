@@ -17,25 +17,14 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
-/*
- *  UtilWrappers.h
- *
- *  Created on: 18/06/2023
- *      Author: Neil Stephens
- */
-#ifndef UTILWRAPPERS_H
-#define UTILWRAPPERS_H
 
-#include <Lua/CLua.h>
-#include <opendatacon/asio.h>
-#include <string>
-namespace Json { class Value; }
+//Force-included via -include / /FI in port/plugin/transform/test targets.
+//Reserves <asio.hpp>'s include guard so any direct #include <asio.hpp>
+//becomes a no-op — asio types will be undefined, causing a compile error
+//at the point of use.
+//opendatacon/asio.h knows to #undef this before its own #include.
 
-extern "C" void ExportUtilWrappers(lua_State* const L,
-	std::shared_ptr<odc::strand_t> pSyncStrand,
-	std::shared_ptr<void> handler_tracker,
-	const std::string& Name,
-	const std::string& LogName);
-void PushJSON(lua_State* const L, const Json::Value& JSON);
-
-#endif // UTILWRAPPERS_H
+#ifndef ODC_ASIO_GUARD
+#define ODC_ASIO_GUARD
+#define ASIO_HPP
+#endif

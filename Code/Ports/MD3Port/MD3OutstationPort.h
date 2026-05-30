@@ -174,7 +174,7 @@ private:
 	void Event_(std::shared_ptr<const EventInfo> event, SharedStatusCallback_t pStatusCallback);
 	void ProcessMD3Message_(MD3Message_t&& CompleteMD3Message);
 	//Strand to sync access to the above functions
-	std::unique_ptr<asio::io_service::strand> EventSyncExecutor = odc::asio_service::Get()->make_strand();
+	std::unique_ptr<odc::strand_t, deleter> EventSyncExecutor = odc::asio_service::Get()->make_strand();
 
 	// UI Testing flags to cause misbehaviour
 	bool FailControlResponse = false;

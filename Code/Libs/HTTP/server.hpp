@@ -27,7 +27,7 @@ namespace http {
 		std::shared_ptr<odc::asio_service> pIOS;
 
 		/// The strand used to synchronise access to the underlying asio service(s)
-		std::unique_ptr<asio::io_service::strand> pServiceStrand;
+		std::unique_ptr<odc::strand_t, odc::deleter> pServiceStrand;
 
 	public:
 		server(const server&) = delete;
@@ -59,7 +59,7 @@ namespace http {
 		void do_accept_();
 
 		/// Acceptor used to listen for incoming connections.
-		std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;
+		std::unique_ptr<asio::ip::tcp::acceptor, odc::deleter> acceptor_;
 
 		/// The connection manager which owns all live connections.
 		connection_manager connection_manager_;

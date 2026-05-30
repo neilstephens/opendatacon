@@ -102,7 +102,7 @@ private:
 	void* modbus_read_buffer;
 	size_t modbus_read_buffer_size;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTCPRetryTimer;
+	std::unique_ptr<Timer_t, deleter> pTCPRetryTimer;
 	std::unique_ptr<ASIOScheduler> PollScheduler;
 };
 

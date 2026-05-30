@@ -59,7 +59,7 @@ private:
 	std::atomic_bool completed = false;
 	lua_State* L = luaL_newstate();
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
-	std::shared_ptr<asio::io_service::strand> pStrand = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pStrand = pIOS->make_strand();
 	std::shared_ptr<asio::steady_timer> pSleepTimer = pIOS->make_steady_timer();
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();

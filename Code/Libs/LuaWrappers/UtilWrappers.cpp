@@ -206,7 +206,7 @@ inline void CoroutineLoop(lua_State* const L,
 	const std::string& LogName,
 	const int LuaCRref,
 	std::shared_ptr<asio::steady_timer> pTimer,
-	std::shared_ptr<asio::io_service::strand> pSyncStrand)
+	std::shared_ptr<odc::strand_t> pSyncStrand)
 {
 	//get coroutine from the registry back on stack
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCRref);
@@ -246,7 +246,7 @@ inline void CoroutineLoop(lua_State* const L,
 }
 
 extern "C" void ExportUtilWrappers(lua_State* const L,
-	std::shared_ptr<asio::io_service::strand> pSyncStrand,
+	std::shared_ptr<odc::strand_t> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
 	const std::string& Name,
 	const std::string& LogName)
@@ -492,7 +492,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 	lua_pushcclosure(L, ([](lua_State* const L) -> int
 				   {
 					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
-					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
+					   auto sync = std::static_pointer_cast<odc::strand_t>(ppSync->lock());
 					   auto ppTracker = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(2)));
 					   auto tracker = ppTracker->lock();
 					   std::string name(lua_tostring(L, lua_upvalueindex(3)));
@@ -565,7 +565,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 	lua_pushcclosure(L, ([](lua_State* const L) -> int
 				   {
 					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
-					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
+					   auto sync = std::static_pointer_cast<odc::strand_t>(ppSync->lock());
 					   std::string name(lua_tostring(L, lua_upvalueindex(2)));
 					   std::string logname(lua_tostring(L, lua_upvalueindex(3)));
 

@@ -37,7 +37,7 @@ typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
 class NullPort: public DataPort
 {
 private:
-	std::unique_ptr<Timer_t> pTimer;
+	std::unique_ptr<Timer_t, deleter> pTimer;
 
 public:
 	NullPort(const std::string& aName, const std::string& aConfFilename, const Json::Value& aConfOverrides):

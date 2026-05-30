@@ -40,11 +40,12 @@ public:
 		const std::string& app = "-",
 		const std::string& category = "-"):
 		resolver(ios.make_udp_resolver()),
-		query(asio::ip::udp::v4(), dst_host, dst_port),
-		endpoint(*resolver->resolve(query)),
+		endpoint(),
 		socket(ios.make_udp_socket()),
 		facility_(facility)
 	{
+		auto results = resolver->resolve(dst_host, dst_port);
+		endpoint = results.begin()->endpoint();
 		socket->open(asio::ip::udp::v4());
 		//syslog header - looks like "<8*Facility+Severity>VERSION YYYY-MM-DDThh:mm:ss.sss+/-hh:mm HOSTNAME APP-NAME PROCID MSGID (BOM?)MSG"
 		//use formatter pattern to do everything except <8*Facility+Severity>
@@ -78,10 +79,9 @@ public:
 	void flush_() final {};
 
 private:
-	std::unique_ptr<asio::ip::udp::resolver> resolver;
-	asio::ip::udp::resolver::query query;
-	asio::ip::udp::endpoint endpoint;
-	std::unique_ptr<asio::ip::udp::socket> socket;
+	std::unique_ptr<odc::udp::resolver, deleter> resolver;
+	odc::udp::endpoint endpoint;
+	std::unique_ptr<odc::udp::socket, deleter> socket;
 	std::array<int, 7> severities;
 	int facility_;
 };
