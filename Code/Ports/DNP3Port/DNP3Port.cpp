@@ -444,6 +444,8 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.UDPListenPort = JSONRoot["UDPListenPort"].asUInt();
 					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SymmetricUDP = false;
 				}
+				if(JSONRoot.isMember("ConnectionlessUDP"))
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ConnectionlessUDP = JSONRoot["ConnectionlessUDP"].asBool();
 			}
 			else if(JSONRoot["IPTransport"].asString() == "TLS")
 			{

@@ -175,7 +175,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms)),
 				opendnp3::IPEndpoint(local_interface,local_port),
 				opendnp3::IPEndpoint(remote_host,remote_port),
-				listener);
+				listener,pConf->mAddrConf.ConnectionlessUDP);
 			if(watchdog_mode == WatchdogBark::DEFAULT)
 				watchdog_mode = WatchdogBark::NEVER;
 		}

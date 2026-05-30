@@ -27,6 +27,7 @@ RUN rpm -i libcxx-static-17.0.6-1.el9.x86_64.rpm
 RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
 ARG BUILD_COMMIT=develop
 RUN git -C opendatacon checkout $BUILD_COMMIT
+RUN git -C opendatacon submodule update --recursive
 
 ARG BUILD_TYPE=Release
 RUN mkdir opendatacon-build
