@@ -51,9 +51,3 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
 	${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/include
 	${CMAKE_SOURCE_DIR}/Code/submodules/jsoncons/include)
 
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-	)
-")

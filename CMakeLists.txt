@@ -376,7 +376,7 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an asio/include path within")
+set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an include path within")
 if(USE_ASIO_SUBMODULE)
 	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
 	if(NOT EXISTS "${ASIO_HOME}/.git")
@@ -422,6 +422,12 @@ function(add_port_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER ports)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
 endfunction()
 
 function(add_plugin_library name)
@@ -429,6 +435,12 @@ function(add_plugin_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER plugins)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
 endfunction()
 
 function(add_transform_library name)
@@ -436,6 +448,12 @@ function(add_transform_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER transforms)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
 endfunction()
 
 function(add_test_executable name)
