@@ -209,7 +209,7 @@ void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::stea
 		Tx(only_modified);
 
 	pTimer->expires_from_now(std::chrono::milliseconds(periodms));
-	pTimer->async_wait(pSyncStrand->wrap([=,h{handler_tracker}](asio::error_code err)
+	pTimer->async_wait(pSyncStrand->wrap([=, this, h{handler_tracker}](asio::error_code err)
 		{
 			Periodic(err,pTimer,periodms,only_modified);
 		}));
@@ -415,7 +415,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 			ResetTransfer();
 		}
 		for(const auto& e : tx_event_buffer)
-			pIOS->post([=] { PublishEvent(e); });
+			pIOS->post([=, this] { PublishEvent(e); });
 
 		if(!UnsolConfirm && !transfer_reset)
 			StartConfirmTimer();
@@ -607,7 +607,7 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 			Log.Error("{}: Transfer timeout. Sending negative confirmation", Name);
 			CROB.status = CommandStatus::TIMEOUT;
 			confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
-			pIOS->post([=] { PublishEvent(confirm_event); });
+			pIOS->post([=, this] { PublishEvent(confirm_event); });
 		}
 		else
 		{
@@ -620,7 +620,7 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 		Log.Debug("{}: Transfer timeout between files, send unsol positive confirmation", Name);
 		CROB.status = CommandStatus::SUCCESS;
 		confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(CROB));
-		pIOS->post([=] { PublishEvent(confirm_event); });
+		pIOS->post([=, this] { PublishEvent(confirm_event); });
 	}
 
 	rx_event_buffer.clear();
@@ -688,7 +688,7 @@ inline void FileTransferPort::ConfirmCheck()
 			Log.Trace("{}: Sending confirmation full sequence received.", Name);
 		auto confirm_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock,pConf->ConfirmControlIndex);
 		confirm_event->SetPayload<EventType::ControlRelayOutputBlock>(ControlRelayOutputBlock());
-		pIOS->post([=] { PublishEvent(confirm_event); });
+		pIOS->post([=, this] { PublishEvent(confirm_event); });
 	}
 }
 
@@ -781,7 +781,7 @@ void FileTransferPort::TXBufferPublishEvent(std::shared_ptr<EventInfo> event, Sh
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	if(pConf->UseConfirms)
 		tx_event_buffer.push_back(event);
-	pIOS->post([=] { PublishEvent(event,pStatusCallback); });
+	pIOS->post([=, this] { PublishEvent(event,pStatusCallback); });
 }
 
 //called on-strand by ConfirmEvent()
@@ -827,7 +827,7 @@ void FileTransferPort::StartConfirmTimer()
 				return;
 			Log.Error("{}: Confirm timeout.", Name);
 			for(const auto& e : tx_event_buffer)
-				pIOS->post([=] { PublishEvent(e); });
+				pIOS->post([=, this] { PublishEvent(e); });
 			StartConfirmTimer();
 		}));
 }

@@ -118,7 +118,7 @@ protected:
 			for(const auto& IOHandler_pair: Subscribers)
 			{
 				if(shouldPost)
-					pIOS->post([=](){IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);});
+					pIOS->post([=, this](){IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);});
 				else
 					IOHandler_pair.second->Event(event->GetPayload<EventType::ConnectState>(), Name);
 			}
@@ -129,7 +129,7 @@ protected:
 			if(IOHLog.ShouldLog(spdlog::level::trace))
 				IOHLog.Trace("{} {} {} Payload {} Event {} => {}", event->GetSourcePort(), ToString(event->GetEventType()),event->GetIndex(), event->HasPayload() ? event->GetPayloadString() : "", Name, IOHandler_pair.first);
 			if(shouldPost)
-				pIOS->post([=](){IOHandler_pair.second->Event(event, Name, OneShotWrap(multi_callback));});
+				pIOS->post([=, this](){IOHandler_pair.second->Event(event, Name, OneShotWrap(multi_callback));});
 			else
 				IOHandler_pair.second->Event(event, Name, OneShotWrap(multi_callback));
 		}

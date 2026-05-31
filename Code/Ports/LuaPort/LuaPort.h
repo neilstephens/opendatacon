@@ -53,7 +53,7 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
 	{
-		pLuaSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
+		pLuaSyncStrand->post([=, this, h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
 	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;

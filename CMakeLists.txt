@@ -36,9 +36,14 @@ endif()
 #tempting to move this to the top - but don't! Must set CMAKE_BUILD_TYPE first
 project(opendatacon_suite C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
+set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++20 instead of -std=gnu++20
+
+# Bundled fmt in spdlog 1.x uses FMT_STRING which creates local structs passed
+# to consteval constructors - rejected by GCC 15 in C++20 mode. Suppress consteval
+# to keep the bundled fmt working until spdlog is upgraded to use fmt 11+.
+add_compile_definitions(FMT_CONSTEVAL=)
 
 #macro for resolving chain of symlinks into a list
 include(Code/cmake/file_w_symlinks.cmake)

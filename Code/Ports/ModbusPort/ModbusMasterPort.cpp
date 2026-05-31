@@ -110,9 +110,9 @@ void ModbusMasterPort::Connect(modbus_t* mb)
 	for(auto pg : pConf->pPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
-		auto action = [=]()
+		auto action = [=, this]()
 				  {
-					  MBSync->Execute([=](modbus_t* mb)
+					  MBSync->Execute([=, this](modbus_t* mb)
 						  {
 							  DoPoll(id,mb);
 						  });
@@ -463,7 +463,7 @@ CommandStatus ModbusMasterPort::WriteObject(modbus_t *mb, const ControlRelayOutp
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		MBSync->Execute([=](modbus_t* mb)
+		MBSync->Execute([=, this](modbus_t* mb)
 			{
 				DoPoll(TargetRange->pollgroup,mb);
 			});
@@ -481,7 +481,7 @@ CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const int16_t output, 
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		MBSync->Execute([=](modbus_t* mb)
+		MBSync->Execute([=, this](modbus_t* mb)
 			{
 				DoPoll(TargetRange->pollgroup,mb);
 			});
@@ -505,7 +505,7 @@ CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const int32_t output, 
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		MBSync->Execute([=](modbus_t* mb)
+		MBSync->Execute([=, this](modbus_t* mb)
 			{
 				DoPoll(TargetRange->pollgroup,mb);
 			});
@@ -532,7 +532,7 @@ CommandStatus ModbusMasterPort::WriteObject(modbus_t* mb, const double output, u
 
 	// If the index is part of a non-zero pollgroup, queue a poll task for the group
 	if (TargetRange->pollgroup > 0)
-		MBSync->Execute([=](modbus_t* mb)
+		MBSync->Execute([=, this](modbus_t* mb)
 			{
 				DoPoll(TargetRange->pollgroup,mb);
 			});
@@ -555,9 +555,9 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 
 	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 
-	auto write = [=](auto payload)
+	auto write = [=, this](auto payload)
 			 {
-				 MBSync->Execute([=](modbus_t* mb)
+				 MBSync->Execute([=, this](modbus_t* mb)
 					 {
 						 (*pStatusCallback)(WriteObject(mb, payload, event->GetIndex()));
 					 });
@@ -585,7 +585,7 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 				// Only change stack state if it is an on demand server
 				if (pConf->mAddrConf.ServerType == server_type_t::ONDEMAND)
 				{
-					MBSync->Execute([=](modbus_t* mb)
+					MBSync->Execute([=, this](modbus_t* mb)
 						{
 							Connect(mb);
 						});

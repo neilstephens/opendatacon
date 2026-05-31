@@ -380,7 +380,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
 	python_strand(odc::asio_service::Get()->make_strand()),
 	running(false),
 	keep_running(true),
-	PythonMainThread([=](){Run(GlobalUseSystemPython);})
+	PythonMainThread([=, this](){Run(GlobalUseSystemPython);})
 {
 	//Wait til' the Run thread signals after init
 	std::unique_lock<std::mutex> RunLock(RunMtx);

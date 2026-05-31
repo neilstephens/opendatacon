@@ -304,7 +304,7 @@ bool SimPort::UISetUpdateInterval(EventType type, const std::string& index, cons
 				{
 					auto random_interval = std::uniform_int_distribution<unsigned int>(0, delta << 1)(RandNumGenerator);
 					ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
-					ptimer->async_wait([=](asio::error_code err_code)
+					ptimer->async_wait([=, this](asio::error_code err_code)
 						{
 							if(enabled && !err_code)
 							{
@@ -401,7 +401,7 @@ void SimPort::PortUp()
 			{
 				auto random_interval = std::uniform_int_distribution<unsigned int>(0, interval << 1)(RandNumGenerator);
 				ptimer->expires_from_now(std::chrono::milliseconds(random_interval));
-				ptimer->async_wait([=](asio::error_code err_code)
+				ptimer->async_wait([=, this](asio::error_code err_code)
 					{
 						if (enabled && !err_code)
 						{
@@ -443,7 +443,7 @@ bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, con
 		else
 			delta = event->GetTimestamp()+time_offset - now;
 		ptimer->expires_from_now(std::chrono::milliseconds(delta));
-		ptimer->async_wait([=](asio::error_code err_code)
+		ptimer->async_wait([=, this](asio::error_code err_code)
 			{
 				if(enabled && !err_code)
 					SpawnEvent(event, ptimer, time_offset);
@@ -607,7 +607,7 @@ void SimPort::SpawnEvent(const std::shared_ptr<EventInfo>& event, ptimer_t pTime
 	pTimer->expires_from_now(std::chrono::milliseconds(delta));
 	//wait til next time
 	if(enabled)
-		pTimer->async_wait([=](asio::error_code err_code)
+		pTimer->async_wait([=, this](asio::error_code err_code)
 			{
 				if(enabled && !err_code)
 					SpawnEvent(next_event, pTimer, time_offset);

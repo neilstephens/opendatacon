@@ -235,7 +235,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 	//Do we have a connection for this sender?
 	if(connection_count > 0)
 	{
-		EvtHandler_ptr ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
+		EvtHandler_ptr ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=, this](std::shared_ptr<EventInfo> evt)
 			{
 				if(!evt)
 				{
@@ -271,7 +271,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 			const auto rend = SenderTransforms.at(SenderName).rend();
 			while(Tx_it != rend)
 			{
-				ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
+				ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=, this](std::shared_ptr<EventInfo> evt)
 					{
 						auto src = (Tx_it+1 == rend) ? Name : (*(Tx_it+1))->Name;
 						if(evt)
