@@ -46,13 +46,42 @@
 //   Phase LISTEN  — random 1–10ms: socket open, receives & replies
 //   Phase CLOSED  — remainder:     socket closed → ICMP on DNP3 sends
 // ============================================================================
-class EvilRemote
+class EvilRemote: public std::enable_shared_from_this<EvilRemote>
 {
 public:
-	EvilRemote(uint16_t port);
-	~EvilRemote();
+	static std::shared_ptr<EvilRemote> Create(uint16_t port)
+	{
+		auto self = std::shared_ptr<EvilRemote>(new EvilRemote(port));
+		self->StartListenPhase();
+		return self;
+	}
+
+	~EvilRemote()
+	{
+		Shutdown();
+	}
+
+	void Shutdown()
+	{
+		if(shutting_down.exchange(true))
+			return;
+		asio::error_code ec;
+		phase_timer->cancel();
+		sock->cancel(ec);
+		sock->close(ec);
+	}
 
 private:
+	EvilRemote(uint16_t port):
+		ios(odc::asio_service::Get()),
+		strand(ios->make_strand()),
+		sock(ios->make_udp_socket()),
+		phase_timer(ios->make_steady_timer()),
+		local_ep(asio::ip::address_v4::loopback(), port),
+		buf(65536),
+		rng(std::random_device{}())
+	{}
+
 	void StartListenPhase();
 	void StartClosePhase();
 	void StartReceive();
@@ -71,27 +100,6 @@ private:
 	std::atomic<bool> shutting_down = false;
 	int current_listen_ms = 0;
 };
-
-EvilRemote::EvilRemote(uint16_t port):
-	ios(odc::asio_service::Get()),
-	strand(ios->make_strand()),
-	sock(ios->make_udp_socket()),
-	phase_timer(ios->make_steady_timer()),
-	local_ep(asio::ip::address_v4::loopback(), port),
-	buf(65536),
-	rng(std::random_device{}())
-{
-	StartListenPhase();
-}
-
-EvilRemote::~EvilRemote()
-{
-	shutting_down = true;
-	asio::error_code ec;
-	phase_timer->cancel();
-	sock->cancel(ec);
-	sock->close(ec);
-}
 
 void EvilRemote::StartListenPhase()
 {
@@ -115,11 +123,11 @@ void EvilRemote::StartListenPhase()
 	StartReceive();
 
 	phase_timer->expires_after(std::chrono::milliseconds(current_listen_ms));
-	phase_timer->async_wait(strand->wrap([this](std::error_code ec)
+	phase_timer->async_wait(strand->wrap([self = shared_from_this()](std::error_code ec)
 		{
-			if(ec || shutting_down)
+			if(ec || self->shutting_down)
 				return;
-			StartClosePhase();
+			self->StartClosePhase();
 		}));
 }
 
@@ -136,11 +144,11 @@ void EvilRemote::StartClosePhase()
 		close_ms = 1;
 
 	phase_timer->expires_after(std::chrono::milliseconds(close_ms));
-	phase_timer->async_wait(strand->wrap([this](std::error_code ec)
+	phase_timer->async_wait(strand->wrap([self = shared_from_this()](std::error_code ec)
 		{
-			if(ec || shutting_down)
+			if(ec || self->shutting_down)
 				return;
-			StartListenPhase();
+			self->StartListenPhase();
 		}));
 }
 
@@ -150,9 +158,9 @@ void EvilRemote::StartReceive()
 		return;
 
 	sock->async_receive_from(asio::buffer(buf), peer_ep,
-		strand->wrap([this](std::error_code ec, size_t num)
+		strand->wrap([self = shared_from_this()](std::error_code ec, size_t num)
 			{
-				ReceiveHandler(ec, num);
+				self->ReceiveHandler(ec, num);
 			}));
 }
 
@@ -261,8 +269,7 @@ TEST_CASE(SUITE("Master reconnect stress"))
 	REQUIRE(portlib);
 	{
 		ThreadPool thread_pool(1);
-		// EvilRemote after ThreadPool so it's destroyed first (cancels async ops)
-		EvilRemote evil(20100);
+		auto evil = EvilRemote::Create(20100);
 
 		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
 		REQUIRE(newMaster);
@@ -282,6 +289,7 @@ TEST_CASE(SUITE("Master reconnect stress"))
 		MonitorReconnect(MPUT, 30000);
 
 		MPUT->Disable();
+		evil->Shutdown();
 	}
 	UnLoadModule(portlib);
 	TestTearDown();
@@ -297,7 +305,7 @@ TEST_CASE(SUITE("Outstation reconnect stress"))
 		ThreadPool thread_pool(1);
 
 		// Outstation: listen=20103, remote=20102 (EvilRemote)
-		EvilRemote evil(20102);
+		auto evil = EvilRemote::Create(20102);
 
 		newptr newOS = GetPortCreator(portlib, "DNP3Outstation");
 		REQUIRE(newOS);
@@ -317,6 +325,7 @@ TEST_CASE(SUITE("Outstation reconnect stress"))
 		MonitorReconnect(OSUT, 30000);
 
 		OSUT->Disable();
+		evil->Shutdown();
 	}
 	UnLoadModule(portlib);
 	TestTearDown();
@@ -374,7 +383,7 @@ TEST_CASE(SUITE("Multi reconnect stress"))
 		ports.push_back(make_os(27, 17, 4));
 
 		ThreadPool thread_pool(2);
-		EvilRemote evil(ev_port);
+		auto evil = EvilRemote::Create(ev_port);
 
 		for(auto& p : ports)
 			p->Enable();
@@ -394,6 +403,7 @@ TEST_CASE(SUITE("Multi reconnect stress"))
 
 		for(auto& p : ports)
 			p->Disable();
+		evil->Shutdown();
 	}
 	UnLoadModule(portlib);
 	TestTearDown();
