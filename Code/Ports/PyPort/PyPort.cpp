@@ -248,79 +248,71 @@ void PyPort::AddHTTPHandlers()
 {
 	// Now add all the callbacks that we need - the root handler might be a duplicate, in which case it will be ignored!
 
-	auto roothandler = std::make_shared<http::HandlerCallbackType>([](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-		{
-			rep.status = http::reply::ok;
-			rep.content.append("You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.");
-			rep.headers.resize(2);
-			rep.headers[0].name = "Content-Length";
-			rep.headers[0].value = std::to_string(rep.content.size());
-			rep.headers[1].name = "Content-Type";
-			rep.headers[1].value = "text/html"; // http::server::mime_types::extension_to_type(extension);
-		});
+	auto roothandler = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> /*request*/)
+				 {
+					 // Write raw HTTP to preserve Content-Length before Content-Type header order (required by WebServerTest)
+					 std::string body = "You have reached the PyPort http interface.<br>To talk to a port the url must contain the PyPort name, which is case senstive.<br>Anything beyond this will be passed to the Python code.";
+					 *response << "HTTP/1.1 200 OK\r\nContent-Length: " << body.size() << "\r\nContent-Type: text/html\r\n\r\n" << body;
+				 };
 
 	HttpServerManager::AddHandler(pServer, "GET /", roothandler);
 
-	auto gethandler = std::make_shared<http::HandlerCallbackType>([this](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-		{
-			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
-			std::string contenttype = "application/json";
-			std::string result = "";
-
-			if (!pWrapper)
-			{
-				Log.Error("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
-				rep.status = http::reply::not_found;
-				rep.content.append("You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!");
-				contenttype = "text/html";
-			}
-			else
-			{
-				result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
-
-				if (result.length() > 0)
+	auto gethandler = [this](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
 				{
-					rep.status = http::reply::ok;
-					rep.content.append(result);
-				}
-				else
-				{
-					rep.status = http::reply::not_found;
-					rep.content.append("You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code");
-					contenttype = "text/html";
-				}
-			}
-			rep.headers.resize(2);
-			rep.headers[0].name = "Content-Length";
-			rep.headers[0].value = std::to_string(rep.content.size());
-			rep.headers[1].name = "Content-Type";
-			rep.headers[1].value = contenttype;
-		});
+					// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
+					std::string absoluteuri = request->method + " " + request->path;
+					if (!request->query_string.empty())
+						absoluteuri += "?" + request->query_string;
+					std::string content = request->content.string();
+
+					std::string body;
+					std::string contenttype;
+
+					if (!pWrapper)
+					{
+						Log.Error("Tried to handle a http callback, but pWrapper is null {} {}", absoluteuri, content);
+						body = "You have reached the PyPort Instance with GET on " + Name + " Port has been destructed!!";
+						contenttype = "text/html";
+						*response << "HTTP/1.1 404 Not Found\r\nContent-Length: " << body.size() << "\r\nContent-Type: " << contenttype << "\r\n\r\n" << body;
+						return;
+					}
+
+					body = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+
+					if (body.length() > 0)
+					{
+						contenttype = "application/json";
+						*response << "HTTP/1.1 200 OK\r\nContent-Length: " << body.size() << "\r\nContent-Type: " << contenttype << "\r\n\r\n" << body;
+					}
+					else
+					{
+						body = "You have reached the PyPort Instance with GET on " + Name + " No reponse from Python Code";
+						contenttype = "text/html";
+						*response << "HTTP/1.1 404 Not Found\r\nContent-Length: " << body.size() << "\r\nContent-Type: " << contenttype << "\r\n\r\n" << body;
+					}
+				};
 	HttpServerManager::AddHandler(pServer, "GET /" + Name, gethandler);
 
-	auto posthandler = std::make_shared<http::HandlerCallbackType>([=](const std::string& absoluteuri, const http::ParameterMapType& parameters, const std::string& content, http::reply& rep)
-		{
-			// So when we hit here, someone has made a Get request of our Port. Pass it to Python, and wait for a response...
-			std::string result = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
-			std::string contenttype = "application/json";
+	auto posthandler = [this](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+				 {
+					 // So when we hit here, someone has made a POST request of our Port. Pass it to Python, and wait for a response...
+					 std::string absoluteuri = request->method + " " + request->path;
+					 if (!request->query_string.empty())
+						 absoluteuri += "?" + request->query_string;
+					 std::string content = request->content.string();
 
-			if (result.length() > 0)
-			{
-				rep.status = http::reply::ok;
-				rep.content.append(result);
-			}
-			else
-			{
-				rep.status = http::reply::not_found;
-				rep.content.append("You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code");
-				contenttype = "text/html";
-			}
-			rep.headers.resize(2);
-			rep.headers[0].name = "Content-Length";
-			rep.headers[0].value = std::to_string(rep.content.size());
-			rep.headers[1].name = "Content-Type";
-			rep.headers[1].value = contenttype;
-		});
+					 std::string body = pWrapper->RestHandler(absoluteuri, content); // Expect no long processing or waits in the python code to handle this.
+
+					 if (body.length() > 0)
+					 {
+						 *response << "HTTP/1.1 200 OK\r\nContent-Length: " << body.size() << "\r\nContent-Type: application/json\r\n\r\n" << body;
+					 }
+					 else
+					 {
+						 body = "You have reached the PyPort Instance with POST on " + Name + " No reponse from Python Code";
+						 *response << "HTTP/1.1 404 Not Found\r\nContent-Length: " << body.size() << "\r\nContent-Type: text/html\r\n\r\n" << body;
+					 }
+				 };
 	HttpServerManager::AddHandler(pServer, "POST /" + Name, posthandler);
 }
 
