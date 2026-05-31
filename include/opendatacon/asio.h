@@ -33,6 +33,7 @@
 #include <asio.hpp>
 #include <unordered_set>
 #include <memory>
+#include <tuple>
 
 //use these to suppress warnings
 //FIXME: asio 1.36+ removed steady_timer::expires_from_now().
@@ -60,6 +61,39 @@ struct deleter
 	}
 };
 
+// strand_wrap_t<F>: result type of strand_t::wrap(f).
+//
+// Restores the dispatch-on-direct-call semantics of the old asio::strand::wrap()
+// that was removed in asio 1.32.0.  asio::bind_executor (its replacement) is
+// correct for async completion-handler use but does NOT dispatch when operator()
+// is invoked directly; this struct does.
+//
+// get_executor() is provided so asio can still deliver async completions on the
+// correct strand without an extra dispatch hop.
+//
+// Each operator() call copies handler_ into the dispatch lambda (multi-shot).
+// asio::dispatch runs the handler immediately when called from within the strand,
+// otherwise queues it — exactly the "already on strand" optimisation the old
+// wrapped_handler relied on.
+template<typename F>
+struct strand_wrap_t
+{
+	asio::io_context::strand strand_;
+	F handler_;
+
+	asio::io_context::strand get_executor() const noexcept { return strand_; }
+
+	template<typename ... Args>
+	void operator()(Args&&... args) const
+	{
+		asio::dispatch(strand_,
+			[h=handler_, t=std::make_tuple(std::forward<Args>(args)...)]() mutable
+			{
+				std::apply(std::move(h), std::move(t));
+			});
+	}
+};
+
 //Thin wrapper that preserves the ->post(f), ->dispatch(f), ->wrap(f) syntax
 //removed from asio::io_context::strand in asio 1.32.0.
 class strand_t
@@ -72,7 +106,7 @@ public:
 
 	template<typename F> void post(F&& f)                { asio::post(strand_, std::forward<F>(f)); }
 	template<typename F> void dispatch(F&& f)            { asio::dispatch(strand_, std::forward<F>(f)); }
-	template<typename F> auto wrap(F&& f)                { return asio::bind_executor(strand_, std::forward<F>(f)); }
+	template<typename F> auto wrap(F&& f)                { return strand_wrap_t<std::decay_t<F>>{strand_, std::forward<F>(f)}; }
 	bool running_in_this_thread() const { return strand_.running_in_this_thread(); }
 
 private:
