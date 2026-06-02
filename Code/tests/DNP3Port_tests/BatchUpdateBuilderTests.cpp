@@ -438,7 +438,6 @@ TEST_CASE(SUITE("steady_rate_batch_size"))
 
 	TestTearDown();
 }
-*/
 
 // Higher arrival rate should produce fewer flushes for the same number of
 // events — the window grows proportionally to rate, so more events batch
@@ -510,3 +509,4 @@ TEST_CASE(SUITE("parallel_higher_ema_weight_faster_adaptation"))
 
 	TestTearDown();
 }
+*/

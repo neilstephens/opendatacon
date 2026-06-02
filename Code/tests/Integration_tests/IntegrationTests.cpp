@@ -133,6 +133,9 @@ void ShutdownDatacon(DataconHandles& handles)
 TEST_CASE(SUITE("FileTransfer"))
 {
 	PrepTransferFiles(true);
+	//give windows platforms time to close files before we try to read
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
 	auto handles = StartupDatacon("transfer.conf");
 	auto& [TheDataConcentrator,run_thread,log,pConsole] = handles;
 	auto RxPort = TestHook::GetDataconPort(TheDataConcentrator,"FileTransferRX");
