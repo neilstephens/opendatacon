@@ -36,9 +36,14 @@ endif()
 #tempting to move this to the top - but don't! Must set CMAKE_BUILD_TYPE first
 project(opendatacon_suite C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
+set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++20 instead of -std=gnu++20
+
+# Bundled fmt in spdlog 1.x uses FMT_STRING which creates local structs passed
+# to consteval constructors - rejected by GCC 15 in C++20 mode. Suppress consteval
+# to keep the bundled fmt working until spdlog is upgraded to use fmt 11+.
+add_compile_definitions(FMT_CONSTEVAL=)
 
 #macro for resolving chain of symlinks into a list
 include(Code/cmake/file_w_symlinks.cmake)
@@ -345,10 +350,13 @@ if(CMAKE_USE_PTHREADS_INIT)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
-include(CheckFunctionExists)
-check_function_exists(closefrom HAVE_CLOSEFROM)
+include(CheckSymbolExists)
+set(_saved_required_defs "${CMAKE_REQUIRED_DEFINITIONS}")
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(closefrom "unistd.h" HAVE_CLOSEFROM)
+set(CMAKE_REQUIRED_DEFINITIONS "${_saved_required_defs}")
 if(HAVE_CLOSEFROM)
-	add_definitions(-DHAVE_CLOSEFROM)
+    add_definitions(-DHAVE_CLOSEFROM)
 endif()
 
 # the RPATH to be used when installing - allowing local libraries to be found for standalone installs,
@@ -375,7 +383,7 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an asio/include path within")
+set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an include path within")
 if(USE_ASIO_SUBMODULE)
 	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
 	if(NOT EXISTS "${ASIO_HOME}/.git")
@@ -405,21 +413,80 @@ else()
 	endif()
 endif()
 
+# Helper functions for port/plugin/transform/test targets
+# All force-include the asio direct include guard to prevent
+# direct #include <asio.hpp> outside libODC.
+function(_apply_guard target)
+  target_compile_options(${target} PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/FI${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-include ${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
+  )
+endfunction()
+
+function(add_port_library name)
+  add_library(${name} MODULE ${ARGN})
+  target_link_libraries(${name} ODC)
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER ports)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
+endfunction()
+
+function(add_plugin_library name)
+  add_library(${name} MODULE ${ARGN})
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER plugins)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
+endfunction()
+
+function(add_transform_library name)
+  add_library(${name} MODULE ${ARGN})
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER transforms)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
+endfunction()
+
+function(add_test_executable name)
+  add_executable(${name} ${ARGN})
+  target_link_libraries(${name} ODC ${DL})
+  _apply_guard(${name})
+  install(TARGETS ${name} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+  set_target_properties(${name} PROPERTIES FOLDER tests)
+  add_test(NAME CTEST_${name} COMMAND ${name})
+endfunction()
+
 message("add subdir JSON")
 add_subdirectory(Code/Libs/JSON)
 message("add subdir ODC")
 add_subdirectory(Code/Libs/ODC)
 message("add subdir CAPI")
 add_subdirectory(Code/Libs/CAPI)
-message("add subdir SpawnDetached")
-add_subdirectory(Code/opendatacon/SpawnDetached)
+message("add subdir Spawn")
+add_subdirectory(Code/opendatacon/Spawn)
 if(LUAPORT OR LUATRANSFORM OR LUALOGSINK OR LUAUICOMMANDER)
 	message("add subdir Lua")
 	add_subdirectory(Code/Libs/Lua)
 	message("add subdir LuaWrappers")
 	add_subdirectory(Code/Libs/LuaWrappers)
 endif()
-if(WEBUI)
+if(WEBUI OR PYPORT OR SIMPORT)
 	message("add subdir SimpleWebServer")
 	add_subdirectory(Code/Libs/SimpleWebServer)
 endif()

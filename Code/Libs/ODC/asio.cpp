@@ -36,6 +36,9 @@
 namespace odc
 {
 
+strand_t::~strand_t() = default;
+work_guard::~work_guard() = default;
+
 /*
  * Kind of singleton getter:
  * manages the lifetime of a single shared resource using smart pointers and atomic_flag
@@ -65,55 +68,55 @@ std::shared_ptr<asio_service> asio_service::Get(int concurrency_hint)
 	else
 	{
 		while (!(shared_service = weak_service.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	return shared_service;
 }
 
-std::unique_ptr<asio::io_service::work> asio_service::make_work()
+std::unique_ptr<work_guard, deleter> asio_service::make_work()
 {
-	return std::make_unique<asio::io_service::work>(*unwrap_this);
+	return std::unique_ptr<work_guard, deleter>(new work_guard(io));
 }
-std::unique_ptr<asio::io_service::strand> asio_service::make_strand()
+std::unique_ptr<strand_t, deleter> asio_service::make_strand()
 {
-	return std::make_unique<asio::io_service::strand>(*unwrap_this);
+	return std::unique_ptr<strand_t, deleter>(new strand_t(io));
 }
-std::unique_ptr<asio::steady_timer> asio_service::make_steady_timer()
+std::unique_ptr<steady_timer, deleter> asio_service::make_steady_timer()
 {
-	return std::make_unique<asio::steady_timer>(*unwrap_this);
+	return std::unique_ptr<steady_timer, deleter>(new steady_timer(io));
 }
-std::unique_ptr<asio::steady_timer> asio_service::make_steady_timer(std::chrono::steady_clock::duration t)
+std::unique_ptr<steady_timer, deleter> asio_service::make_steady_timer(std::chrono::steady_clock::duration t)
 {
-	return std::make_unique<asio::steady_timer>(*unwrap_this, t);
+	return std::unique_ptr<steady_timer, deleter>(new steady_timer(io, t));
 }
-std::unique_ptr<asio::steady_timer> asio_service::make_steady_timer(std::chrono::steady_clock::time_point t)
+std::unique_ptr<steady_timer, deleter> asio_service::make_steady_timer(std::chrono::steady_clock::time_point t)
 {
-	return std::make_unique<asio::steady_timer>(*unwrap_this, t);
+	return std::unique_ptr<steady_timer, deleter>(new steady_timer(io, t));
 }
-std::unique_ptr<asio::ip::tcp::resolver> asio_service::make_tcp_resolver()
+std::unique_ptr<tcp::resolver, deleter> asio_service::make_tcp_resolver()
 {
-	return std::make_unique<asio::ip::tcp::resolver>(*unwrap_this);
+	return std::unique_ptr<tcp::resolver, deleter>(new tcp::resolver(io));
 }
-std::unique_ptr<asio::ip::tcp::socket> asio_service::make_tcp_socket()
+std::unique_ptr<tcp::socket, deleter> asio_service::make_tcp_socket()
 {
-	return std::make_unique<asio::ip::tcp::socket>(*unwrap_this);
+	return std::unique_ptr<tcp::socket, deleter>(new tcp::socket(io));
 }
-std::unique_ptr<asio::ip::tcp::acceptor> asio_service::make_tcp_acceptor(const asio::ip::tcp::resolver::iterator& EndPoint)
+std::unique_ptr<tcp::acceptor, deleter> asio_service::make_tcp_acceptor(const tcp::endpoint& endpoint)
 {
-	return std::make_unique<asio::ip::tcp::acceptor>(*unwrap_this,*EndPoint);
+	return std::unique_ptr<tcp::acceptor, deleter>(new tcp::acceptor(io, endpoint));
 }
-std::unique_ptr<asio::ip::tcp::acceptor> asio_service::make_tcp_acceptor()
+std::unique_ptr<tcp::acceptor, deleter> asio_service::make_tcp_acceptor()
 {
-	return std::make_unique<asio::ip::tcp::acceptor>(*unwrap_this);
+	return std::unique_ptr<tcp::acceptor, deleter>(new tcp::acceptor(io));
 }
-std::unique_ptr<asio::ip::udp::resolver> asio_service::make_udp_resolver()
+std::unique_ptr<udp::resolver, deleter> asio_service::make_udp_resolver()
 {
-	return std::make_unique<asio::ip::udp::resolver>(*unwrap_this);
+	return std::unique_ptr<udp::resolver, deleter>(new udp::resolver(io));
 }
-std::unique_ptr<asio::ip::udp::socket> asio_service::make_udp_socket()
+std::unique_ptr<udp::socket, deleter> asio_service::make_udp_socket()
 {
-	return std::make_unique<asio::ip::udp::socket>(*unwrap_this);
+	return std::unique_ptr<udp::socket, deleter>(new udp::socket(io));
 }
 std::unordered_set<std::thread::id> asio_service::threads_in_pool;
 std::mutex asio_service::threads_in_pool_mtx;
@@ -123,7 +126,7 @@ void asio_service::run()
 		std::lock_guard lock(threads_in_pool_mtx);
 		threads_in_pool.insert(std::this_thread::get_id());
 	}
-	asio::io_service::run();
+	io.run();
 }
 bool asio_service::current_thread_in_pool()
 {

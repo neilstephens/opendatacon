@@ -192,7 +192,7 @@ jobs:
       run: |
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
         echo 'BITGEN=-Ax64' >> $env:GITHUB_ENV
-        choco install openssl
+        choco install openssl --version=3.6.2
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe" -OutFile "python-installer-x64.exe"
         Start-Process -FilePath "python-installer-x64.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x64" -Wait
     

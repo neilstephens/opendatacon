@@ -23,7 +23,7 @@
 #pragma endregion
 
 DataConcentratorService::DataConcentratorService(ODCArgs& aArgs,
-	PWSTR pszServiceName,
+	PCWSTR pszServiceName,
 	BOOL fCanStop,
 	BOOL fCanShutdown,
 	BOOL fCanPauseContinue)

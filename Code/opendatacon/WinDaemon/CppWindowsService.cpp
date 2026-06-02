@@ -65,6 +65,7 @@ void daemon_install(ODCArgs& Args)
 	Args.DaemonInstallArg.reset();
 	std::wstringstream wss;
 	wss << " -d" << Args.toString().c_str();
+	auto wargs = wss.str();
 
 	InstallService(
 		SERVICE_NAME,         // Name of service
@@ -73,7 +74,7 @@ void daemon_install(ODCArgs& Args)
 		SERVICE_DEPENDENCIES, // Dependencies
 		SERVICE_ACCOUNT,      // Service running account
 		SERVICE_PASSWORD,     // Password of the account
-		(PWSTR)wss.str().c_str());
+		wargs.c_str());
 }
 
 void daemon_remove()

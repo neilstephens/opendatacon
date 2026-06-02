@@ -21,9 +21,4 @@ project(SimPort_tests)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ../ThreadPool.h)
 
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${DL})
-
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
-add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})

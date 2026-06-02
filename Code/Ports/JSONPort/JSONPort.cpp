@@ -489,7 +489,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 					command.offTimeMS = point_pair.second["OffTimems"].asUInt();
 
 				auto pStatusCallback =
-					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
+					std::make_shared<std::function<void(CommandStatus)>>([=, this](CommandStatus command_stat)
 						{
 							Json::Value result;
 							result["Command"]["Index"] = point_pair.first;
@@ -549,7 +549,7 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				event->SetPayload<EventType::AnalogOutputDouble64>(std::move(analogpayload));
 
 				auto pStatusCallback =
-					std::make_shared<std::function<void(CommandStatus)>>([=](CommandStatus command_stat)
+					std::make_shared<std::function<void(CommandStatus)>>([=, this](CommandStatus command_stat)
 						{
 							Json::Value result;
 							result["Command"]["Index"] = point_pair.first;

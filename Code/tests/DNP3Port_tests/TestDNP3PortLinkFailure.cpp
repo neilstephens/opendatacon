@@ -23,9 +23,12 @@
 #include "TestDNP3Helpers.h"
 #include "../PortLoader.h"
 #include "../ThreadPool.h"
+#include "../MITM.h"
 #include "../ManInTheMiddle.h"
+#include "../UDPMITM.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
+#include <functional>
 #include <thread>
 
 #define SUITE(name) "DNP3PortLinkFailureTestSuite - " name
@@ -35,19 +38,8 @@ using port_pair_t = std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort
 const unsigned int link_ka_period = 200;
 const unsigned int test_timeout = 30000;
 
-inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr = 0, MITMConfig direction = MITMConfig::CLIENT_SERVER, unsigned int ms_port = 20000, unsigned int os_port = 20000, bool comms = false)
+inline Json::Value MakeBaseDNP3Conf(size_t os_addr, size_t ms_addr, bool comms)
 {
-	//fetch the function pointers from the lib for new and del for ports
-	newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
-	REQUIRE(newOutstation);
-	delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
-	REQUIRE(delOutstation);
-	newptr newMaster = GetPortCreator(portlib, "DNP3Master");
-	REQUIRE(newMaster);
-	delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
-	REQUIRE(delMaster);
-
-	//config overrides
 	Json::Value conf;
 	conf["MasterAddr"] = Json::UInt(ms_addr);
 	conf["OutstationAddr"] = Json::UInt(os_addr);
@@ -56,11 +48,11 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	conf["LinkTimeoutms"] = Json::UInt(link_ka_period >> 1);
 	conf["IPConnectRetryPeriodMinms"] = 100;
 	conf["IPConnectRetryPeriodMaxms"] = 100;
-	//man in the middle config: first half opposite of MS, second half opposite of OS
-	conf["TCPClientServer"] = (direction == MITMConfig::SERVER_CLIENT
-	                           || direction == MITMConfig::CLIENT_CLIENT)
-	                          ? "DEFAULT" : "CLIENT";
-	conf["Port"] = Json::UInt(os_port);
+	//lower app-layer timeouts from 5s default to avoid UDP packet-drop delays in testing
+	conf["MasterResponseTimeoutms"] = 500;
+	conf["TaskRetryPeriodms"] = 500;
+	conf["SolConfirmTimeoutms"] = 500;
+	conf["UnsolConfirmTimeoutms"] = 500;
 
 	conf["Binaries"][0]["Range"]["Start"] = 0;
 	conf["Binaries"][0]["Range"]["Stop"] = comms ? 9 : 10;
@@ -83,6 +75,29 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	conf["UnsolClass3"] = true;
 	conf["DisableUnsolOnStartup"] = true;
 
+	return conf;
+}
+
+inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr = 0, MITMConfig direction = MITMConfig::CLIENT_SERVER, unsigned int ms_port = 20000, unsigned int os_port = 20000, bool comms = false)
+{
+	//fetch the function pointers from the lib for new and del for ports
+	newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
+	REQUIRE(newOutstation);
+	delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
+	REQUIRE(delOutstation);
+	newptr newMaster = GetPortCreator(portlib, "DNP3Master");
+	REQUIRE(newMaster);
+	delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
+	REQUIRE(delMaster);
+
+	//config overrides
+	auto conf = MakeBaseDNP3Conf(os_addr, ms_addr, comms);
+	//man in the middle config: first half opposite of MS, second half opposite of OS
+	conf["TCPClientServer"] = (direction == MITMConfig::SERVER_CLIENT
+	                           || direction == MITMConfig::CLIENT_CLIENT)
+	                          ? "DEFAULT" : "CLIENT";
+	conf["Port"] = Json::UInt(os_port);
+
 	//make an outstation port
 	auto OPUT = std::shared_ptr<DataPort>(newOutstation("Outstation"+std::to_string(os_addr), "", conf), delOutstation);
 	REQUIRE(OPUT);
@@ -97,6 +112,42 @@ inline port_pair_t PortPair(module_ptr portlib, size_t os_addr, size_t ms_addr =
 	REQUIRE(MPUT);
 
 	//get them to build themselves using their configs
+	OPUT->Build();
+	MPUT->Build();
+
+	return port_pair_t(OPUT,MPUT);
+}
+
+inline port_pair_t UDPPortPair(module_ptr portlib, size_t os_addr, size_t ms_addr,
+	uint16_t os_listen, uint16_t ms_listen, uint16_t os_remote, uint16_t ms_remote,
+	bool comms = false, bool connectionless = false)
+{
+	newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
+	REQUIRE(newOutstation);
+	delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
+	REQUIRE(delOutstation);
+	newptr newMaster = GetPortCreator(portlib, "DNP3Master");
+	REQUIRE(newMaster);
+	delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
+	REQUIRE(delMaster);
+
+	auto conf = MakeBaseDNP3Conf(os_addr, ms_addr, comms);
+	conf["IPTransport"] = "UDP";
+	if(connectionless)
+		conf["ConnectionlessUDP"] = true;
+	conf["IP"] = "127.0.0.1";
+	conf["UDPListenPort"] = Json::UInt(os_listen);
+	conf["Port"] = Json::UInt(os_remote);
+
+	auto OPUT = std::shared_ptr<DataPort>(newOutstation("Outstation"+std::to_string(os_addr), "", conf), delOutstation);
+	REQUIRE(OPUT);
+
+	conf["UDPListenPort"] = Json::UInt(ms_listen);
+	conf["Port"] = Json::UInt(ms_remote);
+
+	auto MPUT = std::shared_ptr<DataPort>(newMaster("Master"+std::to_string(ms_addr), "", conf), delMaster);
+	REQUIRE(MPUT);
+
 	OPUT->Build();
 	MPUT->Build();
 
@@ -245,7 +296,58 @@ inline unsigned int require_connection_increase(std::shared_ptr<ManInTheMiddle> 
 	return pMITM->ConnectionCount(dir);
 }
 
-TEST_CASE(SUITE("Quality and CommsPoint"))
+struct TrxCfg
+{
+	std::string name;
+	std::function<std::shared_ptr<MITM>(MITMConfig dir)> make_mitm;
+	std::function<port_pair_t(module_ptr portlib, size_t os_addr, size_t ms_addr, MITMConfig dir, bool comms)> make_pair;
+	std::function<port_pair_t(module_ptr portlib, size_t os_addr, size_t ms_addr, bool comms)> make_upstream_pair;
+	bool has_conn_count = false;
+};
+
+const TrxCfg TCP_CFG = {
+	"TCP",
+	[](MITMConfig dir) {    return std::make_shared<ManInTheMiddle>(dir,20000,20001,"DNP3Port"); },
+	[](module_ptr portlib, size_t os_addr, size_t ms_addr, MITMConfig dir, bool comms)
+	{
+		return PortPair(portlib,os_addr,ms_addr,dir,20000,20001,comms);
+	},
+	[](module_ptr portlib, size_t os_addr, size_t ms_addr, bool comms)
+	{
+		return PortPair(portlib,os_addr,ms_addr,MITMConfig::SERVER_CLIENT,20002,20002,comms);
+	},
+	true
+};
+
+const TrxCfg UDP_CONNECTED_CFG = {
+	"UDP connected",
+	[](MITMConfig) { return std::make_shared<UDPMITM>(20005,20007,20004,20006,"DNP3Port"); },
+	[](module_ptr portlib, size_t os_addr, size_t ms_addr, MITMConfig, bool comms)
+	{
+		return UDPPortPair(portlib,os_addr,ms_addr,20004,20006,20005,20007,comms);
+	},
+	[](module_ptr portlib, size_t os_addr, size_t ms_addr, bool comms)
+	{
+		return UDPPortPair(portlib,os_addr,ms_addr,20008,20009,20009,20008,comms);
+	},
+	false
+};
+
+const TrxCfg UDP_CONNLESS_CFG = {
+	"UDP connectionless",
+	[](MITMConfig) { return std::make_shared<UDPMITM>(20005,20007,20004,20006,"DNP3Port"); },
+	[](module_ptr portlib, size_t os_addr, size_t ms_addr, MITMConfig, bool comms)
+	{
+		return UDPPortPair(portlib,os_addr,ms_addr,20004,20006,20005,20007,comms,true);
+	},
+	[](module_ptr portlib, size_t os_addr, size_t ms_addr, bool comms)
+	{
+		return UDPPortPair(portlib,os_addr,ms_addr,20008,20009,20009,20008,comms,true);
+	},
+	false
+};
+
+void scenario_quality_full(const TrxCfg& cfg)
 {
 	TestSetup();
 
@@ -256,27 +358,28 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 		//we want the link status of a master to be presented on the
 		//corresponding outstation as bad quality points and a comms point
 
-		// | Downstream connection  |           | Upstream connection |
-		// |------------------------|           |---------------------|
-		// [OS] <---TCP MITM---> [MS] <--ODC--> [OS] <---TCP---> [MS]
+		// | Downstream connection |           | Upstream connection |
+		// |-----------------------|           |---------------------|
+		// [OS] <-----MITM----> [MS] <--ODC--> [OS] <----TCP----> [MS]
 
 		{
 			INFO("Test objects liftime")
 
+			ThreadPool thread_pool(1);
+
 			//need a master/outstation pair downstream with a MITM
-			auto pMITM = std::make_shared<ManInTheMiddle>(MITMConfig::SERVER_CLIENT,20000,20001,"DNP3Port");
-			port_pair_t downstream_pair = PortPair(portlib,3,2,MITMConfig::SERVER_CLIENT,20000,20001,true);
+			auto pMITM = cfg.make_mitm(MITMConfig::SERVER_CLIENT);
+			port_pair_t downstream_pair = cfg.make_pair(portlib,3,2,MITMConfig::SERVER_CLIENT,true);
 
 			//then an extra pair upstream without MITM
 			//We'll check that the downstream link status flows through to these as quality/commspoint
-			port_pair_t upstream_pair = PortPair(portlib,1,0,MITMConfig::SERVER_CLIENT,20002,20002,false);
+			auto upstream_pair = cfg.make_upstream_pair(portlib,1,0,false);
 
 			//cross subscribe the two pairs for ODC events - usually a connector would be used, but we can go direct
 			downstream_pair.second->Subscribe(upstream_pair.first.get(),"UpstreamOS");
 			upstream_pair.first->Subscribe(downstream_pair.second.get(),"DownstreamMS");
 
 			INFO("Asio lifetime")
-			ThreadPool thread_pool(1);
 
 			downstream_pair.first->Enable();
 			upstream_pair.first->Enable();
@@ -380,29 +483,27 @@ TEST_CASE(SUITE("Quality and CommsPoint"))
 	TestTearDown();
 }
 
-TEST_CASE(SUITE("Single Drop"))
+void scenario_single_drop(const TrxCfg& cfg)
 {
 	TestSetup();
 
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
+		ThreadPool thread_pool(1);
 
-		const unsigned int os_port = 20000;
-		const unsigned int ms_port = 20001;
 		const MITMConfig conn_dirs[4] = {MITMConfig::CLIENT_SERVER,MITMConfig::SERVER_CLIENT,MITMConfig::CLIENT_CLIENT,MITMConfig::SERVER_SERVER};
+		size_t num_runs = cfg.has_conn_count ? 4 : 1;
 
-		for(auto conn_dir : conn_dirs)
+		for(size_t run = 0; run < num_runs; run++)
 		{
-			Log.Info("MITMConfig: {}.",to_string(conn_dir));
-			//Make back-to-back TCP sockets so we can drop data and count re-connects
-			auto pMITM = std::make_shared<ManInTheMiddle>(conn_dir,ms_port,os_port,"DNP3Port");
+			auto dir = cfg.has_conn_count ? conn_dirs[run] : MITMConfig::SERVER_CLIENT;
 
+			Log.Info("MITMConfig: {}.",to_string(dir));
+			//Make back-to-back sockets so we can drop data and count re-connects
+			auto pMITM = cfg.make_mitm(dir);
 			//create an outstation/master pair, and enable them
-			port_pair_t port_pair = PortPair(portlib,1,0,conn_dir,ms_port,os_port);
+			port_pair_t port_pair = cfg.make_pair(portlib,1,0,dir,false);
 			port_pair.first->Enable();
 			port_pair.second->Enable();
 
@@ -411,10 +512,16 @@ TEST_CASE(SUITE("Single Drop"))
 			require_link_up(port_pair.first);
 			require_link_up(port_pair.second);
 
-			//take a baseline for the number of connections
-			auto start_open1 = pMITM->ConnectionCount(true);
-			auto start_open2 = pMITM->ConnectionCount(false);
-			Log.Info("Initial connection count: {},{}",start_open1,start_open2);
+			unsigned int start_open1 = 0, start_open2 = 0;
+			std::shared_ptr<ManInTheMiddle> pTCP;
+			if(cfg.has_conn_count)
+			{
+				//take a baseline for the number of connections
+				pTCP = std::static_pointer_cast<ManInTheMiddle>(pMITM);
+				start_open1 = pTCP->ConnectionCount(true);
+				start_open2 = pTCP->ConnectionCount(false);
+				Log.Info("Initial connection count: {},{}",start_open1,start_open2);
+			}
 
 			pMITM->Drop();
 			//data is being dropped now, so the links should go down,
@@ -428,46 +535,40 @@ TEST_CASE(SUITE("Single Drop"))
 			require_link_up(port_pair.first);
 			require_link_up(port_pair.second);
 
-			//make sure there were reconnects
-			auto new_open1 = require_connection_increase(pMITM,true,start_open1);
-			auto new_open2 = require_connection_increase(pMITM,false,start_open2);
-			Log.Info("New connection count: {},{}",new_open1,new_open2);
+			if(cfg.has_conn_count)
+			{
+				//make sure there were reconnects
+				auto new_open1 = require_connection_increase(pTCP,true,start_open1);
+				auto new_open2 = require_connection_increase(pTCP,false,start_open2);
+				Log.Info("New connection count: {},{}",new_open1,new_open2);
+			}
 
 			port_pair.first->Disable();
 			port_pair.second->Disable();
 		}
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);
 	TestTearDown();
 }
 
-TEST_CASE(SUITE("Multi Drop"))
+void scenario_multi_drop(const TrxCfg& cfg)
 {
 	TestSetup();
 
 	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
 	REQUIRE(portlib);
 	{
-		auto ios = odc::asio_service::Get();
-		auto work = ios->make_work();
-		std::thread t([ios](){ios->run();});
+		ThreadPool thread_pool(1);
 
-		const unsigned int port1 = 20000;
-		const unsigned int port2 = 20001;
-
-		//Make back-to-back TCP sockets so we can drop data and count re-connects
-		auto pMITM = std::make_shared<ManInTheMiddle>(MITMConfig::SERVER_CLIENT,port1,port2,"DNP3Port");
+		//Make back-to-back sockets so we can drop data and count re-connects
+		auto pMITM = cfg.make_mitm(MITMConfig::SERVER_CLIENT);
 
 		//create outstation/master pairs, and enable them
 		std::vector<port_pair_t> port_pairs;
 		for(size_t os_addr : {1,2,3})
-			port_pairs.push_back(PortPair(portlib,os_addr,0,MITMConfig::SERVER_CLIENT,port1,port2));
+			port_pairs.push_back(cfg.make_pair(portlib,os_addr,0,MITMConfig::SERVER_CLIENT,false));
+
 		for(auto port_pair : port_pairs)
 		{
 			port_pair.first->Enable();
@@ -482,10 +583,16 @@ TEST_CASE(SUITE("Multi Drop"))
 			require_link_up(port_pair.second);
 		}
 
-		//take a baseline for the number of connections
-		auto start_open1 = pMITM->ConnectionCount(true);
-		auto start_open2 = pMITM->ConnectionCount(false);
-		Log.Info("Initial connection count: {},{}",start_open1,start_open2);
+		unsigned int start_open1 = 0, start_open2 = 0;
+		std::shared_ptr<ManInTheMiddle> pTCP;
+		if(cfg.has_conn_count)
+		{
+			//take a baseline for the number of connections
+			pTCP = std::static_pointer_cast<ManInTheMiddle>(pMITM);
+			start_open1 = pTCP->ConnectionCount(true);
+			start_open2 = pTCP->ConnectionCount(false);
+			Log.Info("Initial connection count: {},{}",start_open1,start_open2);
+		}
 
 		//just disabling one or two ports shouldn't affect the others
 		port_pairs[0].first->Disable();
@@ -519,9 +626,12 @@ TEST_CASE(SUITE("Multi Drop"))
 			require_link_up(port_pair.second);
 		}
 
-		//make sure there were no reconnects
-		REQUIRE(pMITM->ConnectionCount(true) == start_open1);
-		REQUIRE(pMITM->ConnectionCount(false) == start_open2);
+		if(cfg.has_conn_count)
+		{
+			//make sure there were no reconnects
+			REQUIRE(pTCP->ConnectionCount(true) == start_open1);
+			REQUIRE(pTCP->ConnectionCount(false) == start_open2);
+		}
 
 		pMITM->Drop();
 		//data is being dropped now, so all the links should go down,
@@ -541,10 +651,13 @@ TEST_CASE(SUITE("Multi Drop"))
 			require_link_up(port_pair.second);
 		}
 
-		//make sure there were reconnects
-		auto new_open1 = require_connection_increase(pMITM,true,start_open1);
-		auto new_open2 = require_connection_increase(pMITM,false,start_open2);
-		Log.Info("New connection count: {},{}",new_open1,new_open2);
+		if(cfg.has_conn_count)
+		{
+			//make sure there were reconnects
+			auto new_open1 = require_connection_increase(pTCP,true,start_open1);
+			auto new_open2 = require_connection_increase(pTCP,false,start_open2);
+			Log.Info("New connection count: {},{}",new_open1,new_open2);
+		}
 
 		for(auto port_pair : port_pairs)
 		{
@@ -555,15 +668,55 @@ TEST_CASE(SUITE("Multi Drop"))
 		//wait another keepalive periods just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
 		pMITM.reset();
-
-		work.reset();
-		ios->run();
-		t.join();
-		ios.reset();
 	}
 	//Unload the library
 	UnLoadModule(portlib);
 	TestTearDown();
+}
+
+TEST_CASE(SUITE("Quality and CommsPoint - TCP"))
+{
+	scenario_quality_full(TCP_CFG);
+}
+
+TEST_CASE(SUITE("Quality and CommsPoint - UDP connected"))
+{
+	scenario_quality_full(UDP_CONNECTED_CFG);
+}
+
+TEST_CASE(SUITE("Quality and CommsPoint - UDP connectionless"))
+{
+	scenario_quality_full(UDP_CONNLESS_CFG);
+}
+
+TEST_CASE(SUITE("Single Drop - TCP"))
+{
+	scenario_single_drop(TCP_CFG);
+}
+
+TEST_CASE(SUITE("Single Drop - UDP connected"))
+{
+	scenario_single_drop(UDP_CONNECTED_CFG);
+}
+
+TEST_CASE(SUITE("Single Drop - UDP connectionless"))
+{
+	scenario_single_drop(UDP_CONNLESS_CFG);
+}
+
+TEST_CASE(SUITE("Multi Drop - TCP"))
+{
+	scenario_multi_drop(TCP_CFG);
+}
+
+TEST_CASE(SUITE("Multi Drop - UDP connected"))
+{
+	scenario_multi_drop(UDP_CONNECTED_CFG);
+}
+
+TEST_CASE(SUITE("Multi Drop - UDP connectionless"))
+{
+	scenario_multi_drop(UDP_CONNLESS_CFG);
 }
 
 TEST_CASE(SUITE("LinkUpIntegrityTrigger"))

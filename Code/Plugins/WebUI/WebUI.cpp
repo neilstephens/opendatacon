@@ -214,7 +214,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 			if(!pSockMan)
 				ConnectToTCPServer();
 
-			log_q_sync->post([=]()
+			log_q_sync->post([=, this]()
 				{
 					std::string log_str;
 					for(const auto& pair : log_queue)
@@ -232,7 +232,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 			if (iss.str().size() > filter_type.size() + 1)
 				new_filter = iss.str().substr(filter_type.size() + 1, iss.str().size() - filter_type.size() - 1);
 			bool is_regex = (filter_type == "reg_ex");
-			log_q_sync->post([=, new_filter{std::move(new_filter)}]()
+			log_q_sync->post([=, this, new_filter{std::move(new_filter)}]()
 				{
 					result_cb(ApplyLogFilter(new_filter, is_regex));
 				});

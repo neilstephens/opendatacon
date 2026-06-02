@@ -26,7 +26,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	"../JSON"
 	"${CMAKE_SOURCE_DIR}/include"
 	"${SPDLOG_HOME}/include"
-	"${ASIO_HOME}/asio/include")
+	"${ASIO_HOME}/include")
 
 set(ODC_ASIO_SSL OFF CACHE BOOL "Enable TLS/SSL is ASIO compiled into libODC (requires OpenSSL)")
 if(FULL)

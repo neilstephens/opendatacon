@@ -17,9 +17,9 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  #
-project(spawn_detached C)
+project(odc_spawn C)
 
-add_executable(${PROJECT_NAME} SpawnDetached.c)
+add_executable(${PROJECT_NAME} Spawn.c)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER bins)

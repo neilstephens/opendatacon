@@ -18,9 +18,9 @@
  *	limitations under the License.
  */
 /*
- * SpawnDetached.c
+ * Spawn.c — Consolidated spawn helper (detached + attached modes)
  *
- *  Created on: 6/12/2025
+ *  Created on: 29/05/2026
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
@@ -31,18 +31,34 @@
 
 int main(int argc, char *argv[])
 {
-	if(argc != 2)
+	if(argc < 2)
 	{
-		fprintf(stderr, "Usage: %s <child command line as single arg>\n", argv[0]);
+		fprintf(stderr, "Usage: %s [--attached] <child command line as single arg>\n", argv[0]);
+		return 1;
+	}
+
+	int optind = 1;
+	int attached = 0;
+	if(argc > 2 && strcmp(argv[1], "--attached") == 0)
+	{
+		attached = 1;
+		optind = 2;
+	}
+
+	if(argc != optind + 1)
+	{
+		fprintf(stderr, "Usage: %s [--attached] <child command line as single arg>\n", argv[0]);
 		return 1;
 	}
 
 	STARTUPINFOA si = { sizeof(si) };
 	PROCESS_INFORMATION pi;
 
+	DWORD flags = attached ? 0 : (DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
+
 	BOOL success = CreateProcessA(
-		NULL, argv[1], NULL, NULL, FALSE,
-		DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+		NULL, argv[optind], NULL, NULL, FALSE,
+		flags,
 		NULL, NULL, &si, &pi
 		);
 
@@ -104,15 +120,34 @@ void close_all_fds()
 		close(fd);
 }
 
-//spawn a detached process using double 'fork' pattern
 int main(int argc, char *argv[])
 {
-	if(argc < 2)
+	int attached = 0;
+	int optind = 1;
+
+	if(argc > 1 && strcmp(argv[1], "--attached") == 0)
 	{
-		fprintf(stderr, "Usage: %s <child command> [<child arg> ...]\n", argv[0]);
+		attached = 1;
+		optind = 2;
+	}
+
+	if(argc < optind + 1)
+	{
+		fprintf(stderr, "Usage: %s [--attached] <child command> [<child arg> ...]\n", argv[0]);
 		return 1;
 	}
 
+	if(attached)
+	{
+		// Attached mode: close all leaked FDs (single-threaded, no TOCTOU race),
+		// then exec the target. Target inherits clean FD table + original pipe FDs.
+		close_all_fds();
+		execvp(argv[optind], &argv[optind]);
+		//exec only returns on fail
+		_exit(1);
+	}
+
+	// Detached mode: double-fork pattern
 	pid_t pid1 = fork();
 	if(pid1 < 0)
 	{
@@ -148,7 +183,7 @@ int main(int argc, char *argv[])
 				dup2(fd_null, 2);
 				if(fd_null > 2) close(fd_null);
 			}
-			execvp(argv[1], &argv[1]);
+			execvp(argv[optind], &argv[optind]);
 			/*exec only returns on fail*/
 			_Exit(1);
 		}

@@ -55,7 +55,7 @@ public:
 	}
 private:
 	modbus_t* mb;
-	std::unique_ptr<asio::io_service::strand> sync;
+	std::unique_ptr<odc::strand_t, odc::deleter> sync;
 };
 
 class ModbusPort: public DataPort

@@ -124,7 +124,7 @@ void CBMasterPort::Build()
 	for (auto pg : MyPointConf->PollGroups)
 	{
 		auto id = pg.second.ID;
-		auto action = [=]()
+		auto action = [=, this]()
 				  {
 					  this->DoPoll(id);
 				  };
@@ -158,7 +158,7 @@ void CBMasterPort::SendCBMessage(const CBMessage_t& CompleteCBMessage)
 // Only issue is if we do a broadcast message and can get information back from multiple sources... These commands are probably not used, and we will ignore them anyway.
 void CBMasterPort::QueueCBCommand(const CBMessage_t& CompleteCBMessage, const SharedStatusCallback_t& pStatusCallback)
 {
-	MasterCommandStrand->dispatch([=]() // Tries to execute, if not able to will post.
+	MasterCommandStrand->dispatch([=, this]() // Tries to execute, if not able to will post.
 		{
 			if (MasterCommandProtectedData.MasterCommandQueue.size() < MasterCommandProtectedData.MaxCommandQueueSize)
 			{
@@ -551,7 +551,7 @@ void CBMasterPort::ProccessScanPayload(uint16_t data, uint8_t group, PayloadLoca
 	}
 	if (!FoundMatch)
 	{
-		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [=,&FoundMatch](CBBinaryPoint& pt)
+		MyPointConf->PointTable.ForEachMatchingBinaryPoint(group, payloadlocation, [=, this, &FoundMatch](CBBinaryPoint& pt)
 			{
 				uint8_t ch = pt.GetChannel();
 

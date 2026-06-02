@@ -380,7 +380,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
 	python_strand(odc::asio_service::Get()->make_strand()),
 	running(false),
 	keep_running(true),
-	PythonMainThread([=](){Run(GlobalUseSystemPython);})
+	PythonMainThread([=, this](){Run(GlobalUseSystemPython);})
 {
 	//Wait til' the Run thread signals after init
 	std::unique_lock<std::mutex> RunLock(RunMtx);
@@ -570,7 +570,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 	{
 		//otherwise just make sure it's finished initialising and take a shared_ptr
 		while (!(this->PyMgr = weak_mgr.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	// Throws exceptions on fail

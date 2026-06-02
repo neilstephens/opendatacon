@@ -82,6 +82,7 @@ struct DNP3AddrConf
 	uint16_t Port;
 	uint16_t UDPListenPort;
 	bool SymmetricUDP;
+	bool ConnectionlessUDP;
 	TCPClientServer ClientServer;
 	IPTransport Transport;
 
@@ -101,6 +102,7 @@ struct DNP3AddrConf
 		Port(20000),
 		UDPListenPort(0),
 		SymmetricUDP(true),
+		ConnectionlessUDP(false),
 		ClientServer(TCPClientServer::DEFAULT),
 		Transport(IPTransport::TCP),
 		OutstationAddr(1),

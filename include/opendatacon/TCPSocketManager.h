@@ -136,14 +136,14 @@ private:
 	std::vector<shared_const_buffer>* queue_writebufs;
 	std::vector<shared_const_buffer>* dispatch_writebufs;
 
-	std::shared_ptr<asio::ip::tcp::socket> pSock;
-	std::set<std::shared_ptr<asio::ip::tcp::socket>,
-		std::owner_less<std::shared_ptr<asio::ip::tcp::socket>>> CandidatepSocks;
+	std::shared_ptr<odc::tcp::socket> pSock;
+	std::set<std::shared_ptr<odc::tcp::socket>,
+		std::owner_less<std::shared_ptr<odc::tcp::socket>>> CandidatepSocks;
 	//Strand to sync access to socket
-	std::unique_ptr<asio::io_service::strand> pSockStrand;
+	std::unique_ptr<odc::strand_t, deleter> pSockStrand;
 
 	//for timing open-retries
-	std::unique_ptr<asio::steady_timer> pRetryTimer;
+	std::unique_ptr<odc::steady_timer, deleter> pRetryTimer;
 
 	//not a size limit, but number of Write() limit
 	size_t buffer_limit;
@@ -161,9 +161,9 @@ private:
 	//Host/IP and Port resolution:
 	const std::string host_name;
 	const std::string service_name;
-	asio::ip::tcp::resolver::iterator EndpointIterator;
+	odc::tcp::resolver::results_type EndpointIterator;
 	msSinceEpoch_t resolve_time;
-	std::unique_ptr<asio::ip::tcp::acceptor> pAcceptor;
+	std::unique_ptr<odc::tcp::acceptor, deleter> pAcceptor;
 
 	//some stats
 	uint64_t write_count = 0;
@@ -171,13 +171,13 @@ private:
 
 	void Write(shared_const_buffer buf);
 	bool EndPointResolved(std::shared_ptr<void> tracker);
-	void ServerOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
-	void ClientOpen(std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, asio::ip::tcp::resolver::iterator endpoint_it, std::string addr_str, std::shared_ptr<void> tracker);
-	void CheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
-	void ThrottleCheckLastWrite(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, throttle_data_t throttle_data, std::shared_ptr<void> tracker);
-	void WriteBuffer(std::shared_ptr<asio::ip::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
-	void ConnectCompletionHandler(std::shared_ptr<void> tracker, asio::error_code err_code, std::shared_ptr<asio::ip::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str);
-	void ThrottleReadHandler(const size_t n, asio::error_code err_code, const std::string &remote_addr_str, std::shared_ptr<void> tracker);
+	void ServerOpen(std::shared_ptr<odc::tcp::socket> pCandidateSock, odc::tcp::endpoint endpoint, std::string addr_str, std::shared_ptr<void> tracker);
+	void ClientOpen(std::shared_ptr<odc::tcp::socket> pCandidateSock, odc::tcp::endpoint endpoint, std::string addr_str, std::shared_ptr<void> tracker);
+	void CheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
+	void ThrottleCheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, throttle_data_t throttle_data, std::shared_ptr<void> tracker);
+	void WriteBuffer(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
+	void ConnectCompletionHandler(std::shared_ptr<void> tracker, std::error_code err_code, std::shared_ptr<odc::tcp::socket> pCandidateSock, std::string addr_str, std::string remote_addr_str);
+	void ThrottleReadHandler(const size_t n, std::error_code err_code, const std::string &remote_addr_str, std::shared_ptr<void> tracker);
 	void Read(std::string remote_addr_str, std::shared_ptr<void> tracker);
 	void Open(std::shared_ptr<void> tracker);
 	void AutoOpen(std::shared_ptr<void> tracker);
