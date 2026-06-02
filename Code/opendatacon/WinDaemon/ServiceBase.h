@@ -35,7 +35,7 @@ public:
 	// fCanShutdown and fCanPauseContinue) allow you to specify whether the
 	// service can be stopped, paused and continued, or be notified when
 	// system shutdown occurs.
-	CServiceBase(PWSTR pszServiceName,
+	CServiceBase(PCWSTR pszServiceName,
 		BOOL fCanStop = TRUE,
 		BOOL fCanShutdown = TRUE,
 		BOOL fCanPauseContinue = FALSE);
@@ -112,7 +112,7 @@ private:
 	static CServiceBase *s_service;
 
 	// The name of the service
-	PWSTR m_name;
+	PCWSTR m_name;
 
 	// The status of the service
 	SERVICE_STATUS m_status;

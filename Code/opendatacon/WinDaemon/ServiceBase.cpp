@@ -51,7 +51,7 @@ BOOL CServiceBase::Run(CServiceBase &service)
 
 	SERVICE_TABLE_ENTRY serviceTable[] =
 	{
-		{ service.m_name, ServiceMain },
+		{ const_cast<LPWSTR>(service.m_name), ServiceMain },
 		{ NULL, NULL }
 	};
 
@@ -146,7 +146,7 @@ void WINAPI CServiceBase::ServiceCtrlHandler(DWORD dwCtrl)
 //   * fCanShutdown - the service is notified when system shutdown occurs
 //   * fCanPauseContinue - the service can be paused and continued
 //
-CServiceBase::CServiceBase(PWSTR pszServiceName,
+CServiceBase::CServiceBase(PCWSTR pszServiceName,
 	BOOL fCanStop,
 	BOOL fCanShutdown,
 	BOOL fCanPauseContinue)
