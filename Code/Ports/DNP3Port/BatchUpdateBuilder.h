@@ -67,6 +67,7 @@ private:
 	size_t flushSeq;
 	bool samplingActive;
 
+	friend struct BatchUpdateBuilderTest;
 public:
 	BatchUpdateBuilder(
 		const std::weak_ptr<opendnp3::IOutstation> aOutstation,
