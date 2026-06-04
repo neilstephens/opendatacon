@@ -67,6 +67,7 @@ private:
 	size_t flushSeq;
 	bool samplingActive;
 
+	//Give tests internal access - no effect outside test binary
 	friend struct BatchUpdateBuilderTest;
 public:
 	BatchUpdateBuilder(
