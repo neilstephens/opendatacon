@@ -1328,21 +1328,27 @@ void DataConcentrator::Run()
 					Shutdown();
 				}
 			});
-
-	Log.Info("Enabling DataConnectors...");
-	for(auto& Name_n_Conn : DataConnectors)
-		EnableIOHandler(Name_n_Conn.second);
-
-	Log.Info("Enabling DataPorts...");
-	for(auto& Name_n_Port : DataPorts)
-		EnableIOHandler(Name_n_Port.second);
-
-	Log.Info("Enabling Interfaces...");
-	for(auto& Name_n_UI : Interfaces)
-		EnableIUI(Name_n_UI.second);
-
 	try
 	{
+		Log.Info("Enabling DataConnectors...");
+		size_t delayed_count = 0;
+		for(auto& Name_n_Conn : DataConnectors)
+		{
+			EnableIOHandler(Name_n_Conn.second);
+			delayed_count += Name_n_Conn.second->InitState == InitState_t::DELAYED ? 1 : 0;
+		}
+
+		while(starting_element_count > delayed_count)
+			pIOS->run_one_for(std::chrono::milliseconds(10));
+
+		Log.Info("Enabling DataPorts...");
+		for(auto& Name_n_Port : DataPorts)
+			EnableIOHandler(Name_n_Port.second);
+
+		Log.Info("Enabling Interfaces...");
+		for(auto& Name_n_UI : Interfaces)
+			EnableIUI(Name_n_UI.second);
+
 		while(starting_element_count > 0)
 			pIOS->run_one_for(std::chrono::milliseconds(10));
 
