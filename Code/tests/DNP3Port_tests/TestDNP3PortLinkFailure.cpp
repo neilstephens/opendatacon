@@ -29,6 +29,7 @@
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <functional>
+#include <future>
 #include <thread>
 
 #define SUITE(name) "DNP3PortLinkFailureTestSuite - " name
@@ -476,6 +477,14 @@ void scenario_quality_full(const TrxCfg& cfg)
 			downstream_pair.second->Disable();
 			upstream_pair.first->Disable();
 			downstream_pair.first->Disable();
+
+			// Wait out any PublishEvent() posts (relies on single thread in the pool)
+			{
+				std::promise<void> post_done;
+				auto f = post_done.get_future();
+				odc::asio_service::Get()->post([&](){post_done.set_value();});
+				f.wait();
+			}
 		} //lifetime of all test ojects
 	}
 	//Unload the library
