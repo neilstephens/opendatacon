@@ -111,6 +111,8 @@ public:
 	uint32_t TaskRetryPeriodms;
 	/// Expiry time for one-off tasks (commands/scans) to start
 	uint32_t TaskStartTimeoutms;
+	/// Period (ms) for periodic enable unsol; 0 = disabled
+	uint32_t PeriodicEnableUnsolms;
 
 	// Master Station scanning configuration
 	size_t IntegrityScanRatems;

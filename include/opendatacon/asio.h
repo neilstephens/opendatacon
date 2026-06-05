@@ -161,6 +161,8 @@ public:
 	template<typename R> std::size_t run_one_for(R&& d) { return io.run_one_for(std::forward<R>(d)); }
 	template<typename R> std::size_t run_for(R&& d) { return io.run_for(std::forward<R>(d)); }
 
+	template<typename ... Args> auto co_spawn(Args&&... args) { return asio::co_spawn(io,std::forward<Args>(args)...); }
+
 	template<typename F> void post(F&& f)        { asio::post(io, std::forward<F>(f)); }
 	template<typename F> void dispatch(F&& f)    { asio::dispatch(io, std::forward<F>(f)); }
 
