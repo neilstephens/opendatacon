@@ -236,8 +236,11 @@ void PyPort::Disable()
 	// Leaves the connection running, someone else might be using it? If another joins will work fine.
 	// Used to be: HttpServerManager::StopConnection(pServer);
 
-	pWrapper->GlobalPythonStrand()->post([this]()
+	auto weak = weak_from_this();
+	pWrapper->GlobalPythonStrand()->post([this, weak]()
 		{
+			auto self = weak.lock();
+			if(!self) return;
 			if(Log.ShouldLog(spdlog::level::trace)) Log.Trace("Entered Strand on Disable");
 			pWrapper->Disable();
 			if(Log.ShouldLog(spdlog::level::trace)) Log.Trace("Exit Strand");
@@ -733,8 +736,11 @@ void PyPort::RestHandler(const std::string& url, const std::string& content, con
 		return;
 	}
 
-	pWrapper->GlobalPythonStrand()->post([this, url, content, pResponseCallback]()
+	auto weak = weak_from_this();
+	pWrapper->GlobalPythonStrand()->post([this, weak, url, content, pResponseCallback]()
 		{
+			auto self = weak.lock();
+			if(!self) return;
 			if(Log.ShouldLog(spdlog::level::trace)) Log.Trace("Entered Strand on RestHandler");
 			std::string result = pWrapper->RestHandler(url,content); // Expect no long processing or waits in the python code to handle this.
 
