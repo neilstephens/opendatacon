@@ -42,14 +42,15 @@ auto CapAnalogOutputValue(const std::shared_ptr<const EventInfo>& fromEvent)
 	if(from_val.first > HighLimit)
 	{
 		Log.Warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the high limit");
-		from_val.first = HighLimit;
+		from_val.first = static_cast<decltype(from_val.first)>(HighLimit);
 	}
 	if(from_val.first < LowLimit)
 	{
 		Log.Warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the low limit");
-		from_val.first = LowLimit;
+		from_val.first = static_cast<decltype(from_val.first)>(LowLimit);
 	}
-	to_val = from_val;
+	to_val.first = static_cast<decltype(to_val.first)>(from_val.first);
+	to_val.second = from_val.second;
 	auto toEvent = std::make_shared<EventInfo>(ToET,fromEvent->GetIndex(),fromEvent->GetSourcePort(),fromEvent->GetQuality(),fromEvent->GetTimestamp());
 	toEvent->SetPayload<ToET>(std::move(to_val));
 	return toEvent;

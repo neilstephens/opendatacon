@@ -287,10 +287,10 @@ void PushPayload(lua_State* const L, odc::AbsTime_n_SysOffs payload)
 {
 	lua_newtable(L);
 	lua_pushstring(L, "AbsTime");
-	lua_pushboolean(L, payload.first);
+	lua_pushboolean(L, static_cast<int>(payload.first));
 	lua_settable(L, -3);
 	lua_pushstring(L, "SysOffs");
-	lua_pushboolean(L, payload.second);
+	lua_pushboolean(L, static_cast<int>(payload.second));
 	lua_settable(L, -3);
 }
 void PushPayload(lua_State* const L, bool payload)
@@ -551,7 +551,7 @@ template<> uint32_t PopPayload(lua_State* const L)
 {
 	if(!lua_isinteger(L,-1))
 		throw std::invalid_argument("Payload is not a lua integer value.");
-	return lua_tointeger(L,-1);
+	return static_cast<uint32_t>(lua_tointeger(L,-1));
 }
 template<> odc::CommandStatus PopPayload(lua_State* const L)
 {

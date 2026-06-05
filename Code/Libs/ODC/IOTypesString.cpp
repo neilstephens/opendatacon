@@ -74,7 +74,7 @@ template<> double PayloadFromString(const std::string& PayloadStr)
 	{
 		return std::stod(PayloadStr);
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		throw std::invalid_argument("Payload string is not convertable to double: "+PayloadStr);
 	}
@@ -85,7 +85,7 @@ template<> uint32_t PayloadFromString(const std::string& PayloadStr)
 	{
 		return std::stoul(PayloadStr);
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		throw std::invalid_argument("Payload string is not convertable to uint32_t: "+PayloadStr);
 	}
@@ -97,7 +97,7 @@ template<> CommandStatus PayloadFromString(const std::string& PayloadStr)
 	{
 		i = std::stoi(PayloadStr);
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		//not an int, try to match enum string
 		auto cs = CommandStatusFromString(PayloadStr);
@@ -243,7 +243,7 @@ template<> ControlRelayOutputBlock PayloadFromString(const std::string& PayloadS
 			if(functionCode == ControlCode::UNDEFINED && i != static_cast<int>(ControlCode::UNDEFINED))
 				throw std::exception();
 		}
-		catch(const std::exception& e)
+		catch(const std::exception&)
 		{
 			functionCode = ControlCodeFromString(match[1].str());
 			if(functionCode == ControlCode::UNDEFINED && match[1].str() != "UNDEFINED")
@@ -254,7 +254,7 @@ template<> ControlRelayOutputBlock PayloadFromString(const std::string& PayloadS
 		{
 			count = std::stoi(match[3].str());
 		}
-		catch(const std::exception& e)
+		catch(const std::exception&)
 		{
 			throw std::invalid_argument("Payload string is not convertable to ControlRelayOutputBlock: "+PayloadStr);
 		}
@@ -263,7 +263,7 @@ template<> ControlRelayOutputBlock PayloadFromString(const std::string& PayloadS
 		{
 			onTimeMS = std::stoi(match[5].str());
 		}
-		catch(const std::exception& e)
+		catch(const std::exception&)
 		{
 			throw std::invalid_argument("Payload string is not convertable to ControlRelayOutputBlock: "+PayloadStr);
 		}
@@ -272,7 +272,7 @@ template<> ControlRelayOutputBlock PayloadFromString(const std::string& PayloadS
 		{
 			offTimeMS = std::stoi(match[8].str());
 		}
-		catch(const std::exception& e)
+		catch(const std::exception&)
 		{
 			throw std::invalid_argument("Payload string is not convertable to ControlRelayOutputBlock: "+PayloadStr);
 		}
@@ -283,7 +283,7 @@ template<> ControlRelayOutputBlock PayloadFromString(const std::string& PayloadS
 			{
 				status = PayloadFromString<CommandStatus>(match[11].str());
 			}
-			catch(const std::exception& e)
+			catch(const std::exception&)
 			{
 				throw std::invalid_argument("Payload string is not convertable to ControlRelayOutputBlock: "+PayloadStr);
 			}
@@ -315,7 +315,7 @@ template<> AOD PayloadFromString(const std::string& PayloadStr)
 		{
 			cs = PayloadFromString<CommandStatus>(is.str());
 		}
-		catch(const std::exception& e)
+		catch(const std::exception&)
 		{
 			throw std::invalid_argument("Payload string is not convertable to AOD: "+PayloadStr);
 		}
@@ -330,7 +330,7 @@ template<> AOF PayloadFromString(const std::string& PayloadStr)
 	{
 		aod = PayloadFromString<AOD>(PayloadStr);
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		throw std::invalid_argument("Payload string is not convertable to AOF: "+PayloadStr);
 	}
@@ -360,7 +360,7 @@ template<> AO32 PayloadFromString(const std::string& PayloadStr)
 		{
 			cs = PayloadFromString<CommandStatus>(is.str());
 		}
-		catch(const std::exception& e)
+		catch(const std::exception&)
 		{
 			throw std::invalid_argument("Payload string is not convertable to AO32: "+PayloadStr);
 		}
@@ -375,7 +375,7 @@ template<> AO16 PayloadFromString(const std::string& PayloadStr)
 	{
 		ao32 = PayloadFromString<AO32>(PayloadStr);
 	}
-	catch(const std::exception& e)
+	catch(const std::exception&)
 	{
 		throw std::invalid_argument("Payload string is not convertable to AO16: "+PayloadStr);
 	}
