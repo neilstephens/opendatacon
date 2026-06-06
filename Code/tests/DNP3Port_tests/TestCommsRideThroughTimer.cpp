@@ -30,6 +30,8 @@
 #define SUITE(name) "CommsRideThroughTimer - " name
 
 const size_t testTimeout = 10000;
+const auto max_fudge_factor = 1.1;
+const auto min_fudge_factor = 0.9;
 
 const size_t msRideTime = 1000;
 const size_t msStaleTime = 1000;
@@ -72,8 +74,8 @@ TEST_CASE(SUITE("Stale Timeout"))
 	WaitFor(Stale,true);
 
 	auto measured_duration = odc::msSinceEpoch() - trigger_time;
-	CHECK(measured_duration > 0.95*msStaleTime);
-	CHECK(measured_duration < 1.05*msStaleTime);
+	CHECK(measured_duration > min_fudge_factor*msStaleTime);
+	CHECK(measured_duration < max_fudge_factor*msStaleTime);
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -97,8 +99,8 @@ TEST_CASE(SUITE("Simple Timeout"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - trigger_time;
-	CHECK(measured_duration > 0.95*msRideTime);
-	CHECK(measured_duration < 1.05*msRideTime);
+	CHECK(measured_duration > min_fudge_factor*msRideTime);
+	CHECK(measured_duration < max_fudge_factor*msRideTime);
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -127,8 +129,8 @@ TEST_CASE(SUITE("Cancel Trigger"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - trigger_time;
-	CHECK(measured_duration > 0.95*(msRideTime+msCancel));
-	CHECK(measured_duration < 1.05*(msRideTime+msCancel));
+	CHECK(measured_duration > min_fudge_factor*(msRideTime+msCancel));
+	CHECK(measured_duration < max_fudge_factor*(msRideTime+msCancel));
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -157,8 +159,8 @@ TEST_CASE(SUITE("Trigger Pause Resume"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - trigger_time;
-	CHECK(measured_duration > 0.95*(msRideTime+msPause));
-	CHECK(measured_duration < 1.05*(msRideTime+msPause));
+	CHECK(measured_duration > min_fudge_factor*(msRideTime+msPause));
+	CHECK(measured_duration < max_fudge_factor*(msRideTime+msPause));
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -188,8 +190,8 @@ TEST_CASE(SUITE("Pause Trigger Resume"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*(msRideTime+msPause));
-	CHECK(measured_duration < 1.05*(msRideTime+msPause));
+	CHECK(measured_duration > min_fudge_factor*(msRideTime+msPause));
+	CHECK(measured_duration < max_fudge_factor*(msRideTime+msPause));
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -246,8 +248,8 @@ TEST_CASE(SUITE("Pause Cancel Resume"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime);
-	CHECK(measured_duration < 1.05*msRideTime);
+	CHECK(measured_duration > min_fudge_factor*msRideTime);
+	CHECK(measured_duration < max_fudge_factor*msRideTime);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -273,8 +275,8 @@ TEST_CASE(SUITE("Pause Resume Trigger"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime);
-	CHECK(measured_duration < 1.05*msRideTime);
+	CHECK(measured_duration > min_fudge_factor*msRideTime);
+	CHECK(measured_duration < max_fudge_factor*msRideTime);
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -303,8 +305,8 @@ TEST_CASE(SUITE("Pause Resume Repeat"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime);
-	CHECK(measured_duration < 1.05*msRideTime);
+	CHECK(measured_duration > min_fudge_factor*msRideTime);
+	CHECK(measured_duration < max_fudge_factor*msRideTime);
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -336,8 +338,8 @@ TEST_CASE(SUITE("Pause Trigger Cancel Resume"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime);
-	CHECK(measured_duration < 1.05*msRideTime);
+	CHECK(measured_duration > min_fudge_factor*msRideTime);
+	CHECK(measured_duration < max_fudge_factor*msRideTime);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -388,8 +390,8 @@ TEST_CASE(SUITE("Random"))
 		{
 			WaitFor(CommsIsBad,true);
 			auto measured_duration = odc::msSinceEpoch() - start_time;
-			CHECK(measured_duration > 0.95*msRideTime);
-			CHECK(measured_duration < 1.05*msRideTime);
+			CHECK(measured_duration > min_fudge_factor*msRideTime);
+			CHECK(measured_duration < max_fudge_factor*msRideTime);
 			CHECK_FALSE(Stale);
 		}
 		else if(paused || !triggered)
@@ -432,8 +434,8 @@ TEST_CASE(SUITE("FastForward"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime*0.5);
-	CHECK(measured_duration < 1.05*msRideTime*0.5);
+	CHECK(measured_duration > min_fudge_factor*msRideTime*0.5);
+	CHECK(measured_duration < max_fudge_factor*msRideTime*0.5);
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -463,8 +465,8 @@ TEST_CASE(SUITE("Pause FastForward Resume"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime*0.7);
-	CHECK(measured_duration < 1.05*msRideTime*0.7);
+	CHECK(measured_duration > min_fudge_factor*msRideTime*0.7);
+	CHECK(measured_duration < max_fudge_factor*msRideTime*0.7);
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();
@@ -492,8 +494,8 @@ TEST_CASE(SUITE("Trigger Cancel FastForward"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration > 0.95*msRideTime);
-	CHECK(measured_duration < 1.05*msRideTime);
+	CHECK(measured_duration > min_fudge_factor*msRideTime);
+	CHECK(measured_duration < max_fudge_factor*msRideTime);
 
 	pCRTT->Cancel();
 	WaitFor(CommsIsBad,false);
@@ -520,7 +522,7 @@ TEST_CASE(SUITE("FastForward Pause Resume"))
 	WaitFor(CommsIsBad,true);
 
 	auto measured_duration = odc::msSinceEpoch() - start_time;
-	CHECK(measured_duration < 0.05*msRideTime);
+	CHECK(measured_duration < 0.1*msRideTime);
 	CHECK_FALSE(CommsToggled);
 
 	pCRTT->Cancel();

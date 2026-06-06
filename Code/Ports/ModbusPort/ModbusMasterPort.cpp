@@ -559,7 +559,7 @@ void ModbusMasterPort::Event(std::shared_ptr<const EventInfo> event, const std::
 			 {
 				 MBSync->Execute([=, this](modbus_t* mb)
 					 {
-						 (*pStatusCallback)(WriteObject(mb, payload, event->GetIndex()));
+						 (*pStatusCallback)(WriteObject(mb, payload, static_cast<uint16_t>(event->GetIndex())));
 					 });
 			 };
 

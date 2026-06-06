@@ -202,8 +202,8 @@ MD3Message_t MD3OutstationPort::CorruptMD3Message(const MD3Message_t& CompleteMD
 		{
 			MD3Message_t ResMsg = CompleteMD3Message;
 			size_t messagelen = CompleteMD3Message.size();
-			std::uniform_real_distribution<> bitdist(0, messagelen * 40 - 1); // 5 bytes, 40 bits
-			int bitnum = round(bitdist(e2));
+			std::uniform_real_distribution<> bitdist(0, static_cast<double>(messagelen * 40 - 1)); // 5 bytes, 40 bits
+			int bitnum = static_cast<int>(round(bitdist(e2)));
 			ResMsg[bitnum / 40].XORBit(bitnum % 40);
 			return ResMsg;
 		}

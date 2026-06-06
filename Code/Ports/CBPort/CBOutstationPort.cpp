@@ -202,8 +202,8 @@ CBMessage_t CBOutstationPort::CorruptCBMessage(const CBMessage_t& CompleteCBMess
 		{
 			CBMessage_t ResMsg = CompleteCBMessage;
 			size_t messagelen = CompleteCBMessage.size();
-			std::uniform_real_distribution<> bitdist(0, messagelen * 32 - 1);
-			int bitnum = round(bitdist(e2));
+			std::uniform_real_distribution<> bitdist(0, static_cast<double>(messagelen * 32 - 1));
+			int bitnum = static_cast<int>(round(bitdist(e2)));
 			ResMsg[bitnum / 32].XORBit(bitnum % 32);
 			return ResMsg;
 		}

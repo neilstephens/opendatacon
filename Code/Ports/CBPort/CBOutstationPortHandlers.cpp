@@ -771,7 +771,7 @@ void CBOutstationPort::ConvertBitArrayToPayloadWords(const uint32_t UsedBits, st
 				Log.Error("{} ConvertBitArrayToPayloadWords - bit index exceeded {}!! {}", Name, MaxSOEBits, bitindex);
 				break; // Dont do any more bits!
 			}
-			payload |= ShiftLeftResult16Bits(BitArray[bitindex] ? 1 : 0, 11 - i);
+			payload |= ShiftLeftResult16Bits(BitArray[bitindex] ? 1 : 0, static_cast<uint8_t>(11 - i));
 		}
 		PayloadWords.push_back(payload);
 	}

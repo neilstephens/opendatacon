@@ -136,7 +136,7 @@ void CommsRideThroughTimer::Pause()
 			if(self->RideThroughInProgress)
 			{
 				auto now = odc::msSinceEpoch();
-				self->msRemaining = (self->ExpiryTime > now) ? (self->ExpiryTime - now) : 0;
+				self->msRemaining = static_cast<uint32_t>((self->ExpiryTime > now) ? (self->ExpiryTime - now) : 0);
 
 				self->PendingTrigger = true;
 				self->RideThroughInProgress = false;

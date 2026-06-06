@@ -47,7 +47,6 @@ if(UNIX)
 endif()
 
 if(WIN32)
-	target_compile_definitions(${LUA_LIBNAME} PRIVATE LUA_USE_WINDOWS)
 	target_compile_definitions(${LUA_LIBNAME} PRIVATE LUA_BUILD_AS_DLL)
 endif()
 

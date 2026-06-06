@@ -702,11 +702,11 @@ TEST_CASE("Py.TestsUsingPython")
 		Log.Debug("Tests Complete, starting teardown");
 
 		PythonPort5->Disable();
-		REQUIRE_NOTHROW([IOS,PythonPort]()
+		REQUIRE_NOTHROW([IOS,PythonPort5]()
 			{
-				if (!WaitIOSFnResult(IOS, 11, [PythonPort]()
+				if (!WaitIOSFnResult(IOS, 11, [PythonPort5]()
 					{
-						return (!PythonPort->Enabled());
+						return (!PythonPort5->Enabled());
 					}))
 				{
 					throw("Waiting for Ports to be disabled timed out");

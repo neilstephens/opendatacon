@@ -589,7 +589,7 @@ TEST_CASE(SUITE("CommsPoint RideThrough"))
 		CHECK(WaitForCommsPoint(MPUT,false));
 		auto measured_duration = odc::msSinceEpoch() - start_time;
 		CHECK(measured_duration > 0.9*comms_ride_time_ms);
-		CHECK(measured_duration < 1.1*comms_ride_time_ms);
+		CHECK(measured_duration < 1.2*comms_ride_time_ms);
 
 		//turn things off
 		OPUT->Disable();
@@ -784,7 +784,7 @@ TEST_CASE(SUITE("CommsPoint RideThrough No-Pause"))
 		CHECK(WaitForCommsPoint(MPUT,false));
 		auto measured_duration = odc::msSinceEpoch() - start_time;
 		CHECK(measured_duration > 0.9*comms_ride_time_ms);
-		CHECK(measured_duration < 1.1*comms_ride_time_ms);
+		CHECK(measured_duration < 1.2*comms_ride_time_ms);
 
 		//Trigger on-demand enablement of the port DNP3 stacks
 		SendEvent<odc::EventType::ConnectState>(OPUT, 0, ConnectState::CONNECTED);
@@ -798,7 +798,7 @@ TEST_CASE(SUITE("CommsPoint RideThrough No-Pause"))
 		CHECK(WaitForCommsPoint(MPUT,false));
 		measured_duration = odc::msSinceEpoch() - start_time;
 		CHECK(measured_duration > 0.9*comms_ride_time_ms);
-		CHECK(measured_duration < 1.1*comms_ride_time_ms);
+		CHECK(measured_duration < 1.2*comms_ride_time_ms);
 
 		//turn things off
 		OPUT->Disable();

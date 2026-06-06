@@ -87,6 +87,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	/// Time delay beforce retrying a failed task
 	TaskRetryPeriodms(5000),
 	TaskStartTimeoutms(10000),
+	PeriodicEnableUnsolms(0),
 	// Master Station scanning configuration
 	IntegrityScanRatems(3600000),
 	EventClass1ScanRatems(1000),
@@ -344,6 +345,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// Master Station task start timeout
 	if (JSONRoot.isMember("TaskStartTimeoutms"))
 		TaskStartTimeoutms = JSONRoot["TaskStartTimeoutms"].asUInt();
+	if (JSONRoot.isMember("PeriodicEnableUnsolms"))
+		PeriodicEnableUnsolms = JSONRoot["PeriodicEnableUnsolms"].asUInt();
 
 	// Comms Point Configuration
 	if (JSONRoot.isMember("CommsPoint"))
