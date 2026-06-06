@@ -28,6 +28,11 @@
 #include "CAPI/C_Transform.h"
 #include "CAPI/C_UI.h"
 #include "C_Internal.h"
+#include <opendatacon/util.h>
+#include <opendatacon/IOTypes.h>
+#include <whereami++.h>
+#include <filesystem>
+#include <cstring>
 
 namespace odc
 {
@@ -468,5 +473,306 @@ extern "C" int odc_ShouldLog(void* inst, uint8_t level)
 	    if(it != odc::C_Transform_instances.end()) return it->second->ShouldLog(level) ? 1 : 0;}
 	{   auto it = odc::C_UI_instances.find(inst);
 	    if(it != odc::C_UI_instances.end()) return it->second->ShouldLog(level) ? 1 : 0;}
+	return 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Port introspection                                                  */
+/* ------------------------------------------------------------------ */
+
+extern "C" int odc_InDemand(void* inst)
+{
+	if(!inst) return 0;
+	auto it = odc::C_Port_instances.find(inst);
+	if(it == odc::C_Port_instances.end()) return 0;
+	return it->second->PublicInDemand() ? 1 : 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Date/time utilities                                                 */
+/* ------------------------------------------------------------------ */
+
+extern "C" uint64_t odc_msSinceEpoch(void)
+{
+	return odc::msSinceEpoch();
+}
+
+extern "C" int odc_msSinceEpochToDateTime(uint64_t ms, const char* format,
+	char* buf, size_t buflen)
+{
+	if(!buf || buflen == 0) return -1;
+	try
+	{
+		std::string result = format
+		      ? odc::since_epoch_to_datetime(ms, format)
+		      : odc::since_epoch_to_datetime(ms);
+		if(result.size() + 1 > buflen) return -1;
+		std::memcpy(buf, result.c_str(), result.size() + 1);
+		return 0;
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+extern "C" int odc_DateTimeToMsSinceEpoch(const char* datetime, const char* format,
+	uint64_t* out_ms)
+{
+	if(!datetime || !out_ms) return -1;
+	try
+	{
+		*out_ms = format
+		      ? odc::datetime_to_since_epoch(datetime, format)
+		      : odc::datetime_to_since_epoch(datetime);
+		return 0;
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hex encode / decode                                                 */
+/* ------------------------------------------------------------------ */
+
+extern "C" size_t odc_String2Hex(const uint8_t* data, size_t len,
+	char* buf, size_t buflen)
+{
+	if(!data && len > 0) return 0;
+	std::string hex = odc::buf2hex(data, len);
+	if(buf && buflen > hex.size())
+		std::memcpy(buf, hex.c_str(), hex.size() + 1);
+	return hex.size();
+}
+
+extern "C" int odc_Hex2String(const char* hex, uint8_t* buf, size_t buflen)
+{
+	if(!hex) return -1;
+	try
+	{
+		std::vector<uint8_t> result = odc::hex2buf(hex);
+		if(!buf) return static_cast<int>(result.size());
+		if(result.size() > buflen) return -1;
+		std::memcpy(buf, result.data(), result.size());
+		return static_cast<int>(result.size());
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/*  Path resolution                                                     */
+/* ------------------------------------------------------------------ */
+
+static int fill_buf(const std::string& s, char* buf, size_t buflen)
+{
+	if(!buf || s.size() + 1 > buflen) return -1;
+	std::memcpy(buf, s.c_str(), s.size() + 1);
+	return 0;
+}
+
+extern "C" int odc_GetWorkingDir(char* buf, size_t buflen)
+{
+	try
+	{
+		return fill_buf(std::filesystem::canonical(std::filesystem::current_path()).string(), buf, buflen);
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+extern "C" int odc_GetExecutableDir(char* buf, size_t buflen)
+{
+	try
+	{
+		return fill_buf(whereami::getExecutablePath().dirname(), buf, buflen);
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/*  Process spawning                                                    */
+/* ------------------------------------------------------------------ */
+
+// Build a std::vector<std::string> of extra args from a NULL-terminated argv
+// (skip argv[0] — cmd is the executable, argv[0] is just convention)
+static std::vector<std::string> argv_to_args(const char* const* argv)
+{
+	std::vector<std::string> args;
+	if(!argv) return args;
+	// skip argv[0]
+	for(int i = 1; argv[i] != nullptr; ++i)
+		args.push_back(argv[i]);
+	return args;
+}
+
+extern "C" int64_t odc_SpawnDetached(const char* cmd, const char* const* argv)
+{
+	if(!cmd) return -1;
+	try
+	{
+		return static_cast<int64_t>(spawn_detached(cmd, argv_to_args(argv)));
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+extern "C" int64_t odc_SpawnAttached(const char* cmd, const char* const* argv,
+	FILE** stdin_file, FILE** stdout_file, FILE** stderr_file)
+{
+	if(stdin_file)  *stdin_file  = nullptr;
+	if(stdout_file) *stdout_file = nullptr;
+	if(stderr_file) *stderr_file = nullptr;
+	if(!cmd) return -1;
+	try
+	{
+		auto r = spawn_attached(cmd, argv_to_args(argv));
+		if(stdin_file)  *stdin_file  = r.stdin_file;
+		if(stdout_file) *stdout_file = r.stdout_file;
+		if(stderr_file) *stderr_file = r.stderr_file;
+		return static_cast<int64_t>(r.pid);
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+extern "C" int odc_KillPid(int64_t pid, int sig)
+{
+	try
+	{
+		spawn_kill(static_cast<int>(pid), sig);
+		return 0;
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+extern "C" int odc_WaitPid(int64_t pid, int nohang, int* exit_code)
+{
+	try
+	{
+		auto [exited, code] = spawn_wait(static_cast<int>(pid), nohang != 0);
+		if(exited && exit_code) *exit_code = code;
+		return exited ? 1 : 0;
+	}
+	catch(...)
+	{
+		return -1;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/*  Repeating timer                                                     */
+/* ------------------------------------------------------------------ */
+
+extern "C" void* odc_msRepeatingCallback(void* inst, uint64_t initial_ms,
+	C_RepeatingCallbackFunc_t callback, void* handle)
+{
+	if(!inst || !callback) return nullptr;
+	auto it = odc::C_Port_instances.find(inst);
+	if(it == odc::C_Port_instances.end()) return nullptr;
+
+	auto* port   = it->second;
+	auto sync    = port->GetStrand();
+	auto tracker = port->GetHandlerTracker();
+
+	// make_steady_timer returns a unique_ptr; move into shared_ptr so the
+	// lambda (stored in std::function) can capture it by copy.
+	auto pTimer = std::shared_ptr<asio::steady_timer>(
+		odc::asio_service::Get()->make_steady_timer());
+	auto active = std::make_shared<std::atomic<bool>>(true);
+
+	// pFn holds the handler std::function alive for the duration of the loop.
+	// The lambda captures a weak_ptr to pFn — this breaks the ownership cycle
+	// while still allowing the lambda to re-schedule itself.  pFn is stored in
+	// C_TimerHandle::extra so it stays alive until the handle is cancelled/deleted.
+	auto pFn = std::make_shared<std::function<void(asio::error_code)>>();
+	std::weak_ptr<std::function<void(asio::error_code)>> weakFn(pFn);
+
+	*pFn = [pTimer, active, callback, handle, sync, tracker, weakFn]
+	       (asio::error_code err) mutable
+		 {
+			 if(!active->load() || err) return;
+
+			 int64_t next_ms = callback(handle);
+			 if(next_ms < 0 || !active->load()) return;
+
+			 auto strongFn = weakFn.lock();
+			 if(!strongFn) return;
+
+			 pTimer->expires_from_now(std::chrono::milliseconds(next_ms));
+			 pTimer->async_wait(sync->wrap(*strongFn));
+		 };
+
+	pTimer->expires_from_now(std::chrono::milliseconds(initial_ms));
+	pTimer->async_wait(sync->wrap(*pFn));
+
+	auto* th = new C_TimerHandle{
+		std::weak_ptr<asio::steady_timer>(pTimer),
+		active,
+		pFn // keeps weakFn lockable for the life of the handle
+	};
+	return th;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Enum → string helpers                                               */
+/* ------------------------------------------------------------------ */
+
+extern "C" const char* odc_EventTypeToString(uint8_t event_type)
+{
+	static thread_local std::string buf;
+	buf = odc::ToString(static_cast<odc::EventType>(event_type));
+	return buf.c_str();
+}
+
+extern "C" const char* odc_CommandStatusToString(uint8_t status)
+{
+	static thread_local std::string buf;
+	buf = odc::ToString(static_cast<odc::CommandStatus>(status));
+	return buf.c_str();
+}
+
+extern "C" const char* odc_ControlCodeToString(uint8_t code)
+{
+	static thread_local std::string buf;
+	buf = odc::ToString(static_cast<odc::ControlCode>(code));
+	return buf.c_str();
+}
+
+extern "C" const char* odc_ConnectStateToString(uint8_t state)
+{
+	static thread_local std::string buf;
+	buf = odc::ToString(static_cast<odc::ConnectState>(state));
+	return buf.c_str();
+}
+
+extern "C" int odc_QualityFlagsToString(uint16_t flags, char* buf, size_t buflen)
+{
+	if(!buf || buflen == 0) return -1;
+	std::string s = odc::ToString(static_cast<odc::QualityFlags>(flags));
+	if(s.size() + 1 > buflen)
+	{
+		// truncate but always NUL-terminate
+		std::memcpy(buf, s.c_str(), buflen - 1);
+		buf[buflen - 1] = '\0';
+		return -1;
+	}
+	std::memcpy(buf, s.c_str(), s.size() + 1);
 	return 0;
 }

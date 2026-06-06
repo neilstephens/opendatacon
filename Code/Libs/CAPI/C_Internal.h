@@ -56,6 +56,7 @@ struct C_TimerHandle
 {
 	std::weak_ptr<asio::steady_timer> weak_timer;
 	std::shared_ptr<std::atomic<bool>> active;
+	std::shared_ptr<void> extra; // optional — used by odc_msRepeatingCallback to keep the handler alive
 };
 
 namespace odc

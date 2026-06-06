@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,9 +11,9 @@ extern "C" {
 
 #define ODC_C_API_VERSION "1.0"
 /* ------------------------------------------------------------------ */
-/*  Version detection                                                  */
-/*  If a shared library exports this symbol, the loader treats it      */
-/*  as a C API library and creates the appropriate C++ wrapper.        */
+/*  Version detection                                                 */
+/*  If a shared library exports this symbol, the loader treats it     */
+/*  as a C API library and creates the appropriate C++ wrapper.       */
 /* ------------------------------------------------------------------ */
 const char* odc_c_api_version(void);
 
@@ -137,7 +138,7 @@ enum C_QualityFlags
 };
 
 /* ------------------------------------------------------------------ */
-/*  Structs                                                            */
+/*  Structs                                                           */
 /* ------------------------------------------------------------------ */
 
 struct C_ControlRelayOutputBlock
@@ -231,7 +232,7 @@ typedef void (*C_StatusCallbackFunc_t)(uint8_t status, void* handle);
 typedef struct C_PassContext C_PassContext;
 
 /* ------------------------------------------------------------------ */
-/*  Required exports from a C Port library                             */
+/*  Required exports from a C Port library                            */
 /* ------------------------------------------------------------------ */
 
 /* Create a port instance. Returns an opaque handle that is the C
@@ -263,9 +264,9 @@ void odc_port_event(void* inst,
 	C_StatusCallback* cb);
 
 /* ------------------------------------------------------------------ */
-/*  Optional exports from a C Port library — return JSON strings       */
-/*  allocated by C (malloc/strdup). The C++ side will call             */
-/*  odc_port_free_string() to release them.                            */
+/*  Optional exports from a C Port library — return JSON strings      */
+/*  allocated by C (malloc/strdup). The C++ side will call            */
+/*  odc_port_free_string() to release them.                           */
 /* ------------------------------------------------------------------ */
 const char* odc_port_stats_json(void* inst);
 const char* odc_port_state_json(void* inst);
@@ -273,7 +274,7 @@ const char* odc_port_status_json(void* inst);
 void        odc_port_free_string(const char* str);
 
 /* ------------------------------------------------------------------ */
-/*  Required exports from a C Transform library                        */
+/*  Required exports from a C Transform library                       */
 /* ------------------------------------------------------------------ */
 
 void* odc_transform_create(const char* name, const char* params_json);
@@ -289,7 +290,7 @@ void odc_transform_event(void* inst,
 	void (*pass)(C_PassContext* ctx, struct C_EventInfo* evt));
 
 /* ------------------------------------------------------------------ */
-/*  Required exports from a C Plugin (IUI) library                     */
+/*  Required exports from a C Plugin (IUI) library                    */
 /* ------------------------------------------------------------------ */
 
 void* odc_plugin_create(const char* name,
@@ -300,9 +301,9 @@ void  odc_plugin_build(void* inst);
 void  odc_plugin_enable(void* inst);
 void  odc_plugin_disable(void* inst);
 
-/* ------------------------------------------------------------------ */
-/*  Helper functions — implemented by the C++ wrapper, callable from C */
-/* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------- */
+/*  Helper functions - implemented by the C++ wrapper, callable from C */
+/* ------------------------------------------------------------------- */
 
 /* Invoke a status callback exactly once.
    Pass the ADDRESS of the callback pointer so it can be zeroed: e.g.
@@ -348,6 +349,130 @@ void* odc_msTimerCallback(void* inst, uint64_t ms,
    After this call, the timer's callback will not fire.
    The handle is freed by this function and must not be used again. */
 void odc_cancelTimer(void* timer_handle);
+
+/* Callback for repeating timers — return ms to wait before next call, or
+   a negative value to stop the repetition. */
+typedef int64_t (*C_RepeatingCallbackFunc_t)(void* handle);
+
+/* ------------------------------------------------------------------ */
+/*  Port introspection                                                */
+/* ------------------------------------------------------------------ */
+
+/* Returns non-zero if the port has at least one event subscriber.
+   Returns 0 for non-port instances (transforms, UIs) or unknown inst. */
+int odc_InDemand(void* inst);
+
+/* ------------------------------------------------------------------ */
+/*  Date/time utilities (no inst needed)                              */
+/* ------------------------------------------------------------------ */
+
+/* Current time as milliseconds since the Unix epoch. */
+uint64_t odc_msSinceEpoch(void);
+
+/* Convert ms-since-epoch to a datetime string.
+   format: strftime-style with %e for millisecond sub-field;
+           NULL uses the default "%Y-%m-%d %H:%M:%S.%e".
+   Writes a NUL-terminated string to buf.
+   Returns 0 on success, non-zero on error. */
+int odc_msSinceEpochToDateTime(uint64_t ms, const char* format,
+	char* buf, size_t buflen);
+
+/* Parse a datetime string to ms-since-epoch.
+   format: NULL uses the default "%Y-%m-%d %H:%M:%S.%e".
+   Sets *out_ms on success.
+   Returns 0 on success, non-zero on error. */
+int odc_DateTimeToMsSinceEpoch(const char* datetime, const char* format,
+	uint64_t* out_ms);
+
+/* ------------------------------------------------------------------ */
+/*  Hex encode / decode (no inst needed)                              */
+/* ------------------------------------------------------------------ */
+
+/* Convert binary data to a lowercase hex string.
+   Returns the number of hex characters that would be written (excluding
+   the NUL terminator).  If buf is non-NULL and buflen is sufficient the
+   NUL-terminated hex string is written.  Safe to call with buf==NULL to
+   query the required buffer size. */
+size_t odc_String2Hex(const uint8_t* data, size_t len,
+	char* buf, size_t buflen);
+
+/* Convert a hex string to binary data.
+   Returns the number of bytes written, or -1 on error (odd length or
+   non-hex characters).  If buf is NULL returns the number of bytes that
+   would be written without performing the conversion. */
+int odc_Hex2String(const char* hex, uint8_t* buf, size_t buflen);
+
+/* ------------------------------------------------------------------ */
+/*  Path resolution (no inst needed)                                  */
+/* ------------------------------------------------------------------ */
+
+/* Write the canonical working-directory path into buf.
+   Returns 0 on success, non-zero on error. */
+int odc_GetWorkingDir(char* buf, size_t buflen);
+
+/* Write the directory that contains the opendatacon executable into buf.
+   Returns 0 on success, non-zero on error. */
+int odc_GetExecutableDir(char* buf, size_t buflen);
+
+/* ------------------------------------------------------------------ */
+/*  Process spawning (no inst needed)                                 */
+/* ------------------------------------------------------------------ */
+
+/* Spawn a detached process (no pipes; fire-and-forget).
+   argv: NULL-terminated array of argument strings passed to the process.
+         argv[0] is the program path (same as cmd) and is ignored — cmd
+         is always used as the executable.
+   Returns the PID on success, or -1 on error. */
+int64_t odc_SpawnDetached(const char* cmd, const char* const* argv);
+
+/* Spawn a process with stdin/stdout/stderr pipes.
+   Sets *stdin_file, *stdout_file, *stderr_file to open FILE* handles
+   owned by the caller (call fclose() when finished with each).
+   On error all file pointers are set to NULL and -1 is returned. */
+int64_t odc_SpawnAttached(const char* cmd, const char* const* argv,
+	FILE** stdin_file, FILE** stdout_file, FILE** stderr_file);
+
+/* Send signal sig to process pid.
+   Use 0 (SIGEXIT) to check liveness without killing.
+   Returns 0 on success, non-zero on error. */
+int odc_KillPid(int64_t pid, int sig);
+
+/* Wait for a process to exit.
+   nohang non-zero: return immediately if the process has not yet exited.
+   Returns 1 if the process has exited (sets *exit_code),
+           0 if it is still running (nohang only),
+          -1 on error. */
+int odc_WaitPid(int64_t pid, int nohang, int* exit_code);
+
+/* ------------------------------------------------------------------ */
+/*  Repeating timer                                                   */
+/* ------------------------------------------------------------------ */
+
+/* Schedule a repeating timer on the port's sync strand.
+   callback(handle) fires after initial_ms milliseconds.  The value it
+   returns is the delay (ms) before the next call.  Returning a negative
+   value stops the repetition.
+   Returns an opaque timer handle; cancel (and free) it with
+   odc_cancelTimer(). */
+void* odc_msRepeatingCallback(void* inst, uint64_t initial_ms,
+	C_RepeatingCallbackFunc_t callback, void* handle);
+
+/* ------------------------------------------------------------------ */
+/*  Enum -> string helpers (no inst needed)                           */
+/* ------------------------------------------------------------------ */
+
+/* Return a static, NUL-terminated name string for the given enum value.
+   Unknown values return "UNKNOWN".  The returned pointer is never NULL
+   and the string has static lifetime — do not free it. */
+const char* odc_EventTypeToString(uint8_t event_type);
+const char* odc_CommandStatusToString(uint8_t status);
+const char* odc_ControlCodeToString(uint8_t code);
+const char* odc_ConnectStateToString(uint8_t state);
+
+/* Write a human-readable QualityFlags string (e.g. "ONLINE|COMM_LOST")
+   into buf.  Returns 0 on success, non-zero if the buffer was too small
+   (buf will still be NUL-terminated and contain a truncated value). */
+int odc_QualityFlagsToString(uint16_t flags, char* buf, size_t buflen);
 
 #ifdef __cplusplus
 }

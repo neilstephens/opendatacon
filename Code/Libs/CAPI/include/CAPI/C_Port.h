@@ -75,6 +75,8 @@ public:
 	void PublicPublishEvent(const std::shared_ptr<const EventInfo>& event) const
 	{ PublishEvent(event); }
 
+	bool PublicInDemand() const { return InDemand(); }
+
 	// Accessors for C helper functions
 	std::shared_ptr<odc::strand_t> GetStrand() const { return pSyncStrand; }
 	std::shared_ptr<void> GetHandlerTracker() const { return handler_tracker; }
