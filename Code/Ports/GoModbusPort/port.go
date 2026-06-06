@@ -10,7 +10,9 @@ package main
 import "C"
 import (
 	"fmt"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -24,11 +26,12 @@ import (
 type opType uint8
 
 const (
-	opBuild    opType = iota
+	opBuild        opType = iota
 	opEnable
 	opDisable
 	opEvent
 	opShutdown
+	opReconnect // internal: attempt to reconnect
 )
 
 type operation struct {
@@ -47,20 +50,33 @@ type GoModbusPort struct {
 	typ  string
 	inst unsafe.Pointer
 
-	ops  chan operation  // buffered — non-blocking post from C API
-	done chan struct{}   // closed when run() exits
+	ops  chan operation // buffered — non-blocking post from C API
+	done chan struct{}  // closed when run() exits
 
-	// ↓↓↓ state touched only by run() goroutine ↓↓↓
-	config    *PortConfig
-	client    *modbus.ModbusClient
-	polled    []PolledPoint
-	controls  []ControlPoint
-	pollTick  *time.Ticker
-	pollMinMs int
-	unitID    uint8
-	enabled   bool
-	built     bool
+	// state touched only by run()
+	config              *PortConfig
+	client              atomic.Pointer[modbus.ModbusClient]
+	polled              []PolledPoint
+	controls            []ControlPoint
+	pollMinMs           int
+	maxConcurrentPolls  int
+	unitID              uint8
+	enabled             bool
+	built               bool
+	connected           bool        // transport-level connection state
+	reconnectScheduled  bool        // prevent duplicate reconnect timers
+	reconnectDelayMs    int         // current reconnect backoff delay
+
+	// polling (owned by pollScheduler goroutine)
+	pollScheduler PollScheduler
+	pollWg        sync.WaitGroup
 }
+
+// initial reconnect delay and max delay
+const (
+	initialReconnectDelayMs = 1000
+	maxReconnectDelayMs     = 30000
+)
 
 var (
 	portMu sync.Mutex
@@ -112,9 +128,6 @@ func newGoModbusPort(name, typ string, inst unsafe.Pointer) *GoModbusPort {
 func (p *GoModbusPort) run() {
 	defer close(p.done)
 
-	// pollC is nil when polling is stopped — the select case is dead.
-	var pollC <-chan time.Time
-
 	for {
 		select {
 		case op := <-p.ops:
@@ -123,34 +136,25 @@ func (p *GoModbusPort) run() {
 				p.doBuild()
 			case opEnable:
 				p.doEnable()
-				if p.enabled && len(p.polled) > 0 {
-					p.pollTick = time.NewTicker(
-						time.Duration(p.pollMinMs) * time.Millisecond)
-					pollC = p.pollTick.C
-				}
 			case opDisable:
-				p.stopTicker()
-				pollC = nil
 				p.doDisable()
 			case opEvent:
 				p.doHandleEvent(&op.event, op.sender, op.cb)
+			case opReconnect:
+				p.doReconnect()
 			case opShutdown:
-				p.stopTicker()
-				pollC = nil
 				p.doDisable()
 				return
 			}
-
-		case <-pollC:
-			p.doPoll()
 		}
 	}
 }
 
-func (p *GoModbusPort) stopTicker() {
-	if p.pollTick != nil {
-		p.pollTick.Stop()
-		p.pollTick = nil
+func (p *GoModbusPort) stopPolling() {
+	if p.pollScheduler != nil {
+		p.pollScheduler.Shutdown()
+		// Don't Wait() here - let in-flight polls fail fast on closed connection
+		p.pollScheduler = nil
 	}
 }
 
@@ -174,6 +178,7 @@ func (p *GoModbusPort) doBuild() {
 	}
 	p.config = cfg
 	p.unitID = cfg.UnitID
+	p.maxConcurrentPolls = cfg.MaxConcurrentPolls
 
 	p.expandPoints()
 
@@ -182,7 +187,7 @@ func (p *GoModbusPort) doBuild() {
 		logError(p.inst, "build failed: %v", err)
 		return
 	}
-	p.client = client
+	p.client.Store(client)
 
 	p.built = true
 	logInfo(p.inst, "port built: %s/%s", p.name, p.typ)
@@ -197,13 +202,14 @@ func (p *GoModbusPort) doEnable() {
 		return
 	}
 
-	if err := openClient(p.client, p.unitID); err != nil {
-		logError(p.inst, "enable failed: %v", err)
-		return
-	}
-
-	publishConnectState(p.inst, C.C_ConnectState_CONNECTED)
 	p.enabled = true
+	p.connected = false
+	p.reconnectDelayMs = initialReconnectDelayMs
+	p.reconnectScheduled = false
+
+	// Start the reconnection process asynchronously
+	p.scheduleReconnect()
+
 	logInfo(p.inst, "port enabled: %s", p.name)
 }
 
@@ -213,18 +219,107 @@ func (p *GoModbusPort) doDisable() {
 	}
 
 	p.enabled = false
+	p.connected = false
+	p.reconnectScheduled = false
+
+	// Close client FIRST so in-flight polls fail fast
+	client := p.client.Load()
+	if client != nil {
+		func() {
+			defer func() {
+				recover() // ignore panic if transport was never opened
+			}()
+			client.Close()
+		}()
+		p.client.Store(nil)
+	}
+
+	// Then stop scheduler (no wait - polls will fail on closed connection)
+	p.stopPolling()
+
 	publishConnectState(p.inst, C.C_ConnectState_DISCONNECTED)
 	logInfo(p.inst, "port disabled: %s", p.name)
+}
+
+func (p *GoModbusPort) scheduleReconnect() {
+	if p.reconnectScheduled || !p.enabled {
+		return
+	}
+	p.reconnectScheduled = true
+	delay := time.Duration(p.reconnectDelayMs) * time.Millisecond
+	time.AfterFunc(delay, func() {
+		p.ops <- operation{typ: opReconnect}
+	})
+}
+
+func (p *GoModbusPort) doReconnect() {
+	p.reconnectScheduled = false
+
+	if !p.enabled {
+		return
+	}
+
+	client := p.client.Load()
+	if client == nil {
+		// Client was destroyed, recreate it
+		if p.config == nil {
+			logError(p.inst, "reconnect failed: no config")
+			p.scheduleReconnect()
+			return
+		}
+		newClient, err := newModbusClient(p.config)
+		if err != nil {
+			logError(p.inst, "reconnect failed to create client: %v", err)
+			p.scheduleReconnectWithBackoff()
+			return
+		}
+		p.client.Store(newClient)
+		client = newClient
+	}
+
+	if err := openClient(client, p.unitID); err != nil {
+		logWarn(p.inst, "reconnect failed: %v", err)
+		p.scheduleReconnectWithBackoff()
+		return
+	}
+
+	// Connection successful
+	p.connected = true
+	p.reconnectDelayMs = initialReconnectDelayMs
+
+	if len(p.polled) > 0 && p.pollMinMs > 0 && p.pollScheduler == nil {
+		p.pollScheduler = newPollScheduler(
+			time.Duration(p.pollMinMs)*time.Millisecond,
+			p.doPoll,
+			p.maxConcurrentPolls,
+		)
+	}
+
+	publishConnectState(p.inst, C.C_ConnectState_CONNECTED)
+	logInfo(p.inst, "port reconnected: %s", p.name)
+}
+
+func (p *GoModbusPort) scheduleReconnectWithBackoff() {
+	p.reconnectDelayMs *= 2
+	if p.reconnectDelayMs > maxReconnectDelayMs {
+		p.reconnectDelayMs = maxReconnectDelayMs
+	}
+	p.scheduleReconnect()
 }
 
 func (p *GoModbusPort) destroy() {
 	p.ops <- operation{typ: opShutdown}
 	<-p.done // wait for run() to finish
 
-	// Close client after all goroutines have drained.
-	if p.client != nil {
-		p.client.Close()
+	// Wait for any in-flight polls to complete (they should fail fast on closed connection)
+	if p.pollScheduler != nil {
+		p.pollScheduler.Wait()
+		p.pollScheduler = nil
 	}
+
+	// Client is closed by doDisable in the actor loop. Don't close again.
+	// Just clear the reference.
+	p.client.Store(nil)
 
 	removePort(p.inst)
 	logInfo(p.inst, "port destroyed: %s", p.name)
@@ -272,13 +367,69 @@ func (p *GoModbusPort) expandPoints() {
 // Polling
 // ---------------------------------------------------------------------------
 
-func (p *GoModbusPort) doPoll() {
+func (p *GoModbusPort) doPoll() error {
+	if !p.enabled || !p.connected {
+		return nil
+	}
+
+	client := p.client.Load()
+	if client == nil {
+		return nil
+	}
+
 	now := time.Now().UnixNano()
 
 	groups := p.groupDuePoints(now)
+	var lastErr error
 	for i := range groups {
-		p.readGroup(&groups[i])
+		if err := p.readGroup(&groups[i]); err != nil {
+			lastErr = err
+			if isTransportDisconnected(err) {
+				logWarn(p.inst, "transport disconnected during poll: %v", err)
+				p.handleDisconnect()
+				return err
+			}
+		}
 	}
+	return lastErr
+}
+
+func (p *GoModbusPort) handleDisconnect() {
+	if !p.connected {
+		return
+	}
+	p.connected = false
+
+	// Close client FIRST so in-flight polls fail fast
+	client := p.client.Load()
+	if client != nil {
+		func() {
+			defer func() {
+				recover()
+			}()
+			client.Close()
+		}()
+		p.client.Store(nil)
+	}
+
+	// Then stop scheduler (no wait)
+	p.stopPolling()
+
+	publishConnectState(p.inst, C.C_ConnectState_DISCONNECTED)
+	p.scheduleReconnect()
+}
+
+func isTransportDisconnected(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "use of closed network connection") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "broken pipe") ||
+		strings.Contains(errStr, "EOF") ||
+		strings.Contains(errStr, "connection refused") ||
+		strings.Contains(errStr, "i/o timeout")
 }
 
 type pollGroup struct {
@@ -320,59 +471,72 @@ func (p *GoModbusPort) groupDuePoints(now int64) []pollGroup {
 	return ordered
 }
 
-func (p *GoModbusPort) readGroup(g *pollGroup) {
+func (p *GoModbusPort) readGroup(g *pollGroup) error {
 	switch g.modbusType {
 	case "Coil":
-		p.readCoils(g)
+		return p.readCoils(g)
 	case "DiscreteInput":
-		p.readDiscreteInputs(g)
+		return p.readDiscreteInputs(g)
 	case "HoldingRegister":
-		p.readRegisters(g, modbus.HOLDING_REGISTER)
+		return p.readRegisters(g, modbus.HOLDING_REGISTER)
 	case "InputRegister":
-		p.readRegisters(g, modbus.INPUT_REGISTER)
+		return p.readRegisters(g, modbus.INPUT_REGISTER)
 	default:
 		logError(p.inst, "unknown modbus type: %s", g.modbusType)
+		return nil
 	}
 }
 
-func (p *GoModbusPort) readCoils(g *pollGroup) {
-	values, err := p.client.ReadCoils(g.startAddr, g.count)
+func (p *GoModbusPort) readCoils(g *pollGroup) error {
+	client := p.client.Load()
+	if client == nil {
+		return nil
+	}
+	values, err := client.ReadCoils(g.startAddr, g.count)
 	if err != nil {
 		logError(p.inst, "ReadCoils(%d,%d): %v", g.startAddr, g.count, err)
-		publishConnectState(p.inst, C.C_ConnectState_DISCONNECTED)
-		return
+		return err
 	}
 	for _, pt := range g.points {
 		offset := pt.ModbusAddr - g.startAddr
 		val := offset < uint16(len(values)) && values[offset]
 		publishBinary(p.inst, pt.ODCIndex, val, pt.ODCType)
 	}
+	return nil
 }
 
-func (p *GoModbusPort) readDiscreteInputs(g *pollGroup) {
-	values, err := p.client.ReadDiscreteInputs(g.startAddr, g.count)
+func (p *GoModbusPort) readDiscreteInputs(g *pollGroup) error {
+	client := p.client.Load()
+	if client == nil {
+		return nil
+	}
+	values, err := client.ReadDiscreteInputs(g.startAddr, g.count)
 	if err != nil {
 		logError(p.inst, "ReadDiscreteInputs(%d,%d): %v", g.startAddr, g.count, err)
-		publishConnectState(p.inst, C.C_ConnectState_DISCONNECTED)
-		return
+		return err
 	}
 	for _, pt := range g.points {
 		offset := pt.ModbusAddr - g.startAddr
 		val := offset < uint16(len(values)) && values[offset]
 		publishBinary(p.inst, pt.ODCIndex, val, pt.ODCType)
 	}
+	return nil
 }
 
-func (p *GoModbusPort) readRegisters(g *pollGroup, regType modbus.RegType) {
-	values, err := p.client.ReadRegisters(g.startAddr, g.count, regType)
+func (p *GoModbusPort) readRegisters(g *pollGroup, regType modbus.RegType) error {
+	client := p.client.Load()
+	if client == nil {
+		return nil
+	}
+	values, err := client.ReadRegisters(g.startAddr, g.count, regType)
 	if err != nil {
 		logError(p.inst, "ReadRegisters(%d,%d): %v", g.startAddr, g.count, err)
-		publishConnectState(p.inst, C.C_ConnectState_DISCONNECTED)
-		return
+		return err
 	}
 	for _, pt := range g.points {
 		p.publishRegisterValue(pt, values)
 	}
+	return nil
 }
 
 func (p *GoModbusPort) publishRegisterValue(pt *PolledPoint, regs []uint16) {
@@ -384,7 +548,7 @@ func (p *GoModbusPort) publishRegisterValue(pt *PolledPoint, regs []uint16) {
 		// Bit extraction from register value
 		regIdx := (pt.ModbusAddr - pt.ModbusAddr) // 0 relative to the point's own address
 		if int(regIdx) < len(regs) {
-			val := (regs[regIdx] >> uint(pt.Bit)) & 1 != 0
+			val := (regs[regIdx]>>uint(pt.Bit))&1 != 0
 			publishBinary(p.inst, pt.ODCIndex, val, pt.ODCType)
 		}
 
@@ -439,8 +603,19 @@ func (p *GoModbusPort) publishOctetValue(pt *PolledPoint, regs []uint16) {
 // ---------------------------------------------------------------------------
 
 func (p *GoModbusPort) doHandleEvent(event *C.struct_C_EventInfo, sender string, cb unsafe.Pointer) {
+	// Copy C struct to stack to avoid cgo "Go pointer to unpinned Go pointer" error
+	// (the operation struct lives on Go heap and contains a Go string)
+	var cEvent C.struct_C_EventInfo = *event
+	event = &cEvent
+
 	if !p.enabled {
 		logWarn(p.inst, "ignoring event: port not enabled (sender=%s)", sender)
+		invokeStatusCallback(cb, C.C_CommandStatus_HARDWARE_ERROR)
+		return
+	}
+
+	if !p.connected {
+		logWarn(p.inst, "ignoring event: port not connected (sender=%s)", sender)
 		invokeStatusCallback(cb, C.C_CommandStatus_HARDWARE_ERROR)
 		return
 	}
@@ -468,6 +643,9 @@ func (p *GoModbusPort) doHandleEvent(event *C.struct_C_EventInfo, sender string,
 
 	if err != nil {
 		logError(p.inst, "control failed: %v", err)
+		if isTransportDisconnected(err) {
+			p.handleDisconnect()
+		}
 		invokeStatusCallback(cb, C.C_CommandStatus_HARDWARE_ERROR)
 		return
 	}
@@ -484,30 +662,46 @@ func (p *GoModbusPort) findControl(odcType uint8, odcIndex uint64) *ControlPoint
 }
 
 func (p *GoModbusPort) handleCoilControl(cp *ControlPoint, eventType uint8, event *C.struct_C_EventInfo) error {
+	// Copy to stack for cgo safety
+	var cEvent C.struct_C_EventInfo = *event
+	event = &cEvent
+
+	client := p.client.Load()
+	if client == nil {
+		return fmt.Errorf("client not available")
+	}
 	switch eventType {
 	case C.C_EventType_ControlRelayOutputBlock:
-		return p.client.WriteCoil(cp.ModbusAddr, true)
+		return client.WriteCoil(cp.ModbusAddr, true)
 	case C.C_EventType_Binary:
-		return p.client.WriteCoil(cp.ModbusAddr, false)
+		return client.WriteCoil(cp.ModbusAddr, false)
 	default:
-		return p.client.WriteCoil(cp.ModbusAddr, true)
+		return client.WriteCoil(cp.ModbusAddr, true)
 	}
 }
 
 func (p *GoModbusPort) handleRegisterControl(cp *ControlPoint, eventType uint8, event *C.struct_C_EventInfo) error {
+	// Copy to stack for cgo safety
+	var cEvent C.struct_C_EventInfo = *event
+	event = &cEvent
+
+	client := p.client.Load()
+	if client == nil {
+		return fmt.Errorf("client not available")
+	}
 	switch eventType {
 	case C.C_EventType_AnalogOutputInt16:
-		return p.client.WriteRegister(cp.ModbusAddr, uint16(C.odc_GetAO16Value(event)))
+		return client.WriteRegister(cp.ModbusAddr, uint16(C.odc_GetAO16Value(event)))
 	case C.C_EventType_AnalogOutputInt32:
 		val := uint32(C.odc_GetAO32Value(event))
-		return p.client.WriteUint32(cp.ModbusAddr, val)
+		return client.WriteUint32(cp.ModbusAddr, val)
 	case C.C_EventType_AnalogOutputFloat32:
-		return p.client.WriteFloat32(cp.ModbusAddr, float32(C.odc_GetAOF32Value(event)))
+		return client.WriteFloat32(cp.ModbusAddr, float32(C.odc_GetAOF32Value(event)))
 	case C.C_EventType_AnalogOutputDouble64:
-		return p.client.WriteFloat64(cp.ModbusAddr, float64(C.odc_GetAOD64Value(event)))
+		return client.WriteFloat64(cp.ModbusAddr, float64(C.odc_GetAOD64Value(event)))
 	case C.C_EventType_Analog:
 		val := int16(C.odc_GetPayloadAnalog(event))
-		return p.client.WriteRegister(cp.ModbusAddr, uint16(val))
+		return client.WriteRegister(cp.ModbusAddr, uint16(val))
 	default:
 		return fmt.Errorf("unhandled ODC event type for register control: %d", eventType)
 	}
@@ -516,6 +710,20 @@ func (p *GoModbusPort) handleRegisterControl(cp *ControlPoint, eventType uint8, 
 // ---------------------------------------------------------------------------
 // Logging helpers
 // ---------------------------------------------------------------------------
+
+func logTrace(inst unsafe.Pointer, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	cmsg := C.CString(msg)
+	C.odc_Log(inst, C.C_LOG_LEVEL_TRACE, cmsg)
+	C.free(unsafe.Pointer(cmsg))
+}
+
+func logDebug(inst unsafe.Pointer, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	cmsg := C.CString(msg)
+	C.odc_Log(inst, C.C_LOG_LEVEL_DEBUG, cmsg)
+	C.free(unsafe.Pointer(cmsg))
+}
 
 func logInfo(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
@@ -535,5 +743,12 @@ func logError(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
 	C.odc_Log(inst, C.C_LOG_LEVEL_ERROR, cmsg)
+	C.free(unsafe.Pointer(cmsg))
+}
+
+func logCritical(inst unsafe.Pointer, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	cmsg := C.CString(msg)
+	C.odc_Log(inst, C.C_LOG_LEVEL_CRITICAL, cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }

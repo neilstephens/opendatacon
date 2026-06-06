@@ -52,11 +52,12 @@ type AnalogControlConfig struct {
 }
 
 type PortConfig struct {
-	TCP        *TCPConfig `json:"TCP,omitempty"`
-	RTU        *RTUConfig `json:"RTU,omitempty"`
-	UnitID     uint8      `json:"UnitID"`
-	TimeoutMs  int        `json:"TimeoutMs"`
-	PollRateMs int        `json:"PollRateMs"`
+	TCP                *TCPConfig `json:"TCP,omitempty"`
+	RTU                *RTUConfig `json:"RTU,omitempty"`
+	UnitID             uint8      `json:"UnitID"`
+	TimeoutMs          int        `json:"TimeoutMs"`
+	PollRateMs         int        `json:"PollRateMs"`
+	MaxConcurrentPolls int        `json:"MaxConcurrentPolls,omitempty"`
 
 	Binaries             []PointConfig             `json:"Binaries"`
 	Analogs              []AnalogPointConfig        `json:"Analogs"`
@@ -161,6 +162,9 @@ func validateConfig(cfg *PortConfig) error {
 	}
 	if cfg.TimeoutMs <= 0 {
 		cfg.TimeoutMs = 1000
+	}
+	if cfg.MaxConcurrentPolls <= 0 {
+		cfg.MaxConcurrentPolls = 1
 	}
 	return nil
 }

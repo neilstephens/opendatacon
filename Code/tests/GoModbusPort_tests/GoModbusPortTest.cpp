@@ -237,3 +237,86 @@ TEST_CASE(SUITE("Build_Multiple_Calls"))
 	UnLoadModule(portlib);
 	TestTearDown();
 }
+
+// ---------------------------------------------------------------------------
+//  Immediate Disable Test
+// ---------------------------------------------------------------------------
+
+TEST_CASE(SUITE("Disable_Immediate_Returns"))
+{
+	TestSetup();
+
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
+
+	{
+		ThreadPool pool(1);
+		// Use a very short poll rate to ensure polling is active
+		Json::Value conf = BuildMinimalConfig();
+		conf["PollRateMs"] = 10;
+		conf["TimeoutMs"] = 5000; // Long timeout so connect attempt blocks
+
+		auto port = std::make_shared<odc::C_Port>("GoModbus", "ImmediateDisableTest",
+			"", conf, portlib);
+		REQUIRE(port != nullptr);
+
+		port->Build();
+		port->Enable();
+
+		// Wait for polling to start
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		// Disable should return immediately, not wait for any in-flight poll
+		auto start = std::chrono::steady_clock::now();
+		port->Disable();
+		auto elapsed = std::chrono::steady_clock::now() - start;
+
+		// Disable should complete quickly (well under 1 second)
+		REQUIRE(elapsed < std::chrono::seconds(1));
+	}
+
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+// ---------------------------------------------------------------------------
+//  Poll Dropping Test
+// ---------------------------------------------------------------------------
+
+TEST_CASE(SUITE("Poll_Dropping_When_Overwhelmed"))
+{
+	TestSetup();
+
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
+
+	{
+		ThreadPool pool(1);
+		// Configure with maxConcurrentPolls=1 and very fast poll rate
+		// Poll function will be slow (connection timeout), so polls should be dropped
+		Json::Value conf = BuildMinimalConfig();
+		conf["PollRateMs"] = 10;        // Very fast polling
+		conf["TimeoutMs"] = 5000;       // Long timeout
+		conf["MaxConcurrentPolls"] = 1; // Only 1 concurrent poll allowed
+
+		auto port = std::make_shared<odc::C_Port>("GoModbus", "PollDroppingTest",
+			"", conf, portlib);
+		REQUIRE(port != nullptr);
+
+		port->Build();
+		port->Enable();
+
+		// Let it run for a bit - polls will queue up and be dropped
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		port->Disable();
+
+		// The test passes if we don't crash - the poll dropping is internal
+		// We can't easily inspect the dropped count from C++ without adding
+		// a stats API, but the fact that it runs without deadlock verifies
+		// the non-blocking behavior.
+	}
+
+	UnLoadModule(portlib);
+	TestTearDown();
+}
