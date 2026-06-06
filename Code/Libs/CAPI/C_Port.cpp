@@ -56,7 +56,7 @@ namespace odc
 
 C_Port::C_Port(const std::string& aType, const std::string& aName,
 	const std::string& aConfFilename, const Json::Value& aConfOverrides,
-	void* lib_handle):
+	module_ptr lib_handle):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	Type(aType),
 	lib_handle(lib_handle),

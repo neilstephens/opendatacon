@@ -45,7 +45,7 @@ class C_Transform: public Transform
 {
 public:
 	C_Transform(const std::string& aType, const std::string& aName,
-		const Json::Value& params, void* lib_handle);
+		const Json::Value& params, module_ptr lib_handle);
 	~C_Transform() override;
 
 	void Enable() override

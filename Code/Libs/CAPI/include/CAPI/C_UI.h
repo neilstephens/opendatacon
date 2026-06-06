@@ -45,7 +45,7 @@ class C_UI: public IUI
 public:
 	C_UI(const std::string& aType, const std::string& aName,
 		const std::string& aConfFilename,
-		const Json::Value& aConfOverrides, void* lib_handle);
+		const Json::Value& aConfOverrides, module_ptr lib_handle);
 	~C_UI() override;
 
 	void Build() override

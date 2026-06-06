@@ -48,7 +48,7 @@ class C_Port: public DataPort
 public:
 	C_Port(const std::string& aType, const std::string& aName,
 		const std::string& aConfFilename, const Json::Value& aConfOverrides,
-		void* lib_handle);
+		module_ptr lib_handle);
 	~C_Port() override;
 
 	void Enable() override
