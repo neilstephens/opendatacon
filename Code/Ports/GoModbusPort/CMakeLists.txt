@@ -27,6 +27,10 @@ find_program(GO_EXECUTABLE go REQUIRED
 
 set(GO_OUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}${CMAKE_SHARED_MODULE_SUFFIX}")
 
+get_filename_component(GO_OUT_DIR "${GO_OUT}" DIRECTORY)
+file(MAKE_DIRECTORY "${GO_OUT_DIR}")
+
+# Glob all .go sources (for DEPENDS / IDE display)
 file(GLOB GO_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.go"
 )
@@ -36,29 +40,55 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_custom_command(
-    OUTPUT  ${GO_OUT}
-    COMMAND ${GO_EXECUTABLE} build
-            -buildmode=c-shared
-            -ldflags "-s -w"
-            -o ${GO_OUT}
-            ${CMAKE_CURRENT_SOURCE_DIR}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/go.mod
-        ${GO_SOURCES}
-    COMMENT "Building GoModbusPort (go build -buildmode=c-shared)"
-)
+if(WIN32)
+	# On Windows, LoadLibrary cannot resolve symbols from the calling process
+	# the way Linux's dlopen does.  GoModbusPort.dll must declare an explicit
+	# import of CAPI.dll so that odc_PublishEvent, odc_Log, etc. are wired up
+	# at load time.  We pass CAPI.dll's path via CGO_LDFLAGS so MinGW's linker
+	# (used by Go's CGO) reads the DLL's export table and generates the import
+	# stubs automatically.  CAPI is listed in DEPENDS to guarantee it is built
+	# before the Go build command runs.
+	add_custom_command(
+	    OUTPUT  ${GO_OUT}
+	    COMMAND ${CMAKE_COMMAND} -E env
+	            "CGO_LDFLAGS=$<TARGET_FILE:CAPI>"
+	        -- ${GO_EXECUTABLE} build
+	            -buildmode=c-shared
+	            -ldflags "-s -w"
+	            -o ${GO_OUT}
+	            ${CMAKE_CURRENT_SOURCE_DIR}
+	    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	    DEPENDS
+	        ${CMAKE_CURRENT_SOURCE_DIR}/go.mod
+	        ${GO_SOURCES}
+	        CAPI
+	    COMMENT "Building GoModbusPort (go build -buildmode=c-shared) [Windows]"
+	)
+else()
+	add_custom_command(
+	    OUTPUT  ${GO_OUT}
+	    COMMAND ${GO_EXECUTABLE} build
+	            -buildmode=c-shared
+	            -ldflags "-s -w"
+	            -o ${GO_OUT}
+	            ${CMAKE_CURRENT_SOURCE_DIR}
+	    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	    DEPENDS
+	        ${CMAKE_CURRENT_SOURCE_DIR}/go.mod
+	        ${GO_SOURCES}
+	    COMMENT "Building GoModbusPort (go build -buildmode=c-shared)"
+	)
+endif()
 
+# ALL target drives the custom command
 add_custom_target(${PROJECT_NAME} ALL DEPENDS ${GO_OUT}
     SOURCES
         ${GO_SOURCES}
         ${CMAKE_CURRENT_SOURCE_DIR}/go.mod
 )
 
-# Imported library target so the .so is tracked by CMake's build system.
-# Other targets (e.g. tests) can depend on GoModbusPort_lib to ensure
-# the shared library is built and discoverable in CMAKE_LIBRARY_OUTPUT_DIRECTORY.
+# Imported SHARED target so dependents (GoModbusPort_tests) can declare a
+# proper CMake dependency on the .so without linking it.
 add_library(${PROJECT_NAME}_lib SHARED IMPORTED GLOBAL)
 set_property(TARGET ${PROJECT_NAME}_lib PROPERTY IMPORTED_LOCATION ${GO_OUT})
 add_dependencies(${PROJECT_NAME}_lib ${PROJECT_NAME})

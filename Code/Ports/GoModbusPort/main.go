@@ -2,7 +2,8 @@ package main
 
 /*
 #cgo CFLAGS: -I${SRCDIR} -I${SRCDIR}/../../../include
-#cgo LDFLAGS: -Wl,--allow-shlib-undefined
+#cgo linux LDFLAGS: -Wl,--allow-shlib-undefined
+#cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
 
 #include <stdlib.h>
 #include "opendatacon/odc_c_api.h"
