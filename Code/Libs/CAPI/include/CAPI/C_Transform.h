@@ -71,7 +71,7 @@ private:
 	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
 
 	std::string Type;
-	void* lib_handle;
+	module_ptr lib_handle;
 	void* c_inst;
 
 	decltype(&odc_transform_create) p_create;

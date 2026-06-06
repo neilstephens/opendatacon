@@ -124,7 +124,7 @@ private:
 	std::string Type;
 	Json::Value configJSON;
 	std::string configJSONstr;
-	void* lib_handle;
+	module_ptr lib_handle;
 	void* c_inst;
 
 	// required function pointers — types derived from odc_c_api.h
