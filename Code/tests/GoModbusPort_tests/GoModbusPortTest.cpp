@@ -18,6 +18,9 @@
  *	limitations under the License.
  */
 
+// Go's runtime needs to handle posix signals itself
+#define CATCH_CONFIG_NO_POSIX_SIGNALS
+
 #include "../PortLoader.h"
 #include "../ThreadPool.h"
 #include <catch.hpp>
@@ -116,7 +119,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		port->Disable();
 	}
 
-	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -149,7 +151,6 @@ TEST_CASE(SUITE("ConfigPassthrough"))
 		REQUIRE(std::string(json).find("42") != std::string::npos);
 	}
 
-	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -209,7 +210,6 @@ TEST_CASE(SUITE("BinaryControlDispatch"))
 		port->Disable();
 	}
 
-	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -234,7 +234,6 @@ TEST_CASE(SUITE("Build_Multiple_Calls"))
 		port->Disable();
 	}
 
-	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -275,7 +274,6 @@ TEST_CASE(SUITE("Disable_Immediate_Returns"))
 		REQUIRE(elapsed < std::chrono::seconds(1));
 	}
 
-	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -317,6 +315,46 @@ TEST_CASE(SUITE("Poll_Dropping_When_Overwhelmed"))
 		// the non-blocking behavior.
 	}
 
-	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+// ---------------------------------------------------------------------------
+//  Load / Unload / Sleep
+//  Verifies that Disable cancels the reconnect timer before the library is
+//  dlclose'd.  After destruction the port must leave no goroutines that will
+//  fire into unmapped memory.  We sleep past initialReconnectDelayMs (1 s) to
+//  give any leaked timer goroutine a chance to execute.  A SIGSEGV here means
+//  the Go code did not stop its timer before allowing dlclose to proceed.
+// ---------------------------------------------------------------------------
+
+TEST_CASE(SUITE("LoadUnloadSleep"))
+{
+	TestSetup();
+
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
+
+	{
+		ThreadPool pool(1);
+		auto port = std::make_shared<odc::C_Port>("GoModbus", "LoadUnloadSleepTest",
+			"", BuildMinimalConfig(), portlib);
+		REQUIRE(port != nullptr);
+
+		port->Build();
+		port->Enable();
+		// Let Go initialise and arm the reconnect timer (delay = 1000 ms).
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		// Disable must stop the timer before returning.
+		port->Disable();
+		// ~C_Port fires here: go_port_destroy, then UnLoadModule(portlib) → dlclose.
+		// Library segments are unmapped after this scope closes.
+	}
+
+	// Sleep past the original reconnect delay.  If doDisable did not call
+	// timer.Stop() the timer goroutine will fire into unmapped .text → SIGSEGV.
+	std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+
+	// Reaching this line means no goroutine fired after dlclose.
+	// (portlib is a dangling handle at this point — do NOT call UnLoadModule.)
 	TestTearDown();
 }

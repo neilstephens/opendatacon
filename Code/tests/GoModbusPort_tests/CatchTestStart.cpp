@@ -20,6 +20,9 @@
 
 #define CATCH_CONFIG_RUNNER
 
+// Go's runtime needs to handle posix signals itself
+#define CATCH_CONFIG_NO_POSIX_SIGNALS
+
 #include <catch.hpp>
 #include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
