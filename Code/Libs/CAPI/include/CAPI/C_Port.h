@@ -66,7 +66,7 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName,
 		SharedStatusCallback_t pStatusCallback) override
-	{ pSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);}); }
+	{ pSyncStrand->post([=,this,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);}); }
 
 	// Public wrappers around protected PublishEvent — callable from C helper functions
 	void PublicPublishEvent(const std::shared_ptr<const EventInfo>& event,
@@ -76,7 +76,7 @@ public:
 	{ PublishEvent(event); }
 
 	// Accessors for C helper functions
-	std::shared_ptr<asio::io_service::strand> GetStrand() const { return pSyncStrand; }
+	std::shared_ptr<odc::strand_t> GetStrand() const { return pSyncStrand; }
 	std::shared_ptr<void> GetHandlerTracker() const { return handler_tracker; }
 	void* GetCInst() const { return c_inst; }
 	const std::string& GetConfigStr() const { return configJSONstr; }
@@ -108,7 +108,7 @@ public:
 
 private:
 	mutable std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	mutable std::shared_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	mutable std::shared_ptr<odc::strand_t> pSyncStrand = pIOS->make_strand();
 
 	void Enable_();
 	void Disable_();

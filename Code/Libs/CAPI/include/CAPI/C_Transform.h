@@ -55,7 +55,7 @@ public:
 	{ pSyncStrand->post([this,h{handler_tracker}](){Disable_();}); }
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
-	{ pSyncStrand->post([=,h{handler_tracker}](){Event_(event,pAllow);}); }
+	{ pSyncStrand->post([=,this,h{handler_tracker}](){Event_(event,pAllow);}); }
 
 	void Log(uint8_t level, const std::string& msg);
 	bool ShouldLog(uint8_t level) const;
@@ -64,7 +64,7 @@ public:
 private:
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
 	std::shared_ptr<asio_service> pIOS = asio_service::Get();
-	std::shared_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pSyncStrand = pIOS->make_strand();
 
 	void Enable_();
 	void Disable_();

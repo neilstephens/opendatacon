@@ -65,7 +65,7 @@ public:
 
 private:
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::shared_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pSyncStrand = pIOS->make_strand();
 
 	void Build_();
 	void Enable_();
