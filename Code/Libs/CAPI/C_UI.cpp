@@ -71,7 +71,12 @@ C_UI::C_UI(const std::string& aType, const std::string& aName,
 
 	std::string overrides_str;
 	if(!aConfOverrides.isNull())
-		overrides_str = Json::FastWriter().write(aConfOverrides);
+	{
+		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None";
+		wbuilder["indentation"] = "";
+		overrides_str = Json::writeString(wbuilder, aConfOverrides);
+	}
 
 	c_inst = p_create(aName.c_str(), aConfFilename.c_str(), overrides_str.c_str());
 	C_UI_instances[c_inst] = this;

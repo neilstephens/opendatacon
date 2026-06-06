@@ -27,6 +27,30 @@
 #include "CAPI/C_Port.h"
 #include "C_Internal.h"
 
+#include <cstring>
+#include <memory>
+#include <sstream>
+
+namespace
+{
+
+Json::Value ParseJsonString(const char* json_str)
+{
+	thread_local std::unique_ptr<Json::CharReader> reader =
+		[]
+		{
+			Json::CharReaderBuilder b;
+			b["allowComments"] = true;
+			return std::unique_ptr<Json::CharReader>(b.newCharReader());
+		}();
+	Json::Value val;
+	std::string errs;
+	reader->parse(json_str, json_str + std::strlen(json_str), &val, &errs);
+	return val;
+}
+
+} // anonymous namespace
+
 namespace odc
 {
 
@@ -124,7 +148,18 @@ void C_Port::ProcessElements(const Json::Value& JSONRoot)
 	if(!JSONRoot.isObject())
 		return;
 	MergeJsonConf(configJSON, JSONRoot);
-	configJSONstr = Json::FastWriter().write(configJSON);
+
+	thread_local std::unique_ptr<Json::StreamWriter> writer =
+		[]
+		{
+			Json::StreamWriterBuilder b;
+			b["commentStyle"] = "None";
+			b["indentation"] = "";
+			return std::unique_ptr<Json::StreamWriter>(b.newStreamWriter());
+		}();
+	std::ostringstream ss;
+	writer->write(configJSON, &ss);
+	configJSONstr = ss.str();
 }
 
 void C_Port::Log(uint8_t level, const std::string& msg)
@@ -178,8 +213,7 @@ const Json::Value C_Port::GetStatistics_() const
 	const char* json_str = p_stats_json(c_inst);
 	if(!json_str)
 		return Json::Value();
-	Json::Value val;
-	Json::Reader().parse(json_str, val);
+	auto val = ParseJsonString(json_str);
 	if(p_free_str)
 		p_free_str(json_str);
 	return val;
@@ -192,8 +226,7 @@ const Json::Value C_Port::GetCurrentState_() const
 	const char* json_str = p_state_json(c_inst);
 	if(!json_str)
 		return Json::Value();
-	Json::Value val;
-	Json::Reader().parse(json_str, val);
+	auto val = ParseJsonString(json_str);
 	if(p_free_str)
 		p_free_str(json_str);
 	return val;
@@ -206,8 +239,7 @@ const Json::Value C_Port::GetStatus_() const
 	const char* json_str = p_status_json(c_inst);
 	if(!json_str)
 		return Json::Value();
-	Json::Value val;
-	Json::Reader().parse(json_str, val);
+	auto val = ParseJsonString(json_str);
 	if(p_free_str)
 		p_free_str(json_str);
 	return val;

@@ -71,7 +71,12 @@ C_Transform::C_Transform(const std::string& aType, const std::string& aName,
 
 	std::string params_str;
 	if(!params.isNull())
-		params_str = Json::FastWriter().write(params);
+	{
+		Json::StreamWriterBuilder wbuilder;
+		wbuilder["commentStyle"] = "None";
+		wbuilder["indentation"] = "";
+		params_str = Json::writeString(wbuilder, params);
+	}
 
 	c_inst = p_create(aName.c_str(), params_str.c_str());
 	C_Transform_instances[c_inst] = this;
