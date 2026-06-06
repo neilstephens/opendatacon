@@ -130,7 +130,7 @@ void C_Port::ProcessElements(const Json::Value& JSONRoot)
 void C_Port::Log(uint8_t level, const std::string& msg)
 {
 	if(auto log = odc::spdlog_get(Type+"Port"))
-		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
+		log->log(static_cast<spdlog::level::level_enum>(level), "{}: {}", Name, msg);
 }
 
 bool C_Port::ShouldLog(uint8_t level) const

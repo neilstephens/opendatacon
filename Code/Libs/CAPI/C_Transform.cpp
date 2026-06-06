@@ -264,7 +264,7 @@ void C_Transform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow
 void C_Transform::Log(uint8_t level, const std::string& msg)
 {
 	if(auto log = odc::spdlog_get(Type))
-		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
+		log->log(static_cast<spdlog::level::level_enum>(level), "{}: {}", Name, msg);
 }
 
 bool C_Transform::ShouldLog(uint8_t level) const
