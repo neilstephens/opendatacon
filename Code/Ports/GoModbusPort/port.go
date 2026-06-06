@@ -63,13 +63,13 @@ type GoModbusPort struct {
 	unitID              uint8
 	enabled             bool
 	built               bool
-	connected           bool        // transport-level connection state
-	reconnectScheduled  bool        // prevent duplicate reconnect timers
-	reconnectDelayMs    int         // current reconnect backoff delay
+	connected           bool         // transport-level connection state
+	reconnectScheduled  bool         // prevent duplicate reconnect timers
+	reconnectTimer      *time.Timer  // handle for the pending reconnect AfterFunc
+	reconnectDelayMs    int          // current reconnect backoff delay
 
 	// polling (owned by pollScheduler goroutine)
 	pollScheduler PollScheduler
-	pollWg        sync.WaitGroup
 }
 
 // initial reconnect delay and max delay
@@ -153,8 +153,9 @@ func (p *GoModbusPort) run() {
 func (p *GoModbusPort) stopPolling() {
 	if p.pollScheduler != nil {
 		p.pollScheduler.Shutdown()
-		// Don't Wait() here - let in-flight polls fail fast on closed connection
-		p.pollScheduler = nil
+		// Don't Wait() here — in-flight polls will fail fast on the closed client.
+		// destroy() calls Wait() after <-p.done so the goroutines are joined before
+		// dlclose.  Do NOT nil p.pollScheduler here; destroy() needs the reference.
 	}
 }
 
@@ -221,6 +222,11 @@ func (p *GoModbusPort) doDisable() {
 	p.enabled = false
 	p.connected = false
 	p.reconnectScheduled = false
+	// Stop any pending reconnect timer so no goroutine fires after dlclose.
+	if p.reconnectTimer != nil {
+		p.reconnectTimer.Stop()
+		p.reconnectTimer = nil
+	}
 
 	// Close client FIRST so in-flight polls fail fast
 	client := p.client.Load()
@@ -247,7 +253,7 @@ func (p *GoModbusPort) scheduleReconnect() {
 	}
 	p.reconnectScheduled = true
 	delay := time.Duration(p.reconnectDelayMs) * time.Millisecond
-	time.AfterFunc(delay, func() {
+	p.reconnectTimer = time.AfterFunc(delay, func() {
 		p.ops <- operation{typ: opReconnect}
 	})
 }
@@ -321,8 +327,8 @@ func (p *GoModbusPort) destroy() {
 	// Just clear the reference.
 	p.client.Store(nil)
 
-	removePort(p.inst)
 	logInfo(p.inst, "port destroyed: %s", p.name)
+	removePort(p.inst)
 }
 
 // ---------------------------------------------------------------------------
