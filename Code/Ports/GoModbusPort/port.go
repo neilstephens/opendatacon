@@ -720,41 +720,41 @@ func (p *GoModbusPort) handleRegisterControl(cp *ControlPoint, eventType uint8, 
 func logTrace(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
-	C.odc_Log(inst, C.C_LOG_LEVEL_TRACE, cmsg)
+	C.odc_log(inst, C.C_LOG_LEVEL_TRACE, cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }
 
 func logDebug(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
-	C.odc_Log(inst, C.C_LOG_LEVEL_DEBUG, cmsg)
+	C.odc_log(inst, C.C_LOG_LEVEL_DEBUG, cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }
 
 func logInfo(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
-	C.odc_Log(inst, C.C_LOG_LEVEL_INFO, cmsg)
+	C.odc_log(inst, C.C_LOG_LEVEL_INFO, cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }
 
 func logWarn(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
-	C.odc_Log(inst, C.C_LOG_LEVEL_WARN, cmsg)
+	C.odc_log(inst, C.C_LOG_LEVEL_WARN, cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }
 
 func logError(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
-	C.odc_Log(inst, C.C_LOG_LEVEL_ERROR, cmsg)
+	C.odc_log(inst, C.C_LOG_LEVEL_ERROR, cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }
 
 func logCritical(inst unsafe.Pointer, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
-	C.odc_Log(inst, C.C_LOG_LEVEL_CRITICAL, cmsg)
+	C.odc_log(inst, C.C_LOG_LEVEL_CRITICAL, cmsg)
 	C.free(unsafe.Pointer(cmsg))
 }

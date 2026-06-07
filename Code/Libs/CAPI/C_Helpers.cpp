@@ -776,3 +776,36 @@ extern "C" int odc_QualityFlagsToString(uint16_t flags, char* buf, size_t buflen
 	std::memcpy(buf, s.c_str(), s.size() + 1);
 	return 0;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Host API vtable — populated once, passed to port/transform/plugin */
+/*  libraries via odc_library_init() so they have no link-time deps.  */
+/* ------------------------------------------------------------------ */
+C_ODC_HostAPI g_host_api = {
+	odc_InvokeStatusCallback,
+	odc_PublishEvent,
+	odc_PublishConnectState,
+	odc_GetConfigJSON,
+	odc_Log,
+	odc_ShouldLog,
+	odc_msTimerCallback,
+	odc_cancelTimer,
+	odc_msRepeatingCallback,
+	odc_InDemand,
+	odc_msSinceEpoch,
+	odc_msSinceEpochToDateTime,
+	odc_DateTimeToMsSinceEpoch,
+	odc_String2Hex,
+	odc_Hex2String,
+	odc_GetWorkingDir,
+	odc_GetExecutableDir,
+	odc_SpawnDetached,
+	odc_SpawnAttached,
+	odc_KillPid,
+	odc_WaitPid,
+	odc_EventTypeToString,
+	odc_CommandStatusToString,
+	odc_ControlCodeToString,
+	odc_ConnectStateToString,
+	odc_QualityFlagsToString
+};

@@ -144,4 +144,10 @@ private:
 
 } // namespace odc
 
+/* Host API vtable — populated once by C_Helpers.cpp and passed to each loaded
+   C port/transform/UI library via odc_library_init().  Exposed here so that
+   host-side C++ code (tests, etc.) can call host services through the same
+   struct without needing separate extern "C" forward declarations. */
+extern C_ODC_HostAPI g_host_api;
+
 #endif // C_PORT_H

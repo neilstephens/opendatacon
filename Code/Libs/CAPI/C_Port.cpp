@@ -103,6 +103,15 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 		throw std::runtime_error("C_Port missing required C API symbols");
 	}
 
+	// Pass the host API vtable to the library — must happen before any
+	// odc_port_create() call so the library can use host services immediately.
+	{
+		auto p_lib_init = reinterpret_cast<void (*)(C_ODC_HostAPI*)>(
+			LoadSymbol(lib_handle, "odc_library_init"));
+		if(p_lib_init)
+			p_lib_init(&g_host_api);
+	}
+
 	c_inst = p_create(Type.c_str(), aName.c_str());
 	C_Port_instances[c_inst] = this;
 

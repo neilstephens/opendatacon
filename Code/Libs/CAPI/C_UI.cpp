@@ -69,6 +69,14 @@ C_UI::C_UI(const std::string& aType, const std::string& aName,
 		throw std::runtime_error("C_UI missing required C API symbols");
 	}
 
+	// Pass the host API vtable to the library.
+	{
+		auto p_lib_init = reinterpret_cast<void (*)(C_ODC_HostAPI*)>(
+			LoadSymbol(lib_handle, "odc_library_init"));
+		if(p_lib_init)
+			p_lib_init(&g_host_api);
+	}
+
 	std::string overrides_str;
 	if(!aConfOverrides.isNull())
 	{

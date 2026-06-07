@@ -145,7 +145,7 @@ TEST_CASE(SUITE("ConfigPassthrough"))
 		port->Disable();
 
 		// Verify config was stored
-		const char* json = odc_GetConfigJSON(port->GetCInst());
+		const char* json = g_host_api.get_config_json(port->GetCInst());
 		REQUIRE(json != nullptr);
 		REQUIRE(std::string(json).find("127.0.0.1") != std::string::npos);
 		REQUIRE(std::string(json).find("42") != std::string::npos);

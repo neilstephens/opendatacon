@@ -1,9 +1,10 @@
 package main
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../../../include
+#cgo CFLAGS: -I${SRCDIR} -I${SRCDIR}/../../../include
 
 #include "opendatacon/odc_c_api.h"
+#include "gombus_helpers.h"
 */
 import "C"
 import "encoding/json"
@@ -114,7 +115,7 @@ type ControlPoint struct {
 }
 
 func parseConfig(inst unsafe.Pointer) (*PortConfig, error) {
-	cJSON := C.odc_GetConfigJSON(inst)
+	cJSON := C.odc_get_config_json(inst)
 	if cJSON == nil {
 		return nil, fmt.Errorf("odc_GetConfigJSON returned nil")
 	}

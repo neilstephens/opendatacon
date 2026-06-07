@@ -364,7 +364,7 @@ TEST_CASE("C_API - odc_PublishEvent callback")
 			    };
 
 	// Publish using C API helper
-	odc_PublishEvent(pub->GetCInst(), &cevt, callback, &cb_fired);
+	g_host_api.publish_event(pub->GetCInst(), &cevt, callback, &cb_fired);
 
 	// Wait for processing
 	for(int i = 0; i < 100; i++)
@@ -400,7 +400,7 @@ TEST_CASE("C_API - odc_PublishEvent no callback")
 	cevt.payload.analog_val = 3.14;
 
 	// Null callback — should not crash
-	odc_PublishEvent(pub->GetCInst(), &cevt, nullptr, nullptr);
+	g_host_api.publish_event(pub->GetCInst(), &cevt, nullptr, nullptr);
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	pub->Disable();
@@ -424,7 +424,7 @@ TEST_CASE("C_API - odc_PublishConnectState")
 	port->Build();
 	port->Enable();
 
-	odc_PublishConnectState(port->GetCInst(), C_ConnectState_CONNECTED);
+	g_host_api.publish_connect_state(port->GetCInst(), C_ConnectState_CONNECTED);
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	port->Disable();
 	TestTearDown();
@@ -454,7 +454,7 @@ TEST_CASE("C_API - odc_GetConfigJSON")
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 	// Retrieve via C helper — returns JSON string
-	const char* json = odc_GetConfigJSON(port->GetCInst());
+	const char* json = g_host_api.get_config_json(port->GetCInst());
 	REQUIRE(json != nullptr);
 	REQUIRE(std::string(json).find("TestKey") != std::string::npos);
 	REQUIRE(std::string(json).find("TestValue") != std::string::npos);
@@ -467,7 +467,7 @@ TEST_CASE("C_API - odc_GetConfigJSON")
 //  odc_Log
 // ---------------------------------------------------------------------------
 
-TEST_CASE("C_API - odc_Log, odc_ShouldLog, convenience macros")
+TEST_CASE("C_API - g_host_api log and should_log")
 {
 	TestSetup();
 	ThreadPool pool;
@@ -488,35 +488,35 @@ TEST_CASE("C_API - odc_Log, odc_ShouldLog, convenience macros")
 	ux->Build();
 	ux->Enable();
 
-	// odc_Log at various levels — verify no crash (port, transform, UI)
-	odc_Log(cinst, C_LOG_LEVEL_TRACE, "trace message");
-	odc_Log(cinst, C_LOG_LEVEL_INFO, "info message");
-	odc_Log(cinst, C_LOG_LEVEL_ERROR, "error message");
-	odc_Log(cinst, C_LOG_LEVEL_OFF, nullptr); // null message — no crash
-	odc_Log(tx->GetCInst(), C_LOG_LEVEL_ERROR, "tx error");
-	odc_Log(ux->GetCInst(), C_LOG_LEVEL_ERROR, "ui error");
+	// log at various levels — verify no crash (port, transform, UI)
+	g_host_api.log(cinst, C_LOG_LEVEL_TRACE, "trace message");
+	g_host_api.log(cinst, C_LOG_LEVEL_INFO, "info message");
+	g_host_api.log(cinst, C_LOG_LEVEL_ERROR, "error message");
+	g_host_api.log(cinst, C_LOG_LEVEL_OFF, nullptr); // null message — no crash
+	g_host_api.log(tx->GetCInst(), C_LOG_LEVEL_ERROR, "tx error");
+	g_host_api.log(ux->GetCInst(), C_LOG_LEVEL_ERROR, "ui error");
 
 	// Null inst — no crash
-	odc_Log(nullptr, C_LOG_LEVEL_INFO, "no instance");
+	g_host_api.log(nullptr, C_LOG_LEVEL_INFO, "no instance");
 
-	// odc_ShouldLog on all three types
+	// should_log on all three types
 	if(log_level <= spdlog::level::err)
 	{
-		REQUIRE(odc_ShouldLog(cinst, C_LOG_LEVEL_ERROR));
-		REQUIRE(odc_ShouldLog(cinst, C_LOG_LEVEL_CRITICAL));
-		REQUIRE(odc_ShouldLog(tx->GetCInst(), C_LOG_LEVEL_ERROR));
-		REQUIRE(odc_ShouldLog(ux->GetCInst(), C_LOG_LEVEL_ERROR));
+		REQUIRE(g_host_api.should_log(cinst, C_LOG_LEVEL_ERROR));
+		REQUIRE(g_host_api.should_log(cinst, C_LOG_LEVEL_CRITICAL));
+		REQUIRE(g_host_api.should_log(tx->GetCInst(), C_LOG_LEVEL_ERROR));
+		REQUIRE(g_host_api.should_log(ux->GetCInst(), C_LOG_LEVEL_ERROR));
 	}
-	REQUIRE(!odc_ShouldLog(cinst, C_LOG_LEVEL_TRACE));
-	REQUIRE(!odc_ShouldLog(nullptr, C_LOG_LEVEL_INFO));
+	REQUIRE(!g_host_api.should_log(cinst, C_LOG_LEVEL_TRACE));
+	REQUIRE(!g_host_api.should_log(nullptr, C_LOG_LEVEL_INFO));
 
-	// Convenience macros — compile-time check via expansion
-	odc_LogTrace(cinst, "trace via macro");
-	odc_LogDebug(cinst, "debug via macro");
-	odc_LogInfo(cinst, "info via macro");
-	odc_LogWarn(cinst, "warn via macro");
-	odc_LogError(cinst, "error via macro");
-	odc_LogCritical(cinst, "critical via macro");
+	// Log via vtable at each level
+	g_host_api.log(cinst, C_LOG_LEVEL_TRACE,    "trace via vtable");
+	g_host_api.log(cinst, C_LOG_LEVEL_DEBUG,    "debug via vtable");
+	g_host_api.log(cinst, C_LOG_LEVEL_INFO,     "info via vtable");
+	g_host_api.log(cinst, C_LOG_LEVEL_WARN,     "warn via vtable");
+	g_host_api.log(cinst, C_LOG_LEVEL_ERROR,    "error via vtable");
+	g_host_api.log(cinst, C_LOG_LEVEL_CRITICAL, "critical via vtable");
 
 	// Wait for log posts to drain
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -552,7 +552,7 @@ TEST_CASE("C_API - odc_msTimerCallback fires")
 				    *data = true;
 			    };
 
-	void* handle = odc_msTimerCallback(port->GetCInst(), 10, callback, &fired);
+	void* handle = g_host_api.ms_timer_callback(port->GetCInst(), 10, callback, &fired);
 	REQUIRE(handle != nullptr);
 
 	// Wait for timer to fire
@@ -564,7 +564,7 @@ TEST_CASE("C_API - odc_msTimerCallback fires")
 	REQUIRE(fired);
 
 	// Handle is stale after firing — calling cancel is safe (no-op)
-	odc_cancelTimer(handle);
+	g_host_api.cancel_timer(handle);
 
 	port->Disable();
 	TestTearDown();
@@ -592,11 +592,11 @@ TEST_CASE("C_API - odc_cancelTimer prevents callback")
 				    *data = true;
 			    };
 
-	void* handle = odc_msTimerCallback(port->GetCInst(), 10000, callback, &fired);
+	void* handle = g_host_api.ms_timer_callback(port->GetCInst(), 10000, callback, &fired);
 	REQUIRE(handle != nullptr);
 
 	// Cancel immediately
-	odc_cancelTimer(handle);
+	g_host_api.cancel_timer(handle);
 
 	// Wait a bit to ensure callback does NOT fire
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));

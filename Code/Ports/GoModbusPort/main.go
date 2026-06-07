@@ -2,8 +2,6 @@ package main
 
 /*
 #cgo CFLAGS: -I${SRCDIR} -I${SRCDIR}/../../../include
-#cgo linux LDFLAGS: -Wl,--allow-shlib-undefined
-#cgo darwin LDFLAGS: -Wl,-undefined,dynamic_lookup
 
 #include <stdlib.h>
 #include "opendatacon/odc_c_api.h"
@@ -16,6 +14,11 @@ import (
 )
 
 func main() {}
+
+//export odc_library_init
+func odc_library_init(odc *C.struct_C_ODC_HostAPI) {
+	C.odc = odc
+}
 
 //------------------------------------------------------------------------------
 // Required C API exports
@@ -128,7 +131,7 @@ func publishBinary(inst unsafe.Pointer, index uint64, value bool, odcType uint8)
 		v = 1
 	}
 	C.odc_SetPayloadBinary(&evt, v)
-	C.odc_PublishEvent(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, nil, nil)
 }
 
 func publishAnalog(inst unsafe.Pointer, index uint64, value float64, odcType uint8) {
@@ -139,7 +142,7 @@ func publishAnalog(inst unsafe.Pointer, index uint64, value float64, odcType uin
 		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
 	}
 	C.odc_SetPayloadAnalog(&evt, C.double(value))
-	C.odc_PublishEvent(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, nil, nil)
 }
 
 func publishOctetString(inst unsafe.Pointer, index uint64, data []byte) {
@@ -155,7 +158,7 @@ func publishOctetString(inst unsafe.Pointer, index uint64, data []byte) {
 	cdata := C.CBytes(data)
 	defer C.free(cdata)
 	C.odc_SetPayloadOctetString(&evt, (*C.uint8_t)(cdata), C.size_t(len(data)))
-	C.odc_PublishEvent(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, nil, nil)
 }
 
 func publishConnectState(inst unsafe.Pointer, state int32) {
@@ -166,5 +169,5 @@ func publishConnectState(inst unsafe.Pointer, state int32) {
 		quality:    0,
 	}
 	C.odc_SetPayloadConnectState(&evt, C.uint8_t(state))
-	C.odc_PublishEvent(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, nil, nil)
 }
