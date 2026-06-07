@@ -121,6 +121,12 @@ if(FULL)
 	set(CONSOLEUI ON CACHE BOOL "Build the console user interface" FORCE)
 endif()
 
+# Go c-shared buildmode does not support windows/386; disable GoModbusPort on 32-bit Windows
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+	set(GOMODBUSPORT OFF CACHE BOOL "Build Go Modbus Port" FORCE)
+	message(STATUS "GoModbusPort disabled: Go c-shared buildmode does not support windows/386")
+endif()
+
 # IDE configuration
 set_property(GLOBAL PROPERTY USE_FOLDERS ON) #allows the creation of solution folders
 

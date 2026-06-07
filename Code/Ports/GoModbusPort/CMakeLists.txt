@@ -19,6 +19,10 @@
 #
 project(GoModbusPort)
 
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+	message(FATAL_ERROR "GoModbusPort cannot be built on 32-bit Windows: Go c-shared buildmode does not support windows/386")
+endif()
+
 # Find Go toolchain
 set(GO_HOME "/opt/go" CACHE PATH "Directory where Go is installed")
 find_program(GO_EXECUTABLE go REQUIRED

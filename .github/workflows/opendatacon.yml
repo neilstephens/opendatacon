@@ -277,7 +277,7 @@ jobs:
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}C_API_tests ${{env.LOG_LVL}} -d yes
     - name: GoModbusPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && !contains(github.ref, 'tag') && !(matrix.bits == 32 && contains(matrix.os, 'windows')) }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}GoModbusPort_tests ${{env.LOG_LVL}} -d yes
       
     - name: Upload Installer
