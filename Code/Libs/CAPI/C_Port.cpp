@@ -120,7 +120,6 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 
 C_Port::~C_Port()
 {
-	C_Port_instances.erase(c_inst);
 	if(c_inst)
 	{
 		std::weak_ptr<void> tracker = handler_tracker;
@@ -130,6 +129,8 @@ C_Port::~C_Port()
 
 		if(p_destroy)
 			p_destroy(c_inst);
+
+		C_Port_instances.erase(c_inst);
 	}
 	UnLoadModule(lib_handle);
 }
