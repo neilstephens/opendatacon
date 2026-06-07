@@ -39,6 +39,9 @@
 
 #define SUITE(name) "GoModbusPortTests - " name
 
+// Hold one permanent reference so ~C_Port()'s dlclose never drops refcount to 0.
+static const module_ptr s_GoModbusLib = LoadModule(GetLibFileName("GoModbusPort"));
+
 extern spdlog::level::level_enum log_level;
 
 static void TestSetup()
