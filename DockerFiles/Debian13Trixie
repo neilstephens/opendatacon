@@ -7,11 +7,13 @@ RUN apt-get install -y clang libc++-dev libc++abi-dev libc6-dev make cmake git l
 
 # Install Go from official tarball to avoid pulling in a zlib1g-dev rebuild
 # that lacks -fPIC (which the Debian golang-go package can trigger via apt deps).
+# Use uname -m to detect arch at build time so this works for amd64, arm64,
+# and i386 regardless of whether --platform is passed to docker build.
 ARG GO_VERSION=1.22.5
-ARG TARGETARCH=amd64
-RUN wget -q https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz \
-    && tar -C /usr/local -xzf go${GO_VERSION}.linux-${TARGETARCH}.tar.gz \
-    && rm go${GO_VERSION}.linux-${TARGETARCH}.tar.gz
+RUN GOARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/i.86/386/') \
+    && wget -q https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz \
+    && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOARCH}.tar.gz \
+    && rm go${GO_VERSION}.linux-${GOARCH}.tar.gz
 ENV PATH="${PATH}:/usr/local/go/bin"
 
 RUN update-alternatives --set c++ /usr/bin/clang++
