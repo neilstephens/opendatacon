@@ -43,11 +43,11 @@
 #include <string.h>
 
 /* Host API vtable — set once by odc_library_init() before any port is created. */
-static struct C_ODC_HostAPI* odc = NULL;
+struct C_ODC_HostAPI* c_odc = NULL;
 
 void odc_library_init(struct C_ODC_HostAPI* odc_host_api)
 {
-	odc = odc_host_api;
+	c_odc = odc_host_api;
 }
 
 /* Per-instance state */
@@ -92,9 +92,9 @@ void odc_port_build(void* inst)
 	state->built = 1;
 
 	/* Demonstrate retrieving config JSON during build */
-	const char* json = odc ? odc->get_config_json(inst) : NULL;
+	const char* json = c_odc ? c_odc->get_config_json(inst) : NULL;
 	if(json)
-		odc->log(inst, C_LOG_LEVEL_INFO, "mock_c_port: build with config available");
+		c_odc->log(inst, C_LOG_LEVEL_INFO, "mock_c_port: build with config available");
 }
 
 void odc_port_enable(void* inst)
@@ -118,8 +118,8 @@ void odc_port_event(void* inst, const struct C_EventInfo* event, const char* sen
 	((struct mock_port_state*)inst)->event_count++;
 
 	/* Always invoke the callback to confirm receipt */
-	if(cb && odc)
-		odc->invoke_status_callback(&cb, C_CommandStatus_SUCCESS);
+	if(cb && c_odc)
+		c_odc->invoke_status_callback(&cb, C_CommandStatus_SUCCESS);
 }
 
 /* Optional exports */

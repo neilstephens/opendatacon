@@ -332,6 +332,11 @@ struct C_ODC_HostAPI
 /*  Required exports from a C Port library                            */
 /* ------------------------------------------------------------------ */
 
+/* Called exactly once by the host immediately after dlopen/LoadLibrary,
+   before any odc_port_create() calls.  Provides the host API vtable so
+   the library has zero link-time symbol dependencies on the host. */
+void odc_library_init(struct C_ODC_HostAPI* odc_host_api);
+
 /* Create a port instance. Returns an opaque handle that is the C
    code's own per-instance state. The C++ side uses this same pointer
    as a lookup key for publish helpers.
@@ -359,11 +364,6 @@ void odc_port_event(void* inst,
 	const struct C_EventInfo* event,
 	const char* sender,
 	C_StatusCallback* cb);
-
-/* Called exactly once by the host immediately after dlopen/LoadLibrary,
-   before any odc_port_create() calls.  Provides the host API vtable so
-   the library has zero link-time symbol dependencies on the host. */
-void odc_library_init(struct C_ODC_HostAPI* odc);
 
 /* ------------------------------------------------------------------ */
 /*  Optional exports from a C Port library — return JSON strings      */
