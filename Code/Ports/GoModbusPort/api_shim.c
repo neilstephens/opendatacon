@@ -1,5 +1,14 @@
 #include "opendatacon/odc_c_api.h"
 
+/* On Windows, plain C symbols in a Go c-shared DLL are not exported
+ * automatically — only Go //export functions get __declspec(dllexport).
+ * Mark every public entry point explicitly so GetProcAddress can find them. */
+#ifdef _WIN32
+#  define ODC_C_EXPORT __declspec(dllexport)
+#else
+#  define ODC_C_EXPORT
+#endif
+
 /* Host API vtable — set by odc_library_init() before any port is created.
    All port-side calls to host services go through this pointer. */
 struct C_ODC_HostAPI* odc = NULL;
@@ -26,32 +35,32 @@ extern char* go_c_api_version(void);
 /*  C API — const-correct wrappers matching odc_c_api.h exactly        */
 /* ------------------------------------------------------------------ */
 
-void* odc_port_create(const char* type, const char* name)
+ODC_C_EXPORT void* odc_port_create(const char* type, const char* name)
 {
 	return go_port_create((char*)type, (char*)name);
 }
 
-void odc_port_destroy(void* inst)
+ODC_C_EXPORT void odc_port_destroy(void* inst)
 {
 	go_port_destroy(inst);
 }
 
-void odc_port_build(void* inst)
+ODC_C_EXPORT void odc_port_build(void* inst)
 {
 	go_port_build(inst);
 }
 
-void odc_port_enable(void* inst)
+ODC_C_EXPORT void odc_port_enable(void* inst)
 {
 	go_port_enable(inst);
 }
 
-void odc_port_disable(void* inst)
+ODC_C_EXPORT void odc_port_disable(void* inst)
 {
 	go_port_disable(inst);
 }
 
-void odc_port_event(void* inst,
+ODC_C_EXPORT void odc_port_event(void* inst,
 	const struct C_EventInfo* event,
 	const char* sender,
 	C_StatusCallback* cb)
@@ -59,27 +68,27 @@ void odc_port_event(void* inst,
 	go_port_event(inst, (struct C_EventInfo*)event, (char*)sender, cb);
 }
 
-const char* odc_port_stats_json(void* inst)
+ODC_C_EXPORT const char* odc_port_stats_json(void* inst)
 {
 	return go_port_stats_json(inst);
 }
 
-const char* odc_port_state_json(void* inst)
+ODC_C_EXPORT const char* odc_port_state_json(void* inst)
 {
 	return go_port_state_json(inst);
 }
 
-const char* odc_port_status_json(void* inst)
+ODC_C_EXPORT const char* odc_port_status_json(void* inst)
 {
 	return go_port_status_json(inst);
 }
 
-const char* odc_c_api_version(void)
+ODC_C_EXPORT const char* odc_c_api_version(void)
 {
 	return go_c_api_version();
 }
 
-void odc_port_free_string(const char* str)
+ODC_C_EXPORT void odc_port_free_string(const char* str)
 {
 	go_port_free_string((char*)str);
 }
