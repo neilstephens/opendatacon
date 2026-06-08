@@ -54,7 +54,7 @@ func go_port_build(inst unsafe.Pointer) {
 	if p == nil {
 		return
 	}
-	p.ops <- operation{typ: opBuild}
+	p.doBuild()
 }
 
 //export go_port_enable
@@ -63,7 +63,7 @@ func go_port_enable(inst unsafe.Pointer) {
 	if p == nil {
 		return
 	}
-	p.ops <- operation{typ: opEnable}
+	p.doEnable()
 }
 
 //export go_port_disable
@@ -72,7 +72,7 @@ func go_port_disable(inst unsafe.Pointer) {
 	if p == nil {
 		return
 	}
-	p.ops <- operation{typ: opDisable}
+	p.doDisable()
 }
 
 //export go_port_event
@@ -82,13 +82,52 @@ func go_port_event(inst unsafe.Pointer, event *C.struct_C_EventInfo, sender *C.c
 		invokeStatusCallback(unsafe.Pointer(cb), C.C_CommandStatus_UNDEFINED)
 		return
 	}
+	// Both checks are on the strand — no mutex needed.
+	if !p.enabled.Load() || !p.connected {
+		invokeStatusCallback(unsafe.Pointer(cb), C.C_CommandStatus_HARDWARE_ERROR)
+		return
+	}
+
 	s := ""
 	if sender != nil {
 		s = C.GoString(sender)
 	}
+
+	// Copy event to Go heap; nil source_port (borrowed C pointer).
 	evtCopy := *event
 	evtCopy.source_port = nil
-	p.ops <- operation{typ: opEvent, event: evtCopy, sender: s, cb: unsafe.Pointer(cb)}
+	cbPtr := unsafe.Pointer(cb)
+	client := p.client.Load() // atomic snapshot before leaving strand
+
+	p.eventWg.Add(1)
+	go func() {
+		defer p.eventWg.Done()
+		p.doHandleEventAsync(&evtCopy, s, cbPtr, client)
+	}()
+}
+
+// ---------------------------------------------------------------------------
+// ODC timer callback exports — fired on the strand by the ODC scheduler
+// ---------------------------------------------------------------------------
+
+//export go_reconnect_timer_cb
+func go_reconnect_timer_cb(status C.uint8_t, handle unsafe.Pointer) {
+	onReconnectTimer(handle)
+}
+
+//export go_connect_ok_cb
+func go_connect_ok_cb(status C.uint8_t, handle unsafe.Pointer) {
+	onConnectOk(handle)
+}
+
+//export go_connect_fail_cb
+func go_connect_fail_cb(status C.uint8_t, handle unsafe.Pointer) {
+	onConnectFail(handle)
+}
+
+//export go_transport_disconnect_cb
+func go_transport_disconnect_cb(status C.uint8_t, handle unsafe.Pointer) {
+	onTransportDisconnect(handle)
 }
 
 //------------------------------------------------------------------------------

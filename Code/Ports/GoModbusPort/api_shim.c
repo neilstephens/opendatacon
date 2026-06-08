@@ -31,6 +31,12 @@ extern char* go_port_status_json(void* inst);
 extern void  go_port_free_string(char* str);
 extern char* go_c_api_version(void);
 
+/* Go-exported ODC timer callback functions */
+extern void go_reconnect_timer_cb(uint8_t status, void* handle);
+extern void go_connect_ok_cb(uint8_t status, void* handle);
+extern void go_connect_fail_cb(uint8_t status, void* handle);
+extern void go_transport_disconnect_cb(uint8_t status, void* handle);
+
 /* ------------------------------------------------------------------ */
 /*  C API — const-correct wrappers matching odc_c_api.h exactly        */
 /* ------------------------------------------------------------------ */
@@ -91,4 +97,34 @@ ODC_C_EXPORT const char* odc_c_api_version(void)
 ODC_C_EXPORT void odc_port_free_string(const char* str)
 {
 	go_port_free_string((char*)str);
+}
+
+/* ------------------------------------------------------------------ */
+/*  ODC scheduling helpers — called from Go via cgo.                   */
+/*  These translate to odc->ms_timer_callback() calls using the        */
+/*  Go-exported callback function pointers above.                      */
+/* ------------------------------------------------------------------ */
+
+/* Schedule a reconnect attempt after 'ms' milliseconds.
+   Returns the ODC timer handle (pass to odc_cancel_timer to cancel). */
+void* odc_schedule_reconnect(void* inst, uint64_t ms)
+{
+	if (odc && odc->ms_timer_callback)
+		return odc->ms_timer_callback(inst, ms, go_reconnect_timer_cb, inst);
+	return NULL;
+}
+
+/* Signal a connect result back to the strand.  ok != 0 → success. */
+void odc_schedule_connect_result(void* inst, int ok)
+{
+	if (odc && odc->ms_timer_callback)
+		odc->ms_timer_callback(inst, 0,
+			ok ? go_connect_ok_cb : go_connect_fail_cb, inst);
+}
+
+/* Signal a transport disconnect back to the strand from a poll goroutine. */
+void odc_schedule_transport_disconnect(void* inst)
+{
+	if (odc && odc->ms_timer_callback)
+		odc->ms_timer_callback(inst, 0, go_transport_disconnect_cb, inst);
 }
