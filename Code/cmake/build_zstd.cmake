@@ -29,6 +29,14 @@ if(DEFINED zstd_ROOT AND NOT "${zstd_ROOT}" STREQUAL "")
 	return()
 endif()
 
+if(APPLE)
+	# On macOS, skip vendored static zstd to avoid potential duplicate-symbol issues
+	# when the same library is pulled in by brew or system frameworks.  zstd support
+	# will be disabled in the inner librdkafka build on macOS (WITH_ZSTD=OFF).
+	message(STATUS "macOS: skipping vendored zstd build")
+	return()
+endif()
+
 set(ZSTD_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/zstd/build/cmake")
 set(ZSTD_BUILD  "${CMAKE_BINARY_DIR}/Code/submodules/zstd")
 set(ZSTD_HOME   "${ZSTD_BUILD}/install")

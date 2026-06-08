@@ -105,23 +105,35 @@ set(
 	FORCE
 )
 
-# On a 64-bit host building a 32-bit target (e.g. i386 Docker container), cmake sets
-# CMAKE_SYSTEM_PROCESSOR=x86_64 because uname -m returns the host value.  LibreSSL
-# selects ASM files based on CMAKE_SYSTEM_PROCESSOR, so it would pick the x86_64 ASM
-# sources (aes-elf-x86_64.S etc.) which use 64-bit-only registers and fail to assemble.
-# Force CMAKE_SYSTEM_PROCESSOR=i686 in the inner build so LibreSSL uses its i386 ASM path.
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
-	list(APPEND LIBRESSL_CMAKE_OPTS -DCMAKE_SYSTEM_PROCESSOR=i686)
-	message(STATUS "i386 cross-build detected: passing -DCMAKE_SYSTEM_PROCESSOR=i686 to LibreSSL")
-endif()
+# Cross-build processor fix: on a 64-bit host building a 32-bit target (e.g. an i386
+# Docker container on an x86_64 host, or an armhf container on an arm64 host), cmake
+# sets CMAKE_SYSTEM_PROCESSOR from uname -m, which returns the HOST kernel's arch.
+# LibreSSL selects ASM sources based on CMAKE_SYSTEM_PROCESSOR, so without correction:
+#   - i386 container on x86_64 host → picks x86_64 ASM (uses 64-bit-only registers → error)
+#   - armhf container on arm64 host  → picks aarch64 ASM (uses 64-bit ARM insns → error)
+#
+# Passing -DCMAKE_SYSTEM_PROCESSOR= as a plain -D flag is INSUFFICIENT because cmake's
+# CMakeDetermineSystem.cmake runs during project() and may override it via uname -m when
+# no toolchain file is present.  The reliable fix is to write a minimal toolchain file
+# (which is processed BEFORE cmake's system detection) so the inner cmake sees the
+# correct CMAKE_SYSTEM_PROCESSOR from the start.
+#
+# Remove the existing CMAKE_TOOLCHAIN_FILE entry from LIBRESSL_CMAKE_OPTS (added in
+# the set() above, possibly empty) so we can replace it with the appropriate value.
+list(FILTER LIBRESSL_CMAKE_OPTS EXCLUDE REGEX "CMAKE_TOOLCHAIN_FILE")
 
-# Similarly, armhf containers on an arm64 host have CMAKE_SYSTEM_PROCESSOR=aarch64 even
-# though the target is 32-bit ARM.  LibreSSL would include aarch64 ASM (bn_arch.h etc.)
-# which uses 64-bit ARM instructions invalid on ARMv6/ARMv7.
-# Force CMAKE_SYSTEM_PROCESSOR=arm so LibreSSL selects its 32-bit ARM ASM path.
-if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
-	list(APPEND LIBRESSL_CMAKE_OPTS -DCMAKE_SYSTEM_PROCESSOR=arm)
-	message(STATUS "armhf cross-build detected: passing -DCMAKE_SYSTEM_PROCESSOR=arm to LibreSSL")
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+	message(STATUS "i386 cross-build detected: generating LibreSSL toolchain file for i686")
+	file(WRITE "${LIBRESSL_BUILD}/libressl-toolchain.cmake"
+		"set(CMAKE_SYSTEM_PROCESSOR i686)\n")
+	list(APPEND LIBRESSL_CMAKE_OPTS "-DCMAKE_TOOLCHAIN_FILE=${LIBRESSL_BUILD}/libressl-toolchain.cmake")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+	message(STATUS "armhf cross-build detected: generating LibreSSL toolchain file for arm")
+	file(WRITE "${LIBRESSL_BUILD}/libressl-toolchain.cmake"
+		"set(CMAKE_SYSTEM_PROCESSOR arm)\n")
+	list(APPEND LIBRESSL_CMAKE_OPTS "-DCMAKE_TOOLCHAIN_FILE=${LIBRESSL_BUILD}/libressl-toolchain.cmake")
+elseif(CMAKE_TOOLCHAIN_FILE)
+	list(APPEND LIBRESSL_CMAKE_OPTS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
 # Forward cross-compilation C flags (e.g. armhf -target/-march flags) so the inner

@@ -28,6 +28,16 @@ if(DEFINED ZLIB_ROOT AND NOT "${ZLIB_ROOT}" STREQUAL "")
 	return()
 endif()
 
+if(APPLE)
+	# On macOS, embedding a static zlib in a MODULE bundle causes dlopen to fail because
+	# macOS dyld4 (macOS 12+) treats duplicate strong-symbol definitions as a load error:
+	# system libz.dylib is already in every process (pulled by libSystem/CoreFoundation),
+	# and adding a second copy via a static libz.a in the bundle triggers the conflict.
+	# Skip the vendored build and let build_librdkafka.cmake fall back to the system zlib.
+	message(STATUS "macOS: skipping vendored zlib build — system libz.dylib will be used")
+	return()
+endif()
+
 set(ZLIB_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/zlib")
 set(ZLIB_BUILD  "${CMAKE_BINARY_DIR}/Code/submodules/zlib")
 set(ZLIB_HOME   "${ZLIB_BUILD}/install")

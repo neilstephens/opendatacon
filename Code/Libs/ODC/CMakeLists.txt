@@ -40,7 +40,9 @@ if(ODC_ASIO_SSL)
 	message("OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
 	message("OpenSSL libraries: ${OPENSSL_LIBRARIES}")
 	if(WIN32)
-		set(ADD_LIBS Crypt32)
+		# Crypt32: required by LibreSSL's TLS code on Windows
+		# bcrypt: required by LibreSSL's getentropy_win.c (BCryptGenRandom)
+		set(ADD_LIBS Crypt32 bcrypt)
 	endif()
 endif()
 
