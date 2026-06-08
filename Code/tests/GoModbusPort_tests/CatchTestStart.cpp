@@ -20,8 +20,11 @@
 
 #define CATCH_CONFIG_RUNNER
 
-// Go's runtime needs to handle posix signals itself
+// Go's runtime needs to own both POSIX signals and Windows SEH/VEH.
+// Without these defines Catch2 intercepts SIGSEGV / Access Violations that
+// the Go goroutine scheduler raises internally, causing false test failures.
 #define CATCH_CONFIG_NO_POSIX_SIGNALS
+#define CATCH_CONFIG_NO_WINDOWS_SEH
 
 #include <catch.hpp>
 #include <opendatacon/util.h>
