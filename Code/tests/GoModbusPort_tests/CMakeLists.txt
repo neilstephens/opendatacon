@@ -16,10 +16,15 @@
  #	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
- # 
-project(ODC_tests)
+ #
+project(GoModbusPort_tests)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h)
 
-add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} CAPI)
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+target_link_libraries(${PROJECT_NAME} ODC CAPI ${DL})
+add_dependencies(${PROJECT_NAME} GoModbusPort_lib)
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
+add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})

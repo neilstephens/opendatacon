@@ -18,6 +18,7 @@
  #	limitations under the License.
  #
 add_subdirectory(ODC_tests)
+add_subdirectory(C_API_tests)
 
 if(DNP3PORT)
 add_subdirectory(DNP3Port_tests)
@@ -53,6 +54,10 @@ endif()
 
 if(KAFKAPORT)
 add_subdirectory(KafkaPort_tests)
+endif()
+
+if(GOMODBUSPORT)
+add_subdirectory(GoModbusPort_tests)
 endif()
 
 if(FULL)

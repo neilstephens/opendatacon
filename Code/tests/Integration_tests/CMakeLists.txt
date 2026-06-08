@@ -40,3 +40,4 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp .
 
 add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
 target_compile_definitions(${PROJECT_NAME} PRIVATE MAIN_EXE)
+target_link_libraries(${PROJECT_NAME} CAPI)

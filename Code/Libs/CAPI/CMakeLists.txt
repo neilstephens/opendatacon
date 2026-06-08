@@ -17,9 +17,21 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  # 
-project(ODC_tests)
+project(CAPI LANGUAGES CXX)
 
-file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
+file(GLOB ${PROJECT_NAME}_SRC *.cpp include/CAPI/*.h)
 
-add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} CAPI)
+add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+
+target_include_directories(${PROJECT_NAME} PUBLIC include)
+target_link_libraries(${PROJECT_NAME} ODC)
+
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)
+
+install(CODE
+"
+	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_LIBRARY_SUFFIX}
+	)
+")

@@ -217,7 +217,13 @@ jobs:
     
     - name: Upload release text
       run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
-      
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: Code/Ports/GoModbusPort/go.mod
+        cache-dependency-path: Code/Ports/GoModbusPort/go.sum
+
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON
 
@@ -267,6 +273,12 @@ jobs:
     - name: Integration_tests
       if: ${{ always() && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
+    - name: C_API_tests
+      if: ${{ always() && !contains(github.ref, 'tag') }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}C_API_tests ${{env.LOG_LVL}} -d yes
+    - name: GoModbusPort_tests
+      if: ${{ always() && !contains(github.ref, 'tag') && !(matrix.bits == 32 && contains(matrix.os, 'windows')) }}
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}GoModbusPort_tests ${{env.LOG_LVL}} -d yes
       
     - name: Upload Installer
       uses: actions/upload-artifact@v4

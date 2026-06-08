@@ -26,6 +26,8 @@
 
 #include "DataConcentrator.h"
 #include "NullPort.h"
+#include "CAPI/C_Port.h"
+#include "CAPI/C_UI.h"
 #include <opendatacon/IOTypesJSON.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/asio_syslog_spdlog_sink.h>
@@ -1087,6 +1089,24 @@ void DataConcentrator::ProcessPorts(const Json::Value& Ports)
 		if(!odc::spdlog_get(libname))
 			AddLogger(libname, LogSinks);
 
+		//Check for C API library
+		auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(portlib, "odc_c_api_version"));
+		if(c_api_version != nullptr)
+		{
+			log->info("{} : Detected C API (v{}) port library — creating C_Port wrapper", Ports[n]["Name"].asString(), c_api_version());
+			auto port_cleanup = [](DataPort* port) { delete port; };
+			DataPorts.emplace(Ports[n]["Name"].asString(),
+				std::shared_ptr<DataPort>(
+					new odc::C_Port(Ports[n]["Type"].asString(),
+						Ports[n]["Name"].asString(),
+						Ports[n]["ConfFilename"].asString(),
+						Ports[n]["ConfOverrides"],
+						portlib),
+					port_cleanup));
+			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
+			continue;
+		}
+
 		//Our API says the library should export a creation function: DataPort* new_<Type>Port(Name, Filename, Overrides)
 		//it should return a pointer to a heap allocated instance of a descendant of DataPort
 		std::string new_funcname = "new_"+Ports[n]["Type"].asString()+"Port";
@@ -1214,6 +1234,22 @@ void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
 		{
 			log->error("{}",LastSystemError());
 			log->error("{} : Dynamic library '{}' load failed skipping plugin...", PluginName, libfilename);
+			continue;
+		}
+
+		//Check for C API library
+		auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(pluginlib, "odc_c_api_version"));
+		if(c_api_version != nullptr)
+		{
+			log->info("{} : Detected C API (v{}) plugin library — creating C_UI wrapper", PluginName, c_api_version());
+			//Create a logger if we haven't already
+			if(!odc::spdlog_get(libname))
+				AddLogger(libname, LogSinks);
+			auto plugin_cleanup = [](IUI* plugin) { delete plugin; };
+			Interfaces.emplace(PluginName, std::shared_ptr<IUI>(
+				new odc::C_UI(Plugins[n]["Type"].asString(), PluginName, Plugins[n]["ConfFilename"].asString(),
+					Plugins[n]["ConfOverrides"], pluginlib),
+				plugin_cleanup));
 			continue;
 		}
 
