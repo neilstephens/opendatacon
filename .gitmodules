@@ -29,3 +29,11 @@
 	path = Code/submodules/exe4cpp
 	url = https://github.com/neilstephens/exe4cpp.git
 	branch = asio-1-38-0
+[submodule "Code/submodules/zlib"]
+	path = Code/submodules/zlib
+	url = https://github.com/madler/zlib.git
+	branch = v1.3.2
+[submodule "Code/submodules/zstd"]
+	path = Code/submodules/zstd
+	url = https://github.com/facebook/zstd.git
+	branch = v1.5.7

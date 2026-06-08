@@ -121,6 +121,11 @@ if(FULL)
 	set(CONSOLEUI ON CACHE BOOL "Build the console user interface" FORCE)
 endif()
 
+set(ODC_ASIO_SSL OFF CACHE BOOL "Enable TLS/SSL in ASIO compiled into libODC (requires OpenSSL)")
+if(FULL)
+	set(ODC_ASIO_SSL ON CACHE BOOL "Enable TLS/SSL in ASIO compiled into libODC (requires OpenSSL)" FORCE)
+endif()
+
 # Go c-shared buildmode does not support windows/386; disable GoModbusPort on 32-bit Windows
 if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
 	set(GOMODBUSPORT OFF CACHE BOOL "Build Go Modbus Port" FORCE)
@@ -146,13 +151,6 @@ if(WIN32)
 	
 	# Postfix for debug builds
 	SET(CMAKE_DEBUG_POSTFIX "d")
-	install(CODE
-	"
-		if(\"\${CMAKE_INSTALL_CONFIG_NAME}\" STREQUAL \"Debug\")
-			set(BUNDLE_LIB_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-		endif()
-	")
-	
 	#min max macro rubbish
 	add_definitions(-DNOMINMAX)
 
@@ -204,6 +202,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_SEPARATE_COMPILATION")
+
+	option(STATIC_MSVC_RUNTIME "Link MSVC runtime statically (/MT instead of /MD)" ON)
+	if(STATIC_MSVC_RUNTIME)
+		if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
+			set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "MSVC runtime library" FORCE)
+		endif()
+	endif()
 
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 	# using Intel C++
@@ -327,29 +332,7 @@ else()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	endif()
 
-	#package the c++ standard library
-	option(PACKAGE_LIBSTDC++ "Package libstdc++ in c-pack installer" OFF)
-	if(PACKAGE_LIBSTDC++)
-		execute_process(
-			COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
-			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-			OUTPUT_VARIABLE std_lib
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-		)
-		#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
-		mark_as_advanced(FORCE std_lib)
-		get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
-		if(${_resolvedFile} STREQUAL ${std_lib})
-			#not a link - just install file
-			install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
-		else()
-			#is a link -install link and file
-			install(FILES "${std_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
-		endif()
-	endif()
 endif()
-
-option(PACKAGE_SYSTEM_LIBS "Bundle system dependencies into install (to make a standalone package)" OFF)
 
 find_package(Threads REQUIRED)
 if(CMAKE_USE_PTHREADS_INIT)
@@ -435,12 +418,6 @@ function(add_port_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER ports)
-  install(CODE
-    "
-    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-    )
-    ")
 endfunction()
 
 function(add_plugin_library name)
@@ -448,12 +425,6 @@ function(add_plugin_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER plugins)
-  install(CODE
-    "
-    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-    )
-    ")
 endfunction()
 
 function(add_transform_library name)
@@ -461,12 +432,6 @@ function(add_transform_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER transforms)
-  install(CODE
-    "
-    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-    )
-    ")
 endfunction()
 
 function(add_test_executable name)
@@ -477,6 +442,10 @@ function(add_test_executable name)
   set_target_properties(${name} PROPERTIES FOLDER tests)
   add_test(NAME CTEST_${name} COMMAND ${name})
 endfunction()
+
+if(ODC_ASIO_SSL)
+	include(Code/cmake/build_libressl.cmake)
+endif()
 
 message("add subdir JSON")
 add_subdirectory(Code/Libs/JSON)

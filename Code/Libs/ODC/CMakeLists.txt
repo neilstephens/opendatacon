@@ -28,52 +28,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	"${SPDLOG_HOME}/include"
 	"${ASIO_HOME}/include")
 
-set(ODC_ASIO_SSL OFF CACHE BOOL "Enable TLS/SSL is ASIO compiled into libODC (requires OpenSSL)")
-if(FULL)
-	set(ODC_ASIO_SSL ON CACHE BOOL "Enable TLS/SSL is ASIO compiled into libODC (requires OpenSSL)" FORCE)
-endif()
-
 if(ODC_ASIO_SSL)
 	message("OpenSSL root dir: ${OPENSSL_ROOT_DIR}")
 
-	# If not explicitly set, first try with static libs
-	if(NOT DEFINED OPENSSL_USE_STATIC_LIBS)
-		set(OPENSSL_USE_STATIC_LIBS TRUE)
-		set(OPENSSL_MSVC_STATIC_RT TRUE)
-		set(OPENSSL_USE_STATIC_LIBS TRUE PARENT_SCOPE)
-		set(OPENSSL_MSVC_STATIC_RT TRUE PARENT_SCOPE)
-	endif()
+	set(OPENSSL_USE_STATIC_LIBS TRUE)
+	set(OPENSSL_MSVC_STATIC_RT TRUE)
 
-	find_package(OpenSSL 1.1.1 QUIET)
-
-	if(NOT OpenSSL_FOUND)
-	    message(STATUS "OpenSSL libraries not found, setting dynamic libs and trying again...")
-	    set(OPENSSL_USE_STATIC_LIBS FALSE)
-	    set(OPENSSL_MSVC_STATIC_RT FALSE)
-	    set(OPENSSL_USE_STATIC_LIBS FALSE PARENT_SCOPE)
-	    set(OPENSSL_MSVC_STATIC_RT FALSE PARENT_SCOPE)
-	    find_package(OpenSSL 1.1.1 REQUIRED)
-	    set(PACK_NAMES ssl crypto zlib z zstd)
-	endif()
-
-	# Check if we need zstd and libz for static linking (OpenSSL 3.2+)
-	if(OPENSSL_USE_STATIC_LIBS)
-		find_package(ZLIB QUIET)
-		if(ZLIB_FOUND)
-			message(STATUS "Found zlib for static OpenSSL")
-			set(ZLIB_LIB ZLIB::ZLIB)
-		else()
-			message(STATUS "zlib not found - will attempt linking without it")
-		endif()
-
-		find_package(zstd QUIET)
-		if(zstd_FOUND)
-			message(STATUS "Found zstd, will link for static OpenSSL")
-			set(ZSTD_LIB $<IF:$<TARGET_EXISTS:zstd::libzstd_static>,zstd::libzstd_static,zstd::libzstd_shared>)
-		else()
-			message(STATUS "zstd not found - will attempt linking without it")
-		endif()
-	endif()
+	find_package(OpenSSL 1.1.1 REQUIRED)
 
 	add_definitions(-DODC_ASIO_SSL)
 	message("OpenSSL include dir: ${OPENSSL_INCLUDE_DIR}")
@@ -83,17 +44,9 @@ if(ODC_ASIO_SSL)
 	endif()
 endif()
 
-target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> $<$<BOOL:${ODC_ASIO_SSL}>:${ZLIB_LIB}> $<$<BOOL:${ODC_ASIO_SSL}>:${ZSTD_LIB}> ${ADD_LIBS} ${RT} ${FS})
+target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SSL> ${ADD_LIBS} ${RT} ${FS})
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)
 
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_LIBRARY_SUFFIX}
-	)
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-")
+
