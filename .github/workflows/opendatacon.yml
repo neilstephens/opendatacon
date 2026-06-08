@@ -206,7 +206,7 @@ jobs:
       name: Setup MacOS Environment
       run: |
         brew install socat
-        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt' >> $GITHUB_ENV
+        echo "TOOLCHAIN_OPT=-DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
     
     - name: Upload release text

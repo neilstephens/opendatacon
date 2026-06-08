@@ -5,7 +5,7 @@ FROM redhat/ubi9 as builder
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 RUN /usr/bin/crb enable
 
-RUN dnf install -y wget socat llvm-toolset cmake git openssl-devel python3-devel file libmodbus libmodbus-devel golang
+RUN dnf install -y wget socat llvm-toolset cmake git make openssl-devel python3-devel file libmodbus libmodbus-devel golang
 
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++

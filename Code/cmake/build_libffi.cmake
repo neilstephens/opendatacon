@@ -89,14 +89,25 @@ if(NOT EXISTS "${LIBFFI_INSTALL}/include/ffi.h")
 	# Autotools configure (out-of-source)                                  #
 	# ------------------------------------------------------------------ #
 	file(MAKE_DIRECTORY "${LIBFFI_BUILD}")
+
+	# Build the cmake -E env prefix so that CC and CFLAGS are set as
+	# environment variables.  Using cmake -E env is the only portable way
+	# to pass values that may contain spaces (e.g. armhf cross-compile
+	# flags like "-target arm-linux-gnueabihf -march=armv6 ...") as a
+	# single environment variable rather than as split positional args.
+	set(_LIBFFI_CONFIGURE_ENV ${CMAKE_COMMAND} -E env "CC=${CMAKE_C_COMPILER}")
+	if(CMAKE_C_FLAGS)
+		list(APPEND _LIBFFI_CONFIGURE_ENV "CFLAGS=${CMAKE_C_FLAGS}")
+	endif()
+
 	message(STATUS "Configuring libffi ${LIBFFI_VERSION}...")
 	execute_process(
-		COMMAND "${LIBFFI_SOURCE}/configure"
+		COMMAND ${_LIBFFI_CONFIGURE_ENV}
+			"${LIBFFI_SOURCE}/configure"
 			--prefix=${LIBFFI_INSTALL}
 			--enable-static
 			--disable-shared
 			--with-pic
-			CC=${CMAKE_C_COMPILER}
 		WORKING_DIRECTORY "${LIBFFI_BUILD}"
 		OUTPUT_FILE libffi-configure-output.txt
 		ERROR_FILE  libffi-configure-error.txt

@@ -105,6 +105,16 @@ set(
 	FORCE
 )
 
+# On a 64-bit host building a 32-bit target (e.g. i386 Docker container), cmake sets
+# CMAKE_SYSTEM_PROCESSOR=x86_64 because uname -m returns the host value.  LibreSSL
+# selects ASM files based on CMAKE_SYSTEM_PROCESSOR, so it would pick the x86_64 ASM
+# sources (aes-elf-x86_64.S etc.) which use 64-bit-only registers and fail to assemble.
+# Force CMAKE_SYSTEM_PROCESSOR=i686 in the inner build so LibreSSL uses its i386 ASM path.
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+	list(APPEND LIBRESSL_CMAKE_OPTS -DCMAKE_SYSTEM_PROCESSOR=i686)
+	message(STATUS "i386 cross-build detected: passing -DCMAKE_SYSTEM_PROCESSOR=i686 to LibreSSL")
+endif()
+
 message("Configuring LibreSSL ${LIBRESSL_VERSION} vendor dependency")
 execute_process(
 	COMMAND ${CMAKE_COMMAND} ${LIBRESSL_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} -S ${LIBRESSL_SOURCE}

@@ -239,6 +239,34 @@ if(USE_PYTHON_SUBMODULE)
 	)
 
 	# ------------------------------------------------------------------ #
+	# Forward cross-compilation and host-platform settings to PCBS        #
+	# These are appended after the cache set so they do not pollute the   #
+	# inspectable cache entry but ARE present in the local list used by   #
+	# the execute_process call below.                                      #
+	# ------------------------------------------------------------------ #
+	# Compiler flags: needed for e.g. armhf where CMAKE_C_FLAGS carries
+	# "-target arm-linux-gnueabihf -march=armv6 -mcpu=arm1176jzf-s ..."
+	if(CMAKE_C_FLAGS)
+		list(APPEND PCBS_CMAKE_OPTS "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}")
+	endif()
+	if(CMAKE_CXX_FLAGS)
+		list(APPEND PCBS_CMAKE_OPTS "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
+	endif()
+	# macOS: propagate SDK root and deployment target so that PCBS's
+	# inner cmake inherits the same Xcode/CLT sysroot as the outer build.
+	if(APPLE)
+		if(CMAKE_OSX_SYSROOT)
+			list(APPEND PCBS_CMAKE_OPTS "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
+		endif()
+		if(CMAKE_OSX_DEPLOYMENT_TARGET)
+			list(APPEND PCBS_CMAKE_OPTS "-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+		endif()
+		if(CMAKE_OSX_ARCHITECTURES)
+			list(APPEND PCBS_CMAKE_OPTS "-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}")
+		endif()
+	endif()
+
+	# ------------------------------------------------------------------ #
 	# Configure + build (guarded by presence of installed stdlib)         #
 	# ------------------------------------------------------------------ #
 	if(NOT EXISTS "${PCBS_BUILD}")
