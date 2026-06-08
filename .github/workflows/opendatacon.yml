@@ -199,20 +199,14 @@ jobs:
     - if: contains(matrix.os,'windows')
       name: Setup Windows Environment
       run: |
-        If (-not (Test-Path C:\libmodbus\libmodbus)){
-          Invoke-WebRequest -OutFile libmodbus.zip "https://www.dropbox.com/s/iqf95y9x1x4ol36/libmodbus.zip?dl=1"
-          7z x -y libmodbus.zip
-          New-Item C:\libmodbus -ItemType Directory
-          Move-Item .\libmodbus C:\libmodbus\libmodbus
-        }
         choco install nsis -y
-        echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
 
     - if: contains(matrix.os,'macos')
       name: Setup MacOS Environment
       run: |
-        brew install libmodbus socat
-        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt/homebrew' >> $GITHUB_ENV
+        brew install socat
+        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt' >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
     
     - name: Upload release text

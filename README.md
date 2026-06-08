@@ -123,9 +123,6 @@ Plugin specific dependencies:
     * default cmake config will auto download and build
 * WebUI: https://gitlab.com/eidheim/Simple-Web-Server.git
     * default cmake config will auto download and build
-* ModbusPort: libmodbus http://libmodbus.org/
-    * available in most linux repos (try install libmodbus-dev or libmodbus-devel)
-    * download and build yourself for windows - or search the net for binaries
 * LuaPort, LuaTransform, LuaLogSink, LuaUICommander
     * Lua! did you guess? http://www.lua.org
 
@@ -138,7 +135,6 @@ Plugin specific dependencies:
 * DNP3PORT - Build DNP3 Port
 * JSONPORT - Build JSON Port
 * PYPORT - Build Python Port
-* MODBUSPORT - Build Modbus Port
 * SIMPORT - Build Simulation Port
 * MD3PORT - Build MD3 Port
 * CBPORT - Build Conitel-Baker Port
@@ -153,8 +149,6 @@ Plugin specific dependencies:
 
 *   STATIC_LIBSTDC++ - link in libstdc++ statically
 *   PACKAGE_LIBSTDC++ - optionally include libstdc++ shared library in installation package
-*   PACKAGE_LIBMODBUS - include in the installation package 
-
 #### Dependency search locations
 
 If you don't want cmake to download/build for you, or you have manually installed in weird locations:
@@ -162,8 +156,6 @@ If you don't want cmake to download/build for you, or you have manually installe
 *   DNP3_HOME
 *   ASIO_HOME
 *   TCLAP_HOME
-*   MODBUS_HOME 
-
 #### Cross-compiler options
 
 Cmake cross compiler toolchain files are supported. See the examples in the root of the source tree.
@@ -180,14 +172,14 @@ cmake . "-Bbuild-xcode" -G "Xcode" "-DFULL=ON"
 #### Visual Studio build and install
 The following demonstrates some custom dependency paths
 ```
-cmake -B D:\odc\build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=D:\odc/build/install -G"Visual Studio 17 2022" -Ax64 -DCMAKE_CONFIGURATION_TYPES=Release -DMODBUS_HOME=c:\libmodbus\windows64 -DPYTHON_HOME=C:\Python\3.7.9\x64  -DFULL=ON
+cmake -B D:\odc\build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=D:\odc/build/install -G"Visual Studio 17 2022" -Ax64 -DCMAKE_CONFIGURATION_TYPES=Release -DPYTHON_HOME=C:\Python\3.7.9\x64  -DFULL=ON
 ```
 
 #### Ubuntu build and install using Makefiles
 
 1.  Install build system and dependencies:
 ```
-sudo apt-get install libmodbus-dev libssl-dev
+sudo apt-get install libssl-dev
 ```
 2.  Create build system for desired environment
 ```
