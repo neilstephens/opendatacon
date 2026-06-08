@@ -115,6 +115,21 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD6
 	message(STATUS "i386 cross-build detected: passing -DCMAKE_SYSTEM_PROCESSOR=i686 to LibreSSL")
 endif()
 
+# Similarly, armhf containers on an arm64 host have CMAKE_SYSTEM_PROCESSOR=aarch64 even
+# though the target is 32-bit ARM.  LibreSSL would include aarch64 ASM (bn_arch.h etc.)
+# which uses 64-bit ARM instructions invalid on ARMv6/ARMv7.
+# Force CMAKE_SYSTEM_PROCESSOR=arm so LibreSSL selects its 32-bit ARM ASM path.
+if(CMAKE_SIZEOF_VOID_P EQUAL 4 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+	list(APPEND LIBRESSL_CMAKE_OPTS -DCMAKE_SYSTEM_PROCESSOR=arm)
+	message(STATUS "armhf cross-build detected: passing -DCMAKE_SYSTEM_PROCESSOR=arm to LibreSSL")
+endif()
+
+# Forward cross-compilation C flags (e.g. armhf -target/-march flags) so the inner
+# LibreSSL cmake compiles for the correct target rather than the host.
+if(CMAKE_C_FLAGS)
+	list(APPEND LIBRESSL_CMAKE_OPTS "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}")
+endif()
+
 message("Configuring LibreSSL ${LIBRESSL_VERSION} vendor dependency")
 execute_process(
 	COMMAND ${CMAKE_COMMAND} ${LIBRESSL_CMAKE_OPTS} -G${CMAKE_GENERATOR} ${PLATFORM_OPT} -S ${LIBRESSL_SOURCE}

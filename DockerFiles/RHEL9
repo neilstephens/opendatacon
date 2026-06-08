@@ -33,7 +33,7 @@ ARG BUILD_TYPE=Release
 RUN mkdir opendatacon-build
 
 RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=rhel9 \
--DOPENSSL_ROOT_DIR=/usr/ -S opendatacon -B opendatacon-build
+-S opendatacon -B opendatacon-build
 
 RUN cmake --build opendatacon-build --parallel 8
 RUN cmake --build opendatacon-build --target install
