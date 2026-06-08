@@ -448,6 +448,24 @@ if(ODC_ASIO_SSL)
 	include(Code/cmake/build_libressl.cmake)
 endif()
 
+# Build vendored zlib and zstd before libODC so they can be linked into libODC.
+# Common vendored compression libs belong in libODC rather than individual ports so
+# that ports resolve them from libODC at runtime (avoids duplicate-symbol issues).
+if(KAFKAPORT)
+	include(Code/cmake/build_zlib.cmake)
+	include(Code/cmake/build_zstd.cmake)
+	# Create cmake imported targets (ZLIB::ZLIB, zstd::libzstd_static).
+	# On macOS both build scripts return early; find_package falls back to system libs.
+	if(DEFINED ZLIB_ROOT AND NOT "${ZLIB_ROOT}" STREQUAL "")
+		find_package(ZLIB REQUIRED PATHS ${ZLIB_ROOT} NO_DEFAULT_PATH)
+	else()
+		find_package(ZLIB REQUIRED)
+	endif()
+	if(DEFINED zstd_ROOT AND NOT "${zstd_ROOT}" STREQUAL "")
+		find_package(zstd REQUIRED CONFIG PATHS ${zstd_ROOT} NO_DEFAULT_PATH)
+	endif()
+endif()
+
 message("add subdir JSON")
 add_subdirectory(Code/Libs/JSON)
 message("add subdir ODC")

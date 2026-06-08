@@ -22,26 +22,9 @@ if(NOT ODC_ASIO_SSL)
 	message(WARNING "KafkaPort requires ODC_ASIO_SSL to be enabled for librdkafka SSL support.")
 endif()
 
-# Build vendored zlib and zstd first (escape hatch: skip if *_ROOT already set;
-# also skipped on macOS — see comments in those files).
-include(${CMAKE_SOURCE_DIR}/Code/cmake/build_zlib.cmake)
-include(${CMAKE_SOURCE_DIR}/Code/cmake/build_zstd.cmake)
-
-# Create ZLIB::ZLIB target.
-# On macOS, ZLIB_ROOT is empty (vendored build skipped); fall back to system libz.dylib.
-# This avoids embedding a static zlib in the MODULE bundle, which would create duplicate
-# strong-symbol definitions with the system libz already loaded in the process (dyld4 error).
-if(DEFINED ZLIB_ROOT AND NOT "${ZLIB_ROOT}" STREQUAL "")
-	find_package(ZLIB REQUIRED PATHS ${ZLIB_ROOT} NO_DEFAULT_PATH)
-else()
-	find_package(ZLIB REQUIRED)
-endif()
-
-# Create zstd::libzstd_static target if a vendored zstd was built.
-# On macOS, zstd_ROOT is empty; WITH_ZSTD will be disabled for librdkafka.
-if(DEFINED zstd_ROOT AND NOT "${zstd_ROOT}" STREQUAL "")
-	find_package(zstd REQUIRED CONFIG PATHS ${zstd_ROOT} NO_DEFAULT_PATH)
-endif()
+# zlib and zstd are built and their cmake targets created in the top-level CMakeLists.txt
+# (inside if(KAFKAPORT), before add_subdirectory(Code/Libs/ODC)).  They are also linked
+# PRIVATELY into libODC there.  ZLIB_ROOT / zstd_ROOT cache variables are already set.
 
 # Build cmake-opts fragments for zlib and zstd used in the inner librdkafka configure.
 if(DEFINED ZLIB_ROOT AND NOT "${ZLIB_ROOT}" STREQUAL "")
@@ -233,17 +216,30 @@ set(RdKafka_DIR "${RdKafka_CMAKE_MODULES}")
 find_package(RdKafka REQUIRED PATHS ${RDKAFKA_HOME} NO_DEFAULT_PATH)
 
 # Interface fixup: strip cmake target names that originate from librdkafka's sub-build context
-# and may not resolve correctly in ours, then re-add them via our own find_package-resolved
-# targets.  OpenSSL is also stripped because it is already linked into libODC.so.
-# zstd was linked PRIVATE in librdkafka (not propagated); we add it explicitly so that
-# KafkaPort.so can resolve all zstd symbols at final link time.
-# On macOS, zstd is disabled (WITH_ZSTD=OFF) so the target doesn't exist — skip it.
+# and may not resolve correctly in ours; re-add them per-platform as appropriate.
+# OpenSSL is always stripped — it is already linked into libODC.
+# ZLIB / zstd per-platform:
+#   Linux  – statically embedded in libODC.so via WHOLE_ARCHIVE; symbols exported and
+#             resolved from libODC at dlopen time.  Do NOT add to KafkaPort link deps.
+#   macOS  – ZLIB::ZLIB is system libz.dylib; libODC.dylib references it dynamically but
+#             does not export its symbols; KafkaPort.so must link libz.dylib directly so
+#             the macOS linker can resolve symbols from librdkafka at bundle build time.
+#             zstd is disabled on macOS (WITH_ZSTD=OFF).
+#   Windows – CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS cannot export symbols from /WHOLEARCHIVE
+#             static libs; KafkaPort.dll must retain its own copy of zlib/zstd (Windows DLL
+#             isolation means no duplicate-symbol crash, unlike macOS dyld4).
 get_target_property(KAF_REQUIRED_LIBS RdKafka::rdkafka INTERFACE_LINK_LIBRARIES)
 message("KAF_REQUIRED_LIBS BEFORE: ${KAF_REQUIRED_LIBS}")
 list(FILTER KAF_REQUIRED_LIBS EXCLUDE REGEX "OpenSSL.*|ZLIB.*|zstd.*|ZSTD.*")
-list(APPEND KAF_REQUIRED_LIBS ZLIB::ZLIB)
-if(TARGET zstd::libzstd_static)
-	list(APPEND KAF_REQUIRED_LIBS zstd::libzstd_static)
+if(APPLE)
+	# System libz.dylib: KafkaPort.so must link it directly.
+	list(APPEND KAF_REQUIRED_LIBS ZLIB::ZLIB)
+elseif(WIN32)
+	# Keep zlib and zstd in KafkaPort.dll on Windows (see comment above).
+	list(APPEND KAF_REQUIRED_LIBS ZLIB::ZLIB)
+	if(TARGET zstd::libzstd_static)
+		list(APPEND KAF_REQUIRED_LIBS zstd::libzstd_static)
+	endif()
 endif()
 message("KAF_REQUIRED_LIBS AFTER: ${KAF_REQUIRED_LIBS}")
 set_target_properties(RdKafka::rdkafka PROPERTIES INTERFACE_LINK_LIBRARIES "${KAF_REQUIRED_LIBS}")
