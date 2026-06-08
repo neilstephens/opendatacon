@@ -109,47 +109,10 @@ if(NOT USE_PYTHON_SUBMODULE)
 	#set a variable to use for linking
 	set(PYTHON_LIBRARIES debug python_target_d optimized python_target )
 
-	#include in install/packaging
-	option(PACKAGE_PYTHON "Package python libs in c-pack installer" ON)
-	if(PACKAGE_PYTHON)
-		set(PACK_NAMES python expat zlib tinfo sqlite readline ncurses mpdec lzma ffi db5 bz2 z)
-		find_path(PYTHON_STDLIB_DIR _pydecimal.py
-			PATHS ${PYTHON_HOME}/lib/${PYTHON_VER} ${PYTHON_HOME}/lib64/${PYTHON_VER} ${PYTHON_HOME}/Lib
-			NO_DEFAULT_PATH
-			CMAKE_FIND_ROOT_PATH_BOTH)
-		if(PYTHON_STDLIB_DIR)
-			message("Found Python stdlib dir: '${PYTHON_STDLIB_DIR}'")
-			if(NOT PYTHON_NUM)
-				set(PYTHON_NUM 3${PYTHON_MINOR_VER})
-			endif()
-			file(GLOB_RECURSE STDLIB_SUBDIR
-				RELATIVE ${PYTHON_HOME}
-				${PYTHON_STDLIB_DIR}/_pydecimal.py)
-			message("Python std lib subdirectory: "${STDLIB_SUBDIR})
-			get_filename_component(STDLIB_SUBDIR ${STDLIB_SUBDIR} DIRECTORY)
-			message("Install Python stdlib dir: '${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}'")
-			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR})
-			add_definitions(-DPYTHON_LIBDIR="Python${PYTHON_NUM}")
-			file(GLOB_RECURSE PLATFORMPATH
-				RELATIVE ${PYTHON_STDLIB_DIR}
-				${PYTHON_STDLIB_DIR}/*/_sysconfigdata_m.py)
-			if(PLATFORMPATH MATCHES "(^[^;]*)/_sysconfigdata_m.py")
-				add_definitions(-DPYTHON_LIBDIRPLAT="${CMAKE_MATCH_1}")
-				message("Found separate platform python dir: '${CMAKE_MATCH_1}'")
-			endif()
-			add_custom_target(copy-python-files ALL
-				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}
-			)
-			file(GLOB_RECURSE PYTHON_EXES ${PYTHON_STDLIB_DIR}/*.exe)
-			foreach(python_exe ${PYTHON_EXES})
-				get_filename_component(PYTHON_EXE_NAME ${python_exe} NAME)
-				set(PYTHON_EXE_NAMES ${PYTHON_EXE_NAMES} ${PYTHON_EXE_NAME})
-			endforeach()
-		else()
-			message("Warning: can't find Python std lib dir to package")
-		endif()
-	endif()
-
-
+	# When using the system Python, the stdlib is already installed on the host.
+	# PYTHON_LIBDIR is not defined here: PythonWrapper.cpp only uses PYTHONHOME /
+	# PYTHON_LIBDIR when GlobalUseSystemPython=false (i.e. the vendored path).
+	# Users must set GlobalUseSystemPython=true in their port config so that
+	# PythonWrapper.cpp skips the PYTHON_LIBDIR check entirely.
 
 endif()
