@@ -59,7 +59,7 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
 	{
-		pLuaSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
+		pLuaSyncStrand->post([=, this, h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
 	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
@@ -73,7 +73,7 @@ private:
 
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::shared_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pLuaSyncStrand = pIOS->make_strand();
 
 	//synchronised versions of public counterparts above
 	void Enable_();

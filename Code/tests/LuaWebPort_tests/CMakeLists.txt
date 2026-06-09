@@ -29,10 +29,5 @@ configure_file(ConfStrings.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/ConfStrings.cpp)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ConfStrings.cpp.in)
 
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${DL})
+add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} simple-web-server)
-
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
-add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})

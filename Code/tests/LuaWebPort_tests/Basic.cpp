@@ -22,18 +22,22 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#include <opendatacon/asio.h>
+#ifdef USE_HTTPS
 #include <client_https.hpp>
+using HttpClient = SimpleWeb::Client<SimpleWeb::HTTPS>;
+#else
+#include <client_http.hpp>
+using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
+#endif
 #include "Helpers.h"
 #include "../PortLoader.h"
 #include "../../../opendatacon/NullPort.h"
 #include <catch.hpp>
-#include <opendatacon/asio.h>
 #include <thread>
 #include <string>
 
 #define SUITE(name) "LuaWebPortBasicsTestSuite - " name
-
-using HttpsClient = SimpleWeb::Client<SimpleWeb::HTTPS>;
 
 //TEST_CASE(SUITE("ConstructBuildEnableDisableDestroy"))
 //{
@@ -126,7 +130,11 @@ TEST_CASE(SUITE("WebRequest"))
 		// Synchronous client request examples
 		const std::string json_string = "{\"firstName\": \"John\",\"lastName\": \"Smith\",\"age\": 25}";
 
-		HttpsClient client("localhost:443", false);
+		HttpClient client("localhost:8443"
+			#ifdef USE_HTTPS
+			, false // don't verify self-signed cert
+			#endif
+			);
 		try
 		{
 			if (auto log = odc::spdlog_get("LuaWebPort"))

@@ -69,6 +69,7 @@ inline Json::Value GetConfigJSON()
 {
 	Json::Value json_conf;
 	json_conf["LuaFile"] = "LuaWebPortTests.lua";
+	json_conf["Port"] = 8443;
 	return json_conf;
 }
 
