@@ -46,7 +46,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "SrvLifecycle",
 			"", MakeServerConfig(port), portlib);
 		REQUIRE(srv != nullptr);
@@ -69,7 +69,7 @@ TEST_CASE(SUITE("BuildIdempotent"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "SrvBuildTwice",
 			"", MakeServerConfig(port), portlib);
 		REQUIRE(srv != nullptr);
@@ -126,7 +126,7 @@ TEST_CASE(SUITE("InboundBinaryEvent"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		Json::Value pts;
 		Json::Value bin;
@@ -163,7 +163,7 @@ TEST_CASE(SUITE("InboundAnalogEvent"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		Json::Value pts;
 		Json::Value ana;
@@ -201,7 +201,7 @@ TEST_CASE(SUITE("UnmappedEventNotSupported"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		// Only index 0 is configured; send at index 99.
 		Json::Value pts;
@@ -239,7 +239,7 @@ TEST_CASE(SUITE("EventWhileDisabled"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		Json::Value pts;
 		Json::Value bin;

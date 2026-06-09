@@ -84,7 +84,7 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		// Server: coil 0 ↔ ODC Binary index 0.
 		Json::Value srvPts;
@@ -151,7 +151,7 @@ TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		// Server: HR 0 ↔ ODC Analog index 0, Int16.
 		Json::Value srvPts;
@@ -220,7 +220,7 @@ TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		// Server: coil 100 writes → ODC Binary index 3.
 		Json::Value srvPts;
@@ -290,7 +290,7 @@ TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		// Server: HR 200 writes → ODC AnalogOutputInt16 index 5.
 		Json::Value srvPts;
@@ -368,7 +368,7 @@ TEST_CASE(SUITE("TwoWayCoil"))
 
 	{
 		ThreadPool pool(1);
-		const int port = GetFreePort();
+		const int port = 1502;
 
 		// Server: coil 50 ↔ ODC Binary index 0 in both directions.
 		Json::Value srvPts;

@@ -77,27 +77,6 @@ inline void TestTearDown()
 }
 
 // ---------------------------------------------------------------------------
-// GetFreePort
-// ---------------------------------------------------------------------------
-
-// Bind a socket to port 0, retrieve the kernel-assigned port, then close.
-// There is a brief TOCTOU window, but this is acceptable for tests.
-inline int GetFreePort()
-{
-	int sock = ::socket(AF_INET, SOCK_STREAM, 0);
-	sockaddr_in addr{};
-	addr.sin_family      = AF_INET;
-	addr.sin_port        = 0;
-	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	::bind(sock, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
-	socklen_t len = sizeof(addr);
-	::getsockname(sock, reinterpret_cast<sockaddr*>(&addr), &len);
-	const int port = ntohs(addr.sin_port);
-	::close(sock);
-	return port;
-}
-
-// ---------------------------------------------------------------------------
 // WaitCallback / SendEvent
 // ---------------------------------------------------------------------------
 
