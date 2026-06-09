@@ -36,9 +36,14 @@ endif()
 #tempting to move this to the top - but don't! Must set CMAKE_BUILD_TYPE first
 project(opendatacon_suite C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++17 instead of -std=gnu++17
+set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++20 instead of -std=gnu++20
+
+# Bundled fmt in spdlog 1.x uses FMT_STRING which creates local structs passed
+# to consteval constructors - rejected by GCC 15 in C++20 mode. Suppress consteval
+# to keep the bundled fmt working until spdlog is upgraded to use fmt 11+.
+add_compile_definitions(FMT_CONSTEVAL=)
 
 #macro for resolving chain of symlinks into a list
 include(Code/cmake/file_w_symlinks.cmake)
@@ -87,6 +92,7 @@ set(FILETRANSFERPORT OFF CACHE BOOL "Build File Transfer Port")
 set(LUAPORT OFF CACHE BOOL "Build Lua Port")
 set(LUAWEBPORT OFF CACHE BOOL "Build Lua Web Port")
 set(KAFKAPORT OFF CACHE BOOL "Build Kafka Port")
+set(GOMODBUSPORT OFF CACHE BOOL "Build Go Modbus Port")
 set(LUATRANSFORM OFF CACHE BOOL "Build Lua Transform")
 set(LUALOGSINK OFF CACHE BOOL "Build Lua log sink plugin")
 set(LUAUICOMMANDER OFF CACHE BOOL "Build Lua UI command script plugin")
@@ -110,10 +116,17 @@ if(FULL)
 	set(LUAPORT ON CACHE BOOL "Build Lua Port" FORCE)
 	set(LUAWEBPORT ON CACHE BOOL "Build Lua Web Port" FORCE)
 	set(KAFKAPORT ON CACHE BOOL "Build Kafka Port" FORCE)
+	set(GOMODBUSPORT ON CACHE BOOL "Build Go Modbus Port" FORCE)
 	set(LUATRANSFORM ON CACHE BOOL "Build Lua Transform" FORCE)
 	set(LUALOGSINK ON CACHE BOOL "Build Lua log sink plugin" FORCE)
 	set(LUAUICOMMANDER ON CACHE BOOL "Build Lua UI command script plugin" FORCE)
 	set(CONSOLEUI ON CACHE BOOL "Build the console user interface" FORCE)
+endif()
+
+# Go c-shared buildmode does not support windows/386; disable GoModbusPort on 32-bit Windows
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+	set(GOMODBUSPORT OFF CACHE BOOL "Build Go Modbus Port" FORCE)
+	message(STATUS "GoModbusPort disabled: Go c-shared buildmode does not support windows/386")
 endif()
 
 # IDE configuration
@@ -245,7 +258,7 @@ else()
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASIO_SEPARATE_COMPILATION")
 
 	option(STATIC_LIBSTDC++ "Link libstdc++ statically" ON)
-	if(STATIC_LIBSTDC++)
+	if(STATIC_LIBSTDC++ AND NOT APPLE)
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static-libstdc++")
@@ -345,10 +358,13 @@ if(CMAKE_USE_PTHREADS_INIT)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
-include(CheckFunctionExists)
-check_function_exists(closefrom HAVE_CLOSEFROM)
+include(CheckSymbolExists)
+set(_saved_required_defs "${CMAKE_REQUIRED_DEFINITIONS}")
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(closefrom "unistd.h" HAVE_CLOSEFROM)
+set(CMAKE_REQUIRED_DEFINITIONS "${_saved_required_defs}")
 if(HAVE_CLOSEFROM)
-	add_definitions(-DHAVE_CLOSEFROM)
+    add_definitions(-DHAVE_CLOSEFROM)
 endif()
 
 # the RPATH to be used when installing - allowing local libraries to be found for standalone installs,
@@ -375,7 +391,7 @@ foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
 	set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${CMAKE_BINARY_DIR}/${OUTPUTCONFIG}" )
 endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
-set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an asio/include path within")
+set(ASIO_HOME_INSTRUCTIONS "Choose the location of asio header library: where it was installed - there should be an include path within")
 if(USE_ASIO_SUBMODULE)
 	set(ASIO_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/asio" CACHE PATH ${ASIO_HOME_INSTRUCTIONS} FORCE)
 	if(NOT EXISTS "${ASIO_HOME}/.git")
@@ -405,19 +421,80 @@ else()
 	endif()
 endif()
 
+# Helper functions for port/plugin/transform/test targets
+# All force-include the asio direct include guard to prevent
+# direct #include <asio.hpp> outside libODC.
+function(_apply_guard target)
+  target_compile_options(${target} PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/FI${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-include ${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
+  )
+endfunction()
+
+function(add_port_library name)
+  add_library(${name} MODULE ${ARGN})
+  target_link_libraries(${name} ODC)
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER ports)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
+endfunction()
+
+function(add_plugin_library name)
+  add_library(${name} MODULE ${ARGN})
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER plugins)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
+endfunction()
+
+function(add_transform_library name)
+  add_library(${name} MODULE ${ARGN})
+  _apply_guard(${name})
+  install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
+  set_target_properties(${name} PROPERTIES FOLDER transforms)
+  install(CODE
+    "
+    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
+      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
+    )
+    ")
+endfunction()
+
+function(add_test_executable name)
+  add_executable(${name} ${ARGN})
+  target_link_libraries(${name} ODC ${DL})
+  _apply_guard(${name})
+  install(TARGETS ${name} RUNTIME DESTINATION ${INSTALLDIR_BINS})
+  set_target_properties(${name} PROPERTIES FOLDER tests)
+  add_test(NAME CTEST_${name} COMMAND ${name})
+endfunction()
+
 message("add subdir JSON")
 add_subdirectory(Code/Libs/JSON)
 message("add subdir ODC")
 add_subdirectory(Code/Libs/ODC)
-message("add subdir SpawnDetached")
-add_subdirectory(Code/opendatacon/SpawnDetached)
+message("add subdir CAPI")
+add_subdirectory(Code/Libs/CAPI)
+message("add subdir Spawn")
+add_subdirectory(Code/opendatacon/Spawn)
 if(LUAPORT OR LUAWEBPORT OR LUATRANSFORM OR LUALOGSINK OR LUAUICOMMANDER)
 	message("add subdir Lua")
 	add_subdirectory(Code/Libs/Lua)
 	message("add subdir LuaWrappers")
 	add_subdirectory(Code/Libs/LuaWrappers)
 endif()
-if(WEBUI OR LUAWEBPORT)
+if(WEBUI OR LUAWEBPORT OR PYPORT OR SIMPORT)
 	message("add subdir SimpleWebServer")
 	add_subdirectory(Code/Libs/SimpleWebServer)
 endif()
@@ -486,6 +563,10 @@ endif()
 if(KAFKAPORT)
 	message("add subdir KafkaPort")
 	add_subdirectory(Code/Ports/KafkaPort)
+endif()
+if(GOMODBUSPORT)
+	message("add subdir GoModbusPort")
+	add_subdirectory(Code/Ports/GoModbusPort)
 endif()
 if(LUATRANSFORM)
 	message("add subdir LuaTransform")

@@ -27,27 +27,26 @@
 #ifndef ServerManagerh
 #define ServerManagerh
 
-
-#include "server.hpp"
-#include "request_handler.hpp"
+// opendatacon/asio.h must precede server_http.hpp so asio is included correctly
+// through our direct-include guard mechanism.
 #include <opendatacon/asio.h>
-#include <string>
+// *INDENT-OFF*
+#include <server_http.hpp>
+// *INDENT-ON*
 #include <functional>
-#include <unordered_map>
+#include <memory>
 #include <mutex>
+#include <string>
+#include <unordered_map>
 
-
-/*
-This class is used to manage and share a TCPSocket for http::server objects
-The HttpServerManager class manages a static list of its own instances, so the PyPort can decide if it needs to create a new HttpServerManager instance or not.
-*/
+using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+using HandlerCallbackType = std::function<void (std::shared_ptr<HttpServer::Response>, std::shared_ptr<HttpServer::Request>)>;
 
 class HttpServerManager;
 
-// We want to pass this token into the static HttpServerManager methods, so that the use of the connection pointer is contained
 class ServerTokenType
 {
-	friend class HttpServerManager; // So the connection class can access the Connection pointer.
+	friend class HttpServerManager;
 public:
 	ServerTokenType():
 		ServerID(""),
@@ -72,9 +71,7 @@ public:
 	HttpServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
 	~HttpServerManager();
 
-	// These next two actually do the same thing at the moment, just establish a route for messages with a given station address
-	// This is the factory method for this class.
-	static void AddHandler(const ServerTokenType& ServerTok, const std::string& urlpattern, http::pHandlerCallbackType urihandler);
+	static void AddHandler(const ServerTokenType& ServerTok, const std::string& urlpattern, HandlerCallbackType handler);
 	static size_t RemoveHandler(const ServerTokenType& ServerTok, const std::string& urlpattern);
 
 	static ServerTokenType AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort);
@@ -86,22 +83,20 @@ public:
 	{
 		return aEndPoint + ":" + aPort;
 	}
-	// Make the class non-copyable
+
 	HttpServerManager& operator=(const HttpServerManager&) = delete;
 	HttpServerManager(const HttpServerManager&) = delete;
-	HttpServerManager() = default;
 
 private:
-	std::shared_ptr<odc::asio_service> pIOS;
+	struct Impl;
+	std::unique_ptr<Impl> pImpl;
+
 	std::string EndPoint;
 	std::string Port;
 	std::string InternalServerID;
 
-	std::shared_ptr<http::server> pServer;
-
-	// A list of ServerManagers, so that we can find if one for out port/address combination already exists.
 	static std::unordered_map<std::string, std::weak_ptr<HttpServerManager>> ServerMap;
-	static std::mutex ManagementMutex; // Control managment access (controls access to the map and static instance creation)
+	static std::mutex ManagementMutex;
 };
-#endif
 
+#endif

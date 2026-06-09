@@ -24,7 +24,7 @@ ChannelHandler::~ChannelHandler()
 
 	//wait til they're all gone, or harmless
 	while(!tracker.expired() && !pIOS->stopped() && !pSyncStrand->running_in_this_thread())
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 
 	ChannelStateSubscriber::Unsubscribe(ChannelID);
 }
@@ -109,10 +109,11 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 		if(pConf->mAddrConf.Transport == IPTransport::UDP)
 		{
 			local_interface = pConf->mAddrConf.BindIP.empty() ? "0.0.0.0" : pConf->mAddrConf.BindIP;
-			local_port = (pConf->mAddrConf.UDPListenPort == 0) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
+			local_port = (pConf->mAddrConf.SymmetricUDP) ? pConf->mAddrConf.Port : pConf->mAddrConf.UDPListenPort;
 			remote_host = pConf->mAddrConf.IP;
 			remote_port = pConf->mAddrConf.Port;
-			ChannelID = std::to_string(local_port)+":"+local_interface+":"+remote_host+":"+std::to_string(remote_port);
+			std::string id_prefex = local_port == 0 ? pPort->Name : std::to_string(local_port);
+			ChannelID = id_prefex+":"+local_interface+":"+remote_host+":"+std::to_string(remote_port);
 		}
 		else
 		{
@@ -174,7 +175,7 @@ std::shared_ptr<opendnp3::IChannel> ChannelHandler::SetChannel()
 					opendnp3::TimeDuration::Milliseconds(pConf->pPointConf->IPConnectRetryPeriodMinms)),
 				opendnp3::IPEndpoint(local_interface,local_port),
 				opendnp3::IPEndpoint(remote_host,remote_port),
-				listener);
+				listener,pConf->mAddrConf.ConnectionlessUDP);
 			if(watchdog_mode == WatchdogBark::DEFAULT)
 				watchdog_mode = WatchdogBark::NEVER;
 		}

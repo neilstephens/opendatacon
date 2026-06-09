@@ -41,13 +41,16 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 
 LuaPort::~LuaPort()
 {
-	lua_gc(LuaState,LUA_GCCOLLECT);
+	pLuaSyncStrand->post([this, h{handler_tracker}]()
+		{
+			lua_gc(LuaState, LUA_GCCOLLECT);
+		});
 
 	//Wait for outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
 	while(!tracker.expired() && !pIOS->stopped())
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 
 	lua_close(LuaState);
 }

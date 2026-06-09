@@ -86,7 +86,7 @@ void CBOutstationPort::UpdateOutstationPortCollection()
 		// PortCollection has already been created, so get a shared pointer to it.
 		// The last shared_ptr to get destructed will control its destruction. The weak_ptr will just no longer return a pointer.
 		while (!(this->CBOutstationCollection = weak_collection.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 }
 
@@ -202,8 +202,8 @@ CBMessage_t CBOutstationPort::CorruptCBMessage(const CBMessage_t& CompleteCBMess
 		{
 			CBMessage_t ResMsg = CompleteCBMessage;
 			size_t messagelen = CompleteCBMessage.size();
-			std::uniform_real_distribution<> bitdist(0, messagelen * 32 - 1);
-			int bitnum = round(bitdist(e2));
+			std::uniform_real_distribution<> bitdist(0, static_cast<double>(messagelen * 32 - 1));
+			int bitnum = static_cast<int>(round(bitdist(e2)));
 			ResMsg[bitnum / 32].XORBit(bitnum % 32);
 			return ResMsg;
 		}

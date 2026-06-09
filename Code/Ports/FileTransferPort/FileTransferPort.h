@@ -61,7 +61,7 @@ public:
 
 	void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override
 	{
-		pSyncStrand->post([=,h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
+		pSyncStrand->post([=, this, h{handler_tracker}](){Event_(event,SenderName,pStatusCallback);});
 	}
 
 	void ProcessElements(const Json::Value& JSONRoot) override;
@@ -97,7 +97,7 @@ private:
 
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::unique_ptr<asio::io_service::strand> pSyncStrand = pIOS->make_strand();
+	std::unique_ptr<odc::strand_t, odc::deleter> pSyncStrand = pIOS->make_strand();
 	std::function<void()> ConfirmHandler = [] {};
 
 	bool enabled = false;

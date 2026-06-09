@@ -49,7 +49,9 @@ set(
 		-DCMAKE_INSTALL_PREFIX=${RDKAFKA_HOME}/
 		-DCMAKE_DEBUG_POSTFIX=${CMAKE_DEBUG_POSTFIX}
 		-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 	CACHE STRING "cmake options to use when building librdkafka submodule"
+	FORCE
 )
 if(NOT EXISTS "${RDKAFKA_SOURCE}/.git")
 	execute_process(COMMAND git submodule update --init -- Code/submodules/librdkafka

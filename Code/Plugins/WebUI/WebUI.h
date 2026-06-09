@@ -71,7 +71,7 @@ private:
 	std::unique_ptr<std::regex> pLogRegex;
 	std::deque<std::pair<std::shared_ptr<void>,std::string_view>> log_queue;
 	size_t log_q_size;
-	const std::unique_ptr<asio::io_service::strand> log_q_sync = pIOS->make_strand();
+	const std::unique_ptr<odc::strand_t, odc::deleter> log_q_sync = pIOS->make_strand();
 
 	/*Param Collection with POST from client side*/
 	ParamCollection params;

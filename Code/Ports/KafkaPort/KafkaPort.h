@@ -50,7 +50,7 @@ public:
 	virtual void Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback) override = 0;
 
 private:
-	std::unique_ptr<asio::io_service::strand> pStateSync = odc::asio_service::Get()->make_strand();
+	std::unique_ptr<odc::strand_t, odc::deleter> pStateSync = odc::asio_service::Get()->make_strand();
 
 protected:
 	std::atomic_bool enabled {false};

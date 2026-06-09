@@ -30,10 +30,10 @@
 #include "DNP3PortConf.h"
 #include "CommsRideThroughTimer.h"
 #include "Log.h"
-#include <unordered_map>
 #include <opendnp3/master/ISOEHandler.h>
 #include <opendnp3/master/IMasterApplication.h>
 #include <opendnp3/app/parsing/ICollection.h>
+#include <opendnp3/gen/FunctionCode.h>
 
 class DNP3MasterPort: public DNP3Port, public opendnp3::ISOEHandler, public opendnp3::IMasterApplication
 {
@@ -127,6 +127,9 @@ private:
 	bool IntegrityScanDone;
 	std::shared_ptr<asio::steady_timer> pStartupIntegrityGraceTimer;
 
+	//access only on pChanH strand
+	std::shared_ptr<asio::steady_timer> pEnableUnsolTimer;
+
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
 	void UpdateCommsPoint(bool isFailed);
@@ -139,6 +142,8 @@ private:
 	void CommsHeartBeat(bool isFailed);
 	void LinkStatusListener(opendnp3::LinkStatus status);
 	void LinkUpIntegrityIfNeeded();
+	void StartPeriodicEnableUnsol();
+	void StopPeriodicEnableUnsol();
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}
 	void PortUp();

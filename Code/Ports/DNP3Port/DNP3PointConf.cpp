@@ -87,6 +87,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	/// Time delay beforce retrying a failed task
 	TaskRetryPeriodms(5000),
 	TaskStartTimeoutms(10000),
+	PeriodicEnableUnsolms(0),
 	// Master Station scanning configuration
 	IntegrityScanRatems(3600000),
 	EventClass1ScanRatems(1000),
@@ -105,6 +106,9 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	TimeSyncPeriodms(0),
 	PassThroughTimeSync(false),
 	PassThroughTimeSyncAction(false),
+	MaxUpdateBatchCount(0),
+	MaxUpdateBatchPeriodms(0),
+	UpdateBatchResponseWeight(0.1),
 	// Default Static Variations
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var2),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
@@ -118,7 +122,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
 	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
 	// Default Analog Control Type
-	AnalogControlType(odc::EventType::AnalogOutputInt32),
+	AnalogControlType(odc::EventType::BeforeRange),
 	// Timestamp Override Alternatives
 	TimestampOverride(TimestampOverride_t::ZERO),
 	// Event buffer limits
@@ -244,6 +248,18 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		PassThroughTimeSync = JSONRoot["PassThroughTimeSync"].asBool();
 	if (JSONRoot.isMember("PassThroughTimeSyncAction"))
 		PassThroughTimeSyncAction = JSONRoot["PassThroughTimeSyncAction"].asBool();
+	if (JSONRoot.isMember("MaxUpdateBatchCount"))
+		MaxUpdateBatchCount = JSONRoot["MaxUpdateBatchCount"].asUInt();
+	if (JSONRoot.isMember("MaxUpdateBatchPeriodms"))
+		MaxUpdateBatchPeriodms = JSONRoot["MaxUpdateBatchPeriodms"].asUInt();
+	if (JSONRoot.isMember("UpdateBatchResponseWeight"))
+	{
+		double val = JSONRoot["UpdateBatchResponseWeight"].asDouble();
+		if(val < 0.0 || val > 1.0)
+			Log.Error("UpdateBatchResponseWeight should be between 0.0 and 1.0, got {}", val);
+		else
+			UpdateBatchResponseWeight = val;
+	}
 
 	// Master Station configuration
 	if (JSONRoot.isMember("MasterResponseTimeoutms"))
@@ -329,6 +345,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// Master Station task start timeout
 	if (JSONRoot.isMember("TaskStartTimeoutms"))
 		TaskStartTimeoutms = JSONRoot["TaskStartTimeoutms"].asUInt();
+	if (JSONRoot.isMember("PeriodicEnableUnsolms"))
+		PeriodicEnableUnsolms = JSONRoot["PeriodicEnableUnsolms"].asUInt();
 
 	// Comms Point Configuration
 	if (JSONRoot.isMember("CommsPoint"))
@@ -438,8 +456,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		AnalogControlType = odc::EventTypeFromString(JSONRoot["AnalogControlType"].asString());
 		if(AnalogControlType < odc::EventType::AnalogOutputInt16 || AnalogControlType > odc::EventType::AnalogOutputDouble64)
 		{
-			Log.Error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to AnalogOutputInt32", JSONRoot["AnalogControlType"].asString());
-			AnalogControlType = odc::EventType::AnalogOutputInt32;
+			Log.Error("Invalid AnalogControlType: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - defaulting to pass-through", JSONRoot["AnalogControlType"].asString());
+			AnalogControlType = odc::EventType::BeforeRange;
 		}
 	}
 
@@ -769,7 +787,7 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 					AnalogControlTypes[index] = odc::EventTypeFromString(AnalogControls[n]["Type"].asString());
 					if(AnalogControlTypes[index] < odc::EventType::AnalogOutputInt16 || AnalogControlTypes[index] > odc::EventType::AnalogOutputDouble64)
 					{
-						Log.Error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port default {}", AnalogControls[n]["Type"].asString(),ToString(AnalogControlType));
+						Log.Error("Invalid AnalogControl Type: '{}', should be one of the following: AnalogOutputInt16, AnalogOutputInt32, AnalogOutputFloat32, AnalogOutputDouble64 - falling back to port setting", AnalogControls[n]["Type"].asString());
 						AnalogControlTypes[index] = AnalogControlType;
 					}
 				}

@@ -24,43 +24,120 @@
  *      Author: Scott Ellis - scott.ellis@novatex.com.au
  */
 
-
 #include "HttpServerManager.h"
 #include "Log.h"
-#include <functional>
+#include <atomic>
+#include <map>
+#include <mutex>
 #include <string>
-#include <unordered_map>
+#include <thread>
+
+struct HttpServerManager::Impl
+{
+	HttpServer server;
+	std::thread server_thread;
+	std::atomic<bool> running{false};
+
+	std::map<std::string, HandlerCallbackType> HandlerMap;
+	std::mutex HandlerMutex;
+
+	explicit Impl(const std::string& address, const std::string& port)
+	{
+		server.config.address = address;
+		server.config.port    = static_cast<unsigned short>(std::stoul(port));
+
+		auto dispatch_fn = [this](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+					 {
+						 dispatch(response, request);
+					 };
+		server.resource["^/.*"]["GET"]  = dispatch_fn;
+		server.resource["^/.*"]["POST"] = dispatch_fn;
+
+		auto bad_request_fn = [](std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> /*request*/)
+					    {
+						    response->write(SimpleWeb::StatusCode::client_error_bad_request, "Bad Request");
+					    };
+		server.default_resource["GET"]  = bad_request_fn;
+		server.default_resource["POST"] = bad_request_fn;
+	}
+
+	void dispatch(std::shared_ptr<HttpServer::Response> response, std::shared_ptr<HttpServer::Request> request)
+	{
+		// Lookup key: "METHOD /decoded-path" — SWS provides the decoded path directly
+		std::string key = request->method + " " + request->path;
+
+		HandlerCallbackType handler;
+		{
+			std::unique_lock<std::mutex> lck(HandlerMutex);
+			std::size_t match_len = 0;
+			for (auto& kv : HandlerMap)
+			{
+				if ((key.find(kv.first) == 0) && (kv.first.length() > match_len))
+				{
+					match_len = kv.first.length();
+					handler   = kv.second;
+				}
+			}
+		}
+
+		if (!handler)
+		{
+			Log.Debug("HttpServerManager: no handler for {}", key);
+			response->write(SimpleWeb::StatusCode::client_error_bad_request, "No matching handler");
+			return;
+		}
+
+		handler(response, request);
+	}
+
+	void start()
+	{
+		bool expected = false;
+		if (!running.compare_exchange_strong(expected, true))
+			return;
+		server_thread = std::thread([this]() { server.start(); });
+	}
+
+	void stop()
+	{
+		bool expected = true;
+		if (!running.compare_exchange_strong(expected, false))
+			return;
+		server.stop();
+		if (server_thread.joinable())
+			server_thread.join();
+	}
+
+	~Impl() { stop(); }
+};
 
 std::unordered_map<std::string, std::weak_ptr<HttpServerManager>> HttpServerManager::ServerMap;
-
-std::mutex HttpServerManager::ManagementMutex; // Allow only one management operation at a time. Not a performance issue
-
+std::mutex HttpServerManager::ManagementMutex;
 
 ServerTokenType::~ServerTokenType()
 {}
 
-HttpServerManager::HttpServerManager(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort):
-	pIOS(std::move(apIOS)),
+HttpServerManager::HttpServerManager(std::shared_ptr<odc::asio_service> /*apIOS*/,
+	const std::string& aEndPoint,
+	const std::string& aPort):
+	pImpl(std::make_unique<Impl>(aEndPoint, aPort)),
 	EndPoint(aEndPoint),
-	Port(aPort)
+	Port(aPort),
+	InternalServerID(MakeServerID(aEndPoint, aPort))
 {
-	// This is only called by the method below, which is already protected.
-	pServer = std::make_shared<http::server>(pIOS, EndPoint, Port);
-
-	InternalServerID = MakeServerID(aEndPoint, aPort);
-
-	Log.Debug("Opened an HttpServerManager object {} ", InternalServerID);
+	Log.Debug("Opened an HttpServerManager object {}", InternalServerID);
 }
 
-// Static Method
-ServerTokenType HttpServerManager::AddConnection(std::shared_ptr<odc::asio_service> apIOS, const std::string& aEndPoint, const std::string& aPort)
-{
-	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
+HttpServerManager::~HttpServerManager()
+{}
 
+ServerTokenType HttpServerManager::AddConnection(std::shared_ptr<odc::asio_service> apIOS,
+	const std::string& aEndPoint,
+	const std::string& aPort)
+{
+	std::unique_lock<std::mutex> lck(ManagementMutex);
 	std::string ServerID = MakeServerID(aEndPoint, aPort);
 
-	// Only add if does not exist, or has expired
-	// If we can get the weak_ptr, it was created and is still valid, so use it.
 	if (ServerMap.count(ServerID) != 0)
 	{
 		if (auto pSM = ServerMap[ServerID].lock())
@@ -70,61 +147,53 @@ ServerTokenType HttpServerManager::AddConnection(std::shared_ptr<odc::asio_servi
 		}
 	}
 
-	// Either the weak_ptr is no longer valid, or there is no entry, so create it..
 	Log.Debug("First ServerTok for connection - {}", ServerID);
-	// If we give each ServerToken a shared_ptr to the connection, then the connection gets destoyed with the last token
-	// This should be the only way to call the constuctor (we disable copy constructors)
 	auto pSM = std::make_shared<HttpServerManager>(apIOS, aEndPoint, aPort);
 	ServerMap[ServerID] = pSM;
-
 	return ServerTokenType(ServerID, pSM);
 }
 
 void HttpServerManager::StartConnection(const ServerTokenType& ServerTok)
 {
-	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
+	std::unique_lock<std::mutex> lck(ManagementMutex);
 	if (auto pServerMgr = ServerTok.pServerManager)
-	{
-		pServerMgr->pServer->start(); // Ok to call if already running
-	}
+		pServerMgr->pImpl->start();
 	else
-	{
 		Log.Error("Tried to start httpserver when the connection token was not valid");
-	}
 }
 
 void HttpServerManager::StopConnection(const ServerTokenType& ServerTok)
 {
-	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
+	std::unique_lock<std::mutex> lck(ManagementMutex);
 	if (auto pServerMgr = ServerTok.pServerManager)
-	{
-		pServerMgr->pServer->stop(); // Ok to call if already stopped
-	}
+		pServerMgr->pImpl->stop();
 	else
-	{
 		Log.Error("Tried to stop httpserver when the connection token was not valid");
-	}
 }
 
-void HttpServerManager::AddHandler(const ServerTokenType& ServerTok, const std::string &urlpattern, http::pHandlerCallbackType urihandler)
+void HttpServerManager::AddHandler(const ServerTokenType& ServerTok,
+	const std::string& urlpattern,
+	HandlerCallbackType handler)
 {
-	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
+	std::unique_lock<std::mutex> lck(ManagementMutex);
 	if (auto pServerMgr = ServerTok.pServerManager)
 	{
-		pServerMgr->pServer->register_handler(urlpattern, std::move(urihandler)); // Will overwrite if duplicate
+		std::unique_lock<std::mutex> hlck(pServerMgr->pImpl->HandlerMutex);
+		pServerMgr->pImpl->HandlerMap[urlpattern] = std::move(handler);
 	}
 	else
-	{
 		Log.Error("Tried to add a urihandler when the httpserver was not valid");
-	}
 }
 
-size_t HttpServerManager::RemoveHandler(const ServerTokenType& ServerTok, const std::string& urlpattern)
+size_t HttpServerManager::RemoveHandler(const ServerTokenType& ServerTok,
+	const std::string& urlpattern)
 {
-	std::unique_lock<std::mutex> lck(HttpServerManager::ManagementMutex); // Only allow one static op at a time
+	std::unique_lock<std::mutex> lck(ManagementMutex);
 	if (auto pServerMgr = ServerTok.pServerManager)
 	{
-		return pServerMgr->pServer->deregister_handler(urlpattern); // Will overwrite if duplicate
+		std::unique_lock<std::mutex> hlck(pServerMgr->pImpl->HandlerMutex);
+		pServerMgr->pImpl->HandlerMap.erase(urlpattern);
+		return pServerMgr->pImpl->HandlerMap.size();
 	}
 	else
 	{
@@ -132,6 +201,3 @@ size_t HttpServerManager::RemoveHandler(const ServerTokenType& ServerTok, const 
 		return 0;
 	}
 }
-
-HttpServerManager::~HttpServerManager()
-{}

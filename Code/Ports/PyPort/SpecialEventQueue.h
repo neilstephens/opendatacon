@@ -54,7 +54,7 @@ public:
 	std::atomic<size_t> size;
 	size_t maxsize;
 	std::shared_ptr<odc::asio_service> pIOS;
-	std::unique_ptr<asio::io_context::strand> internal_queue_strand;
+	std::unique_ptr<odc::strand_t, odc::deleter> internal_queue_strand;
 
 public:
 	SpecialEventQueue(std::shared_ptr<odc::asio_service> _pIOS, size_t _maxsize)

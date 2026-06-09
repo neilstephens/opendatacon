@@ -74,7 +74,7 @@ protected:
 		{
 			if(command == "List")
 			{
-				odc::extract_delimited_string("\"'`",args,T_regex_str);
+				odc::extract_delimited_string("\"'`/",args,T_regex_str);
 				break;
 			}
 		}

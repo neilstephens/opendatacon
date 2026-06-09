@@ -302,6 +302,8 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		// Update the comms state point
 		PortUp();
 
+		StartPeriodicEnableUnsol();
+
 		if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
 		{
 			Log.Debug("{}: Setting IntegrityScanNeeded for Link-up.",Name);
@@ -327,6 +329,8 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 
 		// Notify subscribers that a disconnect event has occured
 		NotifyOfDisconnection();
+
+		StopPeriodicEnableUnsol();
 
 		IntegrityScanDone = false;
 		pStartupIntegrityGraceTimer->cancel();
@@ -394,6 +398,49 @@ void DNP3MasterPort::LinkUpIntegrityIfNeeded()
 		auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 		pMaster->ScanClasses(pConf->pPointConf->GetStartupIntegrityClassMask(),ISOEHandle);
 		IntegrityScanDone = true;
+	}
+}
+
+//Only call on pChanH strand - kicks off coroutine to enable unsol periodically while link is up
+void DNP3MasterPort::StartPeriodicEnableUnsol()
+{
+	auto period = static_cast<DNP3PortConf*>(this->pConf.get())->pPointConf->PeriodicEnableUnsolms;
+	auto classes = static_cast<DNP3PortConf*>(this->pConf.get())->pPointConf->GetUnsolClassMask();
+	if(period == 0 || classes.IsEmpty())
+		return;
+
+	Log.Debug("{}: Starting periodic EnableUnsol (interval {}ms).", Name, period);
+
+	std::vector<opendnp3::Header> headers;
+	if(classes.HasClass1()) headers.push_back(opendnp3::Header::AllObjects(60,2));
+	if(classes.HasClass2()) headers.push_back(opendnp3::Header::AllObjects(60,3));
+	if(classes.HasClass3()) headers.push_back(opendnp3::Header::AllObjects(60,4));
+
+	auto send_loop = [this,period,headers]() -> asio::awaitable<void>
+			     {
+				     while(pEnableUnsolTimer)
+				     {
+					     pEnableUnsolTimer->expires_after(std::chrono::milliseconds(period));
+					     auto [ec] = co_await pEnableUnsolTimer->async_wait(asio::as_tuple(asio::use_awaitable));
+					     if(ec) co_return; // cancelled
+
+					     Log.Debug("{}: PeriodicEnableUnsol: sending ENABLE_UNSOLICITED.", Name);
+					     pMaster->PerformFunction("PeriodicEnableUnsol", opendnp3::FunctionCode::ENABLE_UNSOLICITED,headers);
+				     }
+			     };
+
+	pEnableUnsolTimer = pIOS->make_steady_timer();
+	pIOS->co_spawn(send_loop,asio::detached);
+}
+
+//Only call on pChanH strand
+void DNP3MasterPort::StopPeriodicEnableUnsol()
+{
+	if(pEnableUnsolTimer)
+	{
+		Log.Debug("{}: Stopping periodic EnableUnsol.", Name);
+		pEnableUnsolTimer->cancel();
+		pEnableUnsolTimer.reset();
 	}
 }
 
@@ -653,12 +700,18 @@ void DNP3MasterPort::Event(std::shared_ptr<const EventInfo> event, const std::st
 			{
 				Log.Debug("{}: Executing analog control to index: {}", Name, index);
 
-				// Here we may get a 16 bit event, but the master station may be configured to send a 32 bit command, for example
-				// We need to convert the event to the correct type
+				// The master station may be configured to send a fixed type of analog command
 				auto new_event_type = pConf->pPointConf->AnalogControlTypes[index];
+
+				// Pass through as the same type if override isn't valid/configured
+				if(new_event_type < EventType::AnalogOutputInt16 || new_event_type > EventType::AnalogOutputDouble64)
+					new_event_type = event->GetEventType();
+
 				try
 				{
+					// Convert to the new type if required
 					auto newevent = ConvertEvent(event, new_event_type);
+
 					switch(new_event_type)
 					{
 						case EventType::AnalogOutputInt16:

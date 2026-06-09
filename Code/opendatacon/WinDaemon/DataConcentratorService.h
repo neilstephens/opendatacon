@@ -29,7 +29,7 @@ class DataConcentratorService: public CServiceBase
 public:
 
 	DataConcentratorService(ODCArgs& Args,
-		PWSTR pszServiceName,
+		PCWSTR pszServiceName,
 		BOOL fCanStop = TRUE,
 		BOOL fCanShutdown = TRUE,
 		BOOL fCanPauseContinue = FALSE);

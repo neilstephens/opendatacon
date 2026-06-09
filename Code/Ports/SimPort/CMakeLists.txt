@@ -20,17 +20,7 @@
 project(SimPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def sqlite3/sqlite3.c sqlite3/sqlite3.h)
-add_definitions(-DSQLITE_OMIT_SHARED_CACHE)
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
+target_compile_definitions(${PROJECT_NAME} PRIVATE SQLITE_OMIT_SHARED_CACHE)
+target_link_libraries(${PROJECT_NAME} HTTP ${DL})
 
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
-target_link_libraries(${PROJECT_NAME} ODC HTTP ${DL})
-
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
-
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-	)
-")

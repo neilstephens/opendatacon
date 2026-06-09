@@ -34,6 +34,8 @@
 #include "BlackHoleTransform.h"
 #include "AnalogScalingTransform.h"
 #include <iostream>
+
+#include "CAPI/C_Transform.h"
 #include <opendatacon/Platform.h>
 #include <opendatacon/spdlog.h>
 #include <opendatacon/util.h>
@@ -157,43 +159,55 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 						continue;
 					}
 
-					//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
-					//it should return a pointer to a heap allocated instance of a descendant of Transform
-					std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
-					auto new_tx_func = reinterpret_cast<Transform*(*)(const std::string&,const Json::Value&)>(LoadSymbol(txlib, new_funcname));
-					std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
-					auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
-
-					if(new_tx_func == nullptr)
-						Log.Info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
-					if(delete_tx_func == nullptr)
-						Log.Info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
-					if(new_tx_func == nullptr || delete_tx_func == nullptr)
+					//Check for C API library
+					auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(txlib, "odc_c_api_version"));
+					if(c_api_version != nullptr)
 					{
-						Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
-						continue;
+						Log.Info("{} : Detected C API (v{}) transform library — creating C_Transform wrapper", txname, c_api_version());
+						tx_ptr.reset(new odc::C_Transform(Transforms[n]["Type"].asString(), txname, Transforms[n]["Parameters"], txlib), tx_delete);
+						//Continue to sender registration below (skip C++ symbol lookup)
 					}
-
-					//Create a logger if we haven't already
-					if(!odc::spdlog_get(libname))
+					else
 					{
-						if(auto log = Log.GetLog())
+
+						//Our API says the library should export a creation function: Transform* new_<Type>Transform(Params)
+						//it should return a pointer to a heap allocated instance of a descendant of Transform
+						std::string new_funcname = "new_"+Transforms[n]["Type"].asString()+"Transform";
+						auto new_tx_func = reinterpret_cast<Transform*(*)(const std::string&,const Json::Value&)>(LoadSymbol(txlib, new_funcname));
+						std::string delete_funcname = "delete_"+Transforms[n]["Type"].asString()+"Transform";
+						auto delete_tx_func = reinterpret_cast<void (*)(Transform*)>(LoadSymbol(txlib, delete_funcname));
+
+						if(new_tx_func == nullptr)
+							Log.Info("Failed to load symbol '{}' from library '{}' - {}" , new_funcname, libfilename, LastSystemError());
+						if(delete_tx_func == nullptr)
+							Log.Info("Failed to load symbol '{}' from library '{}' - {}" , delete_funcname, libfilename, LastSystemError());
+						if(new_tx_func == nullptr || delete_tx_func == nullptr)
 						{
-							auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
-								odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-							pLogger->set_level(log->level());
-							odc::spdlog_register_logger(pLogger);
+							Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
+							continue;
 						}
-					}
 
-					tx_delete = [=](Transform* tx)
+						//Create a logger if we haven't already
+						if(!odc::spdlog_get(libname))
+						{
+							if(auto log = Log.GetLog())
 							{
-								delete_tx_func(tx);
-								UnLoadModule(txlib);
-							};
+								auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
+									odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+								pLogger->set_level(log->level());
+								odc::spdlog_register_logger(pLogger);
+							}
+						}
 
-					//call the creation function and wrap the returned pointer
-					tx_ptr.reset(new_tx_func(txname,Transforms[n]["Parameters"]),tx_delete);
+						tx_delete = [=](Transform* tx)
+								{
+									delete_tx_func(tx);
+									UnLoadModule(txlib);
+								};
+
+						//call the creation function and wrap the returned pointer
+						tx_ptr.reset(new_tx_func(txname,Transforms[n]["Parameters"]),tx_delete);
+					}
 				}
 				//insert the transform into the chain of transforms for each applicable sender
 				for(const auto& sender : tx_senders)
@@ -235,7 +249,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 	//Do we have a connection for this sender?
 	if(connection_count > 0)
 	{
-		EvtHandler_ptr ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
+		EvtHandler_ptr ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=, this](std::shared_ptr<EventInfo> evt)
 			{
 				if(!evt)
 				{
@@ -271,7 +285,7 @@ void DataConnector::Event(std::shared_ptr<const EventInfo> event, const std::str
 			const auto rend = SenderTransforms.at(SenderName).rend();
 			while(Tx_it != rend)
 			{
-				ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=](std::shared_ptr<EventInfo> evt)
+				ToDestination = std::make_shared<EvtHandler_ptr::element_type>([=, this](std::shared_ptr<EventInfo> evt)
 					{
 						auto src = (Tx_it+1 == rend) ? Name : (*(Tx_it+1))->Name;
 						if(evt)

@@ -193,7 +193,7 @@ std::string to_lower(const std::string& str)
 std::size_t to_decimal(const std::string& binary)
 {
 	std::size_t n = 0;
-	for (int i = binary.size() - 1; i >= 0; --i)
+	for (int i = static_cast<int>(binary.size()) - 1; i >= 0; --i)
 		if (binary[i] == '1')
 			n += (1 << (binary.size() - 1 - i));
 	return n;
@@ -213,7 +213,7 @@ std::size_t to_decimal(const std::string& binary)
 std::string to_binary(std::size_t n, std::size_t size)
 {
 	std::string binary(size, '0');
-	for (int i = size - 1; i >= 0; --i)
+	for (int i = static_cast<int>(size) - 1; i >= 0; --i)
 	{
 		binary[i] = (n & 1) + '0';
 		n >>= 1;
@@ -268,7 +268,7 @@ std::string decimal_to_bcd_encoded_string(std::size_t n, std::size_t size)
 {
 	const std::size_t sz = static_cast<std::size_t>(std::ceil(size / static_cast<double>(bcd_pack_size)) * bcd_pack_size);
 	std::string decimal(sz, '0');
-	int i = sz - bcd_pack_size;
+	int i = static_cast<int>(sz - bcd_pack_size);
 	while (n)
 	{
 		const std::string s = to_binary(n % 10, bcd_pack_size);
@@ -320,7 +320,7 @@ msSinceEpoch_t datetime_to_since_epoch(std::string date_str, std::string format,
 		{
 			msec = std::stoi(msec_str);
 		}
-		catch(const std::exception& e)
+		catch(const std::exception&)
 		{
 			throw std::runtime_error("datetime_to_since_epoch("+format+"): Error parsing milliseconds '"+msec_str+"'.");
 		}

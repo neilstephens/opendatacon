@@ -60,7 +60,7 @@ DNP3Port::DNP3Port(const std::string& aName, const std::string& aConfFilename, c
 	else
 	{
 		while (!(this->IOMgr = weak_mgr.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	//the creation of a new DNP3PortConf will get the point details
@@ -96,9 +96,10 @@ void DNP3Port::InitEventDB()
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::ControlRelayOutputBlock,index,"",QualityFlags::RESTART));
 	for (auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
-		// Need to work out which type of event we should be queuing - using the information from the configuration
+		// If analog controls have a fixed/expected type we can store events, otherwise don't bother
 		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
-		init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART));
+		if(evttype >= EventType::AnalogOutputInt16 && evttype <= EventType::AnalogOutputDouble64)
+			init_events.emplace_back(std::make_shared<const EventInfo>(evttype, index, "", QualityFlags::RESTART));
 	}
 	for(auto index : pConf->pPointConf->AnalogOutputStatusIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::AnalogOutputStatus,index,"",QualityFlags::RESTART));
@@ -273,11 +274,14 @@ const Json::Value DNP3Port::GetCurrentState() const
 	}
 	for (const auto index : pConf->pPointConf->AnalogControlIndexes)
 	{
-		// Get the dnp3 type for the point, then get the ODC event type, then create an event of that type
+		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
+		state["Index"] = Json::UInt(index);
+
+		// Analog controls may not be stored due to dynamic types
 		auto evttype = pConf->pPointConf->AnalogControlTypes[index];
 		auto event = pDB->Get(evttype, index);
-		auto& state = ret[time_str]["AnalogControls"].append(Json::Value());
-		state["Index"] = Json::UInt(event->GetIndex());
+		if(!event)
+			continue;
 		try
 		{
 			state["Value"] = event->GetPayloadString();
@@ -436,7 +440,12 @@ void DNP3Port::ProcessElements(const Json::Value& JSONRoot)
 			{
 				static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.Transport = IPTransport::UDP;
 				if(JSONRoot.isMember("UDPListenPort"))
+				{
 					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.UDPListenPort = JSONRoot["UDPListenPort"].asUInt();
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.SymmetricUDP = false;
+				}
+				if(JSONRoot.isMember("ConnectionlessUDP"))
+					static_cast<DNP3PortConf*>(pConf.get())->mAddrConf.ConnectionlessUDP = JSONRoot["ConnectionlessUDP"].asBool();
 			}
 			else if(JSONRoot["IPTransport"].asString() == "TLS")
 			{

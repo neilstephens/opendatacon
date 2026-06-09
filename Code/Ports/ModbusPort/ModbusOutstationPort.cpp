@@ -162,10 +162,10 @@ void ModbusOutstationPort::Build()
 
 
 	//Allocate memory for bits, input bits, registers, and input registers */
-	mb_mapping = modbus_mapping_new(pConf->pPointConf->BitIndicies.Total(),
-		pConf->pPointConf->InputBitIndicies.Total(),
-		pConf->pPointConf->RegIndicies.Total(),
-		pConf->pPointConf->InputRegIndicies.Total());
+	mb_mapping = modbus_mapping_new(static_cast<int>(pConf->pPointConf->BitIndicies.Total()),
+		static_cast<int>(pConf->pPointConf->InputBitIndicies.Total()),
+		static_cast<int>(pConf->pPointConf->RegIndicies.Total()),
+		static_cast<int>(pConf->pPointConf->InputRegIndicies.Total()));
 	if (mb_mapping == nullptr)
 	{
 		Log.Error("{}: Failed to allocate the modbus register mapping: {}", Name, modbus_strerror(errno));
@@ -193,7 +193,7 @@ void ModbusOutstationPort::Event(std::shared_ptr<const EventInfo> event, const s
 
 	auto pConf = static_cast<ModbusPortConf*>(this->pConf.get());
 	auto event_type = event->GetEventType();
-	auto index = event->GetIndex();
+	auto index = static_cast<uint16_t>(event->GetIndex());
 
 	if(event_type == EventType::Analog)
 	{

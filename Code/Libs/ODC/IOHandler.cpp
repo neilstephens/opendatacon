@@ -103,10 +103,10 @@ SharedStatusCallback_t IOHandler::SyncMultiCallback (const size_t cb_number, Sha
 		return pStatusCallback;
 
 	//We must keep the io_service active for the life of the strand/handler we're about to create
-	std::shared_ptr<asio::io_service::work> work = pIOS->make_work();
+	std::shared_ptr<odc::work_guard> work = pIOS->make_work();
 	auto pCombinedStatus = std::make_shared<CommandStatus>(CommandStatus::SUCCESS);
 	auto pExecCount = std::make_shared<size_t>(0);
-	std::shared_ptr<asio::io_service::strand> pCB_sync = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pCB_sync = pIOS->make_strand();
 	auto pOneShotCb = OneShotWrap(pStatusCallback);
 	auto multi_cb = [work, pCB_sync, pCombinedStatus, pExecCount, cb_number, pOneShotCb](CommandStatus status)
 			    {

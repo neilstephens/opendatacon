@@ -27,6 +27,7 @@
 #ifndef MANINTHEMIDDLE_H
 #define MANINTHEMIDDLE_H
 
+#include "MITM.h"
 #include <opendatacon/TCPSocketManager.h>
 #include <atomic>
 #include <vector>
@@ -54,7 +55,7 @@ inline std::string to_string(const MITMConfig MC)
 	return "UNKNOWN";
 }
 
-class ManInTheMiddle
+class ManInTheMiddle: public MITM
 {
 public:
 	ManInTheMiddle() = delete;
