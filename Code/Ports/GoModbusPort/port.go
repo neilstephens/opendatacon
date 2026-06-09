@@ -23,17 +23,18 @@ import (
 // Port struct
 // ---------------------------------------------------------------------------
 
-// GoModbusPort holds all per-port state.
+// GoModbusClientPort holds all per-port state for a Modbus client (polling)
+// port.
 //
-// Strand-owned state is accessed only from the go_port_* exports
-// below and ODC timer callbacks, which all fire on the strand
+// Strand-owned state is accessed only from the go_port_* exports below and
+// ODC timer callbacks, which all fire on the strand.
 //
 // Thread-safe fields (client, enabled) use sync/atomic and may be read by
 // goroutines without strand serialisation.
 //
 // WaitGroups (connectWg, eventWg) are used purely for lifetime safety in
 // destroy(): goroutines must finish before p.inst is freed by removePort().
-type GoModbusPort struct {
+type GoModbusClientPort struct {
 	name string
 	typ  string
 	inst unsafe.Pointer
@@ -72,13 +73,23 @@ const (
 
 var (
 	portMu sync.Mutex
-	ports  = make(map[unsafe.Pointer]*GoModbusPort)
+	ports  = make(map[unsafe.Pointer]odcPort)
 )
 
-func lookupPort(inst unsafe.Pointer) *GoModbusPort {
+func lookupPort(inst unsafe.Pointer) odcPort {
 	portMu.Lock()
 	defer portMu.Unlock()
 	return ports[inst]
+}
+
+// lookupClientPort returns the GoModbusClientPort for inst.  Used by the
+// client-specific ODC timer callbacks (reconnect, connect-ok/fail,
+// transport-disconnect) which are only ever registered by client ports.
+func lookupClientPort(inst unsafe.Pointer) *GoModbusClientPort {
+	portMu.Lock()
+	defer portMu.Unlock()
+	p, _ := ports[inst].(*GoModbusClientPort)
+	return p
 }
 
 func removePort(inst unsafe.Pointer) {
@@ -88,7 +99,7 @@ func removePort(inst unsafe.Pointer) {
 	C.free(inst)
 }
 
-func registerPort(p *GoModbusPort) unsafe.Pointer {
+func registerPort(p odcPort) unsafe.Pointer {
 	// Allocate a unique C-memory sentinel as the opaque handle.
 	// C memory never moves, avoiding GC/vet concerns.
 	key := C.malloc(C.size_t(1))
@@ -101,19 +112,46 @@ func registerPort(p *GoModbusPort) unsafe.Pointer {
 	return key
 }
 
-func newGoModbusPort(name, typ string, inst unsafe.Pointer) *GoModbusPort {
-	return &GoModbusPort{
+func newGoModbusClientPort(name, typ string) *GoModbusClientPort {
+	return &GoModbusClientPort{
 		name: name,
 		typ:  typ,
-		inst: inst,
 	}
+}
+
+// ---------------------------------------------------------------------------
+// odcPort interface implementation wrappers
+// ---------------------------------------------------------------------------
+
+func (p *GoModbusClientPort) build()   { p.doBuild() }
+func (p *GoModbusClientPort) enable()  { p.doEnable() }
+func (p *GoModbusClientPort) disable() { p.doDisable() }
+
+// handleEvent is the odcPort interface method.  It runs the pre-flight checks
+// that previously lived in go_port_event, then dispatches asynchronously.
+func (p *GoModbusClientPort) handleEvent(event *C.struct_C_EventInfo, sender string, cb unsafe.Pointer) {
+	if !p.enabled.Load() || !p.connected {
+		invokeStatusCallback(cb, C.C_CommandStatus_HARDWARE_ERROR)
+		return
+	}
+
+	// Copy event to Go heap; nil source_port (borrowed C pointer).
+	evtCopy := *event
+	evtCopy.source_port = nil
+	client := p.client.Load() // atomic snapshot before leaving strand
+
+	p.eventWg.Add(1)
+	go func() {
+		defer p.eventWg.Done()
+		p.doHandleEventAsync(&evtCopy, sender, cb, client)
+	}()
 }
 
 // ---------------------------------------------------------------------------
 // Lifecycle — called on the ODC strand
 // ---------------------------------------------------------------------------
 
-func (p *GoModbusPort) doBuild() {
+func (p *GoModbusClientPort) doBuild() {
 	if p.built {
 		return
 	}
@@ -144,7 +182,7 @@ func (p *GoModbusPort) doBuild() {
 	logDebug(p.inst, "doBuild() finished")
 }
 
-func (p *GoModbusPort) doEnable() {
+func (p *GoModbusClientPort) doEnable() {
 	if p.enabled.Load() {
 		return
 	}
@@ -161,7 +199,7 @@ func (p *GoModbusPort) doEnable() {
 	logDebug(p.inst, "doEnable() finished")
 }
 
-func (p *GoModbusPort) doDisable() {
+func (p *GoModbusClientPort) doDisable() {
 	if !p.enabled.Load() {
 		return
 	}
@@ -189,7 +227,7 @@ func (p *GoModbusPort) doDisable() {
 
 // scheduleReconnect cancels any existing ODC timer and arms a new one-shot
 // timer for the current reconnect delay.  Called on strand only.
-func (p *GoModbusPort) scheduleReconnect() {
+func (p *GoModbusClientPort) scheduleReconnect() {
 	if p.reconnectTimerHandle != nil {
 		C.odc_cancel_timer(p.reconnectTimerHandle)
 		p.reconnectTimerHandle = nil
@@ -197,7 +235,7 @@ func (p *GoModbusPort) scheduleReconnect() {
 	p.reconnectTimerHandle = C.odc_schedule_reconnect(p.inst, C.uint64_t(p.reconnectDelayMs))
 }
 
-func (p *GoModbusPort) scheduleReconnectWithBackoff() {
+func (p *GoModbusClientPort) scheduleReconnectWithBackoff() {
 	p.reconnectDelayMs *= 2
 	if p.reconnectDelayMs > maxReconnectDelayMs {
 		p.reconnectDelayMs = maxReconnectDelayMs
@@ -209,7 +247,7 @@ func (p *GoModbusPort) scheduleReconnectWithBackoff() {
 // The dead scheduler is appended to oldPollSchedulers; destroy() calls Wait().
 // Nilling p.pollScheduler allows a fresh one to be created on the next
 // successful reconnect (fixes the reconnect-after-disconnect polling bug).
-func (p *GoModbusPort) stopPolling() {
+func (p *GoModbusClientPort) stopPolling() {
 	if p.pollScheduler != nil {
 		p.pollScheduler.Shutdown()
 		p.oldPollSchedulers = append(p.oldPollSchedulers, p.pollScheduler)
@@ -224,7 +262,7 @@ func (p *GoModbusPort) stopPolling() {
 // onReconnectTimer is invoked when the reconnect delay timer expires.
 // It starts a goroutine to attempt the (blocking) TCP connect.
 func onReconnectTimer(inst unsafe.Pointer) {
-	p := lookupPort(inst)
+	p := lookupClientPort(inst)
 	if p == nil {
 		return
 	}
@@ -239,7 +277,7 @@ func onReconnectTimer(inst unsafe.Pointer) {
 // onConnectOk is invoked (via 0-delay ODC timer) by the connect goroutine
 // after a successful TCP connect.
 func onConnectOk(inst unsafe.Pointer) {
-	p := lookupPort(inst)
+	p := lookupClientPort(inst)
 	if p == nil {
 		return
 	}
@@ -270,7 +308,7 @@ func onConnectOk(inst unsafe.Pointer) {
 // onConnectFail is invoked (via 0-delay ODC timer) by the connect goroutine
 // after a failed TCP connect.
 func onConnectFail(inst unsafe.Pointer) {
-	p := lookupPort(inst)
+	p := lookupClientPort(inst)
 	if p == nil {
 		return
 	}
@@ -283,7 +321,7 @@ func onConnectFail(inst unsafe.Pointer) {
 // onTransportDisconnect is invoked (via 0-delay ODC timer) by a poll goroutine
 // when a transport-level error is detected mid-poll.
 func onTransportDisconnect(inst unsafe.Pointer) {
-	p := lookupPort(inst)
+	p := lookupClientPort(inst)
 	if p == nil {
 		return
 	}
@@ -313,7 +351,7 @@ func onTransportDisconnect(inst unsafe.Pointer) {
 // (config, unitID).  Signals result back to strand via 0-delay ODC timers.
 // ---------------------------------------------------------------------------
 
-func (p *GoModbusPort) tryConnect() {
+func (p *GoModbusClientPort) tryConnect() {
 	defer p.connectWg.Done()
 
 	// Create a fresh client (the previous one was nil'd by disable/disconnect).
@@ -326,7 +364,7 @@ func (p *GoModbusPort) tryConnect() {
 		return
 	}
 
-	err = openClient(client, p.unitID) // blocking TCP connect
+	err = openModbusClient(client, p.unitID) // blocking TCP/RTU connect
 
 	if !p.enabled.Load() {
 		// Disabled while we were connecting; discard the client.
@@ -351,7 +389,7 @@ func (p *GoModbusPort) tryConnect() {
 // destroy — called off-strand from ~C_Port after the strand is fully drained
 // ---------------------------------------------------------------------------
 
-func (p *GoModbusPort) destroy() {
+func (p *GoModbusClientPort) destroy() {
 	p.doDisable() // no-op if Disable() was already called
 
 	// Wait for in-flight connect goroutines: they call odc_schedule_* with p.inst.
@@ -382,23 +420,23 @@ func (p *GoModbusPort) destroy() {
 // Config expansion
 // ---------------------------------------------------------------------------
 
-func (p *GoModbusPort) expandPoints() {
+func (p *GoModbusClientPort) expandPoints() {
 	defaultRate := p.config.PollRateMs
 
 	for _, pt := range p.config.Binaries {
-		p.polled = append(p.polled, expandPolledPoint(pt, 0, 0, "", C.C_EventType_Binary, defaultRate)...)
+		p.polled = append(p.polled, expandPolledPoint(pt, 0, 0, "", "", C.C_EventType_Binary, defaultRate)...)
 	}
 	for _, pt := range p.config.Analogs {
-		p.polled = append(p.polled, expandPolledPoint(pt.PointConfig, pt.Scale, pt.Offset, pt.Endian, C.C_EventType_Analog, defaultRate)...)
+		p.polled = append(p.polled, expandPolledPoint(pt.PointConfig, pt.Scale, pt.Offset, pt.Endian, pt.DataType, C.C_EventType_Analog, defaultRate)...)
 	}
 	for _, pt := range p.config.BinaryOutputStatuses {
-		p.polled = append(p.polled, expandPolledPoint(pt, 0, 0, "", C.C_EventType_BinaryOutputStatus, defaultRate)...)
+		p.polled = append(p.polled, expandPolledPoint(pt, 0, 0, "", "", C.C_EventType_BinaryOutputStatus, defaultRate)...)
 	}
 	for _, pt := range p.config.AnalogOutputStatuses {
-		p.polled = append(p.polled, expandPolledPoint(pt.PointConfig, pt.Scale, pt.Offset, pt.Endian, C.C_EventType_AnalogOutputStatus, defaultRate)...)
+		p.polled = append(p.polled, expandPolledPoint(pt.PointConfig, pt.Scale, pt.Offset, pt.Endian, pt.DataType, C.C_EventType_AnalogOutputStatus, defaultRate)...)
 	}
 	for _, pt := range p.config.OctetStrings {
-		p.polled = append(p.polled, expandPolledPoint(pt.PointConfig, 0, 0, "", C.C_EventType_OctetString, defaultRate)...)
+		p.polled = append(p.polled, expandPolledPoint(pt.PointConfig, 0, 0, "", "", C.C_EventType_OctetString, defaultRate)...)
 	}
 	for _, pt := range p.config.BinaryControls {
 		p.controls = append(p.controls, expandControls(pt, C.C_EventType_ControlRelayOutputBlock)...)
@@ -420,7 +458,7 @@ func (p *GoModbusPort) expandPoints() {
 // Polling — goroutine, not on strand
 // ---------------------------------------------------------------------------
 
-func (p *GoModbusPort) doPoll() error {
+func (p *GoModbusClientPort) doPoll() error {
 	if !p.enabled.Load() {
 		return nil
 	}
@@ -469,7 +507,7 @@ type pollGroup struct {
 	points     []*PolledPoint
 }
 
-func (p *GoModbusPort) groupDuePoints(now int64) []*pollGroup {
+func (p *GoModbusClientPort) groupDuePoints(now int64) []*pollGroup {
 	type typeAddrKey struct {
 		t string
 		a uint16
@@ -501,7 +539,7 @@ func (p *GoModbusPort) groupDuePoints(now int64) []*pollGroup {
 	return ordered
 }
 
-func (p *GoModbusPort) readGroup(g *pollGroup) error {
+func (p *GoModbusClientPort) readGroup(g *pollGroup) error {
 	switch g.modbusType {
 	case "Coil":
 		return p.readCoils(g)
@@ -517,7 +555,7 @@ func (p *GoModbusPort) readGroup(g *pollGroup) error {
 	}
 }
 
-func (p *GoModbusPort) readCoils(g *pollGroup) error {
+func (p *GoModbusClientPort) readCoils(g *pollGroup) error {
 	client := p.client.Load()
 	if client == nil {
 		return nil
@@ -535,7 +573,7 @@ func (p *GoModbusPort) readCoils(g *pollGroup) error {
 	return nil
 }
 
-func (p *GoModbusPort) readDiscreteInputs(g *pollGroup) error {
+func (p *GoModbusClientPort) readDiscreteInputs(g *pollGroup) error {
 	client := p.client.Load()
 	if client == nil {
 		return nil
@@ -553,7 +591,7 @@ func (p *GoModbusPort) readDiscreteInputs(g *pollGroup) error {
 	return nil
 }
 
-func (p *GoModbusPort) readRegisters(g *pollGroup, regType modbus.RegType) error {
+func (p *GoModbusClientPort) readRegisters(g *pollGroup, regType modbus.RegType) error {
 	client := p.client.Load()
 	if client == nil {
 		return nil
@@ -569,7 +607,7 @@ func (p *GoModbusPort) readRegisters(g *pollGroup, regType modbus.RegType) error
 	return nil
 }
 
-func (p *GoModbusPort) publishRegisterValue(pt *PolledPoint, regs []uint16, startAddr uint16) {
+func (p *GoModbusClientPort) publishRegisterValue(pt *PolledPoint, regs []uint16, startAddr uint16) {
 	switch pt.ODCType {
 	case C.C_EventType_Binary, C.C_EventType_BinaryOutputStatus:
 		regIdx := pt.ModbusAddr - startAddr
@@ -586,26 +624,11 @@ func (p *GoModbusPort) publishRegisterValue(pt *PolledPoint, regs []uint16, star
 	}
 }
 
-func (p *GoModbusPort) publishAnalogValue(pt *PolledPoint, regs []uint16) {
+func (p *GoModbusClientPort) publishAnalogValue(pt *PolledPoint, regs []uint16) {
 	if len(regs) == 0 {
 		return
 	}
-
-	var val float64
-	switch pt.Count {
-	case 0, 1:
-		val = float64(int16(regs[0] & 0xFFFF))
-	case 2:
-		if len(regs) >= 2 {
-			raw := uint32(regs[0])<<16 | uint32(regs[1])
-			val = float64(int32(raw))
-		} else {
-			val = float64(int16(regs[0] & 0xFFFF))
-		}
-	default:
-		val = float64(int16(regs[0] & 0xFFFF))
-	}
-
+	val := decodeAnalogRegs(regs, pt.Count, pt.Endian, pt.DataType)
 	if pt.Scale != 0 {
 		val *= pt.Scale
 	}
@@ -613,7 +636,7 @@ func (p *GoModbusPort) publishAnalogValue(pt *PolledPoint, regs []uint16) {
 	publishAnalog(p.inst, pt.ODCIndex, val, pt.ODCType)
 }
 
-func (p *GoModbusPort) publishOctetValue(pt *PolledPoint, regs []uint16) {
+func (p *GoModbusClientPort) publishOctetValue(pt *PolledPoint, regs []uint16) {
 	out := make([]byte, 0, len(regs)*2)
 	for _, r := range regs {
 		out = append(out, byte(r>>8), byte(r&0xFF))
@@ -630,7 +653,7 @@ func (p *GoModbusPort) publishOctetValue(pt *PolledPoint, regs []uint16) {
 // doHandleEventAsync is called from a goroutine started by go_port_event.
 // It uses only: p.inst (logging, valid via eventWg), p.controls (read-only
 // after Build), and the client snapshot passed in.
-func (p *GoModbusPort) doHandleEventAsync(event *C.struct_C_EventInfo, sender string, cb unsafe.Pointer, client *modbus.ModbusClient) {
+func (p *GoModbusClientPort) doHandleEventAsync(event *C.struct_C_EventInfo, sender string, cb unsafe.Pointer, client *modbus.ModbusClient) {
 	if client == nil {
 		logWarn(p.inst, "ignoring event: no client (sender=%s)", sender)
 		invokeStatusCallback(cb, C.C_CommandStatus_HARDWARE_ERROR)
@@ -669,7 +692,7 @@ func (p *GoModbusPort) doHandleEventAsync(event *C.struct_C_EventInfo, sender st
 	invokeStatusCallback(cb, C.C_CommandStatus_SUCCESS)
 }
 
-func (p *GoModbusPort) findControl(odcType uint8, odcIndex uint64) *ControlPoint {
+func (p *GoModbusClientPort) findControl(odcType uint8, odcIndex uint64) *ControlPoint {
 	for i := range p.controls {
 		if p.controls[i].ODCType == odcType && p.controls[i].ODCIndex == odcIndex {
 			return &p.controls[i]

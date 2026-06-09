@@ -220,6 +220,22 @@ static inline void odc_SetPayloadAnalog(struct C_EventInfo* evt,
 	double val)
 { evt->payload.analog_val = val; }
 
+static inline void odc_SetPayloadAO16(struct C_EventInfo* evt,
+	int16_t val)
+{ evt->payload.ao16.value = val; evt->payload.ao16.status = 0; }
+
+static inline void odc_SetPayloadAO32(struct C_EventInfo* evt,
+	int32_t val)
+{ evt->payload.ao32.value = val; evt->payload.ao32.status = 0; }
+
+static inline void odc_SetPayloadAOF32(struct C_EventInfo* evt,
+	float val)
+{ evt->payload.aof32.value = val; evt->payload.aof32.status = 0; }
+
+static inline void odc_SetPayloadAOD64(struct C_EventInfo* evt,
+	double val)
+{ evt->payload.aod64.value = val; evt->payload.aod64.status = 0; }
+
 static inline void odc_SetPayloadOctetString(
 	struct C_EventInfo* evt, const uint8_t* data, size_t len)
 {
@@ -230,7 +246,6 @@ static inline void odc_SetPayloadOctetString(
 static inline void odc_SetPayloadConnectState(
 	struct C_EventInfo* evt, uint8_t state)
 { evt->payload.connect_state = state; }
-
 /* ------------------------------------------------------------------ */
 /*  Payload getters (pure inline — no vtable needed)                  */
 /* ------------------------------------------------------------------ */
@@ -265,6 +280,14 @@ static inline double odc_GetAOD64Value(
 static inline double odc_GetPayloadAnalog(
 	const struct C_EventInfo* evt)
 { return evt->payload.analog_val; }
+
+static inline const uint8_t* odc_GetOctetStringData(
+	const struct C_EventInfo* evt)
+{ return evt->payload.octet_string.data; }
+
+static inline size_t odc_GetOctetStringSize(
+	const struct C_EventInfo* evt)
+{ return evt->payload.octet_string.size; }
 
 /* ------------------------------------------------------------------ */
 /*  ODC scheduling helpers — defined in api_shim.c.                    */

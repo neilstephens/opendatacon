@@ -23,18 +23,9 @@ func newModbusClient(cfg *PortConfig) (*modbus.ModbusClient, error) {
 	}
 
 	if cfg.RTU != nil {
-		var parity uint
-		switch cfg.RTU.Parity {
-		case "E", "e":
-			parity = modbus.PARITY_EVEN
-		case "O", "o":
-			parity = modbus.PARITY_ODD
-		default:
-			parity = modbus.PARITY_NONE
-		}
 		clientConf.Speed = uint(cfg.RTU.BaudRate)
 		clientConf.DataBits = uint(cfg.RTU.DataBits)
-		clientConf.Parity = parity
+		clientConf.Parity = modbusParityFromString(cfg.RTU.Parity)
 		clientConf.StopBits = uint(cfg.RTU.StopBits)
 	}
 
@@ -46,9 +37,22 @@ func newModbusClient(cfg *PortConfig) (*modbus.ModbusClient, error) {
 	return client, nil
 }
 
-func openClient(client *modbus.ModbusClient, unitID uint8) error {
+func openModbusClient(client *modbus.ModbusClient, unitID uint8) error {
 	if err := client.SetUnitId(unitID); err != nil {
 		return fmt.Errorf("SetUnitId: %w", err)
 	}
 	return client.Open()
+}
+
+// modbusParityFromString converts the config parity string ("E", "O", "N") to
+// the modbus library constant.  Used by both client and server.
+func modbusParityFromString(parity string) uint {
+	switch parity {
+	case "E", "e":
+		return modbus.PARITY_EVEN
+	case "O", "o":
+		return modbus.PARITY_ODD
+	default:
+		return modbus.PARITY_NONE
+	}
 }

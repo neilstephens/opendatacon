@@ -15,6 +15,23 @@ import (
 
 func main() {}
 
+// ---------------------------------------------------------------------------
+// odcPort interface — implemented by both GoModbusClientPort and
+// GoModbusServerPort so the registry can hold either without type assertions
+// in the common dispatch path.
+// ---------------------------------------------------------------------------
+
+type odcPort interface {
+	build()
+	enable()
+	disable()
+	destroy()
+	// handleEvent is called on the ODC strand with ownership of cb.
+	// Implementations must invoke the status callback exactly once
+	// (directly or via a goroutine).
+	handleEvent(event *C.struct_C_EventInfo, sender string, cb unsafe.Pointer)
+}
+
 //export odc_library_init
 func odc_library_init(odc *C.struct_C_ODC_HostAPI) {
 	C.odc = odc
@@ -34,9 +51,27 @@ func go_port_create(cType *C.char, cName *C.char) unsafe.Pointer {
 	name := C.GoString(cName)
 	typ := C.GoString(cType)
 
-	p := newGoModbusPort(name, typ, nil)
+	var p odcPort
+	switch typ {
+	case "GoModbusServer":
+		p = newGoModbusServerPort(name, typ)
+	case "GoModbusClient", "GoModbus": // "GoModbus" kept for backward compatibility
+		p = newGoModbusClientPort(name, typ)
+	default:
+		// Unknown type: log a warning and fall through to client mode.
+		// The ODC logger is not yet available at this point (inst is nil),
+		// so we can only use a Go stderr write here.  After build() the
+		// instance will log via the ODC sink.
+		p = newGoModbusClientPort(name, typ)
+	}
+
 	inst := registerPort(p)
-	p.inst = inst
+	switch cp := p.(type) {
+	case *GoModbusClientPort:
+		cp.inst = inst
+	case *GoModbusServerPort:
+		cp.inst = inst
+	}
 	return inst
 }
 
@@ -54,7 +89,7 @@ func go_port_build(inst unsafe.Pointer) {
 	if p == nil {
 		return
 	}
-	p.doBuild()
+	p.build()
 }
 
 //export go_port_enable
@@ -63,7 +98,7 @@ func go_port_enable(inst unsafe.Pointer) {
 	if p == nil {
 		return
 	}
-	p.doEnable()
+	p.enable()
 }
 
 //export go_port_disable
@@ -72,7 +107,7 @@ func go_port_disable(inst unsafe.Pointer) {
 	if p == nil {
 		return
 	}
-	p.doDisable()
+	p.disable()
 }
 
 //export go_port_event
@@ -82,32 +117,18 @@ func go_port_event(inst unsafe.Pointer, event *C.struct_C_EventInfo, sender *C.c
 		invokeStatusCallback(unsafe.Pointer(cb), C.C_CommandStatus_UNDEFINED)
 		return
 	}
-	// Both checks are on the strand — no mutex needed.
-	if !p.enabled.Load() || !p.connected {
-		invokeStatusCallback(unsafe.Pointer(cb), C.C_CommandStatus_HARDWARE_ERROR)
-		return
-	}
 
 	s := ""
 	if sender != nil {
 		s = C.GoString(sender)
 	}
 
-	// Copy event to Go heap; nil source_port (borrowed C pointer).
-	evtCopy := *event
-	evtCopy.source_port = nil
-	cbPtr := unsafe.Pointer(cb)
-	client := p.client.Load() // atomic snapshot before leaving strand
-
-	p.eventWg.Add(1)
-	go func() {
-		defer p.eventWg.Done()
-		p.doHandleEventAsync(&evtCopy, s, cbPtr, client)
-	}()
+	p.handleEvent(event, s, unsafe.Pointer(cb))
 }
 
 // ---------------------------------------------------------------------------
-// ODC timer callback exports — fired on the strand by the ODC scheduler
+// ODC timer callback exports — fired on the strand by the ODC scheduler.
+// These are only ever registered by GoModbusClientPort, so type-assert safely.
 // ---------------------------------------------------------------------------
 
 //export go_reconnect_timer_cb
@@ -155,7 +176,8 @@ func go_port_free_string(s *C.char) {
 }
 
 //------------------------------------------------------------------------------
-// Publish helpers
+// Publish helpers — called from goroutines (poll, event, server handlers).
+// odc_publish_event is goroutine-safe: it posts through the ASIO event loop.
 //------------------------------------------------------------------------------
 
 func publishBinary(inst unsafe.Pointer, index uint64, value bool, odcType uint8) {
@@ -184,6 +206,31 @@ func publishAnalog(inst unsafe.Pointer, index uint64, value float64, odcType uin
 	C.odc_publish_event(inst, &evt, nil, nil)
 }
 
+// publishAnalogOutputEvent publishes an ODC AnalogOutput* event with the
+// correct payload union field for the given odcType.  Used by the server
+// when a Modbus client writes a holding register mapped to AnalogControls.
+func publishAnalogOutputEvent(inst unsafe.Pointer, index uint64, value float64, odcType uint8) {
+	evt := C.struct_C_EventInfo{
+		event_type: C.uint8_t(odcType),
+		index:      C.size_t(index),
+		timestamp:  C.uint64_t(time.Now().UnixMilli()),
+		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
+	}
+	switch odcType {
+	case C.C_EventType_AnalogOutputInt16:
+		C.odc_SetPayloadAO16(&evt, C.int16_t(int16(value)))
+	case C.C_EventType_AnalogOutputInt32:
+		C.odc_SetPayloadAO32(&evt, C.int32_t(int32(value)))
+	case C.C_EventType_AnalogOutputFloat32:
+		C.odc_SetPayloadAOF32(&evt, C.float(float32(value)))
+	case C.C_EventType_AnalogOutputDouble64:
+		C.odc_SetPayloadAOD64(&evt, C.double(value))
+	default:
+		C.odc_SetPayloadAnalog(&evt, C.double(value))
+	}
+	C.odc_publish_event(inst, &evt, nil, nil)
+}
+
 func publishOctetString(inst unsafe.Pointer, index uint64, data []byte) {
 	if len(data) == 0 {
 		return
@@ -209,4 +256,42 @@ func publishConnectState(inst unsafe.Pointer, state int32) {
 	}
 	C.odc_SetPayloadConnectState(&evt, C.uint8_t(state))
 	C.odc_publish_event(inst, &evt, nil, nil)
+}
+
+// ---------------------------------------------------------------------------
+// Event value extraction helpers
+// ---------------------------------------------------------------------------
+
+// getAnalogEventValue extracts the numeric payload from any analog-class ODC
+// event as a float64.
+func getAnalogEventValue(event *C.struct_C_EventInfo) float64 {
+	switch uint8(C.odc_GetEventType(event)) {
+	case C.C_EventType_AnalogOutputInt16:
+		return float64(int16(C.odc_GetAO16Value(event)))
+	case C.C_EventType_AnalogOutputInt32:
+		return float64(int32(C.odc_GetAO32Value(event)))
+	case C.C_EventType_AnalogOutputFloat32:
+		return float64(C.odc_GetAOF32Value(event))
+	case C.C_EventType_AnalogOutputDouble64:
+		return float64(C.odc_GetAOD64Value(event))
+	default: // Analog, AnalogOutputStatus
+		return float64(C.odc_GetPayloadAnalog(event))
+	}
+}
+
+// getBinaryEventValue extracts a bool from any binary-class ODC event.
+// For CROB events the function code is used to determine on/off intent.
+func getBinaryEventValue(event *C.struct_C_EventInfo) bool {
+	switch uint8(C.odc_GetEventType(event)) {
+	case C.C_EventType_ControlRelayOutputBlock:
+		fc := uint8(C.odc_GetCROBFunctionCode(event))
+		switch fc {
+		case C.C_ControlCode_LATCH_ON, C.C_ControlCode_CLOSE_PULSE_ON, C.C_ControlCode_PULSE_ON:
+			return true
+		default:
+			return false
+		}
+	default:
+		return C.odc_GetPayloadBinary(event) != 0
+	}
 }

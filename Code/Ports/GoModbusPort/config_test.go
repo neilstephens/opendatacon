@@ -155,7 +155,7 @@ func TestExpandSinglePoint(t *testing.T) {
 			Index:  5,
 			Modbus: ModbusConfig{Type: "Coil", Address: 42},
 		},
-		0, 0, "", testBinary, 1000)
+		0, 0, "", "", testBinary, 1000)
 	if len(pts) != 1 {
 		t.Fatalf("expected 1 point, got %d", len(pts))
 	}
@@ -179,7 +179,7 @@ func TestExpandRange(t *testing.T) {
 			Range:  &RangeConfig{Start: 10, Stop: 19},
 			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 100},
 		},
-		2.0, 0.5, "ABCD", testAnalog, 2000)
+		2.0, 0.5, "ABCD", "Float32", testAnalog, 2000)
 	if len(pts) != 10 {
 		t.Fatalf("expected 10 points, got %d", len(pts))
 	}
@@ -199,6 +199,9 @@ func TestExpandRange(t *testing.T) {
 		if pt.Endian != "ABCD" {
 			t.Fatalf("point %d: expected Endian ABCD, got %s", i, pt.Endian)
 		}
+		if pt.DataType != "Float32" {
+			t.Fatalf("point %d: expected DataType Float32, got %s", i, pt.DataType)
+		}
 		if pt.PollRateMs != 2000 {
 			t.Fatalf("point %d: expected PollRateMs 2000, got %d", i, pt.PollRateMs)
 		}
@@ -211,7 +214,7 @@ func TestExpandCount(t *testing.T) {
 			Index:  0,
 			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 0, Count: 4},
 		},
-		0, 0, "", testAnalog, 1000)
+		0, 0, "", "", testAnalog, 1000)
 	if len(pts) != 1 {
 		t.Fatalf("expected 1 point, got %d", len(pts))
 	}
@@ -227,7 +230,7 @@ func TestExpandBit(t *testing.T) {
 			Bit:    3,
 			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 100},
 		},
-		0, 0, "", testBinary, 1000)
+		0, 0, "", "", testBinary, 1000)
 	if len(pts) != 1 {
 		t.Fatalf("expected 1 point, got %d", len(pts))
 	}
@@ -242,7 +245,7 @@ func TestExpandRangeWithCount(t *testing.T) {
 			Range:  &RangeConfig{Start: 0, Stop: 3},
 			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 0, Count: 2},
 		},
-		0, 0, "", testAnalog, 1000)
+		0, 0, "", "", testAnalog, 1000)
 	if len(pts) != 4 {
 		t.Fatalf("expected 4 points, got %d", len(pts))
 	}
@@ -303,5 +306,256 @@ func TestExpandControlCustomActions(t *testing.T) {
 	}
 	if pts[0].OnAction != "Pulse" || pts[0].OffAction != "Clear" {
 		t.Fatalf("unexpected actions: %s / %s", pts[0].OnAction, pts[0].OffAction)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Endian / DataType codec tests
+// ---------------------------------------------------------------------------
+
+func TestDecodeAnalogRegsInt16(t *testing.T) {
+	tests := []struct {
+		name    string
+		regs    []uint16
+		endian  string
+		want    float64
+	}{
+		{"pos default", []uint16{0x0064}, "", 100},
+		{"neg default", []uint16{0xFF9C}, "", -100},
+		{"BA byte-swap", []uint16{0x6400}, "BA", 100},
+		{"BA byte-swap neg", []uint16{0x9CFF}, "BA", -100},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := decodeAnalogRegs(tc.regs, 1, tc.endian, "Int16")
+			if got != tc.want {
+				t.Fatalf("want %v, got %v", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestDecodeAnalogRegsUint16(t *testing.T) {
+	got := decodeAnalogRegs([]uint16{0xFFFF}, 1, "", "Uint16")
+	if got != 65535 {
+		t.Fatalf("expected 65535, got %v", got)
+	}
+}
+
+func TestDecodeAnalogRegsInt32(t *testing.T) {
+	// 0x00010002 = 65538
+	got := decodeAnalogRegs([]uint16{0x0001, 0x0002}, 2, "ABCD", "Int32")
+	if got != 65538 {
+		t.Fatalf("expected 65538, got %v", got)
+	}
+}
+
+func TestDecodeAnalogRegsInt32CDAB(t *testing.T) {
+	// CDAB: reg[0]=low word, reg[1]=high word
+	// reg[0]=0x0002 (low), reg[1]=0x0001 (high) → 0x00010002 = 65538
+	got := decodeAnalogRegs([]uint16{0x0002, 0x0001}, 2, "CDAB", "Int32")
+	if got != 65538 {
+		t.Fatalf("expected 65538, got %v", got)
+	}
+}
+
+func TestDecodeAnalogRegsFloat32ABCD(t *testing.T) {
+	// IEEE 754 float32: 1.0 = 0x3F800000
+	got := decodeAnalogRegs([]uint16{0x3F80, 0x0000}, 2, "ABCD", "Float32")
+	if got != 1.0 {
+		t.Fatalf("expected 1.0, got %v", got)
+	}
+}
+
+func TestDecodeAnalogRegsFloat32DCBA(t *testing.T) {
+	// DCBA = complete little-endian byte order.
+	// float32 1.0 bytes in big-endian (ABCD): A=0x3F, B=0x80, C=0x00, D=0x00
+	// DCBA wire order: [D, C, B, A] → reg[0]=D<<8|C=0x0000, reg[1]=B<<8|A=0x803F
+	// Decode: byteSwap(reg[1])<<16|byteSwap(reg[0]) = 0x3F80<<16|0x0000 = 0x3F800000 = 1.0
+	got := decodeAnalogRegs([]uint16{0x0000, 0x803F}, 2, "DCBA", "Float32")
+	if got != 1.0 {
+		t.Fatalf("expected 1.0, got %v", got)
+	}
+}
+
+func TestEncodeDecodeRoundTrip(t *testing.T) {
+	cases := []struct {
+		val      float64
+		count    uint16
+		endian   string
+		dataType string
+	}{
+		{42.0, 1, "", "Int16"},
+		{-42.0, 1, "", "Int16"},
+		{100.0, 1, "BA", "Int16"},
+		{65535, 1, "", "Uint16"},
+		{123456, 2, "ABCD", "Int32"},
+		{123456, 2, "CDAB", "Int32"},
+		{123456, 2, "BADC", "Int32"},
+		{123456, 2, "DCBA", "Int32"},
+		{3.14159, 2, "ABCD", "Float32"},
+		{3.14159, 2, "DCBA", "Float32"},
+		{-273.15, 2, "CDAB", "Float32"},
+	}
+	for _, tc := range cases {
+		regs := encodeAnalogRegs(tc.val, tc.count, tc.endian, tc.dataType)
+		got := decodeAnalogRegs(regs, tc.count, tc.endian, tc.dataType)
+		// For float32, allow small rounding error from float64↔float32 conversion.
+		diff := got - tc.val
+		if diff < 0 {
+			diff = -diff
+		}
+		tol := 0.001 * (tc.val + 1)
+		if tol < 0 {
+			tol = -tol
+		}
+		if diff > tol+0.001 {
+			t.Errorf("val=%v count=%d endian=%s type=%s: encode→decode got %v (diff %v)",
+				tc.val, tc.count, tc.endian, tc.dataType, got, diff)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Server config tests
+// ---------------------------------------------------------------------------
+
+func TestParseServerConfigTCP(t *testing.T) {
+	data := `{
+		"TCP": {"Listen": "0.0.0.0:502"},
+		"UnitID": 1,
+		"Binaries": [{"Modbus": {"Type": "Coil", "Address": 0}}],
+		"BinaryControls": [{"Modbus": {"Type": "Coil", "Address": 10}}]
+	}`
+	var cfg ServerPortConfig
+	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.TCP == nil {
+		t.Fatal("expected TCP config")
+	}
+	if cfg.TCP.Listen != "0.0.0.0:502" {
+		t.Fatalf("expected listen 0.0.0.0:502, got %s", cfg.TCP.Listen)
+	}
+	if cfg.UnitID != 1 {
+		t.Fatalf("expected UnitID 1, got %d", cfg.UnitID)
+	}
+	if len(cfg.Binaries) != 1 {
+		t.Fatalf("expected 1 Binary, got %d", len(cfg.Binaries))
+	}
+	if len(cfg.BinaryControls) != 1 {
+		t.Fatalf("expected 1 BinaryControl, got %d", len(cfg.BinaryControls))
+	}
+}
+
+func TestParseServerConfigRTU(t *testing.T) {
+	data := `{
+		"RTU": {"Port": "/dev/ttyUSB0", "BaudRate": 9600},
+		"UnitID": 5
+	}`
+	var cfg ServerPortConfig
+	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RTU == nil {
+		t.Fatal("expected RTU config")
+	}
+	if cfg.RTU.Port != "/dev/ttyUSB0" {
+		t.Fatalf("expected port /dev/ttyUSB0, got %s", cfg.RTU.Port)
+	}
+}
+
+func TestServerConfigValidation(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  ServerPortConfig
+	}{
+		{
+			"no connection",
+			ServerPortConfig{},
+		},
+		{
+			"both TCP and RTU",
+			ServerPortConfig{
+				TCP: &ServerTCPConfig{Listen: "0.0.0.0:502"},
+				RTU: &RTUConfig{Port: "/dev/ttyUSB0"},
+			},
+		},
+		{
+			"empty listen address",
+			ServerPortConfig{TCP: &ServerTCPConfig{Listen: ""}},
+		},
+		{
+			"BinaryControls with DiscreteInput",
+			ServerPortConfig{
+				TCP: &ServerTCPConfig{Listen: ":502"},
+				BinaryControls: []ControlConfig{
+					{PointConfig: PointConfig{Modbus: ModbusConfig{Type: "DiscreteInput", Address: 0}}},
+				},
+			},
+		},
+		{
+			"AnalogControls with InputRegister",
+			ServerPortConfig{
+				TCP: &ServerTCPConfig{Listen: ":502"},
+				AnalogControls: []AnalogControlConfig{
+					{PointConfig: PointConfig{Modbus: ModbusConfig{Type: "InputRegister", Address: 0}}},
+				},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateServerConfig(&tc.cfg); err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+	}
+}
+
+func TestServerConfigDefaults(t *testing.T) {
+	cfg := ServerPortConfig{
+		TCP: &ServerTCPConfig{Listen: ":502"},
+		RTU: nil,
+	}
+	if err := validateServerConfig(&cfg); err != nil {
+		t.Fatal(err)
+	}
+	// UnitID 0 means "respond to all"
+	if cfg.UnitID != 0 {
+		t.Fatalf("expected UnitID 0, got %d", cfg.UnitID)
+	}
+}
+
+func TestServerConfigAllPointTypes(t *testing.T) {
+	data := `{
+		"TCP": {"Listen": ":502"},
+		"Binaries": [{"Modbus": {"Type": "Coil", "Address": 0}}],
+		"Analogs": [{"Modbus": {"Type": "HoldingRegister", "Address": 10, "Count": 2}, "Endian": "ABCD", "DataType": "Float32", "Scale": 2.0, "Offset": -1.0}],
+		"BinaryControls": [{"Modbus": {"Type": "Coil", "Address": 20}}],
+		"AnalogControls": [{"Modbus": {"Type": "HoldingRegister", "Address": 30, "Count": 2}, "ControlType": "AnalogOutputFloat32"}],
+		"BinaryOutputStatuses": [{"Modbus": {"Type": "DiscreteInput", "Address": 40}}],
+		"AnalogOutputStatuses": [{"Modbus": {"Type": "InputRegister", "Address": 50}}],
+		"OctetStrings": [{"Modbus": {"Type": "HoldingRegister", "Address": 60, "Count": 8}}]
+	}`
+	var cfg ServerPortConfig
+	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateServerConfig(&cfg); err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Binaries) != 1 || len(cfg.Analogs) != 1 ||
+		len(cfg.BinaryControls) != 1 || len(cfg.AnalogControls) != 1 {
+		t.Fatal("missing point configs")
+	}
+	if cfg.Analogs[0].DataType != "Float32" {
+		t.Fatalf("expected DataType Float32, got %s", cfg.Analogs[0].DataType)
+	}
+	if cfg.Analogs[0].Endian != "ABCD" {
+		t.Fatalf("expected Endian ABCD, got %s", cfg.Analogs[0].Endian)
+	}
+	if cfg.Analogs[0].Scale != 2.0 {
+		t.Fatalf("expected Scale 2.0, got %v", cfg.Analogs[0].Scale)
 	}
 }
