@@ -35,7 +35,7 @@ package main
 */
 import "C"
 import (
-	"time"
+	"fmt"
 	"unsafe"
 )
 
@@ -67,10 +67,6 @@ func odc_library_init(odc *C.struct_C_ODC_HostAPI) {
 // Required C API exports
 //------------------------------------------------------------------------------
 
-//export go_c_api_version
-func go_c_api_version() *C.char {
-	return C.CString(C.ODC_C_API_VERSION)
-}
 
 //export go_port_create
 func go_port_create(cType *C.char, cName *C.char) unsafe.Pointer {
@@ -183,6 +179,15 @@ func go_transport_disconnect_cb(status C.uint8_t, handle unsafe.Pointer) {
 
 //export go_port_stats_json
 func go_port_stats_json(inst unsafe.Pointer) *C.char {
+	// Return real poll statistics for GoModbusClient ports.
+	// Server ports and unbuilt ports return empty objects.
+	if cp, ok := lookupPort(inst).(*GoModbusClientPort); ok && cp.pollScheduler != nil {
+		s := cp.pollScheduler.Stats()
+		json := fmt.Sprintf(
+			`{"PollsScheduled":%d,"PollsDropped":%d,"PollsRunning":%d,"MaxConcurrentPolls":%d}`,
+			s.PollsScheduled, s.PollsDropped, s.PollsRunning, s.MaxConcurrent)
+		return C.CString(json)
+	}
 	return C.CString("{}")
 }
 
@@ -206,11 +211,18 @@ func go_port_free_string(s *C.char) {
 // odc_publish_event is goroutine-safe: it posts through the ASIO event loop.
 //------------------------------------------------------------------------------
 
+// odcNow returns the current time in milliseconds since the Unix epoch using
+// the ODC host API (ms_since_epoch vtable slot), keeping timestamps consistent
+// with the rest of the ODC event fabric.
+func odcNow() C.uint64_t {
+	return C.uint64_t(C.odc_ms_since_epoch())
+}
+
 func publishBinary(inst unsafe.Pointer, index uint64, value bool, odcType uint8) {
 	evt := C.struct_C_EventInfo{
 		event_type: C.uint8_t(odcType),
 		index:      C.size_t(index),
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
+		timestamp:  odcNow(),
 		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
 	}
 	var v C.uint8_t = 0
@@ -225,7 +237,7 @@ func publishAnalog(inst unsafe.Pointer, index uint64, value float64, odcType uin
 	evt := C.struct_C_EventInfo{
 		event_type: C.uint8_t(odcType),
 		index:      C.size_t(index),
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
+		timestamp:  odcNow(),
 		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
 	}
 	C.odc_SetPayloadAnalog(&evt, C.double(value))
@@ -239,7 +251,7 @@ func publishAnalogOutputEvent(inst unsafe.Pointer, index uint64, value float64, 
 	evt := C.struct_C_EventInfo{
 		event_type: C.uint8_t(odcType),
 		index:      C.size_t(index),
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
+		timestamp:  odcNow(),
 		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
 	}
 	switch odcType {
@@ -264,24 +276,22 @@ func publishOctetString(inst unsafe.Pointer, index uint64, data []byte) {
 	evt := C.struct_C_EventInfo{
 		event_type: C.C_EventType_OctetString,
 		index:      C.size_t(index),
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
+		timestamp:  odcNow(),
 		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
 	}
 	cdata := C.CBytes(data)
-	defer C.free(cdata)
 	C.odc_SetPayloadOctetString(&evt, (*C.uint8_t)(cdata), C.size_t(len(data)))
 	C.odc_publish_event(inst, &evt, nil, nil)
+	// odc_publish_event deep-copies the octet payload before returning;
+	// safe to free the C buffer now.
+	C.free(cdata)
 }
 
+// publishConnectState uses the dedicated publish_connect_state vtable slot,
+// which is the correct API for connection-state notifications (as opposed to
+// manually constructing a ConnectState EventInfo and calling publish_event).
 func publishConnectState(inst unsafe.Pointer, state int32) {
-	evt := C.struct_C_EventInfo{
-		event_type: C.C_EventType_ConnectState,
-		index:      0,
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
-		quality:    0,
-	}
-	C.odc_SetPayloadConnectState(&evt, C.uint8_t(state))
-	C.odc_publish_event(inst, &evt, nil, nil)
+	C.odc_publish_connect_state(inst, C.int(state))
 }
 
 // ---------------------------------------------------------------------------

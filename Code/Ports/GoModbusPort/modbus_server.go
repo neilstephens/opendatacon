@@ -169,7 +169,7 @@ func (p *GoModbusServerPort) doBuild() {
 		logError(p.inst, "server build failed: %v", err)
 		return
 	}
-	if err := validateServerConfig(cfg); err != nil {
+	if err := validateServerConfig(p.inst, cfg); err != nil {
 		logError(p.inst, "server build failed: %v", err)
 		return
 	}
@@ -350,7 +350,7 @@ func (p *GoModbusServerPort) buildMaps() {
 
 	// AnalogControls → holding-register writes trigger ODC AnalogOutput* events.
 	for _, ct := range cfg.AnalogControls {
-		pts := expandAnalogControls(ct)
+		pts := expandServerAnalogControls(ct)
 		for _, cp := range pts {
 			p.hrWriteMap[cp.ModbusAddr] = serverWriteTarget{
 				odcIndex: cp.ODCIndex,

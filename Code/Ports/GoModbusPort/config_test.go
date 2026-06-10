@@ -36,6 +36,9 @@ const (
 	testAnalog = 3
 )
 
+// intPtr returns a pointer to v, used to construct *int literals in PointConfig.Bit.
+func intPtr(v int) *int { return &v }
+
 func TestParseConfigTCP(t *testing.T) {
 	data := `{
 		"TCP": {"Address": "192.168.1.1:502"},
@@ -119,6 +122,26 @@ func TestParseConfigAllPointTypes(t *testing.T) {
 	}
 	if cfg.AnalogControls[0].ControlType != "AnalogOutputInt32" {
 		t.Fatalf("expected ControlType AnalogOutputInt32, got %s", cfg.AnalogControls[0].ControlType)
+	}
+	// Bit absent → nil pointer
+	if cfg.Binaries[0].Bit != nil {
+		t.Fatalf("expected Bit nil when not configured, got %v", *cfg.Binaries[0].Bit)
+	}
+}
+
+func TestParseBitZero(t *testing.T) {
+	// "Bit": 0 must parse as a pointer-to-zero, not as absent.
+	data := `{"TCP":{"Address":"localhost:502"},
+		"Binaries":[{"Index":0,"Modbus":{"Type":"HoldingRegister","Address":0},"Bit":0}]}`
+	var cfg PortConfig
+	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Binaries[0].Bit == nil {
+		t.Fatal("Bit should be non-nil when \"Bit\": 0 is specified")
+	}
+	if *cfg.Binaries[0].Bit != 0 {
+		t.Fatalf("expected Bit=0, got %d", *cfg.Binaries[0].Bit)
 	}
 }
 
@@ -253,7 +276,7 @@ func TestExpandBit(t *testing.T) {
 	pts := expandPolledPoint(
 		PointConfig{
 			Index:  0,
-			Bit:    3,
+			Bit:    intPtr(3),
 			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 100},
 		},
 		0, 0, "", "", testBinary, 1000)
@@ -262,6 +285,40 @@ func TestExpandBit(t *testing.T) {
 	}
 	if pts[0].Bit != 3 {
 		t.Fatalf("expected Bit 3, got %d", pts[0].Bit)
+	}
+}
+
+func TestExpandBitZero(t *testing.T) {
+	// Bit=0 (the LSB) must be usable; it was previously treated as "not set".
+	pts := expandPolledPoint(
+		PointConfig{
+			Index:  0,
+			Bit:    intPtr(0),
+			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 100},
+		},
+		0, 0, "", "", testBinary, 1000)
+	if len(pts) != 1 {
+		t.Fatalf("expected 1 point, got %d", len(pts))
+	}
+	if pts[0].Bit != 0 {
+		t.Fatalf("expected Bit 0 (LSB), got %d", pts[0].Bit)
+	}
+}
+
+func TestExpandBitAbsent(t *testing.T) {
+	// When Bit is absent from the config, the internal sentinel -1 must be used
+	// (not 0, which would mean "extract the LSB").
+	pts := expandPolledPoint(
+		PointConfig{
+			Index:  0,
+			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 100},
+		},
+		0, 0, "", "", testBinary, 1000)
+	if len(pts) != 1 {
+		t.Fatalf("expected 1 point, got %d", len(pts))
+	}
+	if pts[0].Bit != -1 {
+		t.Fatalf("expected Bit sentinel -1 (not set), got %d", pts[0].Bit)
 	}
 }
 
@@ -295,6 +352,57 @@ func TestExpandAnalogControls(t *testing.T) {
 	}
 	if pts[0].ControlType != "AnalogOutputFloat32" {
 		t.Fatalf("expected ControlType AnalogOutputFloat32, got %s", pts[0].ControlType)
+	}
+}
+
+func TestExpandServerAnalogControlsEndianDataType(t *testing.T) {
+	// expandServerAnalogControls must propagate Endian and DataType into the
+	// resulting ControlPoints so the server handler can decode HR writes correctly.
+	pts := expandServerAnalogControls(AnalogControlConfig{
+		PointConfig: PointConfig{
+			Index:  5,
+			Modbus: ModbusConfig{Type: "HoldingRegister", Address: 10, Count: 2},
+		},
+		ControlType: "AnalogOutputFloat32",
+		Endian:      "DCBA",
+		DataType:    "Float32",
+	})
+	if len(pts) != 1 {
+		t.Fatalf("expected 1 control point, got %d", len(pts))
+	}
+	if pts[0].Endian != "DCBA" {
+		t.Fatalf("expected Endian DCBA, got %q", pts[0].Endian)
+	}
+	if pts[0].DataType != "Float32" {
+		t.Fatalf("expected DataType Float32, got %q", pts[0].DataType)
+	}
+}
+
+func TestAnalogControlConfigEndianDataTypeJSON(t *testing.T) {
+	// Verify that Endian and DataType round-trip through JSON.
+	data := `{
+		"TCP": {"Address": "localhost:502"},
+		"AnalogControls": [{
+			"Index": 3,
+			"Modbus": {"Type": "HoldingRegister", "Address": 22, "Count": 2},
+			"ControlType": "AnalogOutputFloat32",
+			"Endian": "CDAB",
+			"DataType": "Float32"
+		}]
+	}`
+	var cfg PortConfig
+	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.AnalogControls) != 1 {
+		t.Fatalf("expected 1 AnalogControl, got %d", len(cfg.AnalogControls))
+	}
+	ac := cfg.AnalogControls[0]
+	if ac.Endian != "CDAB" {
+		t.Fatalf("expected Endian CDAB, got %q", ac.Endian)
+	}
+	if ac.DataType != "Float32" {
+		t.Fatalf("expected DataType Float32, got %q", ac.DataType)
 	}
 }
 
@@ -532,7 +640,7 @@ func TestServerConfigValidation(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := validateServerConfig(&tc.cfg); err == nil {
+			if err := validateServerConfig(nil, &tc.cfg); err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
@@ -544,7 +652,7 @@ func TestServerConfigDefaults(t *testing.T) {
 		TCP: &ServerTCPConfig{Listen: ":502"},
 		RTU: nil,
 	}
-	if err := validateServerConfig(&cfg); err != nil {
+	if err := validateServerConfig(nil, &cfg); err != nil {
 		t.Fatal(err)
 	}
 	// UnitID 0 means "respond to all"
@@ -568,7 +676,7 @@ func TestServerConfigAllPointTypes(t *testing.T) {
 	if err := json.Unmarshal([]byte(data), &cfg); err != nil {
 		t.Fatal(err)
 	}
-	if err := validateServerConfig(&cfg); err != nil {
+	if err := validateServerConfig(nil, &cfg); err != nil {
 		t.Fatal(err)
 	}
 	if len(cfg.Binaries) != 1 || len(cfg.Analogs) != 1 ||

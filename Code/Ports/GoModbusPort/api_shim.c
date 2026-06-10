@@ -55,7 +55,6 @@ extern char* go_port_stats_json(void* inst);
 extern char* go_port_state_json(void* inst);
 extern char* go_port_status_json(void* inst);
 extern void  go_port_free_string(char* str);
-extern char* go_c_api_version(void);
 
 /* Go-exported ODC timer callback functions */
 extern void go_reconnect_timer_cb(uint8_t status, void* handle);
@@ -117,7 +116,7 @@ ODC_C_EXPORT const char* odc_port_status_json(void* inst)
 
 ODC_C_EXPORT const char* odc_c_api_version(void)
 {
-	return go_c_api_version();
+	return ODC_C_API_VERSION;
 }
 
 ODC_C_EXPORT void odc_port_free_string(const char* str)

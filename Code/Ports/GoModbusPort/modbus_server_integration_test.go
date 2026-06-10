@@ -52,7 +52,7 @@ func startTestServer(t *testing.T, cfg *ServerPortConfig) (*GoModbusServerPort, 
 	listenAddr := fmt.Sprintf("127.0.0.1:%d", tcpPort)
 	cfg.TCP = &ServerTCPConfig{Listen: listenAddr}
 
-	if err := validateServerConfig(cfg); err != nil {
+	if err := validateServerConfig(nil, cfg); err != nil {
 		t.Fatalf("validateServerConfig: %v", err)
 	}
 
@@ -464,7 +464,7 @@ func TestServerEnableDisable(t *testing.T) {
 	cfg := &ServerPortConfig{
 		TCP: &ServerTCPConfig{Listen: listenAddr},
 	}
-	if err := validateServerConfig(cfg); err != nil {
+	if err := validateServerConfig(nil, cfg); err != nil {
 		t.Fatal(err)
 	}
 

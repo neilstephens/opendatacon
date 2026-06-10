@@ -187,7 +187,7 @@ func (p *GoModbusClientPort) doBuild() {
 		logError(p.inst, "build failed: %v", err)
 		return
 	}
-	if err := validateConfig(cfg); err != nil {
+	if err := validateConfig(p.inst, cfg); err != nil {
 		logError(p.inst, "build failed: %v", err)
 		return
 	}
@@ -546,7 +546,7 @@ func (p *GoModbusClientPort) groupDuePoints(now int64) []*pollGroup {
 		if !pt.due(now) {
 			continue
 		}
-		pt.lastPollNs = now
+		pt.lastPollNs.Store(now) // atomic: multiple poll goroutines may run concurrently
 		key := typeAddrKey{pt.ModbusType, pt.ModbusAddr}
 
 		if g, ok := merged[key]; ok {
@@ -783,7 +783,11 @@ func handleRegisterWrite(client *modbus.ModbusClient, cp *ControlPoint, eventTyp
 // Logging helpers
 // ---------------------------------------------------------------------------
 
+
 func logTrace(inst unsafe.Pointer, format string, args ...interface{}) {
+	if C.odc_should_log(inst, C.C_LOG_LEVEL_TRACE) == 0 {
+		return
+	}
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
 	C.odc_log(inst, C.C_LOG_LEVEL_TRACE, cmsg)
@@ -791,6 +795,9 @@ func logTrace(inst unsafe.Pointer, format string, args ...interface{}) {
 }
 
 func logDebug(inst unsafe.Pointer, format string, args ...interface{}) {
+	if C.odc_should_log(inst, C.C_LOG_LEVEL_DEBUG) == 0 {
+		return
+	}
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
 	C.odc_log(inst, C.C_LOG_LEVEL_DEBUG, cmsg)
@@ -798,6 +805,9 @@ func logDebug(inst unsafe.Pointer, format string, args ...interface{}) {
 }
 
 func logInfo(inst unsafe.Pointer, format string, args ...interface{}) {
+	if C.odc_should_log(inst, C.C_LOG_LEVEL_INFO) == 0 {
+		return
+	}
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
 	C.odc_log(inst, C.C_LOG_LEVEL_INFO, cmsg)
@@ -805,6 +815,9 @@ func logInfo(inst unsafe.Pointer, format string, args ...interface{}) {
 }
 
 func logWarn(inst unsafe.Pointer, format string, args ...interface{}) {
+	if C.odc_should_log(inst, C.C_LOG_LEVEL_WARN) == 0 {
+		return
+	}
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
 	C.odc_log(inst, C.C_LOG_LEVEL_WARN, cmsg)
@@ -812,6 +825,9 @@ func logWarn(inst unsafe.Pointer, format string, args ...interface{}) {
 }
 
 func logError(inst unsafe.Pointer, format string, args ...interface{}) {
+	if C.odc_should_log(inst, C.C_LOG_LEVEL_ERROR) == 0 {
+		return
+	}
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
 	C.odc_log(inst, C.C_LOG_LEVEL_ERROR, cmsg)
@@ -819,6 +835,9 @@ func logError(inst unsafe.Pointer, format string, args ...interface{}) {
 }
 
 func logCritical(inst unsafe.Pointer, format string, args ...interface{}) {
+	if C.odc_should_log(inst, C.C_LOG_LEVEL_CRITICAL) == 0 {
+		return
+	}
 	msg := fmt.Sprintf(format, args...)
 	cmsg := C.CString(msg)
 	C.odc_log(inst, C.C_LOG_LEVEL_CRITICAL, cmsg)

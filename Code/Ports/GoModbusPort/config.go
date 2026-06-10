@@ -37,6 +37,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sync/atomic"
 	"unsafe"
 )
 
@@ -60,7 +61,7 @@ type PointConfig struct {
 	Range      *RangeConfig `json:"Range,omitempty"`
 	Modbus     ModbusConfig `json:"Modbus"`
 	PollRateMs int          `json:"PollRateMs,omitempty"`
-	Bit        int          `json:"Bit,omitempty"`
+	Bit *int `json:"Bit,omitempty"`
 }
 
 // AnalogPointConfig extends PointConfig with scaling and encoding fields.
@@ -105,6 +106,8 @@ type ControlConfig struct {
 type AnalogControlConfig struct {
 	PointConfig
 	ControlType string `json:"ControlType,omitempty"`
+	Endian   string `json:"Endian,omitempty"`
+	DataType string `json:"DataType,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -209,7 +212,7 @@ type PolledPoint struct {
 	Endian     string
 	DataType   string
 	Bit        int
-	lastPollNs int64
+	lastPollNs atomic.Int64
 }
 
 func (p *PolledPoint) due(nowNs int64) bool {
@@ -217,7 +220,7 @@ func (p *PolledPoint) due(nowNs int64) bool {
 		return false
 	}
 	interval := int64(p.PollRateMs) * 1_000_000
-	return (nowNs - p.lastPollNs) >= interval
+	return (nowNs - p.lastPollNs.Load()) >= interval
 }
 
 type ControlPoint struct {
@@ -254,7 +257,7 @@ func parseConfig(inst unsafe.Pointer) (*PortConfig, error) {
 	return &cfg, nil
 }
 
-func validateConfig(cfg *PortConfig) error {
+func validateConfig(inst unsafe.Pointer, cfg *PortConfig) error {
 	if cfg.TCP == nil && cfg.RTU == nil {
 		return fmt.Errorf("either TCP or RTU connection config is required")
 	}
@@ -278,7 +281,20 @@ func validateConfig(cfg *PortConfig) error {
 	if cfg.MaxConcurrentPolls <= 0 {
 		cfg.MaxConcurrentPolls = 1
 	}
+	warnScaleZero(inst, cfg.Analogs, cfg.AnalogOutputStatuses)
 	return nil
+}
+
+func warnScaleZero(inst unsafe.Pointer, groups ...[]AnalogPointConfig) {
+	for _, grp := range groups {
+		for _, pt := range grp {
+			if pt.Scale == 0 && pt.Offset != 0 {
+				logWarn(inst, "WARNING: analog point Index=%v has Scale=0 with Offset=%v — "+
+					"every reading will equal Offset regardless of the register value. "+
+					"Did you mean Scale=1?\n", pt.Index, pt.Offset)
+			}
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +318,7 @@ func parseServerConfig(inst unsafe.Pointer) (*ServerPortConfig, error) {
 	return &cfg, nil
 }
 
-func validateServerConfig(cfg *ServerPortConfig) error {
+func validateServerConfig(inst unsafe.Pointer, cfg *ServerPortConfig) error {
 	if cfg.TCP == nil && cfg.RTU == nil {
 		return fmt.Errorf("either TCP or RTU listen config is required")
 	}
@@ -329,6 +345,7 @@ func validateServerConfig(cfg *ServerPortConfig) error {
 			return fmt.Errorf("AnalogControls entry has Modbus.Type %q; only \"HoldingRegister\" is writable by a Modbus client", ac.Modbus.Type)
 		}
 	}
+	warnScaleZero(inst, cfg.Analogs, cfg.AnalogOutputStatuses)
 	return nil
 }
 
@@ -364,9 +381,10 @@ func expandPolledPoint(cfg PointConfig, scale float64, offset float64, endian st
 	if count == 0 {
 		count = 1
 	}
-	bit := cfg.Bit
-	if bit == 0 && cfg.Bit == 0 {
-		bit = -1
+	// Bit == nil means no bit extraction; -1 is the internal sentinel for that.
+	bit := -1
+	if cfg.Bit != nil {
+		bit = *cfg.Bit
 	}
 
 	if cfg.Range != nil {
@@ -480,13 +498,15 @@ func expandAnalogControls(cfg AnalogControlConfig) []ControlPoint {
 	return pts
 }
 
-// expandServerAnalogControlsFull is like expandAnalogControls but also
-// carries Endian and DataType for server-side HR write decoding.
-func expandServerAnalogControlsFull(cfg AnalogControlConfig, endian, dataType string) []ControlPoint {
+// expandServerAnalogControls expands an AnalogControlConfig for server mode,
+// propagating its Endian and DataType fields into each ControlPoint so the
+// server handler can correctly decode HR write payloads before publishing ODC
+// events.
+func expandServerAnalogControls(cfg AnalogControlConfig) []ControlPoint {
 	pts := expandAnalogControls(cfg)
 	for i := range pts {
-		pts[i].Endian = endian
-		pts[i].DataType = dataType
+		pts[i].Endian = cfg.Endian
+		pts[i].DataType = cfg.DataType
 	}
 	return pts
 }

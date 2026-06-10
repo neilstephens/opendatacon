@@ -1,0 +1,97 @@
+{
+	// Shared point mapping for GoModbus-LuaPort-E2E example.
+	// Inherited by both server_device.conf.json and client_device.conf.json.
+	//
+	// Client semantics: each array entry describes a poll or control mapping.
+	// Server semantics: same entries describe the ODC↔Modbus address binding in
+	//   the opposite data direction; PollRateMs is parsed but ignored by the server.
+	//
+	// Layout:
+	//   Binary / BinaryOutputStatus  →  Coils / Discrete Inputs
+	//   Analog / AnalogOutputStatus  →  Holding Registers / Input Registers
+	//   OctetString                  →  Holding Register block
+	//   BinaryControls               →  Coil write (client→server) / Coil-write publish (server)
+	//   AnalogControls               →  HR write, with four ODC numeric types
+
+	// ── Binary inputs ────────────────────────────────────────────────────────
+	// Index 0: Coil 0  – DataGenerator publishes Binary; client polls and publishes Binary.
+	// Index 1: Coil 1  – Same, second toggle channel.
+	"Binaries":
+	[
+		{ "Index": 0, "Modbus": { "Type": "Coil", "Address": 0 }, "PollRateMs": 2000 },
+		{ "Index": 1, "Modbus": { "Type": "Coil", "Address": 1 }, "PollRateMs": 2000 }
+	],
+
+	// ── Binary output statuses (read-only discrete inputs) ───────────────────
+	// Index 10: DI 0 – DataGenerator publishes BinaryOutputStatus; client polls.
+	"BinaryOutputStatuses":
+	[
+		{ "Index": 10, "Modbus": { "Type": "DiscreteInput", "Address": 0 }, "PollRateMs": 2000 }
+	],
+
+	// ── Analog inputs (three data types / endian variants) ───────────────────
+	// Index 0: HR 0, 1 register, Int16 (ramp counter)
+	// Index 1: HR 2, 2 registers, Float32 ABCD (standard big-endian float)
+	// Index 2: HR 4, 2 registers, Float32 DCBA (fully little-endian float — exercises DCBA path)
+	"Analogs":
+	[
+		{ "Index": 0,
+		  "Modbus": { "Type": "HoldingRegister", "Address": 0, "Count": 1 },
+		  "DataType": "Int16", "Endian": "AB",
+		  "PollRateMs": 2000 },
+		{ "Index": 1,
+		  "Modbus": { "Type": "HoldingRegister", "Address": 2, "Count": 2 },
+		  "DataType": "Float32", "Endian": "ABCD",
+		  "PollRateMs": 2000 },
+		{ "Index": 2,
+		  "Modbus": { "Type": "HoldingRegister", "Address": 4, "Count": 2 },
+		  "DataType": "Float32", "Endian": "DCBA",
+		  "PollRateMs": 2000 }
+	],
+
+	// ── Analog output statuses (read-only input registers) ───────────────────
+	// Index 10: IR 0, 1 register, Uint16 (free-running counter from generator)
+	"AnalogOutputStatuses":
+	[
+		{ "Index": 10,
+		  "Modbus": { "Type": "InputRegister", "Address": 0, "Count": 1 },
+		  "DataType": "Uint16",
+		  "PollRateMs": 2000 }
+	],
+
+	// ── OctetString ──────────────────────────────────────────────────────────
+	// Index 0: HR 10–17 (8 registers = 16 bytes)
+	// DataGenerator writes the working-directory path string (as raw bytes).
+	// DataSink receives it and hex-dumps it, exercising the string2hex vtable function.
+	"OctetStrings":
+	[
+		{ "Index": 0, "Modbus": { "Type": "HoldingRegister", "Address": 10, "Count": 8 },
+		  "PollRateMs": 5000 }
+	],
+
+	// ── Binary controls ──────────────────────────────────────────────────────
+	// Index 20: Coil 20
+	//   Client side:  receives CROB/Binary ODC event → writes Coil 20 on server.
+	//   Server side:  when Modbus client writes Coil 20 → publishes Binary(20) to subscribers.
+	"BinaryControls":
+	[
+		{ "Index": 20, "Modbus": { "Type": "Coil", "Address": 20 } }
+	],
+
+	// ── Analog controls (four ODC numeric types) ─────────────────────────────
+	// Index 20: HR 20, 1 register, AnalogOutputInt16 — simple 16-bit setpoint
+	// Index 21: HR 22, 2 registers, AnalogOutputFloat32 ABCD — float setpoint
+	// Index 22: HR 26, 4 registers, AnalogOutputDouble64 — exercises Float64 path
+	"AnalogControls":
+	[
+		{ "Index": 20,
+		  "Modbus": { "Type": "HoldingRegister", "Address": 20, "Count": 1 },
+		  "ControlType": "AnalogOutputInt16" },
+		{ "Index": 21,
+		  "Modbus": { "Type": "HoldingRegister", "Address": 22, "Count": 2 },
+		  "ControlType": "AnalogOutputFloat32" },
+		{ "Index": 22,
+		  "Modbus": { "Type": "HoldingRegister", "Address": 26, "Count": 4 },
+		  "ControlType": "AnalogOutputDouble64" }
+	]
+}
