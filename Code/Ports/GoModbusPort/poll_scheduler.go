@@ -34,7 +34,6 @@ import (
 )
 
 type PollScheduler interface {
-	SchedulePoll(pollFn func() error) bool
 	Shutdown()
 	Wait()
 	Stats() PollSchedulerStats
@@ -103,27 +102,6 @@ func (ps *pollScheduler) run() {
 				ps.pollsDropped.Add(1)
 			}
 		}
-	}
-}
-
-func (ps *pollScheduler) SchedulePoll(pollFn func() error) bool {
-	select {
-	case ps.sem <- struct{}{}:
-		ps.wg.Add(1)
-		ps.pollsRunning.Add(1)
-		ps.pollsScheduled.Add(1)
-		go func() {
-			defer func() {
-				ps.pollsRunning.Add(-1)
-				<-ps.sem
-				ps.wg.Done()
-			}()
-			_ = pollFn()
-		}()
-		return true
-	default:
-		ps.pollsDropped.Add(1)
-		return false
 	}
 }
 
