@@ -161,7 +161,7 @@ func TestParseConfigErrors(t *testing.T) {
 			if err := json.Unmarshal([]byte(tc.json), &cfg); err != nil {
 				t.Fatal(err)
 			}
-			if err := validateConfig(&cfg); err == nil {
+			if err := validateConfig(nil, &cfg); err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
@@ -170,7 +170,7 @@ func TestParseConfigErrors(t *testing.T) {
 
 func TestConfigDefaults(t *testing.T) {
 	cfg := PortConfig{TCP: &TCPConfig{Address: "localhost:502"}}
-	if err := validateConfig(&cfg); err != nil {
+	if err := validateConfig(nil, &cfg); err != nil {
 		t.Fatal(err)
 	}
 	if cfg.PollRateMs != 1000 {
@@ -181,7 +181,7 @@ func TestConfigDefaults(t *testing.T) {
 	}
 
 	cfg2 := PortConfig{RTU: &RTUConfig{Port: "/dev/ttyUSB0"}}
-	if err := validateConfig(&cfg2); err != nil {
+	if err := validateConfig(nil, &cfg2); err != nil {
 		t.Fatal(err)
 	}
 	if cfg2.RTU.BaudRate != 19200 {
