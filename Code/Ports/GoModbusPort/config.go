@@ -448,7 +448,9 @@ func expandControls(cfg ControlConfig, odcType uint8) []ControlPoint {
 	if cfg.Range != nil {
 		var pts []ControlPoint
 		for i := cfg.Range.Start; i <= cfg.Range.Stop; i++ {
-			addrOff := uint16(i - cfg.Range.Start)
+			// Multiply by count so consecutive controls don't overlap their
+			// register blocks (matches expandPolledPoint's address stride).
+			addrOff := uint16((i - cfg.Range.Start) * uint64(count))
 			pts = append(pts, ControlPoint{
 				ODCType:    odcType,
 				ODCIndex:   i,
@@ -631,6 +633,8 @@ func encodeAnalogRegs(val float64, count uint16, endian, dataType string) []uint
 		case "Uint32":
 			if val < 0 {
 				val = 0
+			} else if val > 4294967295 {
+				val = 4294967295
 			}
 			raw = uint32(val)
 		case "Float32":

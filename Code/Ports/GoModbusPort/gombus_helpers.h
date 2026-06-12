@@ -315,20 +315,4 @@ static inline size_t odc_GetOctetStringSize(
 	const struct C_EventInfo* evt)
 { return evt->payload.octet_string.size; }
 
-/* ------------------------------------------------------------------ */
-/*  ODC scheduling helpers — defined in api_shim.c.                    */
-/*  Called from Go (cgo) to post work back to the ODC strand.          */
-/* ------------------------------------------------------------------ */
-
-/* Schedule a reconnect attempt after 'ms' milliseconds on the strand.
-   Returns an ODC timer handle suitable for odc_cancel_timer(). */
-extern void* odc_schedule_reconnect(void* inst, uint64_t ms);
-
-/* Signal a connect result to the strand (fires at delay 0).
-   ok != 0  →  go_connect_ok_cb;  ok == 0  →  go_connect_fail_cb. */
-extern void  odc_schedule_connect_result(void* inst, int ok);
-
-/* Signal a transport disconnect to the strand (fires at delay 0). */
-extern void  odc_schedule_transport_disconnect(void* inst);
-
 #endif /* GOMBUS_HELPERS_H */

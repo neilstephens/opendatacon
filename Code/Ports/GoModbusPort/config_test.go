@@ -232,7 +232,8 @@ func TestExpandRange(t *testing.T) {
 	if len(pts) != 10 {
 		t.Fatalf("expected 10 points, got %d", len(pts))
 	}
-	for i, pt := range pts {
+	for i := range pts {
+		pt := &pts[i]
 		if pt.ODCIndex != uint64(10+i) {
 			t.Fatalf("point %d: expected ODCIndex %d, got %d", i, 10+i, pt.ODCIndex)
 		}

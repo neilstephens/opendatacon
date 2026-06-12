@@ -56,7 +56,17 @@
 // Type names
 // ----------
 //  "GoModbusServer" — server port type (same libGoModbusPort.so)
-//  "GoModbus"       — backward-compatible alias for "GoModbusClient"
+//  "GoModbusClient" — client port type (polling + controls)
+//
+// Object lifetime order
+// ---------------------
+//  To mirror the DataConcentrator shutdown sequence (ios_working.reset() +
+//  pIOS->run() drains ALL pending io_context work, THEN DataPorts.clear()
+//  destroys ports), each test declares ports and capture objects BEFORE the
+//  ThreadPool so that ThreadPool is destroyed FIRST.  ~ThreadPool() releases
+//  the work guard and calls pIOS->run() — draining all lambdas while every
+//  port and subscriber is still alive — then joins its threads.  After that,
+//  ports and captures are destroyed safely.
 // ---------------------------------------------------------------------------
 
 // Helper: merge a point-arrays Json::Value into a base client config.
@@ -81,9 +91,7 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 
 	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
 	REQUIRE(portlib != nullptr);
-
 	{
-		ThreadPool pool(1);
 		const int port = 1502;
 
 		// Server: coil 0 ↔ ODC Binary index 0.
@@ -96,15 +104,6 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 
 		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "E2E_SrvCoil",
 			"", MakeServerConfig(port, srvPts), portlib);
-		REQUIRE(srv != nullptr);
-		srv->Build();
-		srv->Enable();
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-		// Pre-populate the store before the client connects.
-		auto binEvent = std::make_shared<odc::EventInfo>(odc::EventType::Binary, 0);
-		binEvent->SetPayload<odc::EventType::Binary>(true);
-		REQUIRE(SendEvent(*srv, binEvent) == odc::CommandStatus::SUCCESS);
 
 		// Client: same coil mapping, fast poll rate.
 		Json::Value cliPts;
@@ -115,10 +114,25 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 		cliPts["Binaries"].append(cBin);
 
 		auto capture = std::make_shared<EventCapturePort>("E2E_CaptureCoil");
-		auto cli = std::make_shared<odc::C_Port>("GoModbus", "E2E_CliCoil",
+		auto cli = std::make_shared<odc::C_Port>("GoModbusClient", "E2E_CliCoil",
 			"", ClientConfigWithPoints(port, 200, cliPts), portlib);
+
+		// Pool declared last → destroyed first: ~ThreadPool() drains pIOS while
+		// srv, capture, cli are still alive (mirrors DataConcentrator shutdown).
+		ThreadPool pool(1);
+
+		REQUIRE(srv != nullptr);
+		srv->Build();
+		srv->Enable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		// Pre-populate the store before the client connects.
+		auto binEvent = std::make_shared<odc::EventInfo>(odc::EventType::Binary, 0);
+		binEvent->SetPayload<odc::EventType::Binary>(true);
+		REQUIRE(SendEvent(*srv, binEvent) == odc::CommandStatus::SUCCESS);
+
 		REQUIRE(cli != nullptr);
-		cli->Subscribe(capture.get(), capture->GetName());
+		SubscribeAndEstablishDemand(*cli, capture.get());
 		cli->Build();
 		cli->Enable();
 
@@ -135,8 +149,8 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 
 		cli->Disable();
 		srv->Disable();
+		// Destruction order: pool (drains pIOS) → cli → capture → srv.
 	}
-
 	TestTearDown();
 }
 
@@ -145,12 +159,10 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 {
 	TestSetup();
-
-	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-	REQUIRE(portlib != nullptr);
-
 	{
-		ThreadPool pool(1);
+		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+		REQUIRE(portlib != nullptr);
+
 		const int port = 1502;
 
 		// Server: HR 0 ↔ ODC Analog index 0, Int16.
@@ -164,14 +176,6 @@ TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 
 		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "E2E_SrvAnalog",
 			"", MakeServerConfig(port, srvPts), portlib);
-		REQUIRE(srv != nullptr);
-		srv->Build();
-		srv->Enable();
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-		auto anaEvent = std::make_shared<odc::EventInfo>(odc::EventType::Analog, 0);
-		anaEvent->SetPayload<odc::EventType::Analog>(42.0);
-		REQUIRE(SendEvent(*srv, anaEvent) == odc::CommandStatus::SUCCESS);
 
 		// Client: same HR mapping.
 		Json::Value cAna;
@@ -181,10 +185,22 @@ TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 		cAna["DataType"]          = "Int16";
 
 		auto capture = std::make_shared<EventCapturePort>("E2E_CaptureAnalog");
-		auto cli = std::make_shared<odc::C_Port>("GoModbus", "E2E_CliAnalog",
+		auto cli = std::make_shared<odc::C_Port>("GoModbusClient", "E2E_CliAnalog",
 			"", ClientConfigWithPoints(port, 200, [&]{ Json::Value p; p["Analogs"].append(cAna); return p; }()), portlib);
+
+		ThreadPool pool(1);
+
+		REQUIRE(srv != nullptr);
+		srv->Build();
+		srv->Enable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+		auto anaEvent = std::make_shared<odc::EventInfo>(odc::EventType::Analog, 0);
+		anaEvent->SetPayload<odc::EventType::Analog>(42.0);
+		REQUIRE(SendEvent(*srv, anaEvent) == odc::CommandStatus::SUCCESS);
+
 		REQUIRE(cli != nullptr);
-		cli->Subscribe(capture.get(), capture->GetName());
+		SubscribeAndEstablishDemand(*cli, capture.get());
 		cli->Build();
 		cli->Enable();
 
@@ -200,7 +216,6 @@ TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 		cli->Disable();
 		srv->Disable();
 	}
-
 	TestTearDown();
 }
 
@@ -214,12 +229,10 @@ TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 {
 	TestSetup();
-
-	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-	REQUIRE(portlib != nullptr);
-
 	{
-		ThreadPool pool(1);
+		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+		REQUIRE(portlib != nullptr);
+
 		const int port = 1502;
 
 		// Server: coil 100 writes → ODC Binary index 3.
@@ -233,11 +246,6 @@ TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 		auto srvCapture = std::make_shared<EventCapturePort>("E2E_SrvCoilCapture");
 		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "E2E_SrvCtl",
 			"", MakeServerConfig(port, srvPts), portlib);
-		REQUIRE(srv != nullptr);
-		srv->Subscribe(srvCapture.get(), srvCapture->GetName());
-		srv->Build();
-		srv->Enable();
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 		// Client: coil 100 BinaryControl at index 3 (slow poll — only controls matter here).
 		Json::Value cCtl;
@@ -245,8 +253,17 @@ TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 		cCtl["Modbus"]["Type"]    = "Coil";
 		cCtl["Modbus"]["Address"] = 100;
 
-		auto cli = std::make_shared<odc::C_Port>("GoModbus", "E2E_CliCtl",
+		auto cli = std::make_shared<odc::C_Port>("GoModbusClient", "E2E_CliCtl",
 			"", ClientConfigWithPoints(port, 5000, [&]{ Json::Value p; p["BinaryControls"].append(cCtl); return p; }()), portlib);
+
+		ThreadPool pool(1);
+
+		REQUIRE(srv != nullptr);
+		SubscribeAndEstablishDemand(*srv, srvCapture.get());
+		srv->Build();
+		srv->Enable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
 		REQUIRE(cli != nullptr);
 		cli->Build();
 		cli->Enable();
@@ -274,7 +291,6 @@ TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 		cli->Disable();
 		srv->Disable();
 	}
-
 	TestTearDown();
 }
 
@@ -284,12 +300,10 @@ TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 {
 	TestSetup();
-
-	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-	REQUIRE(portlib != nullptr);
-
 	{
-		ThreadPool pool(1);
+		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+		REQUIRE(portlib != nullptr);
+
 		const int port = 1502;
 
 		// Server: HR 200 writes → ODC AnalogOutputInt16 index 5.
@@ -304,11 +318,6 @@ TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 		auto srvCapture = std::make_shared<EventCapturePort>("E2E_SrvRegCapture");
 		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "E2E_SrvACtl",
 			"", MakeServerConfig(port, srvPts), portlib);
-		REQUIRE(srv != nullptr);
-		srv->Subscribe(srvCapture.get(), srvCapture->GetName());
-		srv->Build();
-		srv->Enable();
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 		// Client: HR 200 AnalogControl at index 5.
 		Json::Value cACtl;
@@ -317,8 +326,17 @@ TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 		cACtl["Modbus"]["Address"] = 200;
 		cACtl["ControlType"]       = "AnalogOutputInt16";
 
-		auto cli = std::make_shared<odc::C_Port>("GoModbus", "E2E_CliACtl",
+		auto cli = std::make_shared<odc::C_Port>("GoModbusClient", "E2E_CliACtl",
 			"", ClientConfigWithPoints(port, 5000, [&]{ Json::Value p; p["AnalogControls"].append(cACtl); return p; }()), portlib);
+
+		ThreadPool pool(1);
+
+		REQUIRE(srv != nullptr);
+		SubscribeAndEstablishDemand(*srv, srvCapture.get());
+		srv->Build();
+		srv->Enable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
 		REQUIRE(cli != nullptr);
 		cli->Build();
 		cli->Enable();
@@ -343,7 +361,6 @@ TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 		cli->Disable();
 		srv->Disable();
 	}
-
 	TestTearDown();
 }
 
@@ -362,12 +379,10 @@ TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 TEST_CASE(SUITE("TwoWayCoil"))
 {
 	TestSetup();
-
-	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-	REQUIRE(portlib != nullptr);
-
 	{
-		ThreadPool pool(1);
+		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+		REQUIRE(portlib != nullptr);
+
 		const int port = 1502;
 
 		// Server: coil 50 ↔ ODC Binary index 0 in both directions.
@@ -386,15 +401,8 @@ TEST_CASE(SUITE("TwoWayCoil"))
 		srvPts["BinaryControls"].append(sBCtl);
 
 		auto srvCapture = std::make_shared<EventCapturePort>("E2E_2W_SrvCapture");
-		auto cliCapture = std::make_shared<EventCapturePort>("E2E_2W_CliCapture");
-
 		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "E2E_2W_Srv",
 			"", MakeServerConfig(port, srvPts), portlib);
-		REQUIRE(srv != nullptr);
-		srv->Subscribe(srvCapture.get(), srvCapture->GetName());
-		srv->Build();
-		srv->Enable();
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 		// Client: coil 50 as both poll and control.
 		Json::Value cBin;
@@ -411,10 +419,20 @@ TEST_CASE(SUITE("TwoWayCoil"))
 		cliPts["Binaries"].append(cBin);
 		cliPts["BinaryControls"].append(cBCtl);
 
-		auto cli = std::make_shared<odc::C_Port>("GoModbus", "E2E_2W_Cli",
+		auto cliCapture = std::make_shared<EventCapturePort>("E2E_2W_CliCapture");
+		auto cli = std::make_shared<odc::C_Port>("GoModbusClient", "E2E_2W_Cli",
 			"", ClientConfigWithPoints(port, 200, cliPts), portlib);
+
+		ThreadPool pool(1);
+
+		REQUIRE(srv != nullptr);
+		SubscribeAndEstablishDemand(*srv, srvCapture.get());
+		srv->Build();
+		srv->Enable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
 		REQUIRE(cli != nullptr);
-		cli->Subscribe(cliCapture.get(), cliCapture->GetName());
+		SubscribeAndEstablishDemand(*cli, cliCapture.get());
 		cli->Build();
 		cli->Enable();
 
@@ -451,7 +469,7 @@ TEST_CASE(SUITE("TwoWayCoil"))
 
 		cli->Disable();
 		srv->Disable();
+		// Destruction order: pool (drains pIOS) → cli → cliCapture → srv → srvCapture.
 	}
-
 	TestTearDown();
 }

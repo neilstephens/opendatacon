@@ -295,4 +295,20 @@ inline Json::Value MakeClientConfig(int connectPort, int pollRateMs = 200)
 	return conf;
 }
 
+// Subscribe a capture port to a publisher AND establish demand on the publisher.
+// In a full DataConcentrator setup, a DataConnector calls publisher.Event(CONNECTED,
+// subscriber_name) after subscribing, which updates the publisher's demand map so
+// that odc_in_demand() returns true and polling is not suppressed.
+inline void SubscribeAndEstablishDemand(odc::C_Port& publisher,
+	EventCapturePort* subscriber)
+{
+	publisher.Subscribe(subscriber, subscriber->GetName());
+	// Simulate the DataConnector's demand handshake: the subscriber reports
+	// its ConnectState to the publisher, establishing demand.
+	// Cast to DataPort& to access Event(ConnectState, string) which is hidden
+	// in C_Port by the Event(shared_ptr<EventInfo>, ...) override.
+	static_cast<odc::DataPort&>(publisher).Event(
+		odc::ConnectState::CONNECTED, subscriber->GetName());
+}
+
 #endif // GOMODBUS_TESTHELPERS_H
