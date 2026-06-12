@@ -43,7 +43,6 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 
 	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
 	REQUIRE(portlib != nullptr);
-
 	{
 		ThreadPool pool(1);
 		auto port = std::make_shared<odc::C_Port>("GoModbusClient", "LifecycleTest",
@@ -56,7 +55,7 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		port->Disable();
 	}
-
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -87,7 +86,7 @@ TEST_CASE(SUITE("ConfigPassthrough"))
 		REQUIRE(json.find("127.0.0.1") != std::string::npos);
 		REQUIRE(json.find("42") != std::string::npos);
 	}
-
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -137,7 +136,7 @@ TEST_CASE(SUITE("BinaryControlDispatch"))
 
 		port->Disable();
 	}
-
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -164,7 +163,7 @@ TEST_CASE(SUITE("BuildMultipleCalls"))
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		port->Disable();
 	}
-
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -201,7 +200,7 @@ TEST_CASE(SUITE("DisableReturnsImmediately"))
 
 		REQUIRE(elapsed < std::chrono::seconds(1));
 	}
-
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -235,7 +234,7 @@ TEST_CASE(SUITE("PollDroppingWhenOverloaded"))
 		port->Disable();
 		// Reaching here without deadlock is the assertion.
 	}
-
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -268,7 +267,7 @@ TEST_CASE(SUITE("LoadUnloadSleep"))
 		port->Disable();
 		// ~C_Port fires here: go_port_destroy then UnLoadModule(portlib) → dlclose.
 	}
-
+	UnLoadModule(portlib);
 	// Sleep past the original reconnect delay.  A leaked timer goroutine
 	// would fire into unmapped memory → SIGSEGV.
 	std::this_thread::sleep_for(std::chrono::milliseconds(1500));

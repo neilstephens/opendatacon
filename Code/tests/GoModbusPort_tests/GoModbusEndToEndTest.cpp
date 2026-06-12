@@ -151,6 +151,7 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 		srv->Disable();
 		// Destruction order: pool (drains pIOS) → cli → capture → srv.
 	}
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -159,10 +160,9 @@ TEST_CASE(SUITE("ClientPolls_CoilFromServer"))
 TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 {
 	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
 	{
-		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-		REQUIRE(portlib != nullptr);
-
 		const int port = 1502;
 
 		// Server: HR 0 ↔ ODC Analog index 0, Int16.
@@ -216,6 +216,7 @@ TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 		cli->Disable();
 		srv->Disable();
 	}
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -229,10 +230,9 @@ TEST_CASE(SUITE("ClientPolls_AnalogFromServer"))
 TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 {
 	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
 	{
-		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-		REQUIRE(portlib != nullptr);
-
 		const int port = 1502;
 
 		// Server: coil 100 writes → ODC Binary index 3.
@@ -291,6 +291,7 @@ TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 		cli->Disable();
 		srv->Disable();
 	}
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -300,10 +301,9 @@ TEST_CASE(SUITE("ClientControl_WritesCoil_ServerPublishes"))
 TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 {
 	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
 	{
-		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-		REQUIRE(portlib != nullptr);
-
 		const int port = 1502;
 
 		// Server: HR 200 writes → ODC AnalogOutputInt16 index 5.
@@ -361,6 +361,7 @@ TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 		cli->Disable();
 		srv->Disable();
 	}
+	UnLoadModule(portlib);
 	TestTearDown();
 }
 
@@ -379,10 +380,9 @@ TEST_CASE(SUITE("ClientControl_WritesRegister_ServerPublishes"))
 TEST_CASE(SUITE("TwoWayCoil"))
 {
 	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
 	{
-		auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
-		REQUIRE(portlib != nullptr);
-
 		const int port = 1502;
 
 		// Server: coil 50 ↔ ODC Binary index 0 in both directions.
@@ -471,5 +471,6 @@ TEST_CASE(SUITE("TwoWayCoil"))
 		srv->Disable();
 		// Destruction order: pool (drains pIOS) → cli → cliCapture → srv → srvCapture.
 	}
+	UnLoadModule(portlib);
 	TestTearDown();
 }

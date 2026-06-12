@@ -164,7 +164,7 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					if(c_api_version != nullptr)
 					{
 						Log.Info("{} : Detected C API (v{}) transform library — creating C_Transform wrapper", txname, c_api_version());
-						tx_ptr.reset(new odc::C_Transform(Transforms[n]["Type"].asString(), txname, Transforms[n]["Parameters"], txlib), tx_delete);
+						tx_ptr.reset(new odc::C_Transform(Transforms[n]["Type"].asString(), txname, Transforms[n]["Parameters"], txlib), [txlib] (Transform* pTx){delete pTx; UnLoadModule(txlib);});
 						//Continue to sender registration below (skip C++ symbol lookup)
 					}
 					else

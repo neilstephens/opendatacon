@@ -1094,7 +1094,7 @@ void DataConcentrator::ProcessPorts(const Json::Value& Ports)
 		if(c_api_version != nullptr)
 		{
 			log->info("{} : Detected C API (v{}) port library — creating C_Port wrapper", Ports[n]["Name"].asString(), c_api_version());
-			auto port_cleanup = [](DataPort* port) { delete port; };
+			auto port_cleanup = [portlib](DataPort* port) { delete port; UnLoadModule(portlib); };
 			DataPorts.emplace(Ports[n]["Name"].asString(),
 				std::shared_ptr<DataPort>(
 					new odc::C_Port(Ports[n]["Type"].asString(),
@@ -1245,7 +1245,7 @@ void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
 			//Create a logger if we haven't already
 			if(!odc::spdlog_get(libname))
 				AddLogger(libname, LogSinks);
-			auto plugin_cleanup = [](IUI* plugin) { delete plugin; };
+			auto plugin_cleanup = [pluginlib](IUI* plugin) { delete plugin; UnLoadModule(pluginlib);};
 			Interfaces.emplace(PluginName, std::shared_ptr<IUI>(
 				new odc::C_UI(Plugins[n]["Type"].asString(), PluginName, Plugins[n]["ConfFilename"].asString(),
 					Plugins[n]["ConfOverrides"], pluginlib),

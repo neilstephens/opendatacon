@@ -103,7 +103,6 @@ C_UI::~C_UI()
 		if(p_destroy)
 			p_destroy(c_inst);
 	}
-	UnLoadModule(lib_handle);
 }
 
 void C_UI::Build_()

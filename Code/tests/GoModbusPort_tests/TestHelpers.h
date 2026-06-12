@@ -30,10 +30,6 @@
 #include "../PortLoader.h"
 #include "../ThreadPool.h"
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
 #include <atomic>
 #include <chrono>
 #include <functional>

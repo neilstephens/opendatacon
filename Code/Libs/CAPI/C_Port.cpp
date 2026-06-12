@@ -132,7 +132,6 @@ C_Port::~C_Port()
 
 		C_Port_instances.erase(c_inst);
 	}
-	UnLoadModule(lib_handle);
 }
 
 void C_Port::Enable_()
