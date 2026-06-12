@@ -568,11 +568,13 @@ func (p *GoModbusServerPort) HandleCoils(req *modbus.CoilsRequest) ([]bool, erro
 				val := req.Args[addr-req.Addr]
 				odcIdx := tgt.odcIndex
 				odcType := tgt.odcType
+				retries := p.config.MaxPublishRetries
 				select {
 				case p.writeNotifyChan <- func() {
-					publishBinary(p.inst, odcIdx, val, odcType)
+					publishBinaryWithRetry(p.inst, odcIdx, val, odcType,
+						retries, &p.wg, &p.enabled)
 				}:
-				default: // channel full or selectLoop shutting down — discard
+				default:
 				}
 			}
 		}
@@ -622,12 +624,14 @@ func (p *GoModbusServerPort) HandleHoldingRegisters(req *modbus.HoldingRegisters
 				dataType := tgt.dataType
 				odcIdx := tgt.odcIndex
 				odcType := tgt.odcType
+				retries := p.config.MaxPublishRetries
 				select {
 				case p.writeNotifyChan <- func() {
 					rawVal := decodeAnalogRegs(regs, cnt, endian, dataType)
-					publishAnalogOutputEvent(p.inst, odcIdx, rawVal, odcType)
+					publishAnalogOutputEventWithRetry(p.inst, odcIdx, rawVal, odcType,
+						retries, &p.wg, &p.enabled)
 				}:
-				default: // channel full or selectLoop shutting down — discard
+				default:
 				}
 			}
 		}

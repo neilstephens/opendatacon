@@ -189,7 +189,7 @@ func publishBinary(inst unsafe.Pointer, index uint64, value bool, odcType uint8)
 		v = 1
 	}
 	C.odc_SetPayloadBinary(&evt, v)
-	C.odc_publish_event(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, C.odc_get_publish_log_cb(), inst)
 }
 
 func publishAnalog(inst unsafe.Pointer, index uint64, value float64, odcType uint8) {
@@ -200,7 +200,7 @@ func publishAnalog(inst unsafe.Pointer, index uint64, value float64, odcType uin
 		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
 	}
 	C.odc_SetPayloadAnalog(&evt, C.double(value))
-	C.odc_publish_event(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, C.odc_get_publish_log_cb(), inst)
 }
 
 func publishAnalogOutputEvent(inst unsafe.Pointer, index uint64, value float64, odcType uint8) {
@@ -222,7 +222,7 @@ func publishAnalogOutputEvent(inst unsafe.Pointer, index uint64, value float64, 
 	default:
 		C.odc_SetPayloadAnalog(&evt, C.double(value))
 	}
-	C.odc_publish_event(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, C.odc_get_publish_log_cb(), inst)
 }
 
 func publishOctetString(inst unsafe.Pointer, index uint64, data []byte) {
@@ -237,7 +237,7 @@ func publishOctetString(inst unsafe.Pointer, index uint64, data []byte) {
 	}
 	cdata := C.CBytes(data)
 	C.odc_SetPayloadOctetString(&evt, (*C.uint8_t)(cdata), C.size_t(len(data)))
-	C.odc_publish_event(inst, &evt, nil, nil)
+	C.odc_publish_event(inst, &evt, C.odc_get_publish_log_cb(), inst)
 	// odc_publish_event deep-copies the octet payload before returning.
 	C.free(cdata)
 }

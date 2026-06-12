@@ -117,3 +117,19 @@ ODC_C_EXPORT void odc_port_free_string(const char* str)
 {
 	go_port_free_string((char*)str);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Publish status callbacks                                           */
+/* ------------------------------------------------------------------ */
+
+/* Trace-log the status result of an odc_publish_event() call.        */
+/* Used as the callback for all fire-and-forget publish calls.        */
+void odc_publish_event_log_cb(uint8_t status, void* inst)
+{
+	if (!odc || !odc->should_log || !odc->should_log(inst, C_LOG_LEVEL_TRACE))
+		return;
+	const char* s = (odc->command_status_to_string)
+		? odc->command_status_to_string(status) : "UNKNOWN";
+	if (odc->log)
+		odc->log(inst, C_LOG_LEVEL_TRACE, s);
+}

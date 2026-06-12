@@ -315,4 +315,20 @@ static inline size_t odc_GetOctetStringSize(
 	const struct C_EventInfo* evt)
 { return evt->payload.octet_string.size; }
 
+/* ------------------------------------------------------------------ */
+/*  Publish status callbacks — defined in api_shim.c                  */
+/* ------------------------------------------------------------------ */
+
+/* Trace-log the status result of an odc_publish_event() call.        */
+/* Pass as the callback/handle pair to all fire-and-forget publishes:  */
+/*   odc_publish_event(inst, &evt, odc_publish_event_log_cb, inst)    */
+extern void odc_publish_event_log_cb(uint8_t status, void* inst);
+
+/* CGO cannot use a C function directly as a callback pointer value;  */
+/* use this getter so Go code can obtain the pointer cleanly.         */
+static inline C_StatusCallbackFunc_t odc_get_publish_log_cb(void)
+{
+	return odc_publish_event_log_cb;
+}
+
 #endif /* GOMBUS_HELPERS_H */

@@ -187,6 +187,11 @@ type ServerPortConfig struct {
 
 	UnitID int `json:"UnitID"` // 0 means respond to all unit IDs
 
+	// MaxPublishRetries is the number of additional times to attempt publishing
+	// a BinaryControl or AnalogControl ODC event when the fabric returns a
+	// non-SUCCESS status.  0 disables retry (default).
+	MaxPublishRetries int `json:"MaxPublishRetries,omitempty"`
+
 	Binaries             []PointConfig            `json:"Binaries"`
 	Analogs              []AnalogPointConfig      `json:"Analogs"`
 	BinaryOutputStatuses []PointConfig            `json:"BinaryOutputStatuses"`
