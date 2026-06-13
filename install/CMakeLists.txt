@@ -109,8 +109,10 @@ install(CODE
 			DIRECTORIES
 				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\"
 				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}\"
-		PRE_EXCLUDE_REGEXES \"^/(lib|lib64)/ld-linux\"
-		POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux\"
+			CONFLICTING_DEPENDENCIES_PRECEDENCE
+				/lib /usr/lib
+			PRE_EXCLUDE_REGEXES \"^/(lib|lib64)/ld-linux\"
+			POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux\"
 		)
 		if(UNRESOLVED)
 			message(WARNING \"Unresolved dependencies for \${TARGET}: \${UNRESOLVED}\")
@@ -122,7 +124,8 @@ install(CODE
 	if(RESOLVED_DEPS)
 		message(STATUS \"Bundling \${RESOLVED_DEPS}\")
 		file(INSTALL \${RESOLVED_DEPS} DESTINATION
-			\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\")
+			\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\"
+			FOLLOW_SYMLINK_CHAIN)
 	endif()
 
 	# macOS: fix up dylib install names in every installed target
