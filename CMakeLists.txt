@@ -300,6 +300,16 @@ SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}"
 
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
+# Use DT_RPATH (not DT_RUNPATH) — DT_RPATH is searched for all dependency
+# resolution (direct, transitive, and dlopen). DT_RUNPATH is only searched
+# for each object's own direct, non-dlopen dependencies, so e.g. libssl's
+# dependency on libz would not find the bundled copy.
+if(UNIX AND NOT APPLE)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--disable-new-dtags")
+	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--disable-new-dtags")
+endif()
+
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/${INSTALLDIR_LIBS}" )
 set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )

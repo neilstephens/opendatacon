@@ -115,9 +115,9 @@ install(CODE
 				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\"
 				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}\"
 			CONFLICTING_DEPENDENCIES_PRECEDENCE
-				/lib /usr/lib
+				/lib /usr/lib /usr/local
 			PRE_EXCLUDE_REGEXES \"^/(lib|lib64)/ld-linux\"
-			POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux\"
+			POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux|libc\\.so\"
 		)
 		if(UNRESOLVED)
 			message(WARNING \"Unresolved dependencies for \${TARGET}: \${UNRESOLVED}\")
