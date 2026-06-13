@@ -1,0 +1,82 @@
+digraph GoModbusServerDataFlow {
+    rankdir=LR
+    compound=true
+    node [fontname="Helvetica" fontsize=10]
+    edge [fontname="Helvetica" fontsize=9]
+
+    // ── ODC Events → Store ─────────────────────────────────────────────────
+    subgraph cluster_odc {
+        label="ODC — DataPort / DataConcentrator"
+        style=filled
+        fillcolor="#e8f0ff"
+        color="#5577cc"
+
+        odc_event [label="ODC Event\n(Binary / Analog / OctetString)" shape=rectangle]
+        odc_pub   [label="ODC publish\n(Binary / AnalogOutput*)" shape=rectangle]
+    }
+
+    subgraph cluster_port {
+        label="GoModbusServerPort"
+        style=filled
+        fillcolor="#fffacc"
+        color="#ccaa00"
+
+        handle_ev [label="handleEvent()\n(on ODC strand)\n    ↓\neventChan ← work\nvia selectLoop"
+                   shape=rectangle]
+
+        apply [label="applyEventToStore()\n(goroutine)\n    ↓\nlookup ODCIndex in\nbinaryUpdateMap /\nanalogUpdateMap /\noctetUpdateMap\n    ↓\nencode & write to\nstore under RWMutex"
+               shape=rectangle style=filled fillcolor="#d0e8ff"]
+
+        srv_pub [label="writeNotifyChan → fn()\n(on selectLoop)\n    ↓\npublishBinary / \npublishAnalogOutputEvent"
+                 shape=rectangle style=filled fillcolor="#e8ffe8"]
+    }
+
+    subgraph cluster_store {
+        label="dataStore  (sync.RWMutex)"
+        style=filled
+        fillcolor="#f4eeff"
+        color="#9966cc"
+
+        store_coils [label="coils map[uint16]bool" shape=box3d]
+        store_di    [label="di map[uint16]bool\n(Discrete Inputs)" shape=box3d]
+        store_hr    [label="hr map[uint16]uint16\n(Holding Registers)" shape=box3d]
+        store_ir    [label="ir map[uint16]uint16\n(Input Registers)" shape=box3d]
+    }
+
+    subgraph cluster_modbus {
+        label="Modbus TCP Client(s)"
+        style=filled
+        fillcolor="#e8ffe8"
+        color="#44aa44"
+
+        mb_read  [label="Read Coils / DI\nRead HR / IR" shape=rectangle]
+        mb_write [label="Write Coil\nWrite HR" shape=rectangle]
+    }
+
+    // ── Edges: ODC → store ─────────────────────────────────────────────────
+    odc_event -> handle_ev
+    handle_ev -> apply [label="eventChan"]
+    apply -> store_coils [label="store.coils[addr] = val"]
+    apply -> store_di    [label="store.di[addr] = val"]
+    apply -> store_hr    [label="encodeAnalogRegs → store.hr[addr…]"]
+    apply -> store_ir    [label="encodeAnalogRegs → store.ir[addr…]"]
+
+    // ── Edges: Modbus reads → store → Modbus reads served ──────────────────
+    mb_read -> store_coils [label="HandleCoils()"]
+    mb_read -> store_di    [label="HandleDiscreteInputs()"]
+    mb_read -> store_hr    [label="HandleHoldingRegisters()"]
+    mb_read -> store_ir    [label="HandleInputRegisters()"]
+
+    // ── Edges: Modbus writes → store → publish ─────────────────────────────
+    mb_write -> store_coils [label="HandleCoils(IsWrite=true)"]
+    store_coils -> srv_pub [label="coilWriteMap match →\nwriteNotifyChan ← thunk"]
+
+    mb_write -> store_hr    [label="HandleHoldingRegisters(IsWrite=true)"]
+    store_hr -> srv_pub     [label="hrWriteMap match →\nwriteNotifyChan ← thunk"]
+
+    srv_pub -> odc_pub [label="publishBinary/AnalogOutputEvent"]
+
+    // ── Annotations ────────────────────────────────────────────────────────
+    note [label="Concurrent access to store:\n  - applyEventToStore (Go goroutines)\n  - Handle* callbacks (simonvetter goroutines)\nProtected by sync.RWMutex"
+          shape=note style=filled fillcolor="#f0f0e8"]
+}

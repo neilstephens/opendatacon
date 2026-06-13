@@ -215,12 +215,19 @@ type PolledPoint struct {
 	lastPollNs atomic.Int64
 }
 
-func (p *PolledPoint) due(nowNs int64) bool {
+// tryClaimDue atomically checks whether the point is due for polling and, if
+// so, claims it so that no other concurrent goroutine will also poll it.
+// Returns true if the caller won the claim and should proceed with the read.
+func (p *PolledPoint) tryClaimDue(nowNs int64) bool {
 	if p.PollRateMs <= 0 {
 		return false
 	}
 	interval := int64(p.PollRateMs) * 1_000_000
-	return (nowNs - p.lastPollNs.Load()) >= interval
+	last := p.lastPollNs.Load()
+	if (nowNs - last) < interval {
+		return false
+	}
+	return p.lastPollNs.CompareAndSwap(last, nowNs)
 }
 
 type ControlPoint struct {

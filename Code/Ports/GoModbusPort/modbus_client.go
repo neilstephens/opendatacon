@@ -497,10 +497,9 @@ func (p *GoModbusClientPort) groupDuePoints(now int64) []*pollGroup {
 
 	for i := range p.polled {
 		pt := &p.polled[i]
-		if !pt.due(now) {
+		if !pt.tryClaimDue(now) {
 			continue
 		}
-		pt.lastPollNs.Store(now)
 		key := typeAddrKey{pt.ModbusType, pt.ModbusAddr}
 		if g, ok := merged[key]; ok {
 			g.points = append(g.points, pt)

@@ -36,8 +36,12 @@ package main
 import "C"
 import (
 	"context"
+	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 
 	"github.com/simonvetter/modbus"
@@ -139,6 +143,14 @@ type GoModbusServerPort struct {
 	eventChan       chan eventWork
 	writeNotifyChan chan func() // Modbus-client writes → ODC publish, routed via selectLoop
 	wg              sync.WaitGroup // counts the selectLoop goroutine
+
+	// Runtime counters (thread-safe atomics).
+	eventsReceived  atomic.Uint64
+	eventsApplied   atomic.Uint64
+	writesPublished atomic.Uint64
+	clientReads     atomic.Uint64
+	enableTime      atomic.Int64 // UnixNano when enable() was called
+	serverRunning   atomic.Bool  // true while selectLoop has started successfully
 }
 
 // writeNotifyChanBufSize is the capacity of the channel used to route Modbus
@@ -148,6 +160,257 @@ const writeNotifyChanBufSize = 64
 
 func newGoModbusServerPort(name, typ string) *GoModbusServerPort {
 	return &GoModbusServerPort{name: name, typ: typ}
+}
+
+// ---------------------------------------------------------------------------
+// State / status / stats JSON helpers
+// ---------------------------------------------------------------------------
+
+// goTimeStr returns the current UTC time formatted to match the C++
+// since_epoch_to_datetime output ("YYYY-MM-DD HH:MM:SS.mmm").
+func goTimeStr() string {
+	return time.Now().UTC().Format("2006-01-02 15:04:05.000")
+}
+
+// pointJSON returns a JSON object string for a single point value with the
+// given index, value, quality, and timestamp.
+func pointJSON(index uint64, val interface{}, ts string) string {
+	return fmt.Sprintf(`{"Index":%d,"Value":%v,"Quality":"ONLINE","Timestamp":%q}`,
+		index, val, ts)
+}
+
+// ---------------------------------------------------------------------------
+// State JSON helpers — each builds a sorted array of point-value objects
+// for one point category.  They read from p.store and must be called while
+// p.store.mu is held (RLock or Lock).
+// ---------------------------------------------------------------------------
+
+func (p *GoModbusServerPort) buildBinaryStateArrLocked(ts string) string {
+	if len(p.binaryUpdateMap) == 0 {
+		return ""
+	}
+	keys := make([]uint64, 0, len(p.binaryUpdateMap))
+	for k := range p.binaryUpdateMap {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	pts := make([]string, 0, len(keys))
+	for _, odcIdx := range keys {
+		tgt := p.binaryUpdateMap[odcIdx]
+		val := false
+		switch tgt.modbusType {
+		case "Coil":
+			val = p.store.coils[tgt.modbusAddr]
+		case "DiscreteInput":
+			val = p.store.di[tgt.modbusAddr]
+		}
+		pts = append(pts, pointJSON(odcIdx, val, ts))
+	}
+	return strings.Join(pts, ",")
+}
+
+func (p *GoModbusServerPort) buildAnalogStateArrLocked(ts string) string {
+	if len(p.analogUpdateMap) == 0 {
+		return ""
+	}
+	keys := make([]uint64, 0, len(p.analogUpdateMap))
+	for k := range p.analogUpdateMap {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	pts := make([]string, 0, len(keys))
+	for _, odcIdx := range keys {
+		tgt := p.analogUpdateMap[odcIdx]
+		rawVal := p.readAnalogRegsLocked(&tgt)
+		val := rawVal*tgt.scale + tgt.offset
+		pts = append(pts, pointJSON(odcIdx, val, ts))
+	}
+	return strings.Join(pts, ",")
+}
+
+func (p *GoModbusServerPort) buildOctetStateArrLocked(ts string) string {
+	if len(p.octetUpdateMap) == 0 {
+		return ""
+	}
+	keys := make([]uint64, 0, len(p.octetUpdateMap))
+	for k := range p.octetUpdateMap {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	pts := make([]string, 0, len(keys))
+	for _, odcIdx := range keys {
+		tgt := p.octetUpdateMap[odcIdx]
+		regs := p.readRegsLocked(tgt.modbusAddr, tgt.count, tgt.modbusType)
+		out := make([]byte, 0, len(regs)*2)
+		for _, r := range regs {
+			out = append(out, byte(r>>8), byte(r&0xFF))
+		}
+		pts = append(pts, pointJSON(odcIdx, fmt.Sprintf("%x", out), ts))
+	}
+	return strings.Join(pts, ",")
+}
+
+func (p *GoModbusServerPort) buildControlStateArrLocked(ts string) string {
+	if len(p.coilWriteMap) == 0 {
+		return ""
+	}
+	// coilWriteMap is keyed by Modbus address; group by ODC index.
+	type entry struct{ idx uint64; val bool }
+	seen := make(map[uint64]bool)
+	var entries []entry
+	for modbusAddr, tgt := range p.coilWriteMap {
+		if seen[tgt.odcIndex] {
+			continue
+		}
+		seen[tgt.odcIndex] = true
+		entries = append(entries, entry{tgt.odcIndex, p.store.coils[modbusAddr]})
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].idx < entries[j].idx })
+	pts := make([]string, 0, len(entries))
+	for _, e := range entries {
+		pts = append(pts, pointJSON(e.idx, e.val, ts))
+	}
+	return strings.Join(pts, ",")
+}
+
+func (p *GoModbusServerPort) buildAnalogControlStateArrLocked(ts string) string {
+	if len(p.hrWriteMap) == 0 {
+		return ""
+	}
+	// hrWriteMap is keyed by Modbus address; group by ODC index.
+	type entry struct{ idx uint64; val float64 }
+	seen := make(map[uint64]bool)
+	var entries []entry
+	for modbusAddr, tgt := range p.hrWriteMap {
+		if seen[tgt.odcIndex] {
+			continue
+		}
+		seen[tgt.odcIndex] = true
+		regs := p.readRegsLocked(modbusAddr, tgt.count, "HoldingRegister")
+		rawVal := decodeAnalogRegs(regs, tgt.count, tgt.endian, tgt.dataType)
+		entries = append(entries, entry{tgt.odcIndex, rawVal})
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].idx < entries[j].idx })
+	pts := make([]string, 0, len(entries))
+	for _, e := range entries {
+		pts = append(pts, pointJSON(e.idx, e.val, ts))
+	}
+	return strings.Join(pts, ",")
+}
+
+// readAnalogRegsLocked reads tgt's registers from the store and decodes them.
+// Must be called with p.store.mu held (at least RLock).
+func (p *GoModbusServerPort) readAnalogRegsLocked(tgt *serverReadTarget) float64 {
+	regs := p.readRegsLocked(tgt.modbusAddr, tgt.count, tgt.modbusType)
+	return decodeAnalogRegs(regs, tgt.count, tgt.endian, tgt.dataType)
+}
+
+// readRegsLocked reads count consecutive registers of the given type starting
+// at addr from the store.  Must be called with p.store.mu held (at least RLock).
+func (p *GoModbusServerPort) readRegsLocked(addr uint16, count uint16, modbusType string) []uint16 {
+	regs := make([]uint16, 0, count)
+	var m map[uint16]uint16
+	switch modbusType {
+	case "HoldingRegister":
+		m = p.store.hr
+	case "InputRegister":
+		m = p.store.ir
+	default:
+		return regs
+	}
+	for i := uint16(0); i < count; i++ {
+		regs = append(regs, m[addr+i])
+	}
+	return regs
+}
+
+// ---------------------------------------------------------------------------
+// State / status / stats JSON (called on the ODC strand, thread-safe reads)
+// ---------------------------------------------------------------------------
+
+// StateJSON returns the current point values and operational state.
+// Follows the DNP3/JSON port convention: point values wrapped in a UTC
+// timestamp key, grouped by type.
+func (p *GoModbusServerPort) StateJSON() string {
+	if !p.built || p.store == nil || !p.enabled.Load() {
+		return "{}"
+	}
+	ts := goTimeStr()
+
+	p.store.mu.RLock()
+	binaryArr := p.buildBinaryStateArrLocked(ts)
+	analogArr := p.buildAnalogStateArrLocked(ts)
+	octetArr := p.buildOctetStateArrLocked(ts)
+	controlArr := p.buildControlStateArrLocked(ts)
+	analogControlArr := p.buildAnalogControlStateArrLocked(ts)
+	p.store.mu.RUnlock()
+
+	var buf strings.Builder
+	buf.WriteString(fmt.Sprintf(`{%q:{`, ts))
+
+	// Demand flag
+	buf.WriteString(`"InDemand":true`)
+
+	writeArr(&buf, "Binaries", binaryArr)
+	writeArr(&buf, "Analogs", analogArr)
+	writeArr(&buf, "OctetStrings", octetArr)
+	writeArr(&buf, "BinaryControls", controlArr)
+	writeArr(&buf, "AnalogControls", analogControlArr)
+
+	buf.WriteString(`}}`)
+	return buf.String()
+}
+
+// writeArr appends a JSON key:value pair (with preceding comma) to buf if the
+// value is non-empty.
+func writeArr(buf *strings.Builder, key, arr string) {
+	if arr == "" {
+		return
+	}
+	buf.WriteString(fmt.Sprintf(`,%q:[%s]`, key, arr))
+}
+
+// StatusJSON returns the operational health and runtime metrics.
+func (p *GoModbusServerPort) StatusJSON() string {
+	uptime := 0
+	if t := p.enableTime.Load(); t != 0 {
+		uptime = int((time.Now().UnixNano() - t) / 1_000_000)
+	}
+	addr := ""
+	if p.config != nil && p.config.TCP != nil {
+		addr = p.config.TCP.Listen
+	}
+	unitID := 0
+	if p.config != nil {
+		unitID = p.config.UnitID
+	}
+
+	storeCoils := 0
+	storeDI := 0
+	storeHR := 0
+	storeIR := 0
+	if p.store != nil {
+		p.store.mu.RLock()
+		storeCoils = len(p.store.coils)
+		storeDI = len(p.store.di)
+		storeHR = len(p.store.hr)
+		storeIR = len(p.store.ir)
+		p.store.mu.RUnlock()
+	}
+	return fmt.Sprintf(
+		`{"Enabled":%t,"Built":%t,"Running":%t,"ListenAddress":%q,"UnitID":%d,"UptimeMs":%d,`+
+			`"EventsReceived":%d,"EventsApplied":%d,"WritesPublished":%d,"ModbusClientReads":%d,`+
+			`"StoreCoils":%d,"StoreDiscreteInputs":%d,"StoreHoldingRegisters":%d,"StoreInputRegisters":%d}`,
+		p.enabled.Load(), p.built, p.serverRunning.Load(), addr, unitID, uptime,
+		p.eventsReceived.Load(), p.eventsApplied.Load(), p.writesPublished.Load(), p.clientReads.Load(),
+		storeCoils, storeDI, storeHR, storeIR)
+}
+
+// StatsJSON returns performance-counter snapshots.
+func (p *GoModbusServerPort) StatsJSON() string {
+	return fmt.Sprintf(
+		`{"EventsReceived":%d,"EventsApplied":%d,"WritesPublished":%d,"ModbusClientReads":%d}`,
+		p.eventsReceived.Load(), p.eventsApplied.Load(), p.writesPublished.Load(), p.clientReads.Load())
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +474,7 @@ func (p *GoModbusServerPort) doEnable() {
 		return
 	}
 
+	p.enableTime.Store(time.Now().UnixNano())
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
 	p.eventChan = make(chan eventWork, eventChanBufSize)
@@ -298,6 +562,7 @@ func (p *GoModbusServerPort) selectLoop(ctx context.Context) {
 		publishConnectState(p.inst, C.C_ConnectState_PORT_DOWN)
 		return
 	}
+	p.serverRunning.Store(true)
 	// Same reasoning: CONNECTED is published at the start of the loop,
 	// not on the exit path, so there is no dlclose race.
 	publishConnectState(p.inst, C.C_ConnectState_CONNECTED)
@@ -306,6 +571,7 @@ func (p *GoModbusServerPort) selectLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			p.serverRunning.Store(false)
 			workerWg.Wait()
 			// Drain pending ODC events whose callbacks were never dispatched.
 		DRAIN:
@@ -355,6 +621,7 @@ func (p *GoModbusServerPort) selectLoop(ctx context.Context) {
 // ---------------------------------------------------------------------------
 
 func (p *GoModbusServerPort) applyEventToStore(event *C.struct_C_EventInfo, et uint8, odcIndex uint64, cb unsafe.Pointer, octetData []byte) {
+	p.eventsReceived.Add(1)
 	switch {
 	case isBinaryEventType(et):
 		if tgt, ok := p.binaryUpdateMap[odcIndex]; ok {
@@ -367,6 +634,7 @@ func (p *GoModbusServerPort) applyEventToStore(event *C.struct_C_EventInfo, et u
 				p.store.di[tgt.modbusAddr] = val
 			}
 			p.store.mu.Unlock()
+			p.eventsApplied.Add(1)
 			invokeStatusCallback(cb, C.C_CommandStatus_SUCCESS)
 			return
 		}
@@ -389,6 +657,7 @@ func (p *GoModbusServerPort) applyEventToStore(event *C.struct_C_EventInfo, et u
 				}
 			}
 			p.store.mu.Unlock()
+			p.eventsApplied.Add(1)
 			invokeStatusCallback(cb, C.C_CommandStatus_SUCCESS)
 			return
 		}
@@ -416,6 +685,7 @@ func (p *GoModbusServerPort) applyEventToStore(event *C.struct_C_EventInfo, et u
 				}
 			}
 			p.store.mu.Unlock()
+			p.eventsApplied.Add(1)
 			invokeStatusCallback(cb, C.C_CommandStatus_SUCCESS)
 			return
 		}
@@ -571,6 +841,7 @@ func (p *GoModbusServerPort) HandleCoils(req *modbus.CoilsRequest) ([]bool, erro
 				select {
 				case p.writeNotifyChan <- func() {
 					publishBinary(p.inst, odcIdx, val, odcType)
+					p.writesPublished.Add(1)
 				}:
 				default: // channel full or selectLoop shutting down — discard
 				}
@@ -584,6 +855,7 @@ func (p *GoModbusServerPort) HandleCoils(req *modbus.CoilsRequest) ([]bool, erro
 		res[i] = p.store.coils[req.Addr+i]
 	}
 	p.store.mu.RUnlock()
+	p.clientReads.Add(1)
 	return res, nil
 }
 
@@ -597,6 +869,7 @@ func (p *GoModbusServerPort) HandleDiscreteInputs(req *modbus.DiscreteInputsRequ
 		res[i] = p.store.di[req.Addr+i]
 	}
 	p.store.mu.RUnlock()
+	p.clientReads.Add(1)
 	return res, nil
 }
 
@@ -626,6 +899,7 @@ func (p *GoModbusServerPort) HandleHoldingRegisters(req *modbus.HoldingRegisters
 				case p.writeNotifyChan <- func() {
 					rawVal := decodeAnalogRegs(regs, cnt, endian, dataType)
 					publishAnalogOutputEvent(p.inst, odcIdx, rawVal, odcType)
+					p.writesPublished.Add(1)
 				}:
 				default: // channel full or selectLoop shutting down — discard
 				}
@@ -639,6 +913,7 @@ func (p *GoModbusServerPort) HandleHoldingRegisters(req *modbus.HoldingRegisters
 		res[i] = p.store.hr[req.Addr+i]
 	}
 	p.store.mu.RUnlock()
+	p.clientReads.Add(1)
 	return res, nil
 }
 
@@ -652,5 +927,6 @@ func (p *GoModbusServerPort) HandleInputRegisters(req *modbus.InputRegistersRequ
 		res[i] = p.store.ir[req.Addr+i]
 	}
 	p.store.mu.RUnlock()
+	p.clientReads.Add(1)
 	return res, nil
 }

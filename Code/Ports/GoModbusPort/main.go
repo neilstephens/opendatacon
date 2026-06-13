@@ -135,25 +135,35 @@ func go_port_event(inst unsafe.Pointer, event *C.struct_C_EventInfo, sender *C.c
 
 //export go_port_stats_json
 func go_port_stats_json(inst unsafe.Pointer) *C.char {
-	if cp, ok := lookupPort(inst).(*GoModbusClientPort); ok {
-		if ps := cp.pollStatsVal.Load(); ps != nil {
+	switch p := lookupPort(inst).(type) {
+	case *GoModbusClientPort:
+		if ps := p.pollStatsVal.Load(); ps != nil {
 			s := ps.Stats()
-			json := fmt.Sprintf(
+			return C.CString(fmt.Sprintf(
 				`{"PollsScheduled":%d,"PollsDropped":%d,"PollsRunning":%d,"MaxConcurrentPolls":%d}`,
-				s.PollsScheduled, s.PollsDropped, s.PollsRunning, s.MaxConcurrent)
-			return C.CString(json)
+				s.PollsScheduled, s.PollsDropped, s.PollsRunning, s.MaxConcurrent))
 		}
+	case *GoModbusServerPort:
+		return C.CString(p.StatsJSON())
 	}
 	return C.CString("{}")
 }
 
 //export go_port_state_json
 func go_port_state_json(inst unsafe.Pointer) *C.char {
+	switch p := lookupPort(inst).(type) {
+	case *GoModbusServerPort:
+		return C.CString(p.StateJSON())
+	}
 	return C.CString("{}")
 }
 
 //export go_port_status_json
 func go_port_status_json(inst unsafe.Pointer) *C.char {
+	switch p := lookupPort(inst).(type) {
+	case *GoModbusServerPort:
+		return C.CString(p.StatusJSON())
+	}
 	return C.CString("{}")
 }
 
