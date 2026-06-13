@@ -64,8 +64,13 @@ if(USE_DNP3_SUBMODULE)
 			-DFETCHCONTENT_SOURCE_DIR_EXE4CPP=${EXE4CPP_HOME}
 			-DDNP3_TLS=${DNP3_TLS}
 			-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
-		CACHE STRING "cmake options to use when building DNP3 submodule"
 	)
+	if(MSVC)
+		list(APPEND DNP3_CMAKE_OPTS
+			"-DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
+			"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>")
+	endif()
+	set(DNP3_CMAKE_OPTS "${DNP3_CMAKE_OPTS}" CACHE STRING "cmake options to use when building DNP3 submodule" FORCE)
 	if(NOT EXISTS "${DNP3_SOURCE}/.git")
 		execute_process(COMMAND git submodule update --init -- Code/submodules/dnp3
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

@@ -77,6 +77,11 @@ set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/MacOS/AplicationIcon.icns)
 #set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
 
+# Use static MSVC runtime to match main project (prevents LNK2038 mismatch)
+if(MSVC)
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 add_executable(version_stub version.cpp ../Code/Libs/VersionStrings/version.h)
 install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 

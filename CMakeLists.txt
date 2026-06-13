@@ -70,10 +70,6 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -DCURRENT_CONFIG=$<CONFIG> -P "Code/cmake/version.cmake"
 	DEPENDS always_rebuild
 )
-#version strings object file that can be linked into targets needing that
-add_library(VersionStrings OBJECT ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.cpp ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h)
-set_property(TARGET VersionStrings PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 # various optional libraries and projects
 option(FULL "Build all options" OFF)
 option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
@@ -182,6 +178,10 @@ if(APPLE)
 	set(INSTALLDIR_SHARED "lib")
 	set(INSTALLDIR_MODULES "plugin")
 endif()
+
+#version strings object file that can be linked into targets needing that
+add_library(VersionStrings OBJECT ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.cpp ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h)
+set_property(TARGET VersionStrings PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # Compiler configuration
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
