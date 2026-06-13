@@ -117,7 +117,7 @@ install(CODE
 			CONFLICTING_DEPENDENCIES_PRECEDENCE
 				/lib /usr/lib /usr/local
 			PRE_EXCLUDE_REGEXES \"^/(lib|lib64)/ld-linux\"
-			POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux|libc\\.so\"
+			POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux|libc[.]so\"
 		)
 		if(UNRESOLVED)
 			message(WARNING \"Unresolved dependencies for \${TARGET}: \${UNRESOLVED}\")
