@@ -177,12 +177,12 @@ jobs:
         fetch-depth: 0
     - run: git fetch --force --tags
     
-    - if: matrix.bits == 32 && contains(matrix.os,'windows') #FIXME: openssl version pinned to 1.1.1 because 3.x choco doesn't support 32bit
+    - if: matrix.bits == 32 && contains(matrix.os,'windows')
       name: Set 32-bit env
       run: |
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
-        echo 'BITGEN=-AWin32' >> $env:GITHUB_ENV
-        choco install openssl --version=1.1.1.2100 --x86
+        Invoke-WebRequest -Uri "https://slproweb.com/download/Win32OpenSSL-3_6_3.exe" -OutFile "Win32OpenSSL-3_6_3.exe"
+        Start-Process -FilePath "Win32OpenSSL-3_6_3.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13.exe" -OutFile "python-installer-x86.exe"
         Start-Process -FilePath "python-installer-x86.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x86" -Wait
         echo "C:\hostedtoolcache\windows\Python\3.9.13\x86" >> $env:GITHUB_PATH
@@ -191,8 +191,8 @@ jobs:
       name: Set 64-bit env
       run: |
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
-        echo 'BITGEN=-Ax64' >> $env:GITHUB_ENV
-        choco install openssl --version=3.6.2
+        Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-3_6_3.exe" -OutFile "Win64OpenSSL-3_6_3.exe"
+        Start-Process -FilePath "Win64OpenSSL-3_6_3.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe" -OutFile "python-installer-x64.exe"
         Start-Process -FilePath "python-installer-x64.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x64" -Wait
     
@@ -206,7 +206,8 @@ jobs:
           Move-Item .\libmodbus C:\libmodbus\libmodbus
         }
         choco install nsis -y
-        echo 'TOOLCHAIN_OPT=-G"Visual Studio 17 2022" ${{env.BITGEN}} -DCMAKE_CONFIGURATION_TYPES=${{env.BUILD_TYPE}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
+        choco install ninja -y
+        echo 'TOOLCHAIN_OPT=-DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
 
     - if: contains(matrix.os,'macos')
       name: Setup MacOS Environment
@@ -215,6 +216,12 @@ jobs:
         echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt/homebrew' >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
     
+    - if: contains(matrix.os,'windows')
+      name: Set up MSVC command prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ matrix.bits == 64 && 'amd64' || 'x86' }}
+
     - name: Upload release text
       run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
 
@@ -225,7 +232,7 @@ jobs:
         cache-dependency-path: Code/Ports/GoModbusPort/go.sum
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON -G Ninja
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 8
@@ -240,44 +247,48 @@ jobs:
     - name: Install
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target install
 
+    - name: Record install success
+      if: success()
+      run: echo "INSTALL_DONE=true" >> $env:GITHUB_ENV
+
     - name: ODC_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}ODC_tests ${{env.LOG_LVL}} -d yes
     - name: libLua_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}libLua_tests ${{env.LOG_LVL}} -d yes
     - name: DNP3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests ${{env.LOG_LVL}} -d yes
     - name: SimPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}SimPort_tests -d yes
     - name: KafkaPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}KafkaPort_tests ${{env.LOG_LVL}} -d yes
     - name: MD3Port_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}MD3Port_tests ${{env.LOG_LVL}} -d yes
     - name: CBPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}CBPort_tests ${{env.LOG_LVL}} -d yes
     - name: PyPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}PyPort_tests ${{env.LOG_LVL}} -d yes
     - name: FileTransferPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}FileTransferPort_tests ${{env.LOG_LVL}} -d yes
     - name: LuaPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}LuaPort_tests ${{env.LOG_LVL}} -d yes
     - name: Integration_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests ${{env.LOG_LVL}} -d yes
     - name: C_API_tests
-      if: ${{ always() && !contains(github.ref, 'tag') }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}C_API_tests ${{env.LOG_LVL}} -d yes
     - name: GoModbusPort_tests
-      if: ${{ always() && !contains(github.ref, 'tag') && !(matrix.bits == 32 && contains(matrix.os, 'windows')) }}
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') && !(matrix.bits == 32 && contains(matrix.os, 'windows')) }}
       run: ${{github.workspace}}/build/install/${{env.BINDIR}}GoModbusPort_tests ${{env.LOG_LVL}} -d yes
       
     - name: Upload Installer
