@@ -103,7 +103,6 @@ C_Transform::~C_Transform()
 		if(p_destroy)
 			p_destroy(c_inst);
 	}
-	UnLoadModule(lib_handle);
 }
 
 void C_Transform::Enable_()

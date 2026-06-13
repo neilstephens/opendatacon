@@ -17,6 +17,12 @@
  *	See the License for the specific language governing permissions and
  *	limitations under the License.
  */
+/*
+ * CatchTestStart.cpp
+ *
+ *  Created on: 09/06/2026
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
 
 #define CATCH_CONFIG_RUNNER
 
@@ -26,15 +32,20 @@
 #define CATCH_CONFIG_NO_POSIX_SIGNALS
 #define CATCH_CONFIG_NO_WINDOWS_SEH
 
+#include "TestHelpers.h"
 #include <catch.hpp>
-#include <opendatacon/util.h>
-#include <spdlog/spdlog.h>
 
 spdlog::level::level_enum log_level = spdlog::level::off;
 
+// Permanent reference that prevents the Go shared library from being
+// unmapped between test cases.  Each test takes its own temporary reference
+// via LoadModule(); this one ensures ~C_Port()'s dlclose never drops the
+// refcount to zero while another test case is running.
+static const module_ptr s_GoModbusLib = LoadModule(GetLibFileName("GoModbusPort"));
+
 int main(int argc, char* argv[])
 {
-	int new_argc = argc;
+	int new_argc    = argc;
 	char** new_argv = argv;
 	if(argc > 1)
 	{

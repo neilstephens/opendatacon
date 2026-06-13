@@ -1,0 +1,22 @@
+{
+	// GoModbusClient device config – GoModbus-LuaPort-E2E example
+	//
+	// All point arrays are inherited from shared_points.conf.json.
+	// This file adds the transport (TCP connect address), unit ID, poll rate,
+	// and concurrency settings.
+	//
+	// Client semantics for inherited point arrays:
+	//   Binaries / BinaryOutputStatuses  : poll coil / DI → publish ODC Binary / BinaryOS
+	//   Analogs / AnalogOutputStatuses   : poll HR / IR → publish ODC Analog / AnalogOS
+	//   OctetStrings                     : poll HR block → publish ODC OctetString
+	//   BinaryControls                   : receive ODC CROB / Binary → write Modbus coil
+	//   AnalogControls                   : receive ODC AnalogOutput* → write Modbus HR
+
+	"Inherits": ["shared_points.conf.json"],
+
+	"TCP": { "Address": "127.0.0.1:1502" },
+	"UnitID": 1,
+	"TimeoutMs": 3000,
+	"PollRateMs": 2000,
+	"MaxConcurrentPolls": 2
+}

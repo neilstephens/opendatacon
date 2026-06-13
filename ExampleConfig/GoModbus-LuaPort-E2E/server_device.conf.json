@@ -1,0 +1,18 @@
+{
+	// GoModbusServer device config – GoModbus-LuaPort-E2E example
+	//
+	// All point arrays are inherited from shared_points.conf.json.
+	// This file adds only the transport (TCP listen address) and unit ID.
+	//
+	// Server semantics for inherited point arrays:
+	//   Binaries / BinaryOutputStatuses  : ODC events → coil / DI data store
+	//   Analogs / AnalogOutputStatuses   : ODC events → holding / input register store
+	//   OctetStrings                     : ODC OctetString → holding register block
+	//   BinaryControls                   : Modbus client writes coil → publish ODC Binary
+	//   AnalogControls                   : Modbus client writes HR → publish ODC AnalogOutput*
+
+	"Inherits": ["shared_points.conf.json"],
+
+	"TCP": { "Listen": "127.0.0.1:1502" },
+	"UnitID": 0
+}
