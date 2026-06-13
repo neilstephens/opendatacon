@@ -142,23 +142,9 @@ set(opendnp3_libs debug opendnp3_dtarget optimized opendnp3_target )
 #hide (in non-advanced mode) the library paths in cmake guis since they are derrived
 mark_as_advanced(FORCE opendnp3_lib opendnp3_dlib)
 
-#include in install/packaging
-option(PACKAGE_DNP3 "Package opendnp3 libs in c-pack installer" ON)
-if(PACKAGE_DNP3)
-	set(PACK_NAMES opendnp3)
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+if(TARGET build_dnp3)
+	add_dependencies(${PROJECT_NAME} build_dnp3)
 endif()
-
-	add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-	if(TARGET build_dnp3)
-		add_dependencies(${PROJECT_NAME} build_dnp3)
-	endif()
-	target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
-	target_link_libraries(${PROJECT_NAME} ${opendnp3_libs})
-
-
-install(CODE
-"
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-")
+target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
+target_link_libraries(${PROJECT_NAME} ${opendnp3_libs})

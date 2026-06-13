@@ -18,7 +18,7 @@
  #	limitations under the License.
  # 
 project (opendatacon_installer)
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.21)
  
 set(CPACK_PACKAGE_NAME "opendatacon")
 set(CPACK_PACKAGE_VENDOR "opendatacon.net")
@@ -78,58 +78,74 @@ set(CPACK_BUNDLE_ICON ${CMAKE_SOURCE_DIR}/install/MacOS/AplicationIcon.icns)
 include(CPack)
 
 add_executable(version_stub version.cpp ../Code/Libs/VersionStrings/version.h)
-target_link_libraries(version_stub ${LIBCXX_STATIC_LIB} ${LIBCXXABI_STATIC_LIB})
 install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
-
-if(PACKAGE_SYSTEM_LIBS)
-	set(BUNDLE_OVERRIDE
-	"
-		function(gp_resolved_file_type_override resolved_file type_var)
-			foreach(filter \${BUNDLE_DEPS_FILTEROUT})
-				if(resolved_file MATCHES \"\${filter}\")
-					set(\${type_var} system PARENT_SCOPE)
-				else()
-					set(\${type_var} local PARENT_SCOPE)
-				endif()
-			endforeach()
-		endfunction()
-	")
-else()
-	set(BUNDLE_OVERRIDE
-	"
-		if(BUNDLE_DEPS_FILTERIN)
-			function(gp_resolved_file_type_override resolved_file type_var)
-				if(resolved_file MATCHES \"^${CMAKE_FIND_ROOT_PATH}/?(usr/)?lib\")
-					set(\${type_var} system PARENT_SCOPE)
-				endif()
-				foreach(filter \${BUNDLE_DEPS_FILTERIN})
-					if(resolved_file MATCHES \"\${filter}\")
-						set(\${type_var} local PARENT_SCOPE)
-					endif()
-				endforeach()
-				foreach(filter \${BUNDLE_DEPS_FILTEROUT})
-					if(resolved_file MATCHES \"\${filter}\")
-						set(\${type_var} system PARENT_SCOPE)
-					endif()
-				endforeach()
-			endfunction()
-		else()
-			unset(BUNDLE_DEPS_LIST)
-		endif()
-	")
-endif()
 
 install(CODE
 "
-	${BUNDLE_OVERRIDE}
-
-	if(BUNDLE_DEPS_LIST)
-		include(BundleUtilities)
-
-		foreach(dep \${BUNDLE_DEPS_LIST})
-			LIST_PREREQUISITES(\${dep} 1 0 1)
+	# Collect installed targets — only project-built executables and shared
+	# libraries.  Skip Python scripts, bundled system libs, and subdirectories.
+	set(INSTALLED_TARGETS)
+	foreach(DIR ${INSTALLDIR_BINS} ${INSTALLDIR_SHARED} ${INSTALLDIR_MODULES})
+		file(GLOB ENTRIES \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/\${DIR}/*\")
+		foreach(E \${ENTRIES})
+			if(IS_DIRECTORY \${E})
+				continue()
+			endif()
+			get_filename_component(EXT \${E} LAST_EXT)
+			if(EXT STREQUAL \".py\")
+				continue()
+			endif()
+			list(APPEND INSTALLED_TARGETS \${E})
 		endforeach()
+	endforeach()
 
-		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}/version_stub${CMAKE_EXECUTABLE_SUFFIX}\" \"\${BUNDLE_DEPS_LIST}\" \"\${BUNDLE_DEPS_DIRS}\" IGNORE_ITEM \"\${BUNDLE_IGNORE_ITEMS}\")
+	# Resolve dependencies per-target (batch call fails with many entries)
+	set(RESOLVED_DEPS)
+	foreach(TARGET \${INSTALLED_TARGETS})
+		file(GET_RUNTIME_DEPENDENCIES
+			RESOLVED_DEPENDENCIES_VAR DEPS
+			UNRESOLVED_DEPENDENCIES_VAR UNRESOLVED
+			EXECUTABLES \${TARGET}
+			DIRECTORIES
+				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\"
+				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}\"
+		PRE_EXCLUDE_REGEXES \"^/(lib|lib64)/ld-linux\"
+		POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux\"
+		)
+		if(UNRESOLVED)
+			message(WARNING \"Unresolved dependencies for \${TARGET}: \${UNRESOLVED}\")
+		endif()
+		list(APPEND RESOLVED_DEPS \${DEPS})
+	endforeach()
+	list(REMOVE_DUPLICATES RESOLVED_DEPS)
+
+	if(RESOLVED_DEPS)
+		message(STATUS \"Bundling \${RESOLVED_DEPS}\")
+		file(INSTALL \${RESOLVED_DEPS} DESTINATION
+			\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\")
+	endif()
+
+	# macOS: fix up dylib install names in every installed target
+	if(APPLE)
+		set(BUNDLED_LIB_DIR \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\")
+		foreach(DYLIB \${RESOLVED_DEPS})
+			get_filename_component(DYLIB_NAME \"\${DYLIB}\" NAME)
+			execute_process(
+				COMMAND install_name_tool -id \"@rpath/\${DYLIB_NAME}\"
+					\"\${BUNDLED_LIB_DIR}/\${DYLIB_NAME}\"
+				OUTPUT_QUIET ERROR_QUIET
+			)
+		endforeach()
+		foreach(TARGET \${INSTALLED_TARGETS})
+			foreach(DYLIB \${RESOLVED_DEPS})
+				get_filename_component(DYLIB_NAME \"\${DYLIB}\" NAME)
+				execute_process(
+					COMMAND install_name_tool -change \"\${DYLIB}\"
+						\"@rpath/\${DYLIB_NAME}\"
+						\"\${TARGET}\"
+					OUTPUT_QUIET ERROR_QUIET
+				)
+			endforeach()
+		endforeach()
 	endif()
 " COMPONENT Runtime)

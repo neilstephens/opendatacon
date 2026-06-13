@@ -21,9 +21,6 @@ project(PyPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def server/*.cpp server/*.hpp PythonCode/*.py)
 
-option(USE_PYTHON_SUBMODULE "Use git submodule to download and build python libraries" OFF)
-set(PYTHON_HOME_INSTRUCTIONS "Choose the location of Python: where it was installed - there should be lib and include directories within")
-include("compile-python.cmake")
 include("system-python.cmake")
 
 #hide (in non-advanced mode) the library/include path in cmake guis since it's derrived
@@ -75,17 +72,4 @@ endif()
 
 # So tests will run
 install(FILES PythonCode/PyPortSim.py DESTINATION ${INSTALLDIR_BINS})
-
-install(CODE
-"
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-	set(BUNDLE_IGNORE_ITEMS \${BUNDLE_IGNORE_ITEMS}
-		${PYTHON_EXE_NAMES}
-	)
-	set(BUNDLE_DEPS_DIRS \${BUNDLE_DEPS_DIRS}
-		${PYTHON_LIBRARY_DIRS} ${PYTHON_HOME}
-	)
-")
 

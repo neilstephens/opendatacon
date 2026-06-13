@@ -1,10 +1,8 @@
-if(NOT USE_PYTHON_SUBMODULE)
-
-	if(DEFINED PYTHON_HOME)
-		set(PYTHON_HOME ${PYTHON_HOME} CACHE PATH ${PYTHON_HOME_INSTRUCTIONS})
-	else()
-		set(PYTHON_HOME "/usr" CACHE PATH ${PYTHON_HOME_INSTRUCTIONS})
-	endif()
+if(DEFINED PYTHON_HOME)
+	set(PYTHON_HOME ${PYTHON_HOME} CACHE PATH "Choose the location of Python: where it was installed - there should be lib and include directories within")
+else()
+	set(PYTHON_HOME "/usr" CACHE PATH "Choose the location of Python: where it was installed - there should be lib and include directories within")
+endif()
 
 	#find python headers
 	file(GLOB_RECURSE PYTHON_H ${CMAKE_FIND_ROOT_PATH}${PYTHON_HOME}/*Python.h)
@@ -151,5 +149,3 @@ if(NOT USE_PYTHON_SUBMODULE)
 	endif()
 
 
-
-endif()
