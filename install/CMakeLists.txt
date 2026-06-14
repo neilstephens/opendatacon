@@ -87,6 +87,10 @@ install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 
 install(CODE
 "
+	if(POLICY CMP0207)
+		cmake_policy(SET CMP0207 NEW)
+	endif()
+
 	# Collect installed targets — only project-built executables and shared
 	# libraries.  Skip Python scripts, bundled system libs, and subdirectories.
 	set(INSTALLED_TARGETS)
@@ -116,8 +120,24 @@ install(CODE
 				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}\"
 			CONFLICTING_DEPENDENCIES_PRECEDENCE
 				/lib /usr/lib /usr/local
-			PRE_EXCLUDE_REGEXES \"^/(lib|lib64)/ld-linux\"
-			POST_EXCLUDE_REGEXES \"linux-vdso|ld-linux|libc[.]so\"
+			PRE_EXCLUDE_REGEXES
+				#linux
+				\"^/(lib|lib64)/ld-linux\"
+				#windows
+				\"[Aa][Pp][Ii]-[Mm][Ss]-[Ww][Ii][Nn]-.*\"
+				\"[Ee][Xx][Tt]-[Mm][Ss]-[Ww][Ii][Nn]-.*\"
+				\"[Mm][Ss][Vv][Cc][Pp][0-9]+[.][Dd][Ll][Ll]\"
+				\"[Vv][Cc][Rr][Uu][Nn][Tt][Ii][Mm][Ee][0-9]+[.][Dd][Ll][Ll]\"
+				\"[Uu][Cc][Rr][Tt][Bb][Aa][Ss][Ee][.][Dd][Ll][Ll]\"
+				\"[Cc][Oo][Nn][Cc][Rr][Tt][0-9]+[.][Dd][Ll][Ll]\"
+				\"[Vv][Cc][Oo][Mm][Pp][0-9]*[.][Dd][Ll][Ll]\"
+			POST_EXCLUDE_REGEXES
+				#linux
+				\"linux-vdso|ld-linux|libc[.]so\"
+				#windows
+				\"^[A-Za-z]:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss]/\"
+				\"/[Ss]ystem32/\"
+				\"/[Ss]ys[Ww][Oo][Ww]64/\"
 		)
 		if(UNRESOLVED)
 			message(WARNING \"Unresolved dependencies for \${TARGET}: \${UNRESOLVED}\")
