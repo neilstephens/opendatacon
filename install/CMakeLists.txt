@@ -85,6 +85,24 @@ if(MSVC)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# These are configure-time substitutions (unescaped ${}) so the literal
+# paths are embedded directly into the install-time CMake script.
+set(_extra_dir_args "")
+if(WIN32)
+	set(_extra_dirs "")
+	if(PYTHON_HOME)
+		list(APPEND _extra_dirs "${PYTHON_HOME}")
+	endif()
+	if(MODBUS_HOME)
+		list(APPEND _extra_dirs "${MODBUS_HOME}/bin")
+		list(APPEND _extra_dirs "${MODBUS_HOME}/lib")
+	endif()
+	list(REMOVE_DUPLICATES _extra_dirs)
+	foreach(_d ${_extra_dirs})
+		string(APPEND _extra_dir_args "\\\"${_d}\\\"\n\t\t\t\t")
+	endforeach()
+endif()
+
 add_executable(version_stub version.cpp ../Code/Libs/VersionStrings/version.h)
 install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 
@@ -121,11 +139,13 @@ install(CODE
 			DIRECTORIES
 				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}\"
 				\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}\"
+				${_extra_dir_args}
 			CONFLICTING_DEPENDENCIES_PRECEDENCE
 				/lib /usr/lib /usr/local
 			PRE_EXCLUDE_REGEXES
 				#linux
-				\"^/(lib|lib64)/ld-linux\"
+				\"linux-vdso\"
+				\"^ld-linux\"
 				#windows
 				\"[Aa][Pp][Ii]-[Mm][Ss]-[Ww][Ii][Nn]-.*\"
 				\"[Ee][Xx][Tt]-[Mm][Ss]-[Ww][Ii][Nn]-.*\"
@@ -136,7 +156,15 @@ install(CODE
 				\"[Vv][Cc][Oo][Mm][Pp][0-9]*[.][Dd][Ll][Ll]\"
 			POST_EXCLUDE_REGEXES
 				#linux
-				\"linux-vdso|ld-linux|libc[.]so\"
+				\"linux-vdso\"
+				\"ld-linux\"
+				\"libc[.]so\"
+				\"libm[.]so\"
+				\"libdl[.]so\"
+				\"librt[.]so\"
+				\"libpthread[.]so\"
+				\"libgcc_s[.]so\"
+				\"libatomic[.]so\"
 				#windows
 				\"^[A-Za-z]:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss]/\"
 				\"/[Ss]ystem32/\"
