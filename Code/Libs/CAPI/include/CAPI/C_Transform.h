@@ -55,7 +55,15 @@ public:
 	{ pSyncStrand->post([this,h{handler_tracker}](){Disable_();}); }
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
-	{ pSyncStrand->post([=,this,h{handler_tracker}](){Event_(event,pAllow);}); }
+	{
+		if(!event)
+		{
+			if(pAllow)
+				(*pAllow)(event);
+			return;
+		}
+		pSyncStrand->post([=,this,h{handler_tracker}](){Event_(event,pAllow);});
+	}
 
 	void Log(uint8_t level, const std::string& msg);
 	bool ShouldLog(uint8_t level) const;
@@ -71,7 +79,6 @@ private:
 	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
 
 	std::string Type;
-	module_ptr lib_handle;
 	void* c_inst;
 
 	decltype(&odc_transform_create) p_create;
