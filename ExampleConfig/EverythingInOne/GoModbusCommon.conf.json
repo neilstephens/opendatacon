@@ -1,0 +1,19 @@
+{
+     "Binaries": [
+          { "Index": 0, "Modbus": { "Type": "Coil", "Address": 0 } },
+          { "Index": 1, "Modbus": { "Type": "DiscreteInput", "Address": 0 } }
+     ],
+     "Analogs": [
+          { "Index": 0, "Modbus": { "Type": "HoldingRegister", "Address": 0, "Count": 1 }, "DataType": "Int16", "PollRateMs": 1000 },
+          { "Index": 1, "Modbus": { "Type": "InputRegister", "Address": 0, "Count": 1 }, "DataType": "Uint16", "PollRateMs": 1000 }
+     ],
+     "BinaryControls": [
+          { "Index": 0, "Modbus": { "Type": "Coil", "Address": 10 }, "ControlType": "CROB" }
+     ],
+     "AnalogControls": [
+          { "Index": 0, "Modbus": { "Type": "HoldingRegister", "Address": 20, "Count": 1 }, "DataType": "Int16" }
+     ],
+     "OctetStrings": [
+          { "Index": 0, "Modbus": { "Type": "HoldingRegister", "Address": 30, "Count": 4 } }
+     ]
+}

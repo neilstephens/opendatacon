@@ -648,7 +648,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 
 ### Modbus Port Library
 ```
-See ExampleConfig/Modbus-test/ and ExampleConfig/ModbusPointsEg.conf for practical ModbusMaster/ModbusOutstation examples.
+See ExampleConfig/Modbus-test/ and ExampleConfig/EverythingInOne/ for practical ModbusMaster/ModbusOutstation examples.
 ```
 
 ### Simulation Port Library
