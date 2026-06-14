@@ -48,6 +48,9 @@ public:
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
+		if(!event)
+			return (*pAllow)(event);
+
 		if((event->GetIndex()+offset < UINT16_MAX) && (event->GetIndex()+offset > 0))
 		{
 			event->SetIndex(event->GetIndex()+offset);

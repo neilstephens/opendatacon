@@ -72,7 +72,6 @@ private:
 	void Disable_();
 
 	std::string Type;
-	module_ptr lib_handle;
 	void* c_inst;
 
 	decltype(&odc_plugin_create) p_create;
