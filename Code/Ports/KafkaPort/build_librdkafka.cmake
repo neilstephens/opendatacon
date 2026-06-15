@@ -27,7 +27,7 @@ if(MSVC)
 	set(MSVC_OPTS "-DOPENSSL_MSVC_STATIC_RT=${OPENSSL_MSVC_STATIC_RT}")
 	set(MSVC_RT_OPTS
 		"-DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
-		"-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>")
+		"-DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
 else()
 	set(NOWARN_C_FLAGS "${CMAKE_C_FLAGS} -w") #don't want warnings from external librdkafka code
 endif()

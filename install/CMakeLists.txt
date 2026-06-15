@@ -80,9 +80,9 @@ if(UNIX)
 endif()
 include(CPack)
 
-# Use static MSVC runtime to match main project (prevents LNK2038 mismatch)
+# Use static MSVC runtime to match main project
 if(MSVC)
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
 # These are configure-time substitutions (unescaped ${}) so the literal
