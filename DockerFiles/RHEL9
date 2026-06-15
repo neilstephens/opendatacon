@@ -30,6 +30,7 @@ RUN git -C opendatacon checkout $BUILD_COMMIT
 RUN git -C opendatacon submodule update --recursive
 
 ARG BUILD_TYPE=Release
+ARG GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct
 RUN mkdir opendatacon-build
 
 RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=rhel9 \
