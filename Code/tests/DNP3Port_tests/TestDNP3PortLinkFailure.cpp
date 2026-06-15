@@ -322,7 +322,7 @@ const TrxCfg TCP_CFG = {
 
 const TrxCfg UDP_CONNECTED_CFG = {
 	"UDP connected",
-	[](MITMConfig) { return std::make_shared<UDPMITM>(20005,20007,20004,20006,"DNP3Port"); },
+	[](MITMConfig) { return UDPMITM::create(20005,20007,20004,20006,"DNP3Port"); },
 	[](module_ptr portlib, size_t os_addr, size_t ms_addr, MITMConfig, bool comms)
 	{
 		return UDPPortPair(portlib,os_addr,ms_addr,20004,20006,20005,20007,comms);
@@ -336,7 +336,7 @@ const TrxCfg UDP_CONNECTED_CFG = {
 
 const TrxCfg UDP_CONNLESS_CFG = {
 	"UDP connectionless",
-	[](MITMConfig) { return std::make_shared<UDPMITM>(20005,20007,20004,20006,"DNP3Port"); },
+	[](MITMConfig) { return UDPMITM::create(20005,20007,20004,20006,"DNP3Port"); },
 	[](module_ptr portlib, size_t os_addr, size_t ms_addr, MITMConfig, bool comms)
 	{
 		return UDPPortPair(portlib,os_addr,ms_addr,20004,20006,20005,20007,comms,true);
