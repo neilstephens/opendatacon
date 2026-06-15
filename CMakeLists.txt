@@ -143,8 +143,9 @@ if(WIN32)
 	# Postfix for debug builds
 	SET(CMAKE_DEBUG_POSTFIX "d")
 	
-	# Static MSVC runtime (no VCRUNTIME140.dll dependency)
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+	# Dynamic CRT for all configs: /MD (Release) and /MDd (Debug).
+	# The MSVC runtime DLLs are bundled via InstallRequiredSystemLibraries in install/CMakeLists.txt.
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 	
 	#min max macro rubbish
 	add_definitions(-DNOMINMAX)

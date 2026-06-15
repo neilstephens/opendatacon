@@ -109,6 +109,11 @@ endif()
 add_executable(version_stub version.cpp ../Code/Libs/VersionStrings/version.h)
 install(TARGETS version_stub RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 
+if(WIN32)
+	set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${INSTALLDIR_SHARED})
+	include(InstallRequiredSystemLibraries)
+endif()
+
 install(CODE
 "
 	if(POLICY CMP0207)
@@ -149,14 +154,16 @@ install(CODE
 				#linux
 				\"linux-vdso\"
 				\"^ld-linux\"
-				#windows
+				#windows - exclude MSVC runtime DLLs (both release and debug variants);
+				# release ones are handled by InstallRequiredSystemLibraries instead,
+				# debug ones (MSVCP140D.dll etc.) are never redistributable.
 				\"[Aa][Pp][Ii]-[Mm][Ss]-[Ww][Ii][Nn]-.*\"
 				\"[Ee][Xx][Tt]-[Mm][Ss]-[Ww][Ii][Nn]-.*\"
-				\"[Mm][Ss][Vv][Cc][Pp][0-9]+[.][Dd][Ll][Ll]\"
-				\"[Vv][Cc][Rr][Uu][Nn][Tt][Ii][Mm][Ee][0-9]+[.][Dd][Ll][Ll]\"
+				\"[Mm][Ss][Vv][Cc][Pp][0-9]+[Dd]?[.][Dd][Ll][Ll]\"
+				\"[Vv][Cc][Rr][Uu][Nn][Tt][Ii][Mm][Ee][0-9]+[Dd]?[.][Dd][Ll][Ll]\"
 				\"[Uu][Cc][Rr][Tt][Bb][Aa][Ss][Ee][.][Dd][Ll][Ll]\"
-				\"[Cc][Oo][Nn][Cc][Rr][Tt][0-9]+[.][Dd][Ll][Ll]\"
-				\"[Vv][Cc][Oo][Mm][Pp][0-9]*[.][Dd][Ll][Ll]\"
+				\"[Cc][Oo][Nn][Cc][Rr][Tt][0-9]+[Dd]?[.][Dd][Ll][Ll]\"
+				\"[Vv][Cc][Oo][Mm][Pp][0-9]*[Dd]?[.][Dd][Ll][Ll]\"
 			POST_EXCLUDE_REGEXES
 				#linux
 				\"linux-vdso\"
