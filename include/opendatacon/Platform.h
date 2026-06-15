@@ -279,6 +279,11 @@ inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true,
 
 /// Process Spawning
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+#include <io.h>
+#include <fcntl.h>
+#endif
+
 // RAII wrapper around a platform pipe endpoint.
 // Keeps all OS-specific details inside Platform.h; callers use to_file()
 // to obtain a FILE* allocated in their own memory space
@@ -339,9 +344,6 @@ struct spawn_attached_result
 };
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-
-#include <io.h>
-#include <fcntl.h>
 
 /// args ignored on windows - put it all in the command
 inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
