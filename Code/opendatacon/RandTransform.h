@@ -42,6 +42,9 @@ public:
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
+		if(!event)
+			return (*pAllow)(event);
+
 		thread_local std::mt19937 RandNumGenerator = std::mt19937(std::random_device()());
 		uint16_t random_number = std::uniform_int_distribution<unsigned int>(0, 100)(RandNumGenerator);
 		if(event->GetEventType() != EventType::Analog)

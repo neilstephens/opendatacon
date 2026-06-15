@@ -29,5 +29,6 @@ extern "C"
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
+#include <LuaPipe.h> /*this one is our custom addition*/
 }
 

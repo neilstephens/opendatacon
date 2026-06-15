@@ -1,0 +1,191 @@
+digraph GoModbusPort {
+    rankdir=TB
+    compound=true
+    node [fontname="Helvetica" fontsize=10]
+    edge [fontname="Helvetica" fontsize=9]
+
+    // ── ODC Strand ───────────────────────────────────────────────────────
+    // C++ posts every odc_port_* call onto pSyncStrand before invoking Go.
+    // This serialises create/build/enable/disable/event at the C++ level
+    // so that Go never needs its own lock on these entry points.
+    subgraph cluster_strand {
+        label="ODC Strand  (ASIO io_context — serialises C++ calls per port)"
+        style=filled
+        fillcolor="#e8f0ff"
+        color="#5577cc"
+
+        create  [label="create()\nalloc GoModbusClientPort\nor GoModbusServerPort\n(no channels yet)"
+                 shape=rectangle]
+        build   [label="build()\nparse config JSON\nbuild ODC↔Modbus lookup maps\nnewModbusClient(cfg)  — not Open()"
+                 shape=rectangle]
+        enable  [label="enable()\nmake eventChan\nmake transportDisconnChan\nctx, cancel = context.WithCancel()\nwg.Add(1)\ngo selectLoop(ctx)\nenabled.Store(true)"
+                 shape=rectangle style=filled fillcolor="#d0e8ff"]
+        disable [label="disable()\nenabled.Store(false)\ncancel()\nclient.Swap(nil)?.Close()"
+                 shape=rectangle]
+        ev_call [label="event()\nif !enabled.Load() → HARDWARE_ERROR\nwork = {copy of *C_EventInfo, sender, cb}\nselect {\n  case eventChan ← work:\n  default:           → HARDWARE_ERROR\n}"
+                 shape=rectangle]
+        stats   [label="stats_json()\n(optional)\npollStatsVal.Load()"
+                 shape=rectangle style=dashed]
+    }
+
+    // ── destroy — off-strand, called from ~C_Port() after strand is drained ──
+    destroy [label="destroy()  [off-strand]\ncancel()  // safety-net if disable() skipped\nwg.Wait()  // blocks until selectLoop exits\nremovePort()"
+             shape=rectangle style=filled fillcolor="#f0f0e8"]
+
+    // ── Per-port struct fields ────────────────────────────────────────────
+    // Written once on the ODC strand during enable(); all subsequent access
+    // is either through the atomic API or the channel API.
+    subgraph cluster_fields {
+        label="Struct fields  (written once on ODC strand; read concurrently via atomics/channels)"
+        style=filled
+        fillcolor="#f4eeff"
+        color="#9966cc"
+
+        f_enabled [label="enabled\natomic.Bool"        shape=ellipse]
+        f_client  [label="client\natomic.Pointer[ModbusClient]"  shape=ellipse]
+        f_cancel  [label="cancel\ncontext.CancelFunc"  shape=ellipse]
+        f_chans   [label="eventChan\nchan eventWork\n\ntransportDisconnChan\nchan struct{}"     shape=ellipse]
+        f_wg      [label="wg\nsync.WaitGroup"          shape=ellipse]
+        f_stats   [label="pollStatsVal\natomic.Value\n(PollSchedulerStats snapshot)"
+                   shape=ellipse style=dashed]
+    }
+
+    // ── Select loop ───────────────────────────────────────────────────────
+    // The sole goroutine that touches mutable port state.
+    // All reconnect state, scheduling, and connection bookkeeping live here
+    // as local variables — not on the struct.
+    subgraph cluster_select {
+        label="selectLoop(ctx)  goroutine — sole owner of all mutable state"
+        style=filled
+        fillcolor="#fffacc"
+        color="#ccaa00"
+
+        sel_local [label="Local state (not on struct):\n  reconnDelay   time.Duration\n  reconnTimer   *time.Timer\n  connected     bool\n  pollSched     *pollScheduler\n  resultChan    chan connectResult\n  var workerWg  sync.WaitGroup"
+                   shape=rectangle]
+
+        sel_ctx  [label="← ctx.Done()\nreconnTimer.Stop()\nif pollSched != nil:\n  pollSched.Shutdown()\n  workerWg.Add(1)\n  go pollSched.Wait() + Done()\nclient.Swap(nil)?.Close()  // unblock polls\nworkerWg.Wait()\npublishConnectState(DISCONNECTED)\nreturn  →  wg.Done()"
+                  shape=rectangle style=filled fillcolor="#ffe0e0"]
+
+        sel_reconn [label="← reconnTimer.C\nresultChan = make(chan connectResult, 1)\nworkerWg.Add(1)\ngo tryConnect(ctx, resultChan)"
+                    shape=rectangle]
+
+        sel_ok   [label="← resultChan{ok:true, client}\np.client.Store(client)\nconnected = true\nreconnDelay = initialReconnectDelay\npollSched = newPollScheduler(interval, doPoll, maxConc)\npollStatsVal.Store(&pollSched)\npublishConnectState(CONNECTED)"
+                  shape=rectangle]
+
+        sel_fail [label="← resultChan{ok:false}\nreconnDelay = min(reconnDelay×2, 30 s)\nreconnTimer = time.NewTimer(reconnDelay)"
+                  shape=rectangle]
+
+        sel_disc [label="← transportDisconnChan\nif !connected: continue  // de-dup\nconnected = false\np.client.Swap(nil)?.Close()\npollSched.Shutdown()\nworkerWg.Add(1)\ngo pollSched.Wait() + Done()\npollSched = nil;  pollStatsVal.Store(nil)\npublishConnectState(DISCONNECTED)\nreconnDelay = initialReconnectDelay\nreconnTimer = time.NewTimer(reconnDelay)"
+                  shape=rectangle]
+
+        sel_evt  [label="← eventChan\nworkerWg.Add(1)\ngo handleEventWorker(ctx, work)"
+                  shape=rectangle]
+
+        sel_local -> sel_ctx   [style=invis]
+        sel_local -> sel_reconn [style=invis]
+        sel_local -> sel_ok    [style=invis]
+        sel_local -> sel_fail  [style=invis]
+        sel_local -> sel_disc  [style=invis]
+        sel_local -> sel_evt   [style=invis]
+    }
+
+    // ── Worker goroutines ─────────────────────────────────────────────────
+    subgraph cluster_workers {
+        label="Worker goroutines  (blocking I/O — no ODC strand, no shared mutable state)"
+        style=filled
+        fillcolor="#e8ffe8"
+        color="#44aa44"
+
+        tryConn [label="tryConnect(ctx, resultChan)\nclient, err = newModbusClient(cfg)\nif err: resultChan ← {ok:false}; return\n\nclient.Open()  ← blocking TCP/RTU dial\n\nselect {\n  case <-ctx.Done():\n    client.Close(); return\n  default:\n}\nif err != nil:\n  resultChan ← {ok:false}\nelse:\n  resultChan ← {ok:true, client}"
+                 shape=rectangle]
+
+        doPoll  [label="doPoll()  [called by pollScheduler]\n\ngroupDuePoints(now)\nfor each group:\n  ReadCoils/Registers() ← blocking\n  publishBinary/Analog/Octet()\n\non transport error:\n  select {\n    case transportDisconnChan ← {}:\n    default:  // de-dup: already queued\n  }"
+                 shape=rectangle]
+
+        evwork  [label="handleEventWorker(ctx, work)\nfindControl(type, index)\nWriteCoil/WriteRegister() ← blocking\ninvokeStatusCallback(SUCCESS or HARDWARE_ERROR)"
+                 shape=rectangle]
+    }
+
+    // ── Poll scheduler ────────────────────────────────────────────────────
+    subgraph cluster_sched {
+        label="pollScheduler  (internal ticker goroutine)"
+        style=filled
+        fillcolor="#e0f0ff"
+        color="#336699"
+
+        ps_run [label="run()\ntime.Ticker(pollInterval)\nfor { select {\n  case <-ticker.C:\n    if sem not full:\n      go doPoll()\n    else: drop\n  case <-ctx.Done(): return\n} }"
+                shape=rectangle]
+    }
+
+    // ── Modbus device ─────────────────────────────────────────────────────
+    device [label="Modbus Device\n(TCP / RTU)"
+            shape=cylinder style=filled fillcolor="#fff8dc"]
+
+    // ── Server port note ──────────────────────────────────────────────────
+    server_note [label="GoModbusServerPort follows the same\nselectLoop pattern — simpler because\nthere is no reconnect/poll loop:\n\n  enable()   → go selectLoop(ctx)\n  disable()  → cancel() + server.Stop()\n  event()    → eventChan ← work\n  destroy()  → wg.Wait()\n\n  selectLoop:\n    case eventChan: go applyEventToStore(work)\n    case ctx.Done(): server.Stop()\n                     workerWg.Wait()\n                     return\n\n  dataStore protected by sync.RWMutex\n  (Modbus server goroutines access it\n   concurrently with event workers)"
+                shape=note style=filled fillcolor="#f8f8f8"]
+
+    // ── Edges: ODC strand ─────────────────────────────────────────────────
+    enable -> f_cancel  [label="cancel ="  color="#2255aa" style=bold]
+    enable -> f_chans   [label="make()"    color="#2255aa"]
+    enable -> f_wg      [label="Add(1)"    color="#2255aa"]
+    enable -> f_enabled [label=".Store(true)"  color="#2255aa"]
+    enable -> sel_local [label="go spawn"  color="#2255aa" style=bold lhead=cluster_select]
+
+    disable -> f_enabled [label=".Store(false)"    color="#cc3300" style=bold]
+    disable -> f_cancel  [label="cancel()"         color="#cc3300" style=bold]
+    disable -> f_client  [label=".Swap(nil).Close()" color="#cc3300" style=bold]
+
+    ev_call -> f_chans   [label="→ eventChan\n(non-blocking)"  color="#2255aa"]
+
+    destroy -> f_wg      [label=".Wait()"          color="#cc3300" style=bold]
+    destroy -> f_cancel  [label="cancel() safety-net"  color="#cc3300" style=dashed]
+
+    stats -> f_stats     [label=".Load()"          color="#774499" style=dashed]
+
+    // ── Edges: select loop → workers ──────────────────────────────────────
+    sel_reconn -> tryConn  [label="go spawn\n(workerWg)"  color="#226622" style=bold]
+    sel_ok     -> ps_run   [label="newPollScheduler()\nstarts ticker goroutine"  color="#226622" lhead=cluster_sched]
+    sel_evt    -> evwork   [label="go spawn\n(workerWg)"  color="#226622" style=bold]
+    ps_run     -> doPoll   [label="go doPoll()\n(sched's own wg)"  color="#226622"]
+
+    // ── Edges: workers → select loop via channels ─────────────────────────
+    tryConn -> sel_ok    [label="→ resultChan\n{ok:true, client}"   color="#226622"]
+    tryConn -> sel_fail  [label="→ resultChan\n{ok:false}"          color="#228800" style=dashed]
+    doPoll  -> sel_disc  [label="→ transportDisconnChan\non transport error"  color="#cc6600" style=dashed]
+
+    // ── Edges: workers → device ───────────────────────────────────────────
+    tryConn -> device  [label="client.Open()\nblocking dial"         color="#1a4f8a"]
+    doPoll  -> device  [label="ReadCoils/Registers()\nblocking read" color="#1a4f8a"]
+    evwork  -> device  [label="WriteCoil/Register()\nblocking write" color="#1a4f8a"]
+    device  -> doPoll  [label="register/coil values"   color="#1a4f8a" style=dashed]
+    device  -> evwork  [label="ack / error"            color="#1a4f8a" style=dashed]
+
+    // ── Edges: shutdown path ──────────────────────────────────────────────
+    // disable() fires ctx.Done() which the select loop sees immediately.
+    // Closing p.client interrupts any blocking Read* in doPoll goroutines.
+    disable -> sel_ctx  [label="ctx.Done() fires\nin selectLoop"
+                          color="#cc3300" style=bold lhead=cluster_select]
+    f_client -> doPoll  [label="Close() unblocks\nblocking reads → error"
+                          color="#cc3300" style=dashed]
+    sel_ctx -> f_wg     [label="wg.Done()\n(deferred)"   color="#cc3300" style=dashed]
+
+    // ── Notes on concurrency model ────────────────────────────────────────
+    // Channel boundary is the concurrency boundary:
+    //   ODC-side of channel: serialised by ODC strand (event/disable calls)
+    //   Go-side of channel:  owned by selectLoop goroutine
+    //   Publish helpers: thread-safe (routes through DataConnector, not strand)
+    //   Logging: thread-safe (spdlog)
+
+    // ── Legend ────────────────────────────────────────────────────────────
+    subgraph cluster_legend {
+        label="Legend"
+        color="#aaaaaa"
+        style=dotted
+        fontsize=9
+        l1 [label="── normal operation"     shape=plaintext]
+        l2 [label="- - result / defer path" shape=plaintext]
+        l3 [label="── shutdown path"        shape=plaintext fontcolor="#cc3300"]
+        l4 [label="channel send →"          shape=plaintext fontcolor="#226622"]
+    }
+}

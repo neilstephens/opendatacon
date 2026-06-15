@@ -36,7 +36,6 @@ C_Transform::C_Transform(const std::string& aType, const std::string& aName,
 	const Json::Value& params, module_ptr lib_handle):
 	Transform(aName, params),
 	Type(aType),
-	lib_handle(lib_handle),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
 	p_enable(nullptr), p_disable(nullptr), p_event(nullptr)
@@ -103,7 +102,6 @@ C_Transform::~C_Transform()
 		if(p_destroy)
 			p_destroy(c_inst);
 	}
-	UnLoadModule(lib_handle);
 }
 
 void C_Transform::Enable_()

@@ -1,0 +1,8 @@
+{
+     "Inherits": ["GoModbusCommon.conf.json"],
+     "TCP": { "Address": "127.0.0.1:1502" },
+     "UnitID": 1,
+     "TimeoutMs": 3000,
+     "PollRateMs": 1500,
+     "MaxConcurrentPolls": 2
+}

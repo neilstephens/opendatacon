@@ -1,3 +1,29 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * main.go — required C API exports and the odcPort interface.
+ *
+ *  Created on: 09/06/2026
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
 package main
 
 /*
@@ -9,24 +35,32 @@ package main
 */
 import "C"
 import (
-	"time"
+	"fmt"
 	"unsafe"
 )
 
 func main() {}
 
-//export odc_library_init
-func odc_library_init(odc *C.struct_C_ODC_HostAPI) {
-	C.odc = odc
+// ---------------------------------------------------------------------------
+// odcPort interface — implemented by GoModbusClientPort and GoModbusServerPort.
+// All methods are called on the ODC strand except destroy(), which is called
+// off-strand from ~C_Port() after the strand has been fully drained.
+// ---------------------------------------------------------------------------
+
+type odcPort interface {
+	build()
+	enable()
+	disable()
+	destroy()
+	// handleEvent is called on the ODC strand.  Implementations send the work
+	// onto an internal channel and return immediately; a goroutine does the
+	// blocking Modbus I/O and invokes the status callback exactly once.
+	handleEvent(event *C.struct_C_EventInfo, sender string, cb unsafe.Pointer)
 }
 
-//------------------------------------------------------------------------------
-// Required C API exports
-//------------------------------------------------------------------------------
-
-//export go_c_api_version
-func go_c_api_version() *C.char {
-	return C.CString(C.ODC_C_API_VERSION)
+//export odc_library_init
+func odc_library_init(hostAPI *C.struct_C_ODC_HostAPI) {
+	C.odc = hostAPI
 }
 
 //export go_port_create
@@ -34,45 +68,55 @@ func go_port_create(cType *C.char, cName *C.char) unsafe.Pointer {
 	name := C.GoString(cName)
 	typ := C.GoString(cType)
 
-	p := newGoModbusPort(name, typ, nil)
+	var p odcPort
+	switch typ {
+	case "GoModbusServer":
+		p = newGoModbusServerPort(name, typ)
+	case "GoModbusClient":
+		p = newGoModbusClientPort(name, typ)
+	default:
+		p = newGoModbusClientPort(name, typ)
+	}
+
 	inst := registerPort(p)
-	p.inst = inst
+	switch cp := p.(type) {
+	case *GoModbusClientPort:
+		cp.inst = inst
+		if typ != "GoModbusClient" {
+			logError(inst, "unknown port type %q — only \"GoModbusClient\" and \"GoModbusServer\" are valid; treating as GoModbusClient", typ)
+		}
+	case *GoModbusServerPort:
+		cp.inst = inst
+	}
 	return inst
 }
 
 //export go_port_destroy
 func go_port_destroy(inst unsafe.Pointer) {
-	p := lookupPort(inst)
-	if p != nil {
+	if p := lookupPort(inst); p != nil {
 		p.destroy()
 	}
 }
 
 //export go_port_build
 func go_port_build(inst unsafe.Pointer) {
-	p := lookupPort(inst)
-	if p == nil {
-		return
+	if p := lookupPort(inst); p != nil {
+		p.build()
 	}
-	p.doBuild()
 }
 
 //export go_port_enable
 func go_port_enable(inst unsafe.Pointer) {
-	p := lookupPort(inst)
-	if p == nil {
-		return
+	if p := lookupPort(inst); p != nil {
+		p.enable()
 	}
-	p.doEnable()
 }
 
 //export go_port_disable
 func go_port_disable(inst unsafe.Pointer) {
-	p := lookupPort(inst)
-	if p == nil {
-		return
+	if p := lookupPort(inst); p != nil {
+		p.disable()
 	}
-	p.doDisable()
 }
 
 //export go_port_event
@@ -82,131 +126,48 @@ func go_port_event(inst unsafe.Pointer, event *C.struct_C_EventInfo, sender *C.c
 		invokeStatusCallback(unsafe.Pointer(cb), C.C_CommandStatus_UNDEFINED)
 		return
 	}
-	// Both checks are on the strand — no mutex needed.
-	if !p.enabled.Load() || !p.connected {
-		invokeStatusCallback(unsafe.Pointer(cb), C.C_CommandStatus_HARDWARE_ERROR)
-		return
-	}
-
 	s := ""
 	if sender != nil {
 		s = C.GoString(sender)
 	}
-
-	// Copy event to Go heap; nil source_port (borrowed C pointer).
-	evtCopy := *event
-	evtCopy.source_port = nil
-	cbPtr := unsafe.Pointer(cb)
-	client := p.client.Load() // atomic snapshot before leaving strand
-
-	p.eventWg.Add(1)
-	go func() {
-		defer p.eventWg.Done()
-		p.doHandleEventAsync(&evtCopy, s, cbPtr, client)
-	}()
+	p.handleEvent(event, s, unsafe.Pointer(cb))
 }
-
-// ---------------------------------------------------------------------------
-// ODC timer callback exports — fired on the strand by the ODC scheduler
-// ---------------------------------------------------------------------------
-
-//export go_reconnect_timer_cb
-func go_reconnect_timer_cb(status C.uint8_t, handle unsafe.Pointer) {
-	onReconnectTimer(handle)
-}
-
-//export go_connect_ok_cb
-func go_connect_ok_cb(status C.uint8_t, handle unsafe.Pointer) {
-	onConnectOk(handle)
-}
-
-//export go_connect_fail_cb
-func go_connect_fail_cb(status C.uint8_t, handle unsafe.Pointer) {
-	onConnectFail(handle)
-}
-
-//export go_transport_disconnect_cb
-func go_transport_disconnect_cb(status C.uint8_t, handle unsafe.Pointer) {
-	onTransportDisconnect(handle)
-}
-
-//------------------------------------------------------------------------------
-// Optional C API exports
-//------------------------------------------------------------------------------
 
 //export go_port_stats_json
 func go_port_stats_json(inst unsafe.Pointer) *C.char {
+	switch p := lookupPort(inst).(type) {
+	case *GoModbusClientPort:
+		if ps := p.pollStatsVal.Load(); ps != nil {
+			s := ps.Stats()
+			return C.CString(fmt.Sprintf(
+				`{"PollsScheduled":%d,"PollsDropped":%d,"PollsRunning":%d,"MaxConcurrentPolls":%d}`,
+				s.PollsScheduled, s.PollsDropped, s.PollsRunning, s.MaxConcurrent))
+		}
+	case *GoModbusServerPort:
+		return C.CString(p.StatsJSON())
+	}
 	return C.CString("{}")
 }
 
 //export go_port_state_json
 func go_port_state_json(inst unsafe.Pointer) *C.char {
+	switch p := lookupPort(inst).(type) {
+	case *GoModbusServerPort:
+		return C.CString(p.StateJSON())
+	}
 	return C.CString("{}")
 }
 
 //export go_port_status_json
 func go_port_status_json(inst unsafe.Pointer) *C.char {
+	switch p := lookupPort(inst).(type) {
+	case *GoModbusServerPort:
+		return C.CString(p.StatusJSON())
+	}
 	return C.CString("{}")
 }
 
 //export go_port_free_string
 func go_port_free_string(s *C.char) {
 	C.free(unsafe.Pointer(s))
-}
-
-//------------------------------------------------------------------------------
-// Publish helpers
-//------------------------------------------------------------------------------
-
-func publishBinary(inst unsafe.Pointer, index uint64, value bool, odcType uint8) {
-	evt := C.struct_C_EventInfo{
-		event_type: C.uint8_t(odcType),
-		index:      C.size_t(index),
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
-		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
-	}
-	var v C.uint8_t = 0
-	if value {
-		v = 1
-	}
-	C.odc_SetPayloadBinary(&evt, v)
-	C.odc_publish_event(inst, &evt, nil, nil)
-}
-
-func publishAnalog(inst unsafe.Pointer, index uint64, value float64, odcType uint8) {
-	evt := C.struct_C_EventInfo{
-		event_type: C.uint8_t(odcType),
-		index:      C.size_t(index),
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
-		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
-	}
-	C.odc_SetPayloadAnalog(&evt, C.double(value))
-	C.odc_publish_event(inst, &evt, nil, nil)
-}
-
-func publishOctetString(inst unsafe.Pointer, index uint64, data []byte) {
-	if len(data) == 0 {
-		return
-	}
-	evt := C.struct_C_EventInfo{
-		event_type: C.C_EventType_OctetString,
-		index:      C.size_t(index),
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
-		quality:    C.uint16_t(C.C_QualityFlags_ONLINE),
-	}
-	cdata := C.CBytes(data)
-	defer C.free(cdata)
-	C.odc_SetPayloadOctetString(&evt, (*C.uint8_t)(cdata), C.size_t(len(data)))
-	C.odc_publish_event(inst, &evt, nil, nil)
-}
-
-func publishConnectState(inst unsafe.Pointer, state int32) {
-	evt := C.struct_C_EventInfo{
-		event_type: C.C_EventType_ConnectState,
-		index:      0,
-		timestamp:  C.uint64_t(time.Now().UnixMilli()),
-		quality:    0,
-	}
-	C.odc_SetPayloadConnectState(&evt, C.uint8_t(state))
-	C.odc_publish_event(inst, &evt, nil, nil)
 }

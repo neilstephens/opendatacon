@@ -1,10 +1,8 @@
-if(NOT USE_PYTHON_SUBMODULE)
-
-	if(DEFINED PYTHON_HOME)
-		set(PYTHON_HOME ${PYTHON_HOME} CACHE PATH ${PYTHON_HOME_INSTRUCTIONS})
-	else()
-		set(PYTHON_HOME "/usr" CACHE PATH ${PYTHON_HOME_INSTRUCTIONS})
-	endif()
+if(DEFINED PYTHON_HOME)
+	set(PYTHON_HOME ${PYTHON_HOME} CACHE PATH "Choose the location of Python: where it was installed - there should be lib and include directories within")
+else()
+	set(PYTHON_HOME "/usr" CACHE PATH "Choose the location of Python: where it was installed - there should be lib and include directories within")
+endif()
 
 	#find python headers
 	file(GLOB_RECURSE PYTHON_H ${CMAKE_FIND_ROOT_PATH}${PYTHON_HOME}/*Python.h)
@@ -23,7 +21,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 		set(PYTHON_MINOR_VER ${CMAKE_MATCH_3})
 		message("Version string: ${PYTHON_VER}")
 		if("${PYTHON_HOME_DISCOVERED}" STREQUAL "${PYTHON_HOME}")
-			message("PYTHON_HOME confirmed: "${PYTHON_HOME})
+			message("PYTHON_HOME confirmed: " ${PYTHON_HOME})
 		else()
 			message("Warning: resetting PYTHON_HOME (${PYTHON_HOME}) to (${PYTHON_HOME_DISCOVERED})")
 			set(PYTHON_HOME ${PYTHON_HOME_DISCOVERED})
@@ -125,7 +123,7 @@ if(NOT USE_PYTHON_SUBMODULE)
 			file(GLOB_RECURSE STDLIB_SUBDIR
 				RELATIVE ${PYTHON_HOME}
 				${PYTHON_STDLIB_DIR}/_pydecimal.py)
-			message("Python std lib subdirectory: "${STDLIB_SUBDIR})
+			message("Python std lib subdirectory: " ${STDLIB_SUBDIR})
 			get_filename_component(STDLIB_SUBDIR ${STDLIB_SUBDIR} DIRECTORY)
 			message("Install Python stdlib dir: '${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}'")
 			install(DIRECTORY ${PYTHON_STDLIB_DIR}/ DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/${STDLIB_SUBDIR})
@@ -140,6 +138,18 @@ if(NOT USE_PYTHON_SUBMODULE)
 			add_custom_target(copy-python-files ALL
 				COMMAND cmake -E copy_directory ${PYTHON_STDLIB_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}/${STDLIB_SUBDIR}
 			)
+			# Windows has a separate DLLs/ directory alongside Lib/ containing compiled
+			# extension modules (.pyd files, e.g. _ssl.pyd, _socket.pyd).
+			# On Linux the equivalent (lib-dynload/) is inside the stdlib dir and gets
+			# picked up automatically; on Windows it's a sibling so needs explicit handling.
+			if(WIN32 AND EXISTS "${PYTHON_HOME}/DLLs")
+				install(DIRECTORY "${PYTHON_HOME}/DLLs/"
+					DESTINATION ${INSTALLDIR_SHARED}/Python${PYTHON_NUM}/DLLs)
+				add_custom_target(copy-python-dlls ALL
+					COMMAND cmake -E copy_directory "${PYTHON_HOME}/DLLs"
+							"${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/Python${PYTHON_NUM}/DLLs"
+				)
+			endif()
 			file(GLOB_RECURSE PYTHON_EXES ${PYTHON_STDLIB_DIR}/*.exe)
 			foreach(python_exe ${PYTHON_EXES})
 				get_filename_component(PYTHON_EXE_NAME ${python_exe} NAME)
@@ -151,5 +161,3 @@ if(NOT USE_PYTHON_SUBMODULE)
 	endif()
 
 
-
-endif()

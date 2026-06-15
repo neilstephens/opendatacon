@@ -1,3 +1,29 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * gombus_helpers.h
+ *
+ *  Created on: 09/06/2026
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
 #ifndef GOMBUS_HELPERS_H
 #define GOMBUS_HELPERS_H
 
@@ -220,6 +246,22 @@ static inline void odc_SetPayloadAnalog(struct C_EventInfo* evt,
 	double val)
 { evt->payload.analog_val = val; }
 
+static inline void odc_SetPayloadAO16(struct C_EventInfo* evt,
+	int16_t val)
+{ evt->payload.ao16.value = val; evt->payload.ao16.status = 0; }
+
+static inline void odc_SetPayloadAO32(struct C_EventInfo* evt,
+	int32_t val)
+{ evt->payload.ao32.value = val; evt->payload.ao32.status = 0; }
+
+static inline void odc_SetPayloadAOF32(struct C_EventInfo* evt,
+	float val)
+{ evt->payload.aof32.value = val; evt->payload.aof32.status = 0; }
+
+static inline void odc_SetPayloadAOD64(struct C_EventInfo* evt,
+	double val)
+{ evt->payload.aod64.value = val; evt->payload.aod64.status = 0; }
+
 static inline void odc_SetPayloadOctetString(
 	struct C_EventInfo* evt, const uint8_t* data, size_t len)
 {
@@ -230,7 +272,6 @@ static inline void odc_SetPayloadOctetString(
 static inline void odc_SetPayloadConnectState(
 	struct C_EventInfo* evt, uint8_t state)
 { evt->payload.connect_state = state; }
-
 /* ------------------------------------------------------------------ */
 /*  Payload getters (pure inline — no vtable needed)                  */
 /* ------------------------------------------------------------------ */
@@ -266,20 +307,12 @@ static inline double odc_GetPayloadAnalog(
 	const struct C_EventInfo* evt)
 { return evt->payload.analog_val; }
 
-/* ------------------------------------------------------------------ */
-/*  ODC scheduling helpers — defined in api_shim.c.                    */
-/*  Called from Go (cgo) to post work back to the ODC strand.          */
-/* ------------------------------------------------------------------ */
+static inline const uint8_t* odc_GetOctetStringData(
+	const struct C_EventInfo* evt)
+{ return evt->payload.octet_string.data; }
 
-/* Schedule a reconnect attempt after 'ms' milliseconds on the strand.
-   Returns an ODC timer handle suitable for odc_cancel_timer(). */
-extern void* odc_schedule_reconnect(void* inst, uint64_t ms);
-
-/* Signal a connect result to the strand (fires at delay 0).
-   ok != 0  →  go_connect_ok_cb;  ok == 0  →  go_connect_fail_cb. */
-extern void  odc_schedule_connect_result(void* inst, int ok);
-
-/* Signal a transport disconnect to the strand (fires at delay 0). */
-extern void  odc_schedule_transport_disconnect(void* inst);
+static inline size_t odc_GetOctetStringSize(
+	const struct C_EventInfo* evt)
+{ return evt->payload.octet_string.size; }
 
 #endif /* GOMBUS_HELPERS_H */

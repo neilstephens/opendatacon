@@ -36,7 +36,6 @@ C_UI::C_UI(const std::string& aType, const std::string& aName,
 	const std::string& aConfFilename,
 	const Json::Value& aConfOverrides, module_ptr lib_handle):
 	Type(aType),
-	lib_handle(lib_handle),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr)
@@ -103,7 +102,6 @@ C_UI::~C_UI()
 		if(p_destroy)
 			p_destroy(c_inst);
 	}
-	UnLoadModule(lib_handle);
 }
 
 void C_UI::Build_()

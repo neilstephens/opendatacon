@@ -1,3 +1,29 @@
+/*	opendatacon
+ *
+ *	Copyright (c) 2014:
+ *
+ *		DCrip3fJguWgVCLrZFfA7sIGgvx1Ou3fHfCxnrz4svAi
+ *		yxeOtDhDCXf1Z4ApgXvX5ahqQmzRfJ2DoX8S05SqHA==
+ *
+ *	Licensed under the Apache License, Version 2.0 (the "License");
+ *	you may not use this file except in compliance with the License.
+ *	You may obtain a copy of the License at
+ *
+ *		http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *	Unless required by applicable law or agreed to in writing, software
+ *	distributed under the License is distributed on an "AS IS" BASIS,
+ *	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *	See the License for the specific language governing permissions and
+ *	limitations under the License.
+ */
+/*
+ * api_shim.c
+ *
+ *  Created on: 09/06/2026
+ *      Author: Neil Stephens <dearknarl@gmail.com>
+ */
+
 #include "opendatacon/odc_c_api.h"
 
 /* On Windows, plain C symbols in a Go c-shared DLL are not exported
@@ -29,13 +55,6 @@ extern char* go_port_stats_json(void* inst);
 extern char* go_port_state_json(void* inst);
 extern char* go_port_status_json(void* inst);
 extern void  go_port_free_string(char* str);
-extern char* go_c_api_version(void);
-
-/* Go-exported ODC timer callback functions */
-extern void go_reconnect_timer_cb(uint8_t status, void* handle);
-extern void go_connect_ok_cb(uint8_t status, void* handle);
-extern void go_connect_fail_cb(uint8_t status, void* handle);
-extern void go_transport_disconnect_cb(uint8_t status, void* handle);
 
 /* ------------------------------------------------------------------ */
 /*  C API — const-correct wrappers matching odc_c_api.h exactly        */
@@ -91,40 +110,10 @@ ODC_C_EXPORT const char* odc_port_status_json(void* inst)
 
 ODC_C_EXPORT const char* odc_c_api_version(void)
 {
-	return go_c_api_version();
+	return ODC_C_API_VERSION;
 }
 
 ODC_C_EXPORT void odc_port_free_string(const char* str)
 {
 	go_port_free_string((char*)str);
-}
-
-/* ------------------------------------------------------------------ */
-/*  ODC scheduling helpers — called from Go via cgo.                   */
-/*  These translate to odc->ms_timer_callback() calls using the        */
-/*  Go-exported callback function pointers above.                      */
-/* ------------------------------------------------------------------ */
-
-/* Schedule a reconnect attempt after 'ms' milliseconds.
-   Returns the ODC timer handle (pass to odc_cancel_timer to cancel). */
-void* odc_schedule_reconnect(void* inst, uint64_t ms)
-{
-	if (odc && odc->ms_timer_callback)
-		return odc->ms_timer_callback(inst, ms, go_reconnect_timer_cb, inst);
-	return NULL;
-}
-
-/* Signal a connect result back to the strand.  ok != 0 → success. */
-void odc_schedule_connect_result(void* inst, int ok)
-{
-	if (odc && odc->ms_timer_callback)
-		odc->ms_timer_callback(inst, 0,
-			ok ? go_connect_ok_cb : go_connect_fail_cb, inst);
-}
-
-/* Signal a transport disconnect back to the strand from a poll goroutine. */
-void odc_schedule_transport_disconnect(void* inst)
-{
-	if (odc && odc->ms_timer_callback)
-		odc->ms_timer_callback(inst, 0, go_transport_disconnect_cb, inst);
 }

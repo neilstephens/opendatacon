@@ -1,4 +1,3 @@
-ExampleConfig/*
 Code/tests/Integration_tests/ConfStrings.cpp
 Code/tests/LuaPort_tests/ConfStrings.cpp
 Code/Libs/VersionStrings/version.h
@@ -13,3 +12,16 @@ GPATH
 GRTAGS
 GTAGS
 Code/tests/LuaWebPort_tests/ConfStrings.cpp
+# ExampleConfig runtime artifacts
+ExampleConfig/**/ODC_Log*
+ExampleConfig/**/ODC_EverythingInOne*
+ExampleConfig/**/__pycache__/
+ExampleConfig/**/*.pyc
+ExampleConfig/**/server.crt
+ExampleConfig/**/server.key
+ExampleConfig/**/context.log
+ExampleConfig/**/ModifiedTimePersistence.json
+ExampleConfig/FileTransfer-JSON/**/*.bin
+ExampleConfig/FileTX-DNP3-FileRX/**/*.bin
+ExampleConfig/**/core
+ExampleConfig/**/*.core

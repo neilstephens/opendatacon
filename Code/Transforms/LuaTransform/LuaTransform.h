@@ -58,6 +58,9 @@ public:
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
+		if(!event)
+			return (*pAllow)(event);
+
 		pLuaSyncStrand->post([this,event,pAllow,h{handler_tracker}]()
 			{
 				Event_(event,pAllow);

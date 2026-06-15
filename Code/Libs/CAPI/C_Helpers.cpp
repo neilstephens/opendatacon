@@ -638,9 +638,9 @@ extern "C" int64_t odc_SpawnAttached(const char* cmd, const char* const* argv,
 	try
 	{
 		auto r = spawn_attached(cmd, argv_to_args(argv));
-		if(stdin_file)  *stdin_file  = r.stdin_file;
-		if(stdout_file) *stdout_file = r.stdout_file;
-		if(stderr_file) *stderr_file = r.stderr_file;
+		if(stdin_file)  *stdin_file  = r.stdin_handle.to_file("w");
+		if(stdout_file) *stdout_file = r.stdout_handle.to_file("r");
+		if(stderr_file) *stderr_file = r.stderr_handle.to_file("r");
 		return static_cast<int64_t>(r.pid);
 	}
 	catch(...)

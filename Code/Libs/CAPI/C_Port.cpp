@@ -59,7 +59,6 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 	module_ptr lib_handle):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	Type(aType),
-	lib_handle(lib_handle),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr),
@@ -132,7 +131,6 @@ C_Port::~C_Port()
 
 		C_Port_instances.erase(c_inst);
 	}
-	UnLoadModule(lib_handle);
 }
 
 void C_Port::Enable_()
