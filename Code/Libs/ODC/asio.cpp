@@ -122,11 +122,16 @@ std::unordered_set<std::thread::id> asio_service::threads_in_pool;
 std::mutex asio_service::threads_in_pool_mtx;
 void asio_service::run()
 {
-	{ //lock scope
+	const auto tid = std::this_thread::get_id();
+	{
 		std::lock_guard lock(threads_in_pool_mtx);
-		threads_in_pool.insert(std::this_thread::get_id());
+		threads_in_pool.insert(tid);
 	}
 	io.run();
+	{
+		std::lock_guard lock(threads_in_pool_mtx);
+		threads_in_pool.erase(tid);
+	}
 }
 bool asio_service::current_thread_in_pool()
 {

@@ -17,7 +17,7 @@
  #	See the License for the specific language governing permissions and
  #	limitations under the License.
  #
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
 	#Stop cmake warning about DOWNLOAD_EXTRACT_TIMESTAMP for FetchContent/ExternalProject
@@ -70,10 +70,6 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${CMAKE_BINARY_DIR} -DCURRENT_CONFIG=$<CONFIG> -P "Code/cmake/version.cmake"
 	DEPENDS always_rebuild
 )
-#version strings object file that can be linked into targets needing that
-add_library(VersionStrings OBJECT ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.cpp ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h)
-set_property(TARGET VersionStrings PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 # various optional libraries and projects
 option(FULL "Build all options" OFF)
 option(USE_ASIO_SUBMODULE "Use git submodule to download asio header library" ON)
@@ -146,12 +142,10 @@ if(WIN32)
 	
 	# Postfix for debug builds
 	SET(CMAKE_DEBUG_POSTFIX "d")
-	install(CODE
-	"
-		if(\"\${CMAKE_INSTALL_CONFIG_NAME}\" STREQUAL \"Debug\")
-			set(BUNDLE_LIB_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-		endif()
-	")
+	
+	# Dynamic CRT for all configs: /MD (Release) and /MDd (Debug).
+	# The MSVC runtime DLLs are bundled via InstallRequiredSystemLibraries in install/CMakeLists.txt.
+	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 	
 	#min max macro rubbish
 	add_definitions(-DNOMINMAX)
@@ -185,6 +179,10 @@ if(APPLE)
 	set(INSTALLDIR_SHARED "lib")
 	set(INSTALLDIR_MODULES "plugin")
 endif()
+
+#version strings object file that can be linked into targets needing that
+add_library(VersionStrings OBJECT ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.cpp ${CMAKE_SOURCE_DIR}/Code/Libs/VersionStrings/version.h)
+set_property(TARGET VersionStrings PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # Compiler configuration
 add_definitions(-DASIO_STANDALONE) # required for ASIO in C++11 only mode
@@ -255,63 +253,11 @@ else()
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DASIO_SEPARATE_COMPILATION")
 
-	option(STATIC_LIBSTDC++ "Link libstdc++ statically" ON)
+	option(STATIC_LIBSTDC++ "Link libstdc++ statically" OFF)
 	if(STATIC_LIBSTDC++ AND NOT APPLE)
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++")
 		set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static-libstdc++")
-
-		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT APPLE)
-			#need to add static libc++ to the link libraries manually
-			# Find the static lib (.a) files explicitly, because find_library insists on finding dynamic libs
-			set(SEARCH_PATHS
-			    ${CMAKE_LIBRARY_PATH}
-			    ${CMAKE_FRAMEWORK_PATH}
-			    ${CMAKE_PREFIX_PATH}
-			    ${CMAKE_SYSTEM_LIBRARY_PATH}
-			    ${CMAKE_SYSTEM_PREFIX_PATH}
-			    /usr/lib/llvm*/lib
-			    /usr/lib
-			    /usr/lib64
-			)
-			message("linking libc++ statically. Searching ${SEARCH_PATHS}")
-
-			set(LIBCXX_STATIC_LIB "LIBCXX_STATIC_LIB-NOTFOUND")
-			set(LIBCXXABI_STATIC_LIB "LIBCXXABI_STATIC_LIB-NOTFOUND")
-
-			# Search for the static libraries in all the search paths
-			foreach(SEARCH_PATH ${SEARCH_PATHS})
-			  # Use file(GLOB...) to look for libc++.a in each path
-			  file(GLOB LIBCXX_FILES "${SEARCH_PATH}/libc++.a" "${SEARCH_PATH}/*/libc++.a")
-			  if(LIBCXX_FILES)
-			    list(GET LIBCXX_FILES 0 LIBCXX_STATIC_LIB)
-			    break()
-			  endif()
-			endforeach()
-
-			foreach(SEARCH_PATH ${SEARCH_PATHS})
-			  # Use file(GLOB...) to look for libc++abi.a in each path
-			  file(GLOB LIBCXXABI_FILES "${SEARCH_PATH}/libc++abi.a" "${SEARCH_PATH}/*/libc++abi.a")
-			  if(LIBCXXABI_FILES)
-			    list(GET LIBCXXABI_FILES 0 LIBCXXABI_STATIC_LIB)
-			    break()
-			  endif()
-			endforeach()
-
-			# Check if we found the libraries
-			if(NOT EXISTS "${LIBCXX_STATIC_LIB}")
-			  message(FATAL_ERROR "Could not find static libc++ library (libc++.a)")
-			else()
-			  message(STATUS "Found static libc++: ${LIBCXX_STATIC_LIB}")
-			endif()
-
-			if(NOT EXISTS "${LIBCXXABI_STATIC_LIB}")
-			  message(FATAL_ERROR "Could not find static libc++abi library (libc++abi.a)")
-			else()
-			  message(STATUS "Found static libc++abi: ${LIBCXXABI_STATIC_LIB}")
-			endif()
-
-		endif()
 	endif()
 
 	# different release and debug flags
@@ -327,29 +273,7 @@ else()
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	endif()
 
-	#package the c++ standard library
-	option(PACKAGE_LIBSTDC++ "Package libstdc++ in c-pack installer" OFF)
-	if(PACKAGE_LIBSTDC++)
-		execute_process(
-			COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
-			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-			OUTPUT_VARIABLE std_lib
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-		)
-		#hide (in non-advanced mode) the library paths in cmake guis since they are derrived
-		mark_as_advanced(FORCE std_lib)
-		get_filename_component(_resolvedFile "${std_lib}" REALPATH) #check for symolic link
-		if(${_resolvedFile} STREQUAL ${std_lib})
-			#not a link - just install file
-			install(FILES "${std_lib}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
-		else()
-			#is a link -install link and file
-			install(FILES "${std_lib}" "${_resolvedFile}" DESTINATION ${INSTALLDIR_LIBS} CONFIGURATIONS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
-		endif()
-	endif()
 endif()
-
-option(PACKAGE_SYSTEM_LIBS "Bundle system dependencies into install (to make a standalone package)" OFF)
 
 find_package(Threads REQUIRED)
 if(CMAKE_USE_PTHREADS_INIT)
@@ -376,6 +300,16 @@ SET(CMAKE_INSTALL_RPATH "${RPATH_BASE}"
 	"${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}")
 
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+
+# Use DT_RPATH (not DT_RUNPATH) — DT_RPATH is searched for all dependency
+# resolution (direct, transitive, and dlopen). DT_RUNPATH is only searched
+# for each object's own direct, non-dlopen dependencies, so e.g. libssl's
+# dependency on libz would not find the bundled copy.
+if(UNIX AND NOT APPLE)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--disable-new-dtags")
+	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--disable-new-dtags")
+endif()
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/${INSTALLDIR_LIBS}" )
@@ -435,12 +369,6 @@ function(add_port_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER ports)
-  install(CODE
-    "
-    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-    )
-    ")
 endfunction()
 
 function(add_plugin_library name)
@@ -448,12 +376,6 @@ function(add_plugin_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER plugins)
-  install(CODE
-    "
-    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-    )
-    ")
 endfunction()
 
 function(add_transform_library name)
@@ -461,12 +383,6 @@ function(add_transform_library name)
   _apply_guard(${name})
   install(TARGETS ${name} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
   set_target_properties(${name} PROPERTIES FOLDER transforms)
-  install(CODE
-    "
-    set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-      \${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${name}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-    )
-    ")
 endfunction()
 
 function(add_test_executable name)

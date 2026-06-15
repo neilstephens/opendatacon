@@ -18,17 +18,29 @@
  *	limitations under the License.
  */
 /*
- * CLua.h
+ * LuaPipe.h
  *
- *  Created on: 18/06/2023
+ *  Created on: 15/06/2026
  *      Author: Neil Stephens
  */
 
-extern "C"
-{
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
-#include <LuaPipe.h> /*this one is our custom addition*/
-}
+#ifndef LUAPIPE_H
+#define LUAPIPE_H
 
+#include <lua.h>
+#include <lauxlib.h>
+
+/*
+** Push a full Lua file handle (LUA_FILEHANDLE) onto the stack, backed by
+** the given OS-level pipe endpoint.
+**
+**   os_handle : HANDLE on Windows, (void*)(intptr_t)fd on POSIX.
+**   mode      : "r" for the read end, "w" for the write end.
+**
+** Compiled into lua54, so FILE*s don't cross lib boundaries
+**
+** Pushes nil on failure.
+*/
+LUALIB_API void lua_pushpipe(lua_State* L, void* os_handle, const char* mode);
+
+#endif /* LUAPIPE_H */

@@ -3,16 +3,7 @@
 FROM debian:trixie as builder
 
 RUN apt-get update
-RUN apt-get install -y clang libc++-dev libc++abi-dev libc6-dev make cmake git libmodbus-dev libssl-dev libzstd-dev socat python3-dev file wget
-
-# Install Go from official tarball to avoid pulling in a zlib1g-dev rebuild
-# that lacks -fPIC (which the Debian golang-go package can trigger via apt deps).
-ARG GO_VERSION=1.22.5
-RUN GOARCH=$(dpkg --print-architecture | sed 's/i386/386/') \
-    && wget -q https://go.dev/dl/go${GO_VERSION}.linux-${GOARCH}.tar.gz \
-    && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOARCH}.tar.gz \
-    && rm go${GO_VERSION}.linux-${GOARCH}.tar.gz
-ENV PATH="${PATH}:/usr/local/go/bin"
+RUN apt-get install -y clang libc++-dev libc++abi-dev libc6-dev make cmake git libmodbus-dev libssl-dev libzstd-dev socat python3-dev file golang-go
 
 RUN update-alternatives --set c++ /usr/bin/clang++
 RUN update-alternatives --set cc /usr/bin/clang
@@ -24,6 +15,7 @@ RUN git -C opendatacon submodule update --recursive
 
 ARG BUILD_TYPE=Release
 ARG CMAKE_OPTIONS=
+ARG GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct
 RUN mkdir opendatacon-build
 RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=Debian13 $CMAKE_OPTIONS -S opendatacon -B opendatacon-build
 RUN cmake --build opendatacon-build --parallel 8

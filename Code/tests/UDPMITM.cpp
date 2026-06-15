@@ -57,14 +57,21 @@ UDPMITM::UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
 			remote_ep_ms.address().to_string(), remote_ep_ms.port(),
 			remote_ep_os.address().to_string(), remote_ep_os.port());
 	}
+}
 
-	StartRead(true);  // OS→MS direction
-	StartRead(false); // MS→OS direction
+std::shared_ptr<UDPMITM> UDPMITM::create(
+	uint16_t mitm_port_os, uint16_t mitm_port_ms,
+	uint16_t os_actual, uint16_t ms_actual,
+	const std::string& a_log_name)
+{
+	auto self = std::shared_ptr<UDPMITM>(new UDPMITM(mitm_port_os, mitm_port_ms, os_actual, ms_actual, a_log_name));
+	self->StartRead(true);  // OS→MS direction
+	self->StartRead(false); // MS→OS direction
+	return self;
 }
 
 UDPMITM::~UDPMITM()
 {
-	shutdown = true;
 	asio::error_code ec;
 	sock_os->cancel(ec);
 	sock_ms->cancel(ec);
@@ -113,18 +120,25 @@ void UDPMITM::Allow()
 
 void UDPMITM::StartRead(const bool dir)
 {
+	std::weak_ptr<UDPMITM> weak = weak_from_this();
 	if(dir)
 		sock_os->async_receive(asio::buffer(readbuf_os),
-			[this](std::error_code ec, size_t num) { ReadHandler(true, ec, num); });
+			[weak, dir](std::error_code ec, size_t num)
+			{
+				if(auto self = weak.lock())
+					self->ReadHandler(dir, ec, num);
+			});
 	else
 		sock_ms->async_receive(asio::buffer(readbuf_ms),
-			[this](std::error_code ec, size_t num) { ReadHandler(false, ec, num); });
+			[weak, dir](std::error_code ec, size_t num)
+			{
+				if(auto self = weak.lock())
+					self->ReadHandler(dir, ec, num);
+			});
 }
 
 void UDPMITM::ReadHandler(const bool dir, std::error_code ec, size_t num)
 {
-	if(shutdown)
-		return;
 	if(ec)
 	{
 		if(ec == asio::error::operation_aborted || ec == asio::error::bad_descriptor)

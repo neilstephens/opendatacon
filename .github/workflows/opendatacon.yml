@@ -118,6 +118,7 @@ jobs:
         docker build \
         --build-arg BUILD_TYPE=${{ matrix.build-type }} \
         --build-arg BUILD_COMMIT=${{ github.sha }} \
+        --build-arg "GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct" \
         ${{ matrix.docker-args }} \
         --output type=local,dest=./ \
         -t opendatacon-builder -f DockerFiles/${{ matrix.docker-file }} .
@@ -213,7 +214,7 @@ jobs:
       name: Setup MacOS Environment
       run: |
         brew install libmodbus socat
-        echo 'TOOLCHAIN_OPT=-DPACKAGE_DNP3=OFF -DPACKAGE_LIBMODBUS=OFF -DPACKAGE_PYTHON=OFF -DPACKAGE_DNP3=OFF -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt/homebrew' >> $GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3 -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt/homebrew' >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
     
     - if: contains(matrix.os,'windows')
@@ -230,6 +231,10 @@ jobs:
       with:
         go-version-file: Code/Ports/GoModbusPort/go.mod
         cache-dependency-path: Code/Ports/GoModbusPort/go.sum
+
+    - name: Set GOPROXY with fallbacks
+      shell: bash
+      run: echo "GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct" >> $GITHUB_ENV
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON -G Ninja
@@ -249,7 +254,8 @@ jobs:
 
     - name: Record install success
       if: success()
-      run: echo "INSTALL_DONE=true" >> $env:GITHUB_ENV
+      shell: bash
+      run: echo "INSTALL_DONE=true" >> $GITHUB_ENV
 
     - name: ODC_tests
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}

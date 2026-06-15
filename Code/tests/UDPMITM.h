@@ -33,26 +33,32 @@
 #include <memory>
 #include <string>
 
-class UDPMITM: public MITM
+class UDPMITM: public MITM, public std::enable_shared_from_this<UDPMITM>
 {
 public:
 	UDPMITM() = delete;
 	UDPMITM(const UDPMITM&) = delete;
-	UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
+	~UDPMITM();
+
+	static std::shared_ptr<UDPMITM> create(
+		uint16_t mitm_port_os, uint16_t mitm_port_ms,
 		uint16_t os_actual, uint16_t ms_actual,
 		const std::string& a_log_name = "opendatacon");
-	~UDPMITM();
+
 	void Up();
 	void Down();
 	void Drop();
 	void Allow();
 
 private:
+	UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
+		uint16_t os_actual, uint16_t ms_actual,
+		const std::string& a_log_name);
+
 	void StartRead(const bool dir);
 	void ReadHandler(const bool dir, std::error_code ec, size_t num);
 
 	std::atomic_bool allow = true;
-	std::atomic_bool shutdown = false;
 	const std::string log_name;
 
 	asio::ip::udp::endpoint local_ep_os;

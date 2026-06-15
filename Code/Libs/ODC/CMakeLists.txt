@@ -36,43 +36,32 @@ endif()
 if(ODC_ASIO_SSL)
 	message("OpenSSL root dir: ${OPENSSL_ROOT_DIR}")
 
-	# If not explicitly set, first try with static libs
-	if(NOT DEFINED OPENSSL_USE_STATIC_LIBS)
+	# Per-platform OpenSSL linking
+	if(WIN32)
+		# Static linking on Windows (self-contained installer, no redist needed)
 		set(OPENSSL_USE_STATIC_LIBS TRUE)
 		set(OPENSSL_MSVC_STATIC_RT TRUE)
-		set(OPENSSL_USE_STATIC_LIBS TRUE PARENT_SCOPE)
-		set(OPENSSL_MSVC_STATIC_RT TRUE PARENT_SCOPE)
+	else()
+		# Dynamic linking on Linux/macOS (distro .so is PIC-safe, auto-bundled by file(GET_RUNTIME_DEPENDENCIES))
+		set(OPENSSL_USE_STATIC_LIBS FALSE)
+		set(OPENSSL_MSVC_STATIC_RT FALSE)
+	endif()
+	set(OPENSSL_USE_STATIC_LIBS ${OPENSSL_USE_STATIC_LIBS} PARENT_SCOPE)
+	set(OPENSSL_MSVC_STATIC_RT ${OPENSSL_MSVC_STATIC_RT} PARENT_SCOPE)
+
+	find_package(OpenSSL 1.1.1 REQUIRED)
+
+	# zlib and zstd are needed by OpenSSL's compression API regardless of static/dynamic linking
+	find_package(ZLIB QUIET)
+	if(ZLIB_FOUND)
+		message(STATUS "Found zlib")
+		set(ZLIB_LIB ZLIB::ZLIB)
 	endif()
 
-	find_package(OpenSSL 1.1.1 QUIET)
-
-	if(NOT OpenSSL_FOUND)
-	    message(STATUS "OpenSSL libraries not found, setting dynamic libs and trying again...")
-	    set(OPENSSL_USE_STATIC_LIBS FALSE)
-	    set(OPENSSL_MSVC_STATIC_RT FALSE)
-	    set(OPENSSL_USE_STATIC_LIBS FALSE PARENT_SCOPE)
-	    set(OPENSSL_MSVC_STATIC_RT FALSE PARENT_SCOPE)
-	    find_package(OpenSSL 1.1.1 REQUIRED)
-	    set(PACK_NAMES ssl crypto zlib z zstd)
-	endif()
-
-	# Check if we need zstd and libz for static linking (OpenSSL 3.2+)
-	if(OPENSSL_USE_STATIC_LIBS)
-		find_package(ZLIB QUIET)
-		if(ZLIB_FOUND)
-			message(STATUS "Found zlib for static OpenSSL")
-			set(ZLIB_LIB ZLIB::ZLIB)
-		else()
-			message(STATUS "zlib not found - will attempt linking without it")
-		endif()
-
-		find_package(zstd QUIET)
-		if(zstd_FOUND)
-			message(STATUS "Found zstd, will link for static OpenSSL")
-			set(ZSTD_LIB $<IF:$<TARGET_EXISTS:zstd::libzstd_static>,zstd::libzstd_static,zstd::libzstd_shared>)
-		else()
-			message(STATUS "zstd not found - will attempt linking without it")
-		endif()
+	find_package(zstd QUIET)
+	if(zstd_FOUND)
+		message(STATUS "Found zstd")
+		set(ZSTD_LIB $<IF:$<TARGET_EXISTS:zstd::libzstd_static>,zstd::libzstd_static,zstd::libzstd_shared>)
 	endif()
 
 	add_definitions(-DODC_ASIO_SSL)
@@ -87,13 +76,3 @@ target_link_libraries(${PROJECT_NAME} JSON $<$<BOOL:${ODC_ASIO_SSL}>:OpenSSL::SS
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)
-
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_SHARED}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_LIBRARY_SUFFIX}
-	)
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-")

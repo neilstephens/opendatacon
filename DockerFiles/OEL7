@@ -29,6 +29,8 @@ RUN git -C opendatacon submodule update --recursive
 
 ARG BUILD_TYPE=Release
 ARG CMAKE_OPTIONS=
+ARG GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct
+
 RUN mkdir opendatacon-build
 
 RUN $HOME/run.sh cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=oel7 \
