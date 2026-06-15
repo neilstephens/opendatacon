@@ -39,6 +39,9 @@ set(LUA_SRC ${lua_SOURCE_DIR}/src)
 file(GLOB ${LUA_LIBNAME}_SRC ${LUA_SRC}/*.c ${LUA_SRC}/*.h)
 list(REMOVE_ITEM ${LUA_LIBNAME}_SRC ${LUA_SRC}/lua.c ${LUA_SRC}/luac.c)
 
+# Add our own pipe-handle helper, compiled into lua54 to avoid passing FILE* across libs
+list(APPEND ${LUA_LIBNAME}_SRC ${CMAKE_CURRENT_SOURCE_DIR}/LuaPipe.c ${CMAKE_CURRENT_SOURCE_DIR}/LuaPipe.h)
+
 set(CMAKE_DEBUG_POSTFIX "")
 add_library(${LUA_LIBNAME} SHARED ${${LUA_LIBNAME}_SRC})
 
@@ -54,7 +57,7 @@ if(APPLE)
 	target_compile_definitions(${LUA_LIBNAME} PRIVATE LUA_USE_MACOSX)
 endif()
 
-target_include_directories(${LUA_LIBNAME} PUBLIC ${LUA_SRC})
+target_include_directories(${LUA_LIBNAME} PUBLIC ${LUA_SRC} ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(${LUA_LIBNAME})
 
 install(TARGETS ${LUA_LIBNAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
