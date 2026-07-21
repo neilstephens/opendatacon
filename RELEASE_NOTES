@@ -4,7 +4,7 @@
   * New C API — implement custom Ports, Transforms, and UI plugins in C, or any language that can impement C bindings
     * A Go-based Modbus port (GoModbusPort) is included as a working example
   * New port library: **GoModbusPort** — Modbus over TCP or RTU in both client and server roles
-    * `"GoModbusClient"` polls a remote Modbus device; `"GoModbusServer"` acts as a Modbus slave
+    * `"GoModbusClient"` polls a remote Modbus device; `"GoModbusServer"` acts as a Modbus outstation
     * Supports Binaries, Analogs, Controls, Statuses, OctetStrings with per-point scaling, endian, and poll rates
   * DNP3OutstationPort: new `BatchUpdateBuilder` option — accumulates point updates and flushes them as a single batch
     * Useful for reducing DNP3 event noise when many points change together; batch period adapts automatically to event rate
