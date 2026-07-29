@@ -27,6 +27,7 @@
 #include "LuaWebPort.h"
 #include "LuaWebPortConf.h"
 #include "Log.h"
+#include "opendatacon/MergeJsonConf.h"
 #include <Lua/CLua.h>
 #include <Lua/Wrappers.h>
 #include <opendatacon/util.h>
@@ -295,9 +296,7 @@ void LuaWebPort::ProcessElements(const Json::Value& JSONRoot)
 {
 	if(!JSONRoot.isObject()) return;
 
-	auto MemberNames = JSONRoot.getMemberNames();
-	for(auto mn : MemberNames)
-		JSONConf[mn] = JSONRoot[mn];
+	MergeJsonConf(JSONConf,JSONRoot);
 
 	auto pConf = static_cast<LuaWebPortConf*>(this->pConf.get());
 
