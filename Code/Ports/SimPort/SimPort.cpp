@@ -430,7 +430,7 @@ bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, con
 	if(db_stat)
 	{
 		auto event = std::make_shared<EventInfo>(type,index,Name);
-		if(!NextEventFromDB(event))
+		if(NextEventFromDB(event) == DBEventResult::Exhausted)
 		{
 			Log.Warn("{} : No events from DB query for {} {}.", Name, ToString(type), index);
 			return true;
@@ -455,52 +455,71 @@ bool SimPort::TryStartEventsFromDB(const EventType type, const size_t index, con
 	return false;
 }
 
-bool SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event)
+SimPort::DBEventResult SimPort::NextEventFromDB(const std::shared_ptr<EventInfo>& event, bool allow_wrap)
 {
 	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
+
+	//populate 'event' from the current row - only call after SQLITE_ROW
+	auto populate_from_row = [&]()
+					 {
+						 auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stat.get(),0));
+						 event->SetTimestamp(t);
+						 switch(event->GetEventType())
+						 {
+							 case EventType::Analog:
+							 {
+								 event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stat.get(),1));
+								 break;
+							 }
+							 case EventType::Binary:
+							 {
+								 auto val = sqlite3_column_int(db_stat.get(),1);
+								 event->SetPayload<EventType::Binary>(val != 0);
+								 break;
+							 }
+							 default:
+								 break;
+						 }
+					 };
+
 	auto rv = sqlite3_step(db_stat.get());
 	if(rv == SQLITE_ROW)
 	{
-		auto t = static_cast<msSinceEpoch_t>(sqlite3_column_int64(db_stat.get(),0));
-		event->SetTimestamp(t);
-		switch(event->GetEventType())
-		{
-			case EventType::Analog:
-			{
-				event->SetPayload<EventType::Analog>(sqlite3_column_double(db_stat.get(),1));
-				break;
-			}
-			case EventType::Binary:
-			{
-				auto val = sqlite3_column_int(db_stat.get(),1);
-				event->SetPayload<EventType::Binary>(val != 0);
-				break;
-			}
-			default:
-				break;
-		}
-		return true;
+		populate_from_row();
+		return DBEventResult::Row;
 	}
 	else if(rv == SQLITE_DONE)
 	{
-		Log.Debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
 		const auto timestamp_handling = pSimConf->TimestampHandling(event->GetEventType(),event->GetIndex());
-		if(!(timestamp_handling & TimestampMode::ABSOLUTE_T))
+		if(allow_wrap && !(timestamp_handling & TimestampMode::ABSOLUTE_T))
 		{
-			//loop back to the start
-			Log.Debug("{} : Looping DB query for {} {} back to start.", Name, ToString(event->GetEventType()), event->GetIndex());
+			Log.Debug("{} : No more SQL records for {} {}, looping DB query back to start.", Name, ToString(event->GetEventType()), event->GetIndex());
 			sqlite3_reset(db_stat.get());
-			auto now = msSinceEpoch()+sys_time_offset;
-			ptimer_t ptimer = pSimConf->Timer(ToString(event->GetEventType())+std::to_string(event->GetIndex()));
-			TryStartEventsFromDB(event->GetEventType(),event->GetIndex(),now,ptimer);
+			rv = sqlite3_step(db_stat.get());
+			if(rv == SQLITE_ROW)
+			{
+				populate_from_row();
+				return DBEventResult::WrappedRow;
+			}
+			else if(rv == SQLITE_DONE)
+			{
+				Log.Warn("{} : Zero SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
+				return DBEventResult::Exhausted;
+			}
+			else
+			{
+				Log.Error("{} : sqlite3_step() error for {} {} : {}", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
+				return DBEventResult::Exhausted;
+			}
 		}
+		Log.Debug("{} : No more SQL records for {} {}", Name, ToString(event->GetEventType()), event->GetIndex());
+		return DBEventResult::Exhausted;
 	}
 	else
 	{
-		Log.Error("{} : sqlite3_step() error for {} {} : ", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
+		Log.Error("{} : sqlite3_step() error for {} {} : {}", Name, ToString(event->GetEventType()), event->GetIndex(), sqlite3_errstr(rv));
+		return DBEventResult::Exhausted;
 	}
-	//no more records or error
-	return false;
 }
 
 int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event, const msSinceEpoch_t now)
@@ -531,28 +550,48 @@ int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event
 	if(!!(timestamp_handling & TimestampMode::FASTFORWARD))
 	{
 		//Find the first event that's not in the past
+		bool day_advanced = false;
 		while(now > (event->GetTimestamp()+time_offset))
 		{
-			if(!NextEventFromDB(event))
+			if(NextEventFromDB(event, false) == DBEventResult::Row)
+				continue;
+
+			//time_offset is anchored to 'now', so one day-advance always clears the table
+			if(!!(timestamp_handling & TimestampMode::TOD) && !day_advanced)
 			{
-				Log.Warn("{} : TimestampMode::FASTFORWARD exhausted events from DB query for {} {}.", Name, ToString(event->GetEventType()), event->GetIndex());
-				break;
+				sqlite3_reset(pSimConf->GetDBStat(event->GetEventType(),event->GetIndex()).get());
+				if(NextEventFromDB(event, false) != DBEventResult::Row)
+					break; //table is genuinely empty
+
+				time_offset += std::chrono::duration_cast<std::chrono::milliseconds>(days(1)).count();
+				day_advanced = true;
+				continue;
 			}
+
+			Log.Warn("{} : TimestampMode::FASTFORWARD exhausted events from DB query for {} {}.", Name, ToString(event->GetEventType()), event->GetIndex());
+			break;
 		}
 	}
 	return time_offset;
 }
 
-bool SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t time_offset)
+bool SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t& time_offset)
 {
 	//Check if we're configured to load this point from DB
 	auto db_stat = pSimConf->GetDBStat(event->GetEventType(),event->GetIndex());
 	if(db_stat)
 	{
-		if(!NextEventFromDB(event))
+		auto result = NextEventFromDB(event);
+		if(result == DBEventResult::Exhausted)
 		{
 			Log.Warn("{} : No more events from DB query for {} {}.", Name, ToString(event->GetEventType()), event->GetIndex());
 			return false;
+		}
+		if(result == DBEventResult::WrappedRow)
+		{
+			//re-anchor the relative offset to now
+			auto now = msSinceEpoch()+sys_time_offset;
+			time_offset = InitDBTimestampHandling(event, now);
 		}
 		event->SetTimestamp(event->GetTimestamp()+time_offset);
 		return true;
