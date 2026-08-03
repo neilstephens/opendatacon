@@ -32,7 +32,7 @@
 namespace Json { class Value; }
 
 extern "C" void ExportUtilWrappers(lua_State* const L,
-	std::shared_ptr<asio::io_service::strand> pSyncStrand,
+	std::shared_ptr<odc::strand_t> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
 	const std::string& Name,
 	const std::string& LogName);

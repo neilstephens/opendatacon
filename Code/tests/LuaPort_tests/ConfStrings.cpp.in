@@ -26,6 +26,8 @@ void PrepConfFiles(bool init)
 
 	conf_map["LuaPortDoco.lua"] =  R"001(@LuaPortDoco_lua@)001";
 
+	conf_map["hello.lua"] =  R"001(@LuaPortDoco_hello@)001";
+
 	WriteConfMap(conf_map, init);
 }
 

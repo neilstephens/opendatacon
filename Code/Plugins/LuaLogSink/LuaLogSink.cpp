@@ -101,7 +101,7 @@ LuaLogSink::~LuaLogSink()
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
 	while(!tracker.expired() && !pIOS->stopped())
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 
 	lua_close(L);
 }

@@ -59,7 +59,7 @@ private:
 	void StartStaleTimer();
 	void HeartBeat();
 	const uint32_t Timeoutms;
-	std::unique_ptr<asio::io_service::strand> pTimerAccessStrand;
+	std::unique_ptr<odc::strand_t, odc::deleter> pTimerAccessStrand;
 	bool RideThroughInProgress;
 	CommsState Comms;
 	bool Paused;
@@ -68,9 +68,9 @@ private:
 	size_t StaleTimerSequence;   //to track the valid (latest) handler
 	odc::msSinceEpoch_t ExpiryTime;
 	uint32_t msRemaining;
-	std::unique_ptr<asio::steady_timer> pCommsRideThroughTimer;
-	std::unique_ptr<asio::steady_timer> pHeartBeatTimer;
-	std::unique_ptr<asio::steady_timer> pStaleTimer;
+	std::unique_ptr<odc::steady_timer, odc::deleter> pCommsRideThroughTimer;
+	std::unique_ptr<odc::steady_timer, odc::deleter> pHeartBeatTimer;
+	std::unique_ptr<odc::steady_timer, odc::deleter> pStaleTimer;
 	const std::function<void()> CommsGoodCB;
 	const std::function<void()> CommsBadCB;
 	const std::function<void()> StaleCB;

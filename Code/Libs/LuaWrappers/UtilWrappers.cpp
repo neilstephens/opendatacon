@@ -175,29 +175,6 @@ Json::Value JSONFromLua(lua_State* const L, int idx, bool asKey)
 	}
 }
 
-// Helper to create a Lua FILE* userdata (like io.open does)
-inline void PushFile(lua_State* L, FILE* fp)
-{
-	if (!fp) { lua_pushnil(L); return; }
-
-	// Allocate userdata of the correct size (luaL_Stream contains FILE* and int closef)
-	luaL_Stream *p = (luaL_Stream*)lua_newuserdata(L, sizeof(luaL_Stream));
-	p->f = fp;
-	p->closef = [](lua_State* const L) -> int
-			{
-				luaL_Stream* p = (luaL_Stream*)lua_touserdata(L, 1);
-				if (p && p->f)
-				{
-					fclose(p->f);
-					p->f = nullptr;
-				}
-				return 0;
-			};
-
-	// set the standard file metatable
-	luaL_setmetatable(L, LUA_FILEHANDLE);
-}
-
 // Helper to repeatedly call a coroutine,
 //  using the return/yield value as number of ms before calling again
 //  the loop stops on a negative return or asio error (cancelled timer)
@@ -206,7 +183,7 @@ inline void CoroutineLoop(lua_State* const L,
 	const std::string& LogName,
 	const int LuaCRref,
 	std::shared_ptr<asio::steady_timer> pTimer,
-	std::shared_ptr<asio::io_service::strand> pSyncStrand)
+	std::shared_ptr<odc::strand_t> pSyncStrand)
 {
 	//get coroutine from the registry back on stack
 	lua_rawgeti(L, LUA_REGISTRYINDEX, LuaCRref);
@@ -246,7 +223,7 @@ inline void CoroutineLoop(lua_State* const L,
 }
 
 extern "C" void ExportUtilWrappers(lua_State* const L,
-	std::shared_ptr<asio::io_service::strand> pSyncStrand,
+	std::shared_ptr<odc::strand_t> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
 	const std::string& Name,
 	const std::string& LogName)
@@ -492,7 +469,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 	lua_pushcclosure(L, ([](lua_State* const L) -> int
 				   {
 					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
-					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
+					   auto sync = std::static_pointer_cast<odc::strand_t>(ppSync->lock());
 					   auto ppTracker = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(2)));
 					   auto tracker = ppTracker->lock();
 					   std::string name(lua_tostring(L, lua_upvalueindex(3)));
@@ -565,7 +542,7 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 	lua_pushcclosure(L, ([](lua_State* const L) -> int
 				   {
 					   auto ppSync = static_cast<std::weak_ptr<void>*>(lua_touserdata(L, lua_upvalueindex(1)));
-					   auto sync = std::static_pointer_cast<asio::io_service::strand>(ppSync->lock());
+					   auto sync = std::static_pointer_cast<odc::strand_t>(ppSync->lock());
 					   std::string name(lua_tostring(L, lua_upvalueindex(2)));
 					   std::string logname(lua_tostring(L, lua_upvalueindex(3)));
 
@@ -665,10 +642,11 @@ extern "C" void ExportUtilWrappers(lua_State* const L,
 					// Push pid
 					lua_pushinteger(L, result.pid);
 
-					// Create Lua file userdata objects from FILE*
-					PushFile(L, result.stdin_file);
-					PushFile(L, result.stdout_file);
-					PushFile(L, result.stderr_file);
+					// lua_pushpipe is our custom extension in lua54,
+					//   so we don't have to pass FILE* across library boundaries
+					lua_pushpipe(L, result.stdin_handle.take(), "w");
+					lua_pushpipe(L, result.stdout_handle.take(), "r");
+					lua_pushpipe(L, result.stderr_handle.take(), "r");
 
 					return 4; // pid, stdin, stdout, stderr
 				}

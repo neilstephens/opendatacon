@@ -35,6 +35,16 @@ if(DNP3_TLS)
 	endif()
 endif()
 
+option(USE_EXE4CPP_SUBMODULE "Use git submodule to download exe4cpp header library" ON)
+set(EXE4CPP_HOME_INSTRUCTIONS "Choose the location of exe4cpp header library: where it was installed - there should be a src dir within")
+if(USE_EXE4CPP_SUBMODULE)
+	set(EXE4CPP_HOME "${CMAKE_SOURCE_DIR}/Code/submodules/exe4cpp" CACHE PATH "Local exe4cpp source (disables FetchContent download)")
+	if(NOT EXISTS "${EXE4CPP_HOME}/.git")
+		execute_process(COMMAND git submodule update --init -- Code/submodules/exe4cpp
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	endif()
+endif()
+
 if(USE_DNP3_SUBMODULE)
 	set(DNP3_SOURCE "${CMAKE_SOURCE_DIR}/Code/submodules/dnp3")
 	set(DNP3_BUILD "${CMAKE_BINARY_DIR}/Code/submodules/dnp3")
@@ -51,10 +61,16 @@ if(USE_DNP3_SUBMODULE)
 			-DCMAKE_INSTALL_PREFIX=${DNP3_HOME}/
 			-DCMAKE_DEBUG_POSTFIX=${CMAKE_DEBUG_POSTFIX}
 			-DFETCHCONTENT_SOURCE_DIR_ASIO=${ASIO_HOME}
+			-DFETCHCONTENT_SOURCE_DIR_EXE4CPP=${EXE4CPP_HOME}
 			-DDNP3_TLS=${DNP3_TLS}
 			-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
-		CACHE STRING "cmake options to use when building DNP3 submodule"
 	)
+	if(MSVC)
+		list(APPEND DNP3_CMAKE_OPTS
+			"-DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
+			"-DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
+	endif()
+	set(DNP3_CMAKE_OPTS "${DNP3_CMAKE_OPTS}" CACHE STRING "cmake options to use when building DNP3 submodule" FORCE)
 	if(NOT EXISTS "${DNP3_SOURCE}/.git")
 		execute_process(COMMAND git submodule update --init -- Code/submodules/dnp3
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -131,28 +147,9 @@ set(opendnp3_libs debug opendnp3_dtarget optimized opendnp3_target )
 #hide (in non-advanced mode) the library paths in cmake guis since they are derrived
 mark_as_advanced(FORCE opendnp3_lib opendnp3_dlib)
 
-#include in install/packaging
-option(PACKAGE_DNP3 "Package opendnp3 libs in c-pack installer" ON)
-if(PACKAGE_DNP3)
-	set(PACK_NAMES opendnp3)
-endif()
-
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 if(TARGET build_dnp3)
 	add_dependencies(${PROJECT_NAME} build_dnp3)
 endif()
 target_include_directories(${PROJECT_NAME} PRIVATE "${DNP3_INCLUDE_PATH}")
-target_link_libraries(${PROJECT_NAME} ${opendnp3_libs} ODC)
-
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
-
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-	)
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-")
+target_link_libraries(${PROJECT_NAME} ${opendnp3_libs})

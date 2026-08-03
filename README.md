@@ -51,10 +51,19 @@
         * [Example](#example-2)
         * [Config file keys](#config-file-keys-3)
     * [Elasticsearch](#elasticsearch)
-* [API](#api)
+* [C++ API](#c-api)
     * [Port](#port)
     * [Transform](#transform)
     * [User interface](#user-interface)
+* [C API (`odc_c_api.h`)](#c-api-odc_c_apih)
+    * [Version symbol](#version-symbol)
+    * [Port module — required symbols](#port-module-required-symbols)
+    * [Port module — optional symbols](#port-module-optional-symbols)
+    * [Transform module — required symbols](#transform-module-required-symbols)
+    * [UI plugin module — required symbols](#ui-plugin-module-required-symbols)
+    * [Helper functions](#helper-functions-callable-from-c-code)
+    * [Naming convention](#naming-convention)
+    * [Template / quick-start](#template-quick-start)
 
 ## Quickstart
 
@@ -215,7 +224,7 @@ Port 1 and port 2 are subscribed to each other. Port 1 and port 3 are also subsc
 
 ### Ports
 
-Ports are the interface between opendatacon and the outside world. It is a Port's job to translate from/to the internal data structures used by opendatacon to/from an external protocol. For example, as of opendatacon 1.9.0, there are built in Port types:
+Ports are the interface between opendatacon and the outside world. A Port translates from/to the internal data structures used by opendatacon and external protocols. Current bundled port types include:
 
 *   Null port
 *   DNP3 Master and Outstation ports
@@ -226,9 +235,13 @@ Ports are the interface between opendatacon and the outside world. It is a Port'
 *   MD3 Master and Outstation ports
 *   File transfer port
 *   Python port (deprecated in favour of Lua port below)
+*   Kafka producer and consumer ports
+*   GoModbus client and server ports (via C API)
 *   Lua port
     * Lua port allows custom run-time port implementations
     * See the ExampleConfig directory to see how you can write your own port in Lua
+
+Apart from custom run-time implementations in Lua, native ports can be implemented via the C API if compiling separately (and dropped into the plugin dir), or developed in-tree in C++ (compiled with opendatacon for C++ ABI compatibility). 
 
 ### Connectors
 
@@ -324,10 +337,11 @@ Here are the available keys for configuration of the main opendatacon configurat
 | "Ports" | <span>array</span> | a list of port configurations | No, but opendatacon won't do much without any ports | Empty |
 | "Connectors" | array | a list of connector configurations | <span>No, but opendatacon won't do much without any connectors</span> | <span>Empty</span> |
 | "Plugins" | <span>array</span> | a list of plug-in configurations | No | <span>Empty</span> |
-| "LogName" | string | filepath/name prefix for log message files. A number and .txt file extension will be appended | No | "datacon_log" |
+| "LogName" | string | filepath/name prefix for log message files. | No | "opendatacon_log" |
 | "NumLogFiles" | number | A non-zero number, denoting the number of log files to be used as a 'rolling buffer' of logs. Eg. If 3 is given, files LogName0.txt, <span>LogName1.txt, <span>LogName2.txt will be written to in sequential modulo 3 order.</span></span> | No | 5 |
 | "LogFileSizekB" | number | The size in kilobytes after which a log file is full, and the logging system will start a new log file. | No | 5120 |
-| "LogLevel" | string | "trace", "debug", "info", "warning", "error", "critical" or "off" | No | "error" |
+| "LogLevel" | string | "trace", "debug", "info", "warning", "error", "critical" or "off" | No | "info" |
+| "ConsoleLevel" | string | Console sink log level. Same values as LogLevel. | No | "error" |
 
 ### Port configuration
 
@@ -363,12 +377,12 @@ Here is an example of the object in the file referred to by "ConfFilename":
 		{
 			"Name" : "Test JSON to DNP3",
 			"Port1" : "Test JSON input",
-			"Port2" : "Test DNP3 output 1"
+			"Port2" : "Test DNP3 Outstation"
 		},
 		{
 			"Name" : "Test DNP3 to Null",
 			"Port1" : "Test DNP3 Master",
-			"Port2" : "Test DNP3 output 2"
+			"Port2" : "Test DNP3 Outstation"
 		}
 	],
 
@@ -412,7 +426,7 @@ Here are the available keys for configuration of a transform in opendatacon. An 
 
 | Key | Value Type | Description | Mandatory | Default Value |
 |-----|------------|-------------|-----------|---------------|
-| "Type" | string | This defines the specific implementation of transform to use. As of opendatacon 0.3.0, the inbuilt transforms are "IndexOffset", "Threshold" and "Rand". Transforms will be fully extensible, in the fashion ports are - through a dynamic library API, in subsequent releases of opendatacon. | Yes | N/A |
+| "Type" | string | This defines the specific transform implementation to use. Built-in transform types are "IndexOffset", "IndexMap", "Threshold", "Rand", "RateLimit", "LogicInv", "BlackHole", and "AnalogScaling". Additional transform types can be loaded from shared libraries. | Yes | N/A |
 | "Sender" | string | This should be set to the name of the port that the transform applies to. Any connections in the same connector as the transform, will route data from the specified sender to the transform before routing to the opposite port. | Yes | N/A |
 | "Parameters" | value | JSON value to pass to the transform for implementation specific configuration. |
 | "Library" | string | The base name of the library containing the <span>transform</span> implementation. This is required if the library contains multiple <span>transform</span> implementations, and hence can't be derived from the <span>transform</span> type. Eg. By default the library base name is assumed to be "Type"Transform. | No | Derived from "Type" |
@@ -496,10 +510,8 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 | Port | number | Port number to communicate on. | No | 20000 |
 | MasterAddr | number | Master station address | No | 0 |
 | OutstationAddr | number | Outstation address | No | 1 |
-| LinkNumRetry | number | Number of connection attempts | No | 0 |
 | LinkTimeoutms | number | Connection timeout in milliseconds | No | 1000 |
 | LinkKeepAlivems | number | Time to keep the connection alive for in milliseconds. | No | 10000 |
-| LinkUseConfirms | boolean | Request confirmation that the frame arrived | No | false |
 | EnableUnsol | boolean | Enable unsolicited events | No | true |
 | UnsolClass1 | boolean | Enable Class 1 unsolicited events | No | false |
 | UnsolClass2 | boolean | Enable Class 2 unsolicited events | No | false |
@@ -521,9 +533,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
     "Port" : 20000,
     "MasterAddr" : 0,
     "OutstationAddr" : 1,
-    "LinkNumRetry" : 0,
     "LinkTimeoutms" : 1000,
-    "LinkUseConfirms" : false,
      
     //-------- DNP3 Common Application Configuration -------------#
     "EnableUnsol": true,
@@ -572,7 +582,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 | EventClass1ScanRatems | number | Frequency of Class 1 scan. | No | 1000 |
 | EventClass2ScanRatems | number | Frequency of Class 2 scan. | No | 1000 |
 | EventClass3ScanRatems | number | Frequency of Class 3 scan. | No | 1000 |
-| DoAssignClassOnStartup | boolean | | No | false
+| DoAssignClassOnStartup | boolean | If true, the master performs an AssignClass task on startup. | No | false
 | OverrideControlCode | opendnp3 ControlCode | Overrides the control code sent by an upstream master station. | No | Undefined
 | CommsPoint | JSON object | JSON object containing the point index and fail value | No | empty
 
@@ -588,9 +598,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
     "Port" : 20000,
     "MasterAddr" : 0,
     "OutstationAddr" : 1,
-    "LinkNumRetry" : 0,
     "LinkTimeoutms" : 1000,
-    "LinkUseConfirms" : false,
      
     //-------- DNP3 Common Application Configuration -------------#
     "EnableUnsol": true,
@@ -640,7 +648,7 @@ A DNP3 port is configured by setting the "Type" of a port to either "DNP3Master"
 
 ### Modbus Port Library
 ```
-Modbus port placeholder
+See ExampleConfig/Modbus-test/ and ExampleConfig/EverythingInOne/ for practical ModbusMaster/ModbusOutstation examples.
 ```
 
 ### Simulation Port Library
@@ -713,7 +721,7 @@ Modbus port placeholder
 
 #### Configuration
 
-A JSON port is configured by setting the "Type" of a port to "JSONClient" ("JSONServer" yet to be implemented), the "Library" to "JSONPort", and the "ConfFilename" to a file containing the JSON object discussed below.
+A JSON port is configured by setting the "Type" of a port to "JSONClient" or "JSONServer", the "Library" to "JSONPort", and the "ConfFilename" to a file containing the JSON object discussed below.
 
 ##### JSON Client
 
@@ -768,7 +776,7 @@ A JSON port is configured by setting the "Type" of a port to "JSONClient" ("JSON
 | Key | Value Type | Description | Mandatory | Default Value |
 |-----|------------|-------------|-----------|---------------|
 |JSONPointConf | array | A list of objects containing point configuration for a type of points. | No - but the port won't do anything without some point configurations | Empty |
-|JSONPointConf[]:PointType | string | A string denoting which type of internal events the points in this <span style="line-height: 1.4285715;">JSONPointConf member will be coverted to. "Analog" and "Binary" support at 0.3.0, "Control" not implemented yet.</span> | Yes | N/A |
+|JSONPointConf[]:PointType | string | A string denoting which type of internal events the points in this JSONPointConf member are converted to. Supported values are "Analog", "Binary", "OctetString", "Control", and "AnalogControl". | Yes | N/A |
 |JSONPointConf[]:Points | array | A list of objects containing the configuration for each of the points in this <span style="line-height: 1.4285715;">JSONPointConf member.</span> | No - but there's no reason to have a <span style="line-height: 1.4285715;">JSONPointConf object with no points</span> | Empty |
 |JSONPointConf[]:Points[]:JSONPath | array | The JSON Path (sequence of nested keys) as an array of strings, to map to a point | No - but the point will never update | Empty |
 |JSONPointConf[]:Points[]:Index | number | <span>The index of the point to map to</span> | Yes | N/A |
@@ -815,7 +823,7 @@ The null port is simply created as follows:
 }
 ```
 
-## API
+## C++ API
 
 ### Port
 
@@ -857,3 +865,133 @@ See include/opendatacon/Transform.h
 See include/opendatacon/IUI.h 
 ```
 
+## C API (`odc_c_api.h`)
+
+opendatacon provides a pure C API (`include/opendatacon/odc_c_api.h`) that lets you write port, transform, and UI plugin modules as ordinary C shared libraries — no C++ inheritance or complex build setup required.
+
+A C plugin is a shared library that exports a fixed set of `odc_*` symbols. The C++ framework (`C_Port`, `C_Transform`, `C_UI` wrappers in the `CAPI` library) loads the library, resolves the symbols, and bridges between the C functions and the opendatacon event system.
+
+### Version symbol
+
+opendatacon detects a library as using the C API if it exports an appropiate version function:
+```c
+// Function to querie the C API version targeted by the library.
+const char* odc_c_api_version(void);
+```
+It should simply return the version defined in the API header (ODC_C_API_VERSION) :
+```c
+// All modules targeting the opendatacon C API should implement this:
+const char* odc_c_api_version(void)
+{
+    static const char * ver = ODC_C_API_VERSION;
+    return ver;
+}
+```
+
+### Port module — required symbols
+
+```c
+void* odc_port_create(const char* type, const char* name);
+void  odc_port_destroy(void* inst);
+void  odc_port_build(void* inst);
+void  odc_port_enable(void* inst);
+void  odc_port_disable(void* inst);
+void  odc_port_event(void* inst, const C_EventInfo* event, const char* sender, C_StatusCallback* cb);
+```
+
+`odc_port_create` receives the port type string (e.g. `"MyCustom"`) and the unique instance name. Return an opaque instance pointer (like a pointer to a strust storing the port instance's internal state). The remaining functions have that pointer passed back as `inst`. `odc_port_build` is called after config is fully resolved — use `odc_GetConfigJSON()` inside it to read the merged config. `odc_port_event` is called for incoming events; invoke the status callback via `odc_InvokeStatusCallback(&cb, status)` to respond.
+
+### Port module — optional symbols
+
+```c
+const char* odc_port_stats_json(void* inst);   // JSON statistics string (malloc'd)
+const char* odc_port_state_json(void* inst);    // JSON current state string (malloc'd)
+const char* odc_port_status_json(void* inst);   // JSON status string (malloc'd)
+void        odc_port_free_string(const char* str); // free() a string returned above
+```
+
+### Transform module — required symbols
+
+```c
+void* odc_transform_create(const char* type, const char* json_param_str);
+void  odc_transform_enable(void* inst);
+void odc_transform_event(void* inst,
+	struct C_EventInfo* event,
+	C_PassContext* pass_ctx,
+	void (*pass)(C_PassContext* ctx, struct C_EventInfo* evt));
+void  odc_transform_disable(void* inst);
+void  odc_transform_destroy(void* inst);
+```
+
+### UI plugin module — required symbols
+
+```c
+void* odc_plugin_create(const char* type, const char* conf_filename, const char* json_overrides_str);
+void  odc_plugin_build(void* inst);
+void  odc_plugin_enable(void* inst);
+void  odc_plugin_disable(void* inst);
+void  odc_plugin_destroy(void* inst);
+```
+
+### Helper functions (callable from C code)
+
+```c
+// Invoke the status callback returned to odc_port_event — marks the callback as consumed.
+void odc_InvokeStatusCallback(C_StatusCallback** cb, uint8_t status);
+
+// Publish an event to all subscribers. callback/handle may be null.
+typedef void (*C_StatusCallbackFunc_t)(uint8_t status, void* handle);
+void odc_PublishEvent(void* inst, const C_EventInfo* event,
+                      C_StatusCallbackFunc_t callback, void* handle);
+
+// Publish a connect-state change notification.
+void odc_PublishConnectState(void* inst, int state);
+
+// Get the full resolved config JSON (merged from inherits, file, overrides).
+// Valid from odc_port_build() onwards, owned by the framework.
+const char* odc_GetConfigJSON(void* inst);
+
+// Log a message via the module's per-type logger (works for ports,
+// transforms, and UIs). level: C_LOG_LEVEL_TRACE (0) through C_LOG_LEVEL_OFF (6).
+void odc_Log(void* inst, uint8_t level, const char* message);
+
+// Check if a log level would produce output — avoids expensive formatting.
+// Returns non-zero if the level is enabled, zero otherwise.
+int odc_ShouldLog(void* inst, uint8_t level);
+
+// Schedule a one-shot timer on the port's strand. Returns an opaque handle
+// that can be passed to odc_cancelTimer(). callback fires with status.
+void* odc_msTimerCallback(void* inst, uint64_t ms,
+                          C_StatusCallbackFunc_t callback, void* handle);
+
+// Cancel a pending timer (safe to call after it has already fired).
+void odc_cancelTimer(void* timer_handle);
+
+// Log level constants — avoid magic numbers in odc_Log() calls.
+#define C_LOG_LEVEL_TRACE     0
+#define C_LOG_LEVEL_DEBUG     1
+#define C_LOG_LEVEL_INFO      2
+#define C_LOG_LEVEL_WARN      3
+#define C_LOG_LEVEL_ERROR     4
+#define C_LOG_LEVEL_CRITICAL  5
+#define C_LOG_LEVEL_OFF       6
+
+// Convenience macros — no need to pass the level argument.
+#define odc_LogTrace(inst, msg)    odc_Log((inst), C_LOG_LEVEL_TRACE, (msg))
+#define odc_LogDebug(inst, msg)    odc_Log((inst), C_LOG_LEVEL_DEBUG, (msg))
+#define odc_LogInfo(inst, msg)     odc_Log((inst), C_LOG_LEVEL_INFO, (msg))
+#define odc_LogWarn(inst, msg)     odc_Log((inst), C_LOG_LEVEL_WARN, (msg))
+#define odc_LogError(inst, msg)    odc_Log((inst), C_LOG_LEVEL_ERROR, (msg))
+#define odc_LogCritical(inst, msg) odc_Log((inst), C_LOG_LEVEL_CRITICAL, (msg))
+
+```
+
+### Naming convention
+
+By default, the framework derives the library filename from the port type: `"Type" + "Port"`. For a port with `"Type": "MyCustom"`, it loads `libMyCustomPort.so` (or `.dylib`/`.dll`). This can be overridden with the `"Library"` config key, in which case the library may implement multiple types.
+
+A logger is created per type using the same name (`"MyCustomPort"`). Use `odc_Log()` (or the `odc_LogTrace`/`Debug`/`Info`/`Warn`/`Error`/`Critical` convenience macros) from your C code to write to it. Check `odc_ShouldLog()` to avoid expensive string formatting when logging is disabled. The same `odc_Log()` and `odc_ShouldLog()` functions work for all three module types (ports, transforms, UIs). For ports the logger name is `Type + "Port"`; for transforms and UIs it is just `Type` (no suffix).
+
+### Template / quick-start
+
+Copy `Code/tests/C_API_tests/mock_c_port.c` as a starting point. It implements all required symbols and demonstrates `odc_GetConfigJSON()` and `odc_Log()` usage. See `odc_c_api.h` for the full API reference.

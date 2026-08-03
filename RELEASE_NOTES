@@ -1,4 +1,26 @@
-# opendatacon version 1.10.4
+# opendatacon version 1.11.0
+
+## 1.11.0
+  * New C API — implement custom Ports, Transforms, and UI plugins in C, or any language that can impement C bindings
+    * A Go-based Modbus port (GoModbusPort) is included as a working example
+  * New port library: **GoModbusPort** — Modbus over TCP or RTU in both client and server roles
+    * `"GoModbusClient"` polls a remote Modbus device; `"GoModbusServer"` acts as a Modbus outstation
+    * Supports Binaries, Analogs, Controls, Statuses, OctetStrings with per-point scaling, endian, and poll rates
+  * DNP3OutstationPort: new `BatchUpdateBuilder` option — accumulates point updates and flushes them as a single batch
+    * Useful for reducing DNP3 event noise when many points change together; batch period adapts automatically to event rate
+  * DNP3Port:
+    * `"ConnectionlessUDP"` mode for fixed UDP links
+    * `"UDPListenPort"` can be set to 0 for an ephemeral port
+    * Unspecified '"IP"' (0.0.0.0 or ::) for promiscuous UDP 
+  * DNP3MasterPort:
+    * option to periodically re-enable unsolicited responses
+    * pass-through received Analog command type when no fixed type is configured
+  * JSONPort: configurable `AnalogControlType`
+  * Log format strings are now configurable per-sink via config or UI commands, including UTC vs local time
+  * New `EverythingInOne` example config combining all major port types in one file
+  * Stability fixes for LuaPort/LuaTransform and PyPort shutdown
+  * Python standard library packaged correctly on Windows
+  * SimPort SQLite playback bugfixes
 
 ## 1.10.4
   * LuaPort new process spawning API

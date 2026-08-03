@@ -84,7 +84,7 @@ private:
 	std::unordered_map<std::string,const IUIResponder*> RespondersMasterCopy;
 
 	std::shared_ptr<odc::asio_service> pIOS;
-	std::shared_ptr<asio::io_service::work> ios_working;
+	std::shared_ptr<odc::work_guard> ios_working;
 	std::atomic<size_t> starting_element_count = 0;
 	std::once_flag shutdown_flag;
 	std::atomic_bool shutting_down;
@@ -100,6 +100,7 @@ private:
 	inline void ListLogSinks(Json::Value& out);
 	inline void ListLogLevels(Json::Value& out);
 	Json::Value SetLogLevel(std::stringstream& ss);
+	Json::Value SetLogFormat(std::stringstream& ss);
 	Json::Value SetLogFilter(std::stringstream& ss, bool isWhite);
 	Json::Value RemoveLogFilter(std::stringstream& ss);
 	Json::Value ListLogFilters();

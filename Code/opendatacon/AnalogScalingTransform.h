@@ -74,6 +74,9 @@ public:
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
+		if(!event)
+			return (*pAllow)(event);
+
 		if(event->GetEventType() != EventType::Analog)
 			return (*pAllow)(event);
 

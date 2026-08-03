@@ -153,7 +153,8 @@ private:
 	typedef std::priority_queue<ASIOSchedulerTask*, std::vector<ASIOSchedulerTask*>, ASIOSchedulerTaskComparison> ScheduleType;
 	ScheduleType Schedule;
 	typedef asio::basic_waitable_timer<std::chrono::steady_clock> Timer_t;
-	std::unique_ptr<Timer_t> pTimer;
+
+	std::unique_ptr<Timer_t, deleter> pTimer;
 };
 
 #endif /* defined(__opendatacon__ASIOScheduler__) */

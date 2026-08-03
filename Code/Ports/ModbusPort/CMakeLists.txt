@@ -47,31 +47,6 @@ set_property(TARGET modbus_target PROPERTY IMPORTED_LOCATION "${MODBUS_LIB}")
 #hide (in non-advanced mode) the library path in cmake guis since it's derrived
 mark_as_advanced(FORCE MODBUS_LIB)
 
-#include in install/packaging
-option(PACKAGE_LIBMODBUS "Package libmodbus in c-pack installer" ON)
-if(PACKAGE_LIBMODBUS)
-	set(PACK_NAMES modbus libmodbus)
-	if(WIN32)
-		get_filename_component(MODBUS_DLL_DIR ${MODBUS_LIB} DIRECTORY)
-	endif()
-endif()
-
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_include_directories(${PROJECT_NAME} PRIVATE "${MODBUS_INCLUDE_PATH}")
-target_link_libraries(${PROJECT_NAME} ODC modbus_target)
-
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
-
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-	)
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-	set(BUNDLE_DEPS_DIRS \${BUNDLE_DEPS_DIRS}
-		${MODBUS_DLL_DIR}
-	)
-")
+target_link_libraries(${PROJECT_NAME} modbus_target)

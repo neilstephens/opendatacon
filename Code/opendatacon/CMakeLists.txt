@@ -47,15 +47,9 @@ endif()
 
 add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST} $<TARGET_OBJECTS:VersionStrings>)
 target_include_directories(${PROJECT_NAME} PRIVATE "${TCLAP_HOME}/include")
-target_link_libraries(${PROJECT_NAME} ODC ${DL})
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/Code/Libs/CAPI/include")
+target_link_libraries(${PROJECT_NAME} ODC CAPI ${DL})
 
 install(DIRECTORY "../../include/opendatacon" DESTINATION ${INSTALLDIR_INCLUDES})
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER bins)
-
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_BINS}/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}
-	)
-")

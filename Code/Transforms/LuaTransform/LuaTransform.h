@@ -58,6 +58,9 @@ public:
 
 	void Event(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow) override
 	{
+		if(!event)
+			return (*pAllow)(event);
+
 		pLuaSyncStrand->post([this,event,pAllow,h{handler_tracker}]()
 			{
 				Event_(event,pAllow);
@@ -69,7 +72,7 @@ private:
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::shared_ptr<asio::io_service::strand> pLuaSyncStrand = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pLuaSyncStrand = pIOS->make_strand();
 
 	//synchronised versions of pubilic counterpart above
 	void Enable_();

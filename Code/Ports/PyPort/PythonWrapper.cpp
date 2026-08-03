@@ -380,7 +380,7 @@ PythonInitWrapper::PythonInitWrapper(bool GlobalUseSystemPython):
 	python_strand(odc::asio_service::Get()->make_strand()),
 	running(false),
 	keep_running(true),
-	PythonMainThread([=](){Run(GlobalUseSystemPython);})
+	PythonMainThread([=, this](){Run(GlobalUseSystemPython);})
 {
 	//Wait til' the Run thread signals after init
 	std::unique_lock<std::mutex> RunLock(RunMtx);
@@ -439,7 +439,7 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 		Py_Initialize(); // Get the Python interpreter running
 		Log.Debug("Initialised Python");
 
-		#ifndef PYTHON_34_ORLESS
+		#if !defined(PYTHON_34_ORLESS) && PY_VERSION_HEX < 0x030C0000
 		Log.Debug("Python platform independant path prefix: '{}'",Py_EncodeLocale(Py_GetPrefix(),nullptr));
 		#endif
 
@@ -457,15 +457,16 @@ void PythonInitWrapper::Run(bool GlobalUseSystemPython)
 			return;
 		}
 
-		// Log the Python path for debugging (also write to a small file for running test code)
+		#if PY_VERSION_HEX < 0x030C0000
 		std::wstring path = Py_GetPath();
 		std::string spath(path.begin(), path.end());
 		Log.Critical("Current Python sys.path - {}",spath);
+		#endif
 
 		PyDateTime_IMPORT;
 
 		// Initialize threads and release GIL (saving it as well):
-		#ifndef PYTHON_36_ORLESS
+		#if PY_VERSION_HEX < 0x03090000
 		PyEval_InitThreads(); // Not needed from 3.7 onwards, done in PyInitialize()
 		#endif
 		if (!PyGILState_Check())
@@ -570,7 +571,7 @@ void PythonWrapper::Build(const std::string& pyPathName, const std::string& Port
 	{
 		//otherwise just make sure it's finished initialising and take a shared_ptr
 		while (!(this->PyMgr = weak_mgr.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 
 	// Throws exceptions on fail

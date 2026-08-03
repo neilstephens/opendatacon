@@ -46,7 +46,7 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 		{
 			auto LineStream = ParamsToSStream(params);
 			std::string filename,ID;
-			if(odc::extract_delimited_string("'`/",LineStream,filename) && LineStream>>ID)
+			if(odc::extract_delimited_string("\"'`",LineStream,filename) && LineStream>>ID)
 			{
 				std::ifstream fin(filename);
 				if(fin.is_open())

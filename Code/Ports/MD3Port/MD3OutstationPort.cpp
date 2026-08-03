@@ -85,7 +85,7 @@ void MD3OutstationPort::UpdateOutstationPortCollection()
 		// PortCollection has already been created, so get a shared pointer to it.
 		// The last shared_ptr to get destructed will control its destruction. The weak_ptr will just no longer return a pointer.
 		while (!(this->MD3OutstationCollection = weak_collection.lock()))
-		{} //init happens very seldom, so spin lock is good
+			std::this_thread::yield(); //init happens very seldom, so spin lock is good
 	}
 }
 
@@ -202,8 +202,8 @@ MD3Message_t MD3OutstationPort::CorruptMD3Message(const MD3Message_t& CompleteMD
 		{
 			MD3Message_t ResMsg = CompleteMD3Message;
 			size_t messagelen = CompleteMD3Message.size();
-			std::uniform_real_distribution<> bitdist(0, messagelen * 40 - 1); // 5 bytes, 40 bits
-			int bitnum = round(bitdist(e2));
+			std::uniform_real_distribution<> bitdist(0, static_cast<double>(messagelen * 40 - 1)); // 5 bytes, 40 bits
+			int bitnum = static_cast<int>(round(bitdist(e2)));
 			ResMsg[bitnum / 40].XORBit(bitnum % 40);
 			return ResMsg;
 		}

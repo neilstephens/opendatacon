@@ -21,9 +21,6 @@ project(PyPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def server/*.cpp server/*.hpp PythonCode/*.py)
 
-option(USE_PYTHON_SUBMODULE "Use git submodule to download and build python libraries" OFF)
-set(PYTHON_HOME_INSTRUCTIONS "Choose the location of Python: where it was installed - there should be lib and include directories within")
-include("compile-python.cmake")
 include("system-python.cmake")
 
 #hide (in non-advanced mode) the library/include path in cmake guis since it's derrived
@@ -62,9 +59,9 @@ else()
 	endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 endif()
 
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_include_directories(${PROJECT_NAME} PRIVATE "${PYTHON_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} ODC HTTP ${PYTHON_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} HTTP ${PYTHON_LIBRARIES})
 
 set(PYTHON_LINK_DEF $<IF:$<CONFIG:DEBUG>,PYTHON_LINK_WO="${PYTHON_LIBRARY_DEBUG_FILE}",PYTHON_LINK_WO="${PYTHON_LIBRARY_RELEASE_FILE}">)
 if(PYTHON_LINK_DEF MATCHES "\.so" AND UNIX)
@@ -72,25 +69,7 @@ if(PYTHON_LINK_DEF MATCHES "\.so" AND UNIX)
 	target_compile_definitions(${PROJECT_NAME} PUBLIC ${PYTHON_LINK_DEF})
 endif()
 
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
 
 # So tests will run
 install(FILES PythonCode/PyPortSim.py DESTINATION ${INSTALLDIR_BINS})
-
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-	)
-	set(BUNDLE_DEPS_FILTERIN \${BUNDLE_DEPS_FILTERIN}
-		${PACK_NAMES}
-	)
-	set(BUNDLE_IGNORE_ITEMS \${BUNDLE_IGNORE_ITEMS}
-		${PYTHON_EXE_NAMES}
-	)
-	set(BUNDLE_DEPS_DIRS \${BUNDLE_DEPS_DIRS}
-		${PYTHON_LIBRARY_DIRS} ${PYTHON_HOME}
-	)
-")
 

@@ -47,6 +47,7 @@ public:
 	std::map<uint16_t, Json::Value> OctetStrings;
 	std::map<uint16_t, Json::Value> Controls;
 	std::map<uint16_t, Json::Value> AnalogControls;
+	odc::EventType AnalogControlType;
 	Json::Value TimestampPath;
 	std::unique_ptr<JSONOutputTemplate> pJOT;
 };

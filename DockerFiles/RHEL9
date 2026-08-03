@@ -5,7 +5,7 @@ FROM redhat/ubi9 as builder
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 RUN /usr/bin/crb enable
 
-RUN dnf install -y wget socat llvm-toolset cmake git openssl-devel python3-devel file libmodbus libmodbus-devel
+RUN dnf install -y wget socat llvm-toolset cmake git openssl-devel python3-devel file libmodbus libmodbus-devel golang
 
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
@@ -27,8 +27,10 @@ RUN rpm -i libcxx-static-17.0.6-1.el9.x86_64.rpm
 RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
 ARG BUILD_COMMIT=develop
 RUN git -C opendatacon checkout $BUILD_COMMIT
+RUN git -C opendatacon submodule update --recursive
 
 ARG BUILD_TYPE=Release
+ARG GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct
 RUN mkdir opendatacon-build
 
 RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_SYSTEM_VERSION=rhel9 \

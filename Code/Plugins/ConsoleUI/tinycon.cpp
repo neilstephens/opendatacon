@@ -240,7 +240,7 @@ std::string tinyConsole::getLine (int mode = M_LINE, const std::string& delimete
 void tinyConsole::setBuffer (std::string s)
 {
 	buffer.assign(s.begin(),s.end());
-	line_pos = buffer.size();
+	line_pos = static_cast<int>(buffer.size());
 }
 
 void tinyConsole::reprint_prompt_buffer()
@@ -307,14 +307,14 @@ void tinyConsole::run ()
 							buffer.erase(buffer.begin(), buffer.end());
 
 							pos++;
-							if (pos > ((int)history.size() - 1)) pos = history.size() - 1;
+							if (pos > ((int)history.size() - 1)) pos = static_cast<int>(history.size()) - 1;
 
 							// store in buffer
 							for (size_t i = 0; i < history[pos].size(); i++)
 							{
 								buffer.push_back(history[pos][i]);
 							}
-							line_pos = buffer.size();
+							line_pos = static_cast<int>(buffer.size());
 							// output to screen
 							std::cout << history[pos] << std::flush;
 							break;
@@ -353,7 +353,7 @@ void tinyConsole::run ()
 									}
 								}
 							}
-							line_pos = buffer.size();
+							line_pos = static_cast<int>(buffer.size());
 							break;
 						case LEFT_ARROW:
 							// if there are characters to move left over, do so

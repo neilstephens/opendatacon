@@ -25,6 +25,9 @@ endif()
 if(MSVC)
 	set(NOWARN_C_FLAGS "${CMAKE_C_FLAGS} /W0") #don't want warnings from external librdkafka code
 	set(MSVC_OPTS "-DOPENSSL_MSVC_STATIC_RT=${OPENSSL_MSVC_STATIC_RT}")
+	set(MSVC_RT_OPTS
+		"-DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
+		"-DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
 else()
 	set(NOWARN_C_FLAGS "${CMAKE_C_FLAGS} -w") #don't want warnings from external librdkafka code
 endif()
@@ -44,12 +47,15 @@ set(
 		-DRDKAFKA_BUILD_TESTS=OFF
 		-DOPENSSL_USE_STATIC_LIBS=${OPENSSL_USE_STATIC_LIBS}
 		${MSVC_OPTS}
+		${MSVC_RT_OPTS}
 		-DWITH_SSL=${ODC_ASIO_SSL}
 		-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 		-DCMAKE_INSTALL_PREFIX=${RDKAFKA_HOME}/
 		-DCMAKE_DEBUG_POSTFIX=${CMAKE_DEBUG_POSTFIX}
 		-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 	CACHE STRING "cmake options to use when building librdkafka submodule"
+	FORCE
 )
 if(NOT EXISTS "${RDKAFKA_SOURCE}/.git")
 	execute_process(COMMAND git submodule update --init -- Code/submodules/librdkafka
@@ -105,7 +111,7 @@ list(APPEND CMAKE_MODULE_PATH "${RdKafka_CMAKE_MODULES}")
 set(RdKafka_DIR "${RdKafka_CMAKE_MODULES}")
 find_package(RdKafka REQUIRED PATHS ${RDKAFKA_HOME} NO_DEFAULT_PATH)
 
-if(ODC_ASIO_SSL)
+if(ODC_ASIO_SSL AND OPENSSL_USE_STATIC_LIBS)
 	#big fat hack to remove OpenSSL::SSL and OpenSSL::Crypto from the librdkafka interface libs
 	# because there's no way to tell librdkafka that it's compiled/linked into ODC already
 	get_target_property(KAF_REQUIRED_LIBS RdKafka::rdkafka INTERFACE_LINK_LIBRARIES)

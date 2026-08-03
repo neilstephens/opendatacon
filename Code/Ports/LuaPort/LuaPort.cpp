@@ -41,13 +41,11 @@ LuaPort::LuaPort(const std::string& aName, const std::string& aConfFilename, con
 
 LuaPort::~LuaPort()
 {
-	lua_gc(LuaState,LUA_GCCOLLECT);
-
 	//Wait for outstanding handlers
 	std::weak_ptr<void> tracker = handler_tracker;
 	handler_tracker.reset();
 	while(!tracker.expired() && !pIOS->stopped())
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::yield();
 
 	lua_close(LuaState);
 }
@@ -61,8 +59,12 @@ void LuaPort::Enable_()
 void LuaPort::Disable_()
 {
 	CallLuaGlobalVoidVoidFunc("Disable");
-	//Force garbage collection now. Lingering shared_ptr finalizers can block shutdown etc
-	lua_gc(LuaState,LUA_GCCOLLECT);
+	//Force garbage collection. Lingering shared_ptr finalizers can block shutdown etc
+	//post() just in case anything is queued on the strand
+	this->pLuaSyncStrand->post([this,h{handler_tracker}]()
+		{
+			lua_gc(LuaState,LUA_GCCOLLECT);
+		});
 }
 
 //Build is called while there's only one active thread, so we don't need to sync access to LuaState here

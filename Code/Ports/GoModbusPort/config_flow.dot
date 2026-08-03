@@ -1,0 +1,56 @@
+digraph GoModbusConfigFlow {
+    rankdir=TB
+    compound=true
+    node [fontname="Helvetica" fontsize=10]
+    edge [fontname="Helvetica" fontsize=9]
+
+    subgraph cluster_input {
+        label="ODC Config JSON  (from opendatacon.conf)"
+        style=filled
+        fillcolor="#e8f0ff"
+        color="#5577cc"
+
+        cfg_json [label="Port-level JSON\n{\n  \"TCP\" / \"RTU\": {…}\n  \"UnitID\": 1\n  \"TimeoutMs\": 1000\n  \"PollRateMs\": 1000\n  \"MaxConcurrentPolls\": 1\n  \"Binaries\": [ … ]\n  \"Analogs\": [ … ]\n  \"BinaryControls\": [ … ]\n  \"AnalogControls\": [ … ]\n  \"BinaryOutputStatuses\": [ … ]\n  \"AnalogOutputStatuses\": [ … ]\n  \"OctetStrings\": [ … ]\n}"
+                 shape=note]
+    }
+
+    subgraph cluster_parse {
+        label="GoModbusPort  —  config.go"
+        style=filled
+        fillcolor="#fffacc"
+        color="#ccaa00"
+
+        parse [label="parseConfig()\nJSON Unmarshal → PortConfig/ServerPortConfig\n  struct fields with json:\"…\" tags"
+               shape=rectangle style=filled fillcolor="#fff0b0"]
+
+        validate [label="validateConfig() / validateServerConfig()\nCheck: TCP xor RTU\n       RTU defaults (baud=19200, 8N1)\n       PollRateMs=1000 default\n       TimeoutMs=1000 default\n       BinaryControls→Coil only\n       AnalogControls→HoldingRegister only\n       warnScaleZero() — Scale=0 + Offset!=0"
+                  shape=rectangle]
+
+        expand [label="expandPoints() / buildMaps()\n\nPointConfig + Range → []PolledPoint\n  - AddrStride = Count × (ODCIndex - RangeStart)\n  - Bit sentinel: -1 means \"not set\"\n  - Scale/Offset/Endian/DataType carried forward\n\nControlConfig + Range → []ControlPoint\n  - OnAction/OffAction defaults: \"On\" / \"Off\"\n  - AnalogControlType → ODC event type mapping"
+                shape=rectangle style=filled fillcolor="#d0e8ff"]
+    }
+
+    subgraph cluster_structures {
+        label="Runtime data structures"
+        style=filled
+        fillcolor="#f4eeff"
+        color="#9966cc"
+
+        polled [label="[]PolledPoint\n  per-point: ODCType, ODCIndex\n              ModbusType, ModbusAddr, Count\n              PollRateMs, Scale, Offset\n              Endian, DataType, Bit\n              lastPollNs (atomic.Int64)"
+                shape=box3d]
+
+        controls [label="[]ControlPoint\n  per-point: ODCType, ODCIndex\n              ModbusType, ModbusAddr\n              OnAction, OffAction\n              Count, Endian, DataType"
+                  shape=box3d]
+
+        updatemaps [label="serverReadTarget / serverWriteTarget maps\n  ODC-index→store-write info\n  Modbus-addr→ODC-publish info\n                   + dataStore{}"
+                    shape=box3d]
+    }
+
+    cfg_json -> parse [label="odc_get_config_json()"]
+    parse -> validate
+    validate -> expand
+
+    expand -> polled   [label="client: []PolledPoint\n(and []ControlPoint)"]
+    expand -> controls [label="p.controls (client)"]
+    expand -> updatemaps [label="server: updateMaps + dataStore"]
+}

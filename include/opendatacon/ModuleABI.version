@@ -8,6 +8,7 @@ DataPortABI_1.0
 		new_*Transform;
 		delete_*Transform;
 		run_tests;
+		odc_c_api_version;
 	local:
 		*;
 }; 

@@ -174,6 +174,16 @@ static constexpr const char* OSPATHSEP = ":";
 
 #endif
 
+/// Get a module handle for the current executable, suitable for LoadSymbol().
+inline module_ptr GetCurrentModule()
+{
+	#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+	return GetModuleHandle(NULL);
+	#else
+	return dlopen(nullptr, RTLD_LAZY|RTLD_LOCAL);
+	#endif
+}
+
 /// Posix file system directory manipulation - e.g. chdir
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
 #include <direct.h>
@@ -268,18 +278,72 @@ inline void SetTCPKeepalives(asio::ip::tcp::socket& tcpsocket, bool enable=true,
 #endif
 
 /// Process Spawning
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+#include <io.h>
+#include <fcntl.h>
+#endif
+
+// RAII wrapper around a platform pipe endpoint.
+// Keeps all OS-specific details inside Platform.h; callers use to_file()
+// to obtain a FILE* allocated in their own memory space
+class PipeHandle
+{
+	#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+	HANDLE h_ = INVALID_HANDLE_VALUE;
+public:
+	explicit PipeHandle(HANDLE h) noexcept: h_(h) {}
+	PipeHandle() noexcept = default;
+	PipeHandle(PipeHandle&& o) noexcept: h_(std::exchange(o.h_, INVALID_HANDLE_VALUE)) {}
+	PipeHandle& operator=(PipeHandle&& o) noexcept { close(); h_ = std::exchange(o.h_, INVALID_HANDLE_VALUE); return *this; }
+	bool valid() const noexcept { return h_ != INVALID_HANDLE_VALUE && h_ != NULL; }
+	void close() noexcept { if(valid()) { CloseHandle(h_); h_ = INVALID_HANDLE_VALUE; } }
+	// Release ownership, returning the raw HANDLE as void*
+	void* take() noexcept { return valid() ? (void*)std::exchange(h_, INVALID_HANDLE_VALUE) : nullptr; }
+	// Transfer ownership to a FILE* in the calling lib/bin
+	FILE* to_file(const char* mode) noexcept
+	{
+		if(!valid()) return nullptr;
+		int flags = (mode[0] == 'w') ? (_O_WRONLY | _O_TEXT) : (_O_RDONLY | _O_TEXT);
+		int fd = _open_osfhandle((intptr_t)h_, flags);
+		if(fd < 0) return nullptr;
+		h_ = INVALID_HANDLE_VALUE; // fd now owns the handle
+		return _fdopen(fd, mode);
+	}
+	#else
+	int fd_ = -1;
+public:
+	explicit PipeHandle(int fd) noexcept: fd_(fd) {}
+	PipeHandle() noexcept = default;
+	PipeHandle(PipeHandle&& o) noexcept: fd_(std::exchange(o.fd_, -1)) {}
+	PipeHandle& operator=(PipeHandle&& o) noexcept { close(); fd_ = std::exchange(o.fd_, -1); return *this; }
+	bool valid() const noexcept { return fd_ >= 0; }
+	void close() noexcept { if(valid()) { ::close(fd_); fd_ = -1; } }
+	// Release ownership, returning the raw fd as void*
+	void* take() noexcept { return valid() ? (void*)(intptr_t)std::exchange(fd_, -1) : nullptr; }
+	// Transfer ownership to a FILE* in the calling lib/bin
+	FILE* to_file(const char* mode) noexcept
+	{
+		if(!valid()) return nullptr;
+		FILE* f = fdopen(fd_, mode);
+		if(f) fd_ = -1; // fdopen now owns the fd
+		return f;
+	}
+	#endif
+	PipeHandle(const PipeHandle&) = delete;
+	PipeHandle& operator=(const PipeHandle&) = delete;
+	~PipeHandle() { close(); }
+};
+
 struct spawn_attached_result
 {
 	int pid;
-	FILE* stdin_file;
-	FILE* stdout_file;
-	FILE* stderr_file;
+	PipeHandle stdin_handle;
+	PipeHandle stdout_handle;
+	PipeHandle stderr_handle;
 };
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-
-#include <io.h>
-#include <fcntl.h>
 
 /// args ignored on windows - put it all in the command
 inline DWORD spawn_detached(const std::string& cmd, const std::vector<std::string>& args = {})
@@ -368,25 +432,11 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 
 	CloseHandle(pi.hThread);
 
-	// Convert Windows handles to C FILE*
-	int stdin_fd = _open_osfhandle((intptr_t)stdin_write, _O_WRONLY | _O_TEXT);
-	int stdout_fd = _open_osfhandle((intptr_t)stdout_read, _O_RDONLY | _O_TEXT);
-	int stderr_fd = _open_osfhandle((intptr_t)stderr_read, _O_RDONLY | _O_TEXT);
-
-	FILE* stdin_file = _fdopen(stdin_fd, "w");
-	FILE* stdout_file = _fdopen(stdout_fd, "r");
-	FILE* stderr_file = _fdopen(stderr_fd, "r");
-
-	if (!stdin_file || !stdout_file || !stderr_file)
-	{
-		if (stdin_file) fclose(stdin_file);else { _close(stdin_fd); CloseHandle(stdin_write); }
-		if (stdout_file) fclose(stdout_file);else { _close(stdout_fd); CloseHandle(stdout_read); }
-		if (stderr_file) fclose(stderr_file);else { _close(stderr_fd); CloseHandle(stderr_read); }
-		CloseHandle(pi.hProcess);
-		throw std::runtime_error("_fdopen failed");
-	}
-
-	return spawn_attached_result{(int)pi.dwProcessId, stdin_file, stdout_file, stderr_file};
+	// Return raw HANDLEs wrapped in PipeHandle — no FILE* / CRT conversion here.
+	// Crossing DLL boundaries with FILE* from _fdopen is unsafe when DLLs use /MT
+	// (each DLL gets its own static CRT instance with a separate heap and FILE table).
+	CloseHandle(pi.hProcess);
+	return spawn_attached_result{(int)pi.dwProcessId, PipeHandle(stdin_write), PipeHandle(stdout_read), PipeHandle(stderr_read)};
 }
 
 inline std::pair<bool,int> spawn_wait(int pid, bool nohang)
@@ -544,14 +594,14 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		throw std::runtime_error("pipe() failed.");
 	}
 
-	// spawn_detached writes PID on stdout and errors on stderr
+	// odc_spawn writes PID on stdout and errors on stderr
 	posix_spawn_file_actions_adddup2(&actions, pid_pipe_fd[1], STDOUT_FILENO);
 	posix_spawn_file_actions_adddup2(&actions, err_pipe_fd[1], STDERR_FILENO);
 	// close all child fds except for stdio
 	add_actions_close_all_fds(actions);
 
 	std::vector<char *> argv;
-	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath().dirname())+"/spawn_detached");
+	auto exe_path = std::filesystem::canonical(std::string(whereami::getExecutablePath().dirname())+"/odc_spawn");
 	argv.push_back(const_cast<char*>(exe_path.c_str()));
 	argv.push_back(const_cast<char*>(cmd.c_str()));
 	for (const auto &arg : args)
@@ -583,7 +633,7 @@ inline int spawn_detached(const std::string& cmd, const std::vector<std::string>
 		for(size_t i=0; i<sizeof(err_msg)-1; i++)
 			if(read(err_pipe_fd[0], &err_msg[i], 1) != 1 || err_msg[i]=='\0') break;
 		close(err_pipe_fd[0]);
-		throw std::runtime_error("spawn_detached process failed with message: "+std::string(err_msg));
+		throw std::runtime_error("odc_spawn process failed with message: "+std::string(err_msg));
 	}
 	close(err_pipe_fd[0]);
 
@@ -616,8 +666,19 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 	int stdout_pipe[2];
 	int stderr_pipe[2];
 
-	if (pipe(stdin_pipe) == -1 || pipe(stdout_pipe) == -1 || pipe(stderr_pipe) == -1)
-		throw std::runtime_error("stdin/out/err pipe() failed");
+	if (pipe(stdin_pipe) == -1)
+		throw std::runtime_error("stdin pipe() failed");
+	else if (pipe(stdout_pipe) == -1)
+	{
+		close(stdin_pipe[0]);close(stdin_pipe[1]);
+		throw std::runtime_error("stdout pipe() failed");
+	}
+	else if (pipe(stderr_pipe) == -1)
+	{
+		close(stdin_pipe[0]);close(stdin_pipe[1]);
+		close(stdout_pipe[0]);close(stdout_pipe[1]);
+		throw std::runtime_error("stderr pipe() failed");
+	}
 
 	// Child reads from stdin_pipe[0], writes to stdout_pipe[1] and stderr_pipe[1]
 	// Parent writes to stdin_pipe[1], reads from stdout_pipe[0] and stderr_pipe[0]
@@ -627,13 +688,18 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 	// Close all other fds except stdio
 	add_actions_close_all_fds(actions);
 
+	auto exe_path = std::filesystem::canonical(
+		std::string(whereami::getExecutablePath().dirname())+"/odc_spawn");
+
 	std::vector<char *> argv;
+	argv.push_back(const_cast<char*>(exe_path.c_str()));
+	argv.push_back(const_cast<char*>("--attached"));
 	argv.push_back(const_cast<char*>(cmd.c_str()));
 	for (const auto &arg : args)
 		argv.push_back(const_cast<char*>(arg.c_str()));
 	argv.push_back(nullptr);
 
-	int status = posix_spawnp(&pid, cmd.c_str(), &actions, &attr, argv.data(), environ);
+	int status = posix_spawn(&pid, exe_path.c_str(), &actions, &attr, argv.data(), environ);
 
 	// Post-spawn cleanup
 	posix_spawn_file_actions_destroy(&actions);
@@ -648,24 +714,11 @@ inline spawn_attached_result spawn_attached(const std::string& cmd, const std::v
 		close(stdin_pipe[1]);
 		close(stdout_pipe[0]);
 		close(stderr_pipe[0]);
-		throw std::runtime_error("posix_spawn(...'"+cmd+"'...) failed with return value: " + std::to_string(status));
+		throw std::runtime_error("posix_spawn(...'"+exe_path.string()+"'...) failed with return value: " + std::to_string(status));
 	}
 
-	// Convert fds to FILE*
-	FILE* stdin_file = fdopen(stdin_pipe[1], "w");
-	FILE* stdout_file = fdopen(stdout_pipe[0], "r");
-	FILE* stderr_file = fdopen(stderr_pipe[0], "r");
-
-	if (!stdin_file || !stdout_file || !stderr_file)
-	{
-		// Clean up on failure
-		if (stdin_file) fclose(stdin_file);else close(stdin_pipe[1]);
-		if (stdout_file) fclose(stdout_file);else close(stdout_pipe[0]);
-		if (stderr_file) fclose(stderr_file);else close(stderr_pipe[0]);
-		throw std::runtime_error("fdopen() failed");
-	}
-
-	return spawn_attached_result{(int)pid, stdin_file, stdout_file, stderr_file};
+	// Wrap parent-side pipe ends in PipeHandle (raw fd, no fdopen/FILE*).
+	return spawn_attached_result{(int)pid, PipeHandle(stdin_pipe[1]), PipeHandle(stdout_pipe[0]), PipeHandle(stderr_pipe[0])};
 }
 
 inline std::pair<bool,int> spawn_wait(int pid, bool nohang)

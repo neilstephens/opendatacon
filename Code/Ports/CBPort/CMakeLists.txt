@@ -21,22 +21,9 @@ project(CBPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 
-include_directories(
+add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+target_include_directories(${PROJECT_NAME} PRIVATE
 	"../include"
 	"../JSON"
-	"${ASIO_HOME}/asio/include"
-	"${SPDLOG_HOME}/include"
 )
 
-add_library(${PROJECT_NAME} MODULE ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC)
-
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_MODULES})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER ports)
-
-install(CODE
-"
-	set(BUNDLE_DEPS_LIST \${BUNDLE_DEPS_LIST}
-		\${CMAKE_INSTALL_PREFIX}/${INSTALLDIR_MODULES}/${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}\${BUNDLE_LIB_POSTFIX}${CMAKE_SHARED_MODULE_SUFFIX}
-	)
-")

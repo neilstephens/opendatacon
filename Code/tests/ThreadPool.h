@@ -45,7 +45,7 @@ public:
 	}
 private:
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
-	std::unique_ptr<asio::io_service::work> pWork = pIOS->make_work();
+	std::unique_ptr<odc::work_guard, odc::deleter> pWork = pIOS->make_work();
 	std::vector<std::thread> threads;
 };
 

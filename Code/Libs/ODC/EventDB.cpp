@@ -24,6 +24,9 @@
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
 
+#ifdef _MSC_VER
+#define _SILENCE_CXX20_OLD_SHARED_PTR_ATOMIC_SUPPORT_DEPRECATION_WARNING
+#endif
 #include <opendatacon/EventDB.h>
 #include <atomic>
 

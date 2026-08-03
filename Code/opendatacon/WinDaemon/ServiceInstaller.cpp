@@ -43,13 +43,13 @@
 //   NOTE: If the function fails to install the service, it prints the error
 //   in the standard output stream for users to diagnose the problem.
 //
-void InstallService(PWSTR pszServiceName,
-	PWSTR pszDisplayName,
+void InstallService(PCWSTR pszServiceName,
+	PCWSTR pszDisplayName,
 	DWORD dwStartType,
-	PWSTR pszDependencies,
-	PWSTR pszAccount,
-	PWSTR pszPassword,
-	PWSTR pszArgs)
+	PCWSTR pszDependencies,
+	PCWSTR pszAccount,
+	PCWSTR pszPassword,
+	PCWSTR pszArgs)
 {
 	wchar_t szPath[MAX_PATH];
 	std::wstring path_args;
@@ -127,7 +127,7 @@ Cleanup:
 //   NOTE: If the function fails to uninstall the service, it prints the
 //   error in the standard output stream for users to diagnose the problem.
 //
-void UninstallService(PWSTR pszServiceName)
+void UninstallService(PCWSTR pszServiceName)
 {
 	SC_HANDLE schSCManager = NULL;
 	SC_HANDLE schService = NULL;

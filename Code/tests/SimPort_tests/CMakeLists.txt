@@ -21,9 +21,8 @@ project(SimPort_tests)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ../ThreadPool.h)
 
-add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-target_link_libraries(${PROJECT_NAME} ODC ${DL})
+set(SIMPORT_SQLITE3_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../Ports/SimPort/sqlite3)
 
-install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
-set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
-add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} ${SIMPORT_SQLITE3_DIR}/sqlite3.c)
+target_include_directories(${PROJECT_NAME} PRIVATE ${SIMPORT_SQLITE3_DIR})
+target_compile_definitions(${PROJECT_NAME} PRIVATE SQLITE_OMIT_SHARED_CACHE)
