@@ -238,6 +238,15 @@ void FileTransferPort::Build()
 				Log.Error("{}: Filename date token '{}' not found in template '{}'.", Name, pConf->FilenameInfo.DateToken, pConf->FilenameInfo.Template);
 			}
 		}
+		if(!pConf->FilenameInfo.Event)
+			throw std::invalid_argument("RX port requires Filename.Event.Index to be configured");
+		auto fn_idx = pConf->FilenameInfo.Event->GetIndex();
+		if(fn_idx >= pConf->SequenceIndexStart && fn_idx <= pConf->SequenceIndexStop)
+		{
+			auto msg = "Filename.Event.Index clashes with SequenceIndexRange.";
+			Log.Error("{}: {}", Name, msg);
+			throw std::invalid_argument(msg);
+		}
 	}
 	else //TX
 	{
@@ -442,6 +451,9 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	if(event->GetEventType() != EventType::OctetString)
 		return pIOS->post([=] { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); });
 
+	if(!event->HasPayload())
+		return pIOS->post([=] { (*pStatusCallback)(CommandStatus::SUCCESS); });
+
 	auto index = event->GetIndex();
 
 	if(static_cast<int64_t>(index) == pConf->SequenceIndexEOF)
@@ -479,14 +491,21 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 			return;
 		}
 
+		auto payload = event->GetPayload<EventType::OctetString>();
 		if(pConf->UseCRCs)
 		{
-			auto rx_crc = *(uint16_t*)event->GetPayload<EventType::OctetString>().data();
+			if(payload.size() < crc_size)
+			{
+				Log.Error("{}: Filename event payload too short for CRC.", Name);
+				pIOS->post([=] { (*pStatusCallback)(CommandStatus::NOT_SUPPORTED); });
+				return;
+			}
+			auto rx_crc = *(uint16_t*)payload.data();
 			if(!transfer_reset || pConf->UseConfirms)
 			{
 				if(rx_crc != crc)
 				{
-					Log.Error("{}: Filename CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data '{}'", Name, rx_crc, crc, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw).c_str()+crc_size);
+					Log.Error("{}: Filename CRC mismatch (0x{:04x} != 0x{:04x}). Dropping data '{}'", Name, rx_crc, crc, ToString(payload, DataToStringMethod::Raw).c_str()+crc_size);
 					pIOS->post([=] { (*pStatusCallback)(CommandStatus::UNDEFINED); });
 					ProcessQdFilenames(SenderName);
 					return;
@@ -497,7 +516,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 				Log.Debug("{}: Detected reset seq/CRC.", Name);
 				seq = pConf->SequenceIndexStart;
 			}
-			crc = crc_ccitt((uint8_t*)event->GetPayload<EventType::OctetString>().data(),event->GetPayload<EventType::OctetString>().size(),rx_crc);
+			crc = crc_ccitt((uint8_t*)payload.data(),payload.size(),rx_crc);
 		}
 
 		//We need to fill out filename template with event and optionally date
@@ -506,7 +525,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 		if(pos != templated_name.npos)
 		{
 			templated_name.erase(pos, pConf->FilenameInfo.EventToken.size());
-			templated_name.insert(pos, ToString(event->GetPayload<EventType::OctetString>(), DataToStringMethod::Raw).c_str()+crc_size);
+			templated_name.insert(pos, ToString(payload, DataToStringMethod::Raw).c_str()+crc_size);
 		}
 		if(!pConf->FilenameInfo.DateToken.empty())
 		{
