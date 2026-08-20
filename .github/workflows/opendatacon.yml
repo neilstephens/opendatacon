@@ -208,7 +208,7 @@ jobs:
         }
         choco install nsis -y
         choco install ninja -y
-        echo 'TOOLCHAIN_OPT=-DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
+        echo 'TOOLCHAIN_OPT=-DARCH_DESC=${{env.BITPLAT}} -DMODBUS_HOME=c:\libmodbus\libmodbus\windows${{matrix.bits}} -DPYTHON_HOME=C:\hostedtoolcache\windows\Python\3.9.13\${{env.BITPLAT}}' >> $env:GITHUB_ENV
 
     - if: contains(matrix.os,'macos')
       name: Setup MacOS Environment
