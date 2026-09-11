@@ -41,6 +41,7 @@ using WebServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 #define OPTIONAL_CERTS
 #endif
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -66,6 +67,52 @@ inline const std::string& GetMimeType(const std::string& rUrl)
 		return MimeTypeMap.at(ext);
 	}
 	return MimeTypeMap.at("default");
+}
+
+//"address:port" of the peer that sent the request - "unknown" if it can't be determined
+inline std::string RemoteEndpointString(const std::shared_ptr<WebServer::Request>& request)
+{
+	if(!request)
+		return "unknown";
+	try
+	{
+		const auto endpoint = request->remote_endpoint();
+		return endpoint.address().to_string() + ":" + std::to_string(endpoint.port());
+	}
+	catch(const std::exception&)
+	{
+		return "unknown";
+	}
+}
+
+//Single line summary of a request, for logging.
+//Deliberately leaves out the request body and any credential bearing headers
+//(Authorization, Proxy-Authorization, Cookie) so that logs can't leak secrets.
+inline std::string RequestDetailString(const std::shared_ptr<WebServer::Request>& request)
+{
+	if(!request)
+		return "<no request>";
+
+	const auto header_or_dash = [&request](const char* const name) -> std::string
+				    {
+					    const auto it = request->header.find(name);
+					    return it == request->header.end() ? "-" : it->second;
+				    };
+
+	std::string detail = "from " + RemoteEndpointString(request)
+	                     + " HTTP/" + request->http_version
+	                     + " " + request->method
+	                     + " " + request->path;
+
+	if(!request->query_string.empty())
+		detail += "?" + request->query_string;
+
+	return detail
+	       + " Host:" + header_or_dash("Host")
+	       + " X-Forwarded-For:" + header_or_dash("X-Forwarded-For")
+	       + " User-Agent:" + header_or_dash("User-Agent")
+	       + " Content-Type:" + header_or_dash("Content-Type")
+	       + " Content-Length:" + header_or_dash("Content-Length");
 }
 
 inline void read_and_send(const std::shared_ptr<WebServer::Response> response, const std::shared_ptr<std::ifstream> ifs, const std::shared_ptr<std::vector<char>> buffer)

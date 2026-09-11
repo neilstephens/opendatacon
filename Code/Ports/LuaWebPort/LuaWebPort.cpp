@@ -248,6 +248,15 @@ void LuaWebPort::Build()
 	WebSrv->default_resource["GET"] = request_handler;
 	WebSrv->default_resource["POST"] = request_handler;
 
+	//Requests that fail before a resource is matched (bad syntax, timeouts, dropped
+	//connections) never reach a handler, so log them here or there's no record of them at all.
+	WebSrv->on_error = [this](std::shared_ptr<WebServer::Request> request, const SimpleWeb::error_code& ec)
+			   {
+				   if(ec == asio::error::operation_aborted)
+					   return;
+				   Log.Debug("{}: Web request error '{}' {}", Name, ec.message(), RequestDetailString(request));
+			   };
+
 	CallLuaGlobalVoidVoidFunc("Build"); // In here the lua code will be able to add resources to the web server.
 }
 
@@ -311,6 +320,8 @@ void LuaWebPort::ProcessElements(const Json::Value& JSONRoot)
 		pConf->web_crt = JSONRoot["WebCert"].asString();
 	if (JSONRoot.isMember("WebKey"))
 		pConf->web_key = JSONRoot["WebKey"].asString();
+	if (JSONRoot.isMember("LogRequestDetails"))
+		pConf->LogRequestDetails = JSONRoot["LogRequestDetails"].asBool();
 
 	// If the certificates dont exist write them out so we have a default set - just for testing??
 	if(!file_exists(pConf->web_crt))
@@ -332,13 +343,22 @@ void LuaWebPort::RegisterRequestHandler(const std::string &urlpattern, const std
 {
 	Log.Debug("Registering a lua web handler {} {} Lua Method {}", urlpattern, method, LuaHandlerName);
 
-	WebSrv->resource[urlpattern][method] = [this, urlpattern, method, LuaHandlerName](std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
+	const bool log_request_details = static_cast<LuaWebPortConf*>(pConf.get())->LogRequestDetails;
+
+	WebSrv->resource[urlpattern][method] = [this, urlpattern, method, LuaHandlerName, log_request_details](std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
 							   {
+								   //Take the source details here, on the web server thread, so they describe
+								   //the request as it arrived - not whenever the strand gets around to running it.
+								   auto remote_endpoint = RemoteEndpointString(request);
+								   if(log_request_details)
+									   Log.Info("{}: Web request {} matched {} {} Lua Method {}", Name,
+										   RequestDetailString(request), method, urlpattern, LuaHandlerName);
+
 								   // pIOS->post([this, urlpattern, method, LuaHandlerName, response, request]()		// Normally we would do this, but seeing we are posting to a strand that should achive the same effect
-								   pLuaSyncStrand->post([this, urlpattern, method, LuaHandlerName, response, request, h{ handler_tracker }]() // The handler_tracker is to manage lifetimes...
+								   pLuaSyncStrand->post([this, urlpattern, method, LuaHandlerName, response, request, remote_endpoint, h{ handler_tracker }]() // The handler_tracker is to manage lifetimes...
 									   {
 
-										   Log.Debug("Calling a lua web handler {} {} Lua Method {}", urlpattern, method, LuaHandlerName);
+										   Log.Debug("Calling a lua web handler {} {} Lua Method {} from {}", urlpattern, method, LuaHandlerName, remote_endpoint);
 
 										   //Get ready to call the lua function
 										   lua_getglobal(LuaState, LuaHandlerName.c_str());
@@ -579,6 +599,9 @@ void LuaWebPort::CallLuaGlobalVoidVoidFunc(const std::string& FnName)
 
 void LuaWebPort::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response, std::shared_ptr<WebServer::Request> request)
 {
+	//Nothing matched, so this is either a misconfigured client or someone probing us - log who it was.
+	Log.Warn("{}: Unhandled web request {}", Name, RequestDetailString(request));
+
 	std::string responsestr("This call has fallen through to the default handler, no action has been taken");
 	//SimpleWeb::CaseInsensitiveMultimap header;
 	//header.emplace("Content-Length", std::to_string(responsestr.length()));
