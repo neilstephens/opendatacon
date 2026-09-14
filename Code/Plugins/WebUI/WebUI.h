@@ -30,6 +30,7 @@
 #include "WebHelpers.h"
 #include <opendatacon/IUI.h>
 #include <opendatacon/TCPSocketManager.h>
+#include <atomic>
 #include <regex>
 #include <shared_mutex>
 #include <queue>
@@ -60,7 +61,8 @@ private:
 	std::string key_pem;
 	std::string web_root;
 	std::string tcp_port;
-	std::unique_ptr<odc::TCPSocketManager> pSockMan;
+	const std::unique_ptr<odc::TCPSocketManager> pSockMan;
+	std::atomic<bool> log_sock_requested{false};
 
 	//TODO: these can be maps with entry per web session
 	//the pairs in the Q hold:
@@ -73,13 +75,15 @@ private:
 	size_t log_q_size;
 	const std::unique_ptr<odc::strand_t, odc::deleter> log_q_sync = pIOS->make_strand();
 
+	//serialises access to the request handling code (and the data members it accesses)
+	const std::unique_ptr<odc::strand_t, odc::deleter> request_sync = pIOS->make_strand();
+
 	/*Param Collection with POST from client side*/
 	ParamCollection params;
 	/* UI response handlers */
 	std::unordered_map<std::string, CmdFunc_t> RootCommands;
 	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb);
 	void HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb);
-	void ConnectToTCPServer();
 	void ReadCompletionHandler(odc::buf_t& readbuf);
 	void ConnectionEvent(bool state);
 
