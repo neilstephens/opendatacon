@@ -182,8 +182,13 @@ jobs:
       name: Set 32-bit env
       run: |
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
-        Invoke-WebRequest -Uri "https://slproweb.com/download/Win32OpenSSL-3_6_3.exe" -OutFile "Win32OpenSSL-3_6_3.exe"
-        Start-Process -FilePath "Win32OpenSSL-3_6_3.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
+        $opensslHashes = (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/slproweb/opensslhashes/master/win32_openssl_hashes.json").Content | ConvertFrom-Json
+        $opensslFile = $opensslHashes.files.PSObject.Properties.Value | Where-Object {
+          $_.basever -match '^3\.' -and $_.bits -eq 32 -and $_.arch -eq 'INTEL' -and $_.installer -eq 'exe' -and -not $_.light
+        } | Sort-Object { [version]$_.basever } -Descending | Select-Object -First 1
+        Write-Host "Latest OpenSSL 3.x (x86):" $opensslFile.basever
+        Invoke-WebRequest -Uri $opensslFile.url -OutFile "openssl-installer-x86.exe"
+        Start-Process -FilePath "openssl-installer-x86.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13.exe" -OutFile "python-installer-x86.exe"
         Start-Process -FilePath "python-installer-x86.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x86" -Wait
         echo "C:\hostedtoolcache\windows\Python\3.9.13\x86" >> $env:GITHUB_PATH
@@ -192,8 +197,13 @@ jobs:
       name: Set 64-bit env
       run: |
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
-        Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-3_6_3.exe" -OutFile "Win64OpenSSL-3_6_3.exe"
-        Start-Process -FilePath "Win64OpenSSL-3_6_3.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
+        $opensslHashes = (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/slproweb/opensslhashes/master/win32_openssl_hashes.json").Content | ConvertFrom-Json
+        $opensslFile = $opensslHashes.files.PSObject.Properties.Value | Where-Object {
+          $_.basever -match '^3\.' -and $_.bits -eq 64 -and $_.arch -eq 'INTEL' -and $_.installer -eq 'exe' -and -not $_.light
+        } | Sort-Object { [version]$_.basever } -Descending | Select-Object -First 1
+        Write-Host "Latest OpenSSL 3.x (x64):" $opensslFile.basever
+        Invoke-WebRequest -Uri $opensslFile.url -OutFile "openssl-installer-x64.exe"
+        Start-Process -FilePath "openssl-installer-x64.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe" -OutFile "python-installer-x64.exe"
         Start-Process -FilePath "python-installer-x64.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x64" -Wait
     
