@@ -34,6 +34,10 @@
 #include <sstream>
 #include <chrono>
 #include <iostream>
+#include <filesystem>
+#include <set>
+#include <algorithm>
+#include <sqlite3.h>
 
 #define SUITE(name) "SimTests - " name
 
@@ -349,6 +353,144 @@ inline int RandomNumber(int s, int e)
 	std::random_device rd;
 	std::uniform_int_distribution<> dt(s, e);
 	return dt(rd);
+}
+
+/*
+  function     : SQLiteTestDBPath
+  description  : this function returns a fresh path (in a temp dir) for a SQLite test DB
+  param        : name, a name unique to the calling test/point
+  return       : std::string, full path to the DB file
+*/
+inline std::string SQLiteTestDBPath(const std::string& name)
+{
+	auto dir = std::filesystem::temp_directory_path() / "odc_simport_tests";
+	std::filesystem::create_directories(dir);
+	return (dir / (name + ".db")).string();
+}
+
+/*
+  function     : CreateSQLitePlaybackDB
+  description  : this function creates (or overwrites) a SQLite DB with an "events" table
+                 (timestamp INTEGER, value REAL, idx INTEGER) used to drive SimPort's
+                 SQLite3 playback feature
+  param        : path, file path for the DB
+  param        : rows, (timestamp_ms, value, idx) tuples to insert
+  return       : void
+*/
+inline void CreateSQLitePlaybackDB(const std::string& path, const std::vector<std::tuple<int64_t, double, int>>& rows)
+{
+	std::filesystem::remove(path);
+
+	sqlite3* db = nullptr;
+	REQUIRE(sqlite3_open(path.c_str(), &db) == SQLITE_OK);
+	REQUIRE(sqlite3_exec(db, "CREATE TABLE events(timestamp INTEGER, value REAL, idx INTEGER)", nullptr, nullptr, nullptr) == SQLITE_OK);
+
+	sqlite3_stmt* stmt = nullptr;
+	REQUIRE(sqlite3_prepare_v2(db, "INSERT INTO events VALUES (?,?,?)", -1, &stmt, nullptr) == SQLITE_OK);
+	for (const auto& [ts, val, idx] : rows)
+	{
+		sqlite3_bind_int64(stmt, 1, ts);
+		sqlite3_bind_double(stmt, 2, val);
+		sqlite3_bind_int(stmt, 3, idx);
+		REQUIRE(sqlite3_step(stmt) == SQLITE_DONE);
+		sqlite3_reset(stmt);
+	}
+	sqlite3_finalize(stmt);
+	sqlite3_close(db);
+}
+
+/*
+  function     : MakeSQLitePoint
+  description  : this function builds the JSON for a single SQLite3-backed point
+  param        : index, point index
+  param        : file, SQLite DB file path
+  param        : query, SQL query (2 columns: timestamp, value)
+  param        : timestamp_handling, one of the SimPort TimestampHandling modes
+  param        : start_val, the point's StartVal (so playback can be distinguished from it)
+  return       : Json::Value, the point config
+*/
+inline Json::Value MakeSQLitePoint(std::size_t index, const std::string& file, const std::string& query,
+	const std::string& timestamp_handling, double start_val = 0.0)
+{
+	Json::Value point(Json::objectValue);
+	point["Index"] = static_cast<Json::UInt64>(index);
+	point["StartVal"] = start_val;
+	point["SQLite3"]["File"] = file;
+	point["SQLite3"]["Query"] = query;
+	point["SQLite3"]["TimestampHandling"] = timestamp_handling;
+	return point;
+}
+
+/*
+  function     : PollPointValues
+  description  : this function samples a point's current value at regular intervals over a
+                 duration, and returns the set of distinct values observed
+  param        : sim_port, the port to sample
+  param        : payload_key, "AnalogPayload" or "BinaryPayload"
+  param        : index, point index
+  param        : duration, how long to sample for
+  param        : interval, delay between samples
+  return       : std::set<double>, the distinct values observed
+*/
+inline std::set<double> PollPointValues(const std::shared_ptr<DataPort>& sim_port, const std::string& payload_key,
+	std::size_t index, std::chrono::milliseconds duration, std::chrono::milliseconds interval = std::chrono::milliseconds(10))
+{
+	std::set<double> seen;
+	auto end = std::chrono::steady_clock::now() + duration;
+	do
+	{
+		seen.insert(std::stod(sim_port->GetCurrentState()[payload_key][std::to_string(index)].asString()));
+		std::this_thread::sleep_for(interval);
+	}
+	while(std::chrono::steady_clock::now() < end);
+	return seen;
+}
+
+/*
+  function     : ContainsAll
+  description  : this function checks every value in 'expected' was observed in 'seen' -
+                 used instead of exact equality since polling can also catch transient
+                 startup values, or miss very short-lived intermediate states
+  param        : seen, the observed set
+  param        : expected, the values that must all be present
+  return       : bool
+*/
+inline bool ContainsAll(const std::set<double>& seen, const std::set<double>& expected)
+{
+	for(auto v : expected)
+		if(seen.find(v) == seen.end())
+			return false;
+	return true;
+}
+
+/*
+  function     : PollPointTransitions
+  description  : this function samples a point's current value at regular intervals, and
+                 returns the de-duplicated sequence of values seen (consecutive repeats
+                 collapsed). Useful for proving wraparound occurred (a value re-appearing
+                 after others were seen), where the last row before a wrap can be too
+                 short-lived for plain snapshot sampling to reliably catch
+  param        : sim_port, the port to sample
+  param        : payload_key, "AnalogPayload" or "BinaryPayload"
+  param        : index, point index
+  param        : duration, how long to sample for
+  param        : interval, delay between samples
+  return       : std::vector<double>, the de-duplicated sequence of values observed
+*/
+inline std::vector<double> PollPointTransitions(const std::shared_ptr<DataPort>& sim_port, const std::string& payload_key,
+	std::size_t index, std::chrono::milliseconds duration, std::chrono::milliseconds interval = std::chrono::milliseconds(10))
+{
+	std::vector<double> transitions;
+	auto end = std::chrono::steady_clock::now() + duration;
+	do
+	{
+		double v = std::stod(sim_port->GetCurrentState()[payload_key][std::to_string(index)].asString());
+		if(transitions.empty() || transitions.back() != v)
+			transitions.push_back(v);
+		std::this_thread::sleep_for(interval);
+	}
+	while(std::chrono::steady_clock::now() < end);
+	return transitions;
 }
 
 /*
@@ -2139,6 +2281,429 @@ TEST_CASE("InvalidIndexForBinaryControl")
 		}
 		sim_port->Disable();
 	}
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests that a SQLite3-backed point with zero rows doesn't crash or hang,
+                 and simply never updates from its StartVal
+  param        : SQLiteDB_EmptyTable, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_EmptyTable")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto db_path = SQLiteTestDBPath("empty");
+		CreateSQLitePlaybackDB(db_path, {});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Analogs"].append(MakeSQLitePoint(500001, db_path, "select timestamp,value from events order by timestamp asc", "RELATIVE_FIRST", 77.0));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+		CHECK(sim_port->Enabled());
+		CHECK(std::stod(sim_port->GetCurrentState()["AnalogPayload"]["500001"].asString()) == 77.0);
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests RELATIVE_FIRST playback wraps around and replays the DB's rows
+  param        : SQLiteDB_RelativeFirstWraparound, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_RelativeFirstWraparound")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto db_path = SQLiteTestDBPath("relative_first_wrap");
+		CreateSQLitePlaybackDB(db_path, {
+			{0,111.0,0}, {150,222.0,0}, {300,333.0,0}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Analogs"].append(MakeSQLitePoint(500002, db_path, "select timestamp,value from events order by timestamp asc", "RELATIVE_FIRST"));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+
+		//row1 re-appearing after later rows proves at least one wraparound cycle completed.
+		//(the last row before a wrap is re-anchored to "now" with ~zero dwell time, so it's
+		//not reliably caught by plain snapshot sampling - hence checking transitions/repeats
+		//of the earlier, reliably-observable rows instead of every single value)
+		auto transitions = PollPointTransitions(sim_port, "AnalogPayload", 500002, std::chrono::milliseconds(900));
+		CHECK(sim_port->Enabled());
+		CHECK(std::count(transitions.begin(), transitions.end(), 111.0) >= 2);
+		CHECK(std::count(transitions.begin(), transitions.end(), 222.0) >= 1);
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests RELATIVE_TOD playback maps a recorded time-of-day pattern onto today
+                 and wraps around, without FASTFORWARD
+  param        : SQLiteDB_RelativeTOD, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_RelativeTOD")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		//rows at 00:00:01, 00:00:02, 00:00:03 UTC on an arbitrary past date - only the
+		//time-of-day component matters, the date gets re-mapped onto today
+		auto db_path = SQLiteTestDBPath("relative_tod");
+		CreateSQLitePlaybackDB(db_path, {
+			{1577836801000,1.0,0}, {1577836802000,2.0,0}, {1577836803000,3.0,0}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Analogs"].append(MakeSQLitePoint(500003, db_path, "select timestamp,value from events order by timestamp asc", "RELATIVE_TOD"));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+
+		//without FASTFORWARD, all 3 (already past for today) rows fire back-to-back
+		//essentially instantly, then wrap and repeat - poll densely to catch all 3
+		auto seen = PollPointValues(sim_port, "AnalogPayload", 500003, std::chrono::milliseconds(300), std::chrono::milliseconds(1));
+		CHECK(sim_port->Enabled());
+		CHECK(ContainsAll(seen, {1.0, 2.0, 3.0}));
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : regression test - RELATIVE_TOD_FASTFORWARD where every row is already in the
+                 past for today must roll forward exactly one day and land on a future
+                 occurrence, rather than recursing/hanging trying to find a non-past row
+  param        : SQLiteDB_RelativeTODFastForwardAllPast, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_RelativeTODFastForwardAllPast")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		//rows at 00:00:01, 00:00:02, 00:00:03 UTC - these will always be "in the past"
+		//relative to "now" (except in the first few seconds after UTC midnight)
+		auto db_path = SQLiteTestDBPath("relative_tod_ff_all_past");
+		CreateSQLitePlaybackDB(db_path, {
+			{1577836801000,1.0,0}, {1577836802000,2.0,0}, {1577836803000,3.0,0}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Analogs"].append(MakeSQLitePoint(500004, db_path, "select timestamp,value from events order by timestamp asc", "RELATIVE_TOD_FASTFORWARD", 77.0));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+
+		//the found event is ~24h in the future, so no crash/hang is the main thing being
+		//verified here - the value should stay at its StartVal for the life of this test
+		auto seen = PollPointValues(sim_port, "AnalogPayload", 500004, std::chrono::milliseconds(300));
+		CHECK(sim_port->Enabled());
+		CHECK(seen == std::set<double>{77.0});
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests ABSOLUTE playback fires rows at their literal timestamps, in order,
+                 and then stops (no wraparound) once the table is exhausted
+  param        : SQLiteDB_Absolute, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_Absolute")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto now = msSinceEpoch();
+		auto db_path = SQLiteTestDBPath("absolute");
+		CreateSQLitePlaybackDB(db_path, {
+			{static_cast<int64_t>(now)+50, 1.0, 0},
+			{static_cast<int64_t>(now)+150, 2.0, 0},
+			{static_cast<int64_t>(now)+250, 3.0, 0}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Analogs"].append(MakeSQLitePoint(500005, db_path, "select timestamp,value from events order by timestamp asc", "ABSOLUTE"));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+
+		//wait for all 3 rows to fire, then confirm it settles on the last one and stays there
+		std::this_thread::sleep_for(std::chrono::milliseconds(400));
+		CHECK(std::stod(sim_port->GetCurrentState()["AnalogPayload"]["500005"].asString()) == 3.0);
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		CHECK(std::stod(sim_port->GetCurrentState()["AnalogPayload"]["500005"].asString()) == 3.0);
+		CHECK(sim_port->Enabled());
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests ABSOLUTE_FASTFORWARD skips rows whose timestamps have already passed
+                 and lands directly on the next future row
+  param        : SQLiteDB_AbsoluteFastForward, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_AbsoluteFastForward")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto now = msSinceEpoch();
+		auto db_path = SQLiteTestDBPath("absolute_ff");
+		CreateSQLitePlaybackDB(db_path, {
+			{static_cast<int64_t>(now)-2000, 1.0, 0},
+			{static_cast<int64_t>(now)-1000, 2.0, 0},
+			{static_cast<int64_t>(now)+150, 3.0, 0}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Analogs"].append(MakeSQLitePoint(500006, db_path, "select timestamp,value from events order by timestamp asc", "ABSOLUTE_FASTFORWARD", 0.0));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+
+		//the two past rows (1.0, 2.0) must never be observed - only the StartVal (0.0)
+		//until the future row (3.0) fires
+		auto seen = PollPointValues(sim_port, "AnalogPayload", 500006, std::chrono::milliseconds(400));
+		CHECK(sim_port->Enabled());
+		CHECK(ContainsAll(seen, {3.0}));
+		CHECK_FALSE(ContainsAll(seen, {1.0}));
+		CHECK_FALSE(ContainsAll(seen, {2.0}));
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests SQLite3 playback of a Binary point (int column mapped to bool)
+  param        : SQLiteDB_BinaryType, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_BinaryType")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto db_path = SQLiteTestDBPath("binary_first_wrap");
+		CreateSQLitePlaybackDB(db_path, {
+			{0,1,0}, {150,0,0}, {300,1,0}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Binaries"].append(MakeSQLitePoint(500007, db_path, "select timestamp,value from events order by timestamp asc", "RELATIVE_FIRST"));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+
+		auto seen = PollPointValues(sim_port, "BinaryPayload", 500007, std::chrono::milliseconds(900));
+		CHECK(sim_port->Enabled());
+		CHECK(ContainsAll(seen, {0.0, 1.0}));
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests two points sharing one SQLite3 DB/query, filtered by the bound
+                 :INDEX parameter, each only ever seeing its own rows
+  param        : SQLiteDB_IndexBinding, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_IndexBinding")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		auto db_path = SQLiteTestDBPath("index_binding");
+		CreateSQLitePlaybackDB(db_path, {
+			{0,10.0,500008}, {150,11.0,500008}, {300,12.0,500008},
+			{0,100.0,500009}, {150,101.0,500009}, {300,102.0,500009}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		conf["Analogs"].append(MakeSQLitePoint(500008, db_path, "select timestamp,value from events where idx=:INDEX order by timestamp asc", "RELATIVE_FIRST"));
+		conf["Analogs"].append(MakeSQLitePoint(500009, db_path, "select timestamp,value from events where idx=:INDEX order by timestamp asc", "RELATIVE_FIRST"));
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		while(!sim_port->Enabled())
+			;
+
+		//row1 of each point (10.0/100.0) re-appearing more than once proves each point wraps
+		//independently, without cross-contaminating the other point's bound query results
+		auto transitions_1 = PollPointTransitions(sim_port, "AnalogPayload", 500008, std::chrono::milliseconds(900));
+		auto transitions_2 = PollPointTransitions(sim_port, "AnalogPayload", 500009, std::chrono::milliseconds(900));
+		std::set<double> seen_1(transitions_1.begin(), transitions_1.end());
+		std::set<double> seen_2(transitions_2.begin(), transitions_2.end());
+
+		CHECK(sim_port->Enabled());
+		CHECK(std::count(transitions_1.begin(), transitions_1.end(), 10.0) >= 2);
+		CHECK(std::count(transitions_1.begin(), transitions_1.end(), 11.0) >= 1);
+		CHECK(std::count(transitions_2.begin(), transitions_2.end(), 100.0) >= 2);
+		CHECK(std::count(transitions_2.begin(), transitions_2.end(), 101.0) >= 1);
+		//confirm no cross-contamination between the two bound queries
+		CHECK_FALSE(ContainsAll(seen_1, {100.0}));
+		CHECK_FALSE(ContainsAll(seen_1, {101.0}));
+		CHECK_FALSE(ContainsAll(seen_2, {10.0}));
+		CHECK_FALSE(ContainsAll(seen_2, {11.0}));
+
+		sim_port->Disable();
+	}
+
 	UnLoadModule(port_lib);
 	TestTearDown();
 }

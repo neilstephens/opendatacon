@@ -393,6 +393,7 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string&
 		else if (sqlite3_column_count(stmt) != 2)
 		{
 			Log.Error("SQLite3Query doesn't return 2 columns (for use as timestamp and value) '{}'", query);
+			sqlite3_finalize(stmt);
 		}
 		else
 		{
@@ -434,6 +435,7 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string&
 				m_db_ts_handling[type+std::to_string(index)] = m_ParseTimestampHandling(sqlite["TimestampHandling"].asString());
 		}
 	}
+	sqlite3_close_v2(db);
 }
 
 void SimPortConf::m_ProcessFeedbackBinaries(const Json::Value& feedback_binaries, std::size_t index,

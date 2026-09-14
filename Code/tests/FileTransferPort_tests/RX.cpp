@@ -247,3 +247,44 @@ TEST_CASE(SUITE("Sequence Reordering"))
 	TestTearDown();
 	UnLoadModule(portlib);
 }
+
+// RX port configured with no Filename.Event.Index - Build() must throw
+static const char* rx_conf_no_filename_event = R"001(
+{
+	"Direction": "RX",
+	"Directory": "./RX",
+	"Filename": {
+		"Template": "<DATE>_capture.bin",
+		"Date": {"Format": "%Y%m%d_%H%M%S", "Token": "<DATE>"}
+	},
+	"OverwriteMode": "APPEND",
+	"SequenceIndexRange": {"Start": 0, "Stop": 4095},
+	"UseCRCs": true,
+	"TransferTimeoutms": 5000
+})001";
+
+TEST_CASE(SUITE("ThrowsOnMissingFilenameEventIndex"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("FileTransferPort"));
+	REQUIRE(portlib);
+	{
+		newptr newPort = GetPortCreator(portlib, "FileTransfer");
+		REQUIRE(newPort);
+		delptr deletePort = GetPortDestroyer(portlib, "FileTransfer");
+		REQUIRE(deletePort);
+
+		std::istringstream iss(rx_conf_no_filename_event);
+		Json::CharReaderBuilder JSONReader;
+		Json::Value json_conf;
+		std::string err_str;
+		bool parse_success = Json::parseFromStream(JSONReader, iss, &json_conf, &err_str);
+		REQUIRE(parse_success);
+
+		std::shared_ptr<DataPort> PUT(newPort("PortUnderTest", "", json_conf), deletePort);
+
+		CHECK_THROWS_AS(PUT->Build(), std::invalid_argument);
+	}
+	TestTearDown();
+	UnLoadModule(portlib);
+}

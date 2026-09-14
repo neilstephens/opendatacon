@@ -35,7 +35,13 @@ WebUI::WebUI(uint16_t pPort, const std::string& web_root, const std::string& web
 	port(pPort),
 	web_root(web_root),
 	tcp_port(tcp_port),
-	pSockMan(nullptr),
+	pSockMan(std::make_unique<odc::TCPSocketManager>
+		/* Client connection to localhost on the port we set up for log sinking */
+			(pIOS, false, "localhost", tcp_port,
+			[this](odc::buf_t& readbuf){ReadCompletionHandler(readbuf);},
+			[this](bool state){ConnectionEvent(state);},
+			1000,
+			true)),
 	filter_is_regex(false),
 	pLogRegex(nullptr),
 	log_q_size(log_q_size)
@@ -160,7 +166,7 @@ void WebUI::Build()
 	auto request_handler = [this](std::shared_ptr<WebServer::Response> response,
 	                              std::shared_ptr<WebServer::Request> request)
 				     {
-					     pIOS->post([this,response,request](){DefaultRequestHandler(response,request);});
+					     request_sync->post([this,response,request](){DefaultRequestHandler(response,request);});
 				     };
 
 	//TODO: we could use non-default resources to regex match the URL
@@ -188,15 +194,13 @@ void WebUI::Enable()
 	//detaching not so bad for the moment
 	server_thread.detach();
 
-	if(pSockMan)
+	if(log_sock_requested)
 		pSockMan->Open();
 }
 
 void WebUI::Disable()
 {
-	if(pSockMan)
-		pSockMan->Close();
-
+	pSockMan->Close();
 	WebSrv.stop();
 }
 
@@ -211,8 +215,8 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 	{
 		if (command == "tcp_logs_on")
 		{
-			if(!pSockMan)
-				ConnectToTCPServer();
+			log_sock_requested = true;
+			pSockMan->Open(); //nop if already open
 
 			log_q_sync->post([=, this]()
 				{
@@ -274,20 +278,6 @@ void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& co
 			}
 	}
 	result_cb(std::move(results));
-}
-
-void WebUI::ConnectToTCPServer()
-{
-	//Use the ODC TCP manager
-	// Client connection to localhost on the port we set up for log sinking
-	// Automatically retry to connect on error
-	pSockMan = std::make_unique<odc::TCPSocketManager>
-		           (pIOS, false, "localhost", tcp_port,
-		           [this](odc::buf_t& readbuf){ReadCompletionHandler(readbuf);},
-		           [this](bool state){ConnectionEvent(state);},
-		           1000,
-		           true);
-	pSockMan->Open(); //Auto re-open is enabled, so it's set and forget
 }
 
 void WebUI::ReadCompletionHandler(odc::buf_t& readbuf)

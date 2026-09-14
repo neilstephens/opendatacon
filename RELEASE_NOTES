@@ -1,6 +1,6 @@
-# opendatacon version 1.11.0-RC1
+# opendatacon version 1.11.0
 
-## 1.11.0-RC1
+## 1.11.0
   * New C API — implement custom Ports, Transforms, and UI plugins in C, or any language that can impement C bindings
     * A Go-based Modbus port (GoModbusPort) is included as a working example
   * New port library: **GoModbusPort** — Modbus over TCP or RTU in both client and server roles
@@ -20,6 +20,7 @@
   * New `EverythingInOne` example config combining all major port types in one file
   * Stability fixes for LuaPort/LuaTransform and PyPort shutdown
   * Python standard library packaged correctly on Windows
+  * SimPort SQLite playback bugfixes
 
 ## 1.10.4
   * LuaPort new process spawning API
