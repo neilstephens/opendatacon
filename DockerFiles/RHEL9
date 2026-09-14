@@ -26,6 +26,8 @@ RUN rpm -i libcxx-static-17.0.6-1.el9.x86_64.rpm
 
 RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
 ARG BUILD_COMMIT=develop
+# pull_request builds pass the ephemeral merge commit, which a plain clone doesn't fetch
+RUN git -C opendatacon fetch origin "+refs/pull/*:refs/pull/*"
 RUN git -C opendatacon checkout $BUILD_COMMIT
 RUN git -C opendatacon submodule update --recursive
 

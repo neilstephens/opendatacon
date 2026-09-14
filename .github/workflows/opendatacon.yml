@@ -182,8 +182,23 @@ jobs:
       name: Set 32-bit env
       run: |
         echo 'BITPLAT=x86' >> $env:GITHUB_ENV
-        Invoke-WebRequest -Uri "https://slproweb.com/download/Win32OpenSSL-3_6_3.exe" -OutFile "Win32OpenSSL-3_6_3.exe"
-        Start-Process -FilePath "Win32OpenSSL-3_6_3.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
+        # slproweb only hosts the current patch release of each series, so don't pin one
+        $ProgressPreference = 'SilentlyContinue'
+        $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+        $html = [string](Invoke-WebRequest -Uri "https://slproweb.com/products/Win32OpenSSL.html" -UseBasicParsing -UserAgent $ua).Content
+        $installer = [regex]::Matches($html,'Win32OpenSSL-3_\d+_\d+\.exe') |
+          ForEach-Object { $_.Value } |
+          Sort-Object -Unique { [version](($_ -replace '^Win32OpenSSL-','' -replace '\.exe$','') -replace '_','.') } |
+          Select-Object -Last 1
+        if (-not $installer) {
+          Write-Host "No OpenSSL 3.x installer found. Page was $($html.Length) chars, starting:"
+          Write-Host $html.Substring(0,[Math]::Min(500,$html.Length))
+          $installer = 'Win32OpenSSL-3_6_4.exe'
+          Write-Host "Falling back to $installer"
+        }
+        echo "Using $installer"
+        Invoke-WebRequest -Uri "https://slproweb.com/download/$installer" -OutFile "Win32OpenSSL.exe" -UserAgent $ua
+        Start-Process -FilePath "Win32OpenSSL.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13.exe" -OutFile "python-installer-x86.exe"
         Start-Process -FilePath "python-installer-x86.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x86" -Wait
         echo "C:\hostedtoolcache\windows\Python\3.9.13\x86" >> $env:GITHUB_PATH
@@ -192,8 +207,23 @@ jobs:
       name: Set 64-bit env
       run: |
         echo 'BITPLAT=x64' >> $env:GITHUB_ENV
-        Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-3_6_3.exe" -OutFile "Win64OpenSSL-3_6_3.exe"
-        Start-Process -FilePath "Win64OpenSSL-3_6_3.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
+        # slproweb only hosts the current patch release of each series, so don't pin one
+        $ProgressPreference = 'SilentlyContinue'
+        $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+        $html = [string](Invoke-WebRequest -Uri "https://slproweb.com/products/Win32OpenSSL.html" -UseBasicParsing -UserAgent $ua).Content
+        $installer = [regex]::Matches($html,'Win64OpenSSL-3_\d+_\d+\.exe') |
+          ForEach-Object { $_.Value } |
+          Sort-Object -Unique { [version](($_ -replace '^Win64OpenSSL-','' -replace '\.exe$','') -replace '_','.') } |
+          Select-Object -Last 1
+        if (-not $installer) {
+          Write-Host "No OpenSSL 3.x installer found. Page was $($html.Length) chars, starting:"
+          Write-Host $html.Substring(0,[Math]::Min(500,$html.Length))
+          $installer = 'Win64OpenSSL-3_6_4.exe'
+          Write-Host "Falling back to $installer"
+        }
+        echo "Using $installer"
+        Invoke-WebRequest -Uri "https://slproweb.com/download/$installer" -OutFile "Win64OpenSSL.exe" -UserAgent $ua
+        Start-Process -FilePath "Win64OpenSSL.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe" -OutFile "python-installer-x64.exe"
         Start-Process -FilePath "python-installer-x64.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x64" -Wait
     
