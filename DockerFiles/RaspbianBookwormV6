@@ -21,6 +21,10 @@ RUN update-alternatives --set cc /usr/bin/clang
 
 RUN git clone --recurse-submodules https://github.com/neilstephens/opendatacon.git
 ARG BUILD_COMMIT=develop
+
+# fetch PR refs
+RUN git -C opendatacon fetch origin "+refs/pull/*:refs/pull/*"
+
 RUN git -C opendatacon checkout $BUILD_COMMIT
 RUN git -C opendatacon submodule update --recursive
 
