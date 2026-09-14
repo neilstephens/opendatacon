@@ -36,6 +36,8 @@ public:
 	uint16_t port = 443;
 	std::string web_crt = "server.crt";
 	std::string web_key = "server.key";
+	//log a full summary (source address, request line and selected headers) of every request
+	bool LogRequestDetails = false;
 };
 
 #endif /* LuaWebPortConf_H_ */
