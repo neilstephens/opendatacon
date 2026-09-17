@@ -52,7 +52,7 @@ void WebUI::AddCommand(const std::string& name, CmdFunc_t callback, const std::s
 	RootCommands[name] = callback;
 }
 
-void WebUI::LoadRequestParams(std::shared_ptr<WebServer::Request> request)
+void WebUI::LoadRequestParams(std::shared_ptr<WebServer::Request> request, ParamCollection& params)
 {
 	params.clear();
 	if(request->method == "POST" && request->content.size() > 0)
@@ -100,12 +100,13 @@ void WebUI::LoadRequestParams(std::shared_ptr<WebServer::Request> request)
 void WebUI::DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
 	std::shared_ptr<WebServer::Request> request)
 {
-	LoadRequestParams(request);
-
 	auto raw_path = SimpleWeb::Percent::decode(request->path);
 	if (IsCommand(raw_path))
 	{
-		HandleCommand(raw_path,[response](const Json::Value&& json_resp)
+		ParamCollection params;
+		LoadRequestParams(request, params);
+
+		HandleCommand(raw_path, params, [response](const Json::Value&& json_resp)
 			{
 				SimpleWeb::CaseInsensitiveMultimap header;
 				header.emplace("Content-Type", "application/json");
@@ -166,7 +167,7 @@ void WebUI::Build()
 	auto request_handler = [this](std::shared_ptr<WebServer::Response> response,
 	                              std::shared_ptr<WebServer::Request> request)
 				     {
-					     request_sync->post([this,response,request](){DefaultRequestHandler(response,request);});
+					     pIOS->post([this,response,request](){DefaultRequestHandler(response,request);});
 				     };
 
 	//TODO: we could use non-default resources to regex match the URL
@@ -176,7 +177,8 @@ void WebUI::Build()
 	WebSrv.default_resource["POST"] = request_handler;
 
 	const std::string url = "/RootCommand add_logsink tcp_web_ui info TCP localhost " + tcp_port + " SERVER";
-	HandleCommand(url,[](const Json::Value&&){});
+	ParamCollection unused_params;
+	HandleCommand(url,unused_params,[](const Json::Value&&){});
 }
 
 void WebUI::Enable()
@@ -204,7 +206,7 @@ void WebUI::Disable()
 	WebSrv.stop();
 }
 
-void WebUI::HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb)
+void WebUI::HandleCommand(const std::string& url, ParamCollection& params, std::function<void (const Json::Value&&)> result_cb)
 {
 	std::stringstream iss;
 	std::string responder;
@@ -253,7 +255,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 	}
 	else if(Responders.find(responder) != Responders.end())
 	{
-		ExecuteCommand(Responders[responder], command, iss, result_cb);
+		ExecuteCommand(Responders[responder], command, iss, params, result_cb);
 	}
 	else
 	{
@@ -263,7 +265,7 @@ void WebUI::HandleCommand(const std::string& url, std::function<void (const Json
 	}
 }
 
-void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb)
+void WebUI::ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, ParamCollection& params, std::function<void (const Json::Value&&)> result_cb)
 {
 	auto results = IUI::ExecuteCommand(pResponder,command,args,&params);
 

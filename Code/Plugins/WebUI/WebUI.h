@@ -50,7 +50,7 @@ public:
 	void Disable() override;
 
 private:
-	void LoadRequestParams(std::shared_ptr<WebServer::Request> request);
+	void LoadRequestParams(std::shared_ptr<WebServer::Request> request, ParamCollection& params);
 	void DefaultRequestHandler(std::shared_ptr<WebServer::Response> response,
 		std::shared_ptr<WebServer::Request> request);
 	void ReturnFile(std::shared_ptr<WebServer::Response> response,
@@ -75,15 +75,10 @@ private:
 	size_t log_q_size;
 	const std::unique_ptr<odc::strand_t, odc::deleter> log_q_sync = pIOS->make_strand();
 
-	//serialises access to the request handling code (and the data members it accesses)
-	const std::unique_ptr<odc::strand_t, odc::deleter> request_sync = pIOS->make_strand();
-
-	/*Param Collection with POST from client side*/
-	ParamCollection params;
 	/* UI response handlers */
 	std::unordered_map<std::string, CmdFunc_t> RootCommands;
-	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, std::function<void (const Json::Value&&)> result_cb);
-	void HandleCommand(const std::string& url, std::function<void (const Json::Value&&)> result_cb);
+	void ExecuteCommand(const IUIResponder* pResponder, const std::string& command, std::stringstream& args, ParamCollection& params, std::function<void (const Json::Value&&)> result_cb);
+	void HandleCommand(const std::string& url, ParamCollection& params, std::function<void (const Json::Value&&)> result_cb);
 	void ReadCompletionHandler(odc::buf_t& readbuf);
 	void ConnectionEvent(bool state);
 
