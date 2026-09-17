@@ -28,6 +28,8 @@
 #include <opendatacon/MergeJsonConf.h>
 #include <catch.hpp>
 #include <string>
+#include <sstream>
+#include <vector>
 #include <fstream>
 #include <chrono>
 #include <filesystem>
@@ -203,8 +205,126 @@ TEST_CASE(SUITE("MergeJsonConf"))
 	CHECK(merged_json == expected_json);
 }
 
+TEST_CASE(SUITE("extract_delimited_string(istream&,string&) - single delimiter char"))
+{
+	{
+		std::stringstream ss("\"hello world\" trailing");
+		std::string extracted;
+		CHECK(extract_delimited_string(ss,extracted));
+		CHECK(extracted == "hello world");
+		std::string rest;
+		ss >> rest;
+		CHECK(rest == "trailing");
+	}
+	{
+		//any repeated character can act as a delimiter pair, not just quote marks
+		std::stringstream ss("XhelloX");
+		std::string extracted;
+		CHECK(extract_delimited_string(ss,extracted));
+		CHECK(extracted == "hello");
+	}
+	{
+		//no closing delimiter - should fail and leave the stream position unchanged
+		std::stringstream ss("\"unterminated");
+		std::string extracted;
+		const auto pos_before = ss.tellg();
+		CHECK_FALSE(extract_delimited_string(ss,extracted));
+		CHECK(ss.tellg() == pos_before);
+	}
+	{
+		//genuinely empty/exhausted stream
+		std::stringstream ss("");
+		std::string extracted;
+		CHECK_FALSE(extract_delimited_string(ss,extracted));
+	}
+}
 
+TEST_CASE(SUITE("extract_delimited_string(delims,istream&,string&) - words and quoted strings"))
+{
+	{
+		//plain unquoted word
+		std::stringstream ss("foo");
+		std::string extracted;
+		CHECK(extract_delimited_string("\"'`",ss,extracted));
+		CHECK(extracted == "foo");
+	}
+	{
+		//sequence of unquoted words
+		std::stringstream ss("foo bar baz");
+		std::vector<std::string> results;
+		std::string val;
+		while(extract_delimited_string("\"'`",ss,val))
+		{
+			results.push_back(val);
+			REQUIRE(results.size() <= 10); //guard against a regression looping forever
+		}
+		REQUIRE(results.size() == 3);
+		CHECK(results[0] == "foo");
+		CHECK(results[1] == "bar");
+		CHECK(results[2] == "baz");
+	}
+	{
+		//each supported quote-style delimiter
+		std::stringstream ss(R"("double quoted" 'single quoted' `backtick quoted`)");
+		std::vector<std::string> results;
+		std::string val;
+		while(extract_delimited_string("\"'`",ss,val))
+		{
+			results.push_back(val);
+			REQUIRE(results.size() <= 10);
+		}
+		REQUIRE(results.size() == 3);
+		CHECK(results[0] == "double quoted");
+		CHECK(results[1] == "single quoted");
+		CHECK(results[2] == "backtick quoted");
+	}
+	{
+		//mixed quoted and unquoted tokens, as used for WebUI/ConsoleUI command args
+		std::stringstream ss("'abc' def \"ghi jkl\"");
+		std::vector<std::string> results;
+		std::string val;
+		while(extract_delimited_string("\"'`",ss,val))
+		{
+			results.push_back(val);
+			REQUIRE(results.size() <= 10);
+		}
+		REQUIRE(results.size() == 3);
+		CHECK(results[0] == "abc");
+		CHECK(results[1] == "def");
+		CHECK(results[2] == "ghi jkl");
+	}
+	{
+		//genuinely empty/exhausted stream
+		std::stringstream ss("");
+		std::string val;
+		CHECK_FALSE(extract_delimited_string("\"'`",ss,val));
+	}
+	{
+		//once exhausted, repeated calls must keep returning false forever -
+		//never get stuck returning true with an empty string
+		std::stringstream ss("onlyword");
+		std::string val;
+		CHECK(extract_delimited_string("\"'`",ss,val));
+		CHECK(val == "onlyword");
+		for(int i = 0; i < 5; ++i)
+			CHECK_FALSE(extract_delimited_string("\"'`",ss,val));
+	}
+}
 
+TEST_CASE(SUITE("extract_delimited_string - fail-but-not-eof"))
+{
+	std::stringstream empty_src("");
+	std::stringstream args;
+	args << empty_src.rdbuf();
+
+	//Confirm the precondition this test is actually exercising: failbit set, eofbit NOT set.
+	REQUIRE(args.fail());
+	REQUIRE_FALSE(args.eof());
+
+	std::string val;
+	CHECK_FALSE(extract_delimited_string("\"'`",args,val));
+	CHECK(val.empty());
+}
 
 
 
