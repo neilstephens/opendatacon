@@ -28,12 +28,10 @@
 #define DATACONCENTRATOR_H_
 #include "DataConnector.h"
 #include "DataConnectorCollection.h"
-#include "DataConnector.h"
 #include <opendatacon/DataPort.h>
 #include <opendatacon/DataPortCollection.h>
 #include <opendatacon/InterfaceCollection.h>
 #include <opendatacon/Platform.h>
-#include <opendatacon/DataPort.h>
 #include <opendatacon/ConfigParser.h>
 #include <opendatacon/TCPstringbuf.h>
 #include <opendatacon/spdlog.h>

@@ -23,6 +23,7 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC CAPI ${DL})
+odc_apply_common_pch(${PROJECT_NAME})
 add_dependencies(${PROJECT_NAME} GoModbusPort_lib)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})

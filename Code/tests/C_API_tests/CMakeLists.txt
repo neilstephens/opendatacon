@@ -24,6 +24,10 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.c *.h)
 
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} ODC CAPI ${DL})
+odc_apply_common_pch(${PROJECT_NAME})
+
+# PCH is C++-only
+set_source_files_properties(mock_c_port.c mock_c_transform.c mock_c_ui.c PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
 # Export symbols so GetCurrentModule() + LoadSymbol can find mock C API functions
 set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS ON)

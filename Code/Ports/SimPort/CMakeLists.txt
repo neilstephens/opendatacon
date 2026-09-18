@@ -21,6 +21,10 @@ project(SimPort)
 
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def sqlite3/sqlite3.c sqlite3/sqlite3.h)
 add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
+
+# PCH is C++-only
+set_source_files_properties(sqlite3/sqlite3.c PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE SQLITE_OMIT_SHARED_CACHE)
 target_link_libraries(${PROJECT_NAME} HTTP ${DL})
 

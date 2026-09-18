@@ -24,7 +24,7 @@ add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 
 add_library(LuaTestPlugin MODULE Plugin.cpp Plugin.def)
 target_link_libraries(LuaTestPlugin LuaWrappers)
-_apply_guard(LuaTestPlugin)
+_apply_guard(LuaTestPlugin NO_PCH)
 install(TARGETS LuaTestPlugin LIBRARY DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(LuaTestPlugin PROPERTIES FOLDER tests)
 
@@ -36,7 +36,7 @@ else()
 endif()
 
 add_library(TestLuaModule MODULE LuaModule.cpp LuaModule.def)
-_apply_guard(TestLuaModule)
+_apply_guard(TestLuaModule NO_PCH)
 install(TARGETS TestLuaModule LIBRARY DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(TestLuaModule PROPERTIES FOLDER tests)
 target_include_directories(TestLuaModule PRIVATE ${LUA_INCLUDES})

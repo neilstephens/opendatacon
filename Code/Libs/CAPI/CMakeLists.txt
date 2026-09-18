@@ -22,6 +22,7 @@ project(CAPI LANGUAGES CXX)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp include/CAPI/*.h)
 
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
+odc_apply_common_pch(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_link_libraries(${PROJECT_NAME} ODC)

@@ -23,6 +23,9 @@
  *  Created on: 2018-06-19
  *      Author: Neil Stephens <dearknarl@gmail.com>
  */
+#ifndef TCPSTRINGBUF_H
+#define TCPSTRINGBUF_H
+
 #include "TCPSocketManager.h"
 #include <sstream>
 
@@ -69,3 +72,5 @@ private:
 };
 
 } //namespace odc
+
+#endif // TCPSTRINGBUF_H

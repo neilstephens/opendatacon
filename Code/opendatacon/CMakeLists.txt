@@ -46,6 +46,7 @@ else()
 endif()
 
 add_executable(${PROJECT_NAME} ${SRC_LIST} ${DAEMON_SRC_LIST} $<TARGET_OBJECTS:VersionStrings>)
+odc_apply_common_pch(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PRIVATE "${TCLAP_HOME}/include")
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/Code/Libs/CAPI/include")
 target_link_libraries(${PROJECT_NAME} ODC CAPI ${DL})

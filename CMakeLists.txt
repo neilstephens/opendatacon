@@ -45,6 +45,22 @@ set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++20 instead of -std=gnu++20
 # to keep the bundled fmt working until spdlog is upgraded to use fmt 11+.
 add_compile_definitions(FMT_CONSTEVAL=)
 
+# Optional compiler launcher (ccache/sccache). No-op when not installed.
+option(USE_COMPILER_LAUNCHER "Use ccache/sccache as compiler launcher if found" ON)
+if(USE_COMPILER_LAUNCHER)
+	find_program(_odc_compiler_launcher NAMES ccache sccache)
+	if(_odc_compiler_launcher)
+		set(CMAKE_CXX_COMPILER_LAUNCHER "${_odc_compiler_launcher}")
+		set(CMAKE_C_COMPILER_LAUNCHER "${_odc_compiler_launcher}")
+		message(STATUS "Using compiler launcher: ${_odc_compiler_launcher}")
+	else()
+		message(STATUS "No ccache/sccache found - building without compiler launcher")
+	endif()
+endif()
+
+# Precompiled header helpers
+include(Code/cmake/pch.cmake)
+
 #macro for resolving chain of symlinks into a list
 include(Code/cmake/file_w_symlinks.cmake)
 
@@ -361,6 +377,10 @@ function(_apply_guard target)
     $<$<CXX_COMPILER_ID:MSVC>:/FI${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-include ${CMAKE_SOURCE_DIR}/include/opendatacon/asio_direct_include_guard.h>
   )
+  # Optional NO_PCH second argument
+  if(NOT ARGV1 STREQUAL "NO_PCH")
+    odc_apply_common_pch(${target})
+  endif()
 endfunction()
 
 function(add_port_library name)

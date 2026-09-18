@@ -24,5 +24,9 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ../Thr
 set(SIMPORT_SQLITE3_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../Ports/SimPort/sqlite3)
 
 add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} ${SIMPORT_SQLITE3_DIR}/sqlite3.c)
+
+# PCH is C++-only
+set_source_files_properties(${SIMPORT_SQLITE3_DIR}/sqlite3.c PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+
 target_include_directories(${PROJECT_NAME} PRIVATE ${SIMPORT_SQLITE3_DIR})
 target_compile_definitions(${PROJECT_NAME} PRIVATE SQLITE_OMIT_SHARED_CACHE)
