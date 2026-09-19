@@ -273,7 +273,7 @@ jobs:
     - name: Install-tree smoke test
       # check *installed* binaries load with all shared libs resolving.
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
-      run: ${{github.workspace}}/build/install/${{env.BINDIR}}Integration_tests --list-tests
+      run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests debug -d yes "*ConstructEnableDisableDestroy"
       
     - name: Upload Installer
       uses: actions/upload-artifact@v4
