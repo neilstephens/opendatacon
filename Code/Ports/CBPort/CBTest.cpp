@@ -41,6 +41,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <chrono>
 #include <fstream>
@@ -252,6 +253,23 @@ void WaitIOS(odc::asio_service &IOS, int seconds)
 	auto timer = IOS.make_steady_timer();
 	timer->expires_from_now(std::chrono::seconds(seconds));
 	timer->wait();
+}
+template<typename Pred>
+bool WaitForCond(odc::asio_service &IOS, Pred&& pred, const int timeout_ms = 5000)
+{
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+	while(!pred())
+	{
+		const auto now = std::chrono::steady_clock::now();
+		if(now >= deadline)
+			return false;
+		auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
+		auto slice = std::min(remaining, std::chrono::milliseconds(50));
+		auto timer = IOS.make_steady_timer();
+		timer->expires_from_now(slice);
+		timer->wait();
+	}
+	return true;
 }
 
 
@@ -1629,14 +1647,15 @@ TEST_CASE("Master - Scan Request F0")
 
 	// Hook the output function with a lambda
 	std::string Response = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&Response](std::string CBMessage) { Response = std::move(CBMessage); });
+	std::atomic_bool cmd_dumped_flag(false);
+	CBMAPort->SetSendTCPDataFn([&Response, &cmd_dumped_flag](std::string CBMessage) { Response = std::move(CBMessage); cmd_dumped_flag = true; });
 
 	// Now send a request analog unconditional command - asio does not need to run to see this processed, in this test set up
 	// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
 	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
 	CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
 
-	WaitIOS(*IOS, 1);
+	REQUIRE(WaitForCond(*IOS, [&]{ return cmd_dumped_flag.load(); }));
 
 	// We check the command, but it does not go anywhere, we inject the expected response below.
 	const std::string DesiredResult = "09300025";
@@ -1657,7 +1676,28 @@ TEST_CASE("Master - Scan Request F0")
 	// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
 	CBMAPort->InjectSimulatedTCPMessage(write_buffer);
 
-	WaitIOS(*IOS, 5);
+	{
+		bool hasbeenset = false;
+		uint16_t res = 0;
+		auto AnalogLanded = [&]() -> bool
+					  {
+						  for (size_t i = 0; i < 3; i++)
+						  {
+							  CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(i, res, hasbeenset);
+							  if(!(hasbeenset && res == (1024 + i)))
+								  return false;
+						  }
+						  for (size_t i = 3; i < 5; i++)
+						  {
+							  CBMAPort->GetPointTable()->GetAnalogValueUsingODCIndex(i, res, hasbeenset);
+							  if(!(hasbeenset && res == (1 + i)))
+								  return false;
+						  }
+						  return true;
+					  };
+		REQUIRE(WaitForCond(*IOS, AnalogLanded));
+	}
+	WaitIOS(*IOS, 1); // Fan-out margin for binary points + ODC forwarding
 
 	// To check the result, see if the points in the master point list have been changed to the correct values.
 	bool hasbeenset;
@@ -1790,7 +1830,7 @@ TEST_CASE("Master - SOE Request F10")
 			MAoutput << CommandResponse;
 			CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-			WaitIOS(*IOS,4);
+			REQUIRE(WaitForCond(*IOS, [&]{ return CBOSPort->GetPointTable()->TimeTaggedDataAvailable(); }));
 
 			// We should now have data available...
 			// The master receives the response - and then fires events to the OutStation through ODC. We then check the OutStation to see what it has.
@@ -1853,7 +1893,7 @@ TEST_CASE("Master - SOE Request F10")
 
 			CBMAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-			WaitIOS(*IOS, 4);
+			REQUIRE(WaitForCond(*IOS, [&]{ return CBOSPort->GetPointTable()->TimeTaggedDataAvailable(); }));
 			REQUIRE(MAwrite_buffer.size() == 0); // i.e. Empty!
 
 			DataAvailable = CBOSPort->GetPointTable()->TimeTaggedDataAvailable();
@@ -1905,9 +1945,10 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 		CBMAPort[StationAddress]->EnablePolling(false); // Don't want the timer triggering this. We will call manually.
 	}
 
-	// Hook the output function
-	//std::string MAResponse = "Not Set";
-	//CBMAPort->SetSendTCPDataFn([&MAResponse](std::string CBMessage) { MAResponse = CBMessage; });
+	// Hook the output function to know when the Master has sent its command
+	std::atomic_bool cmd_done_flag(false);
+	for (int StationAddress = 0; StationAddress < 16; StationAddress++)
+		CBMAPort[StationAddress]->SetSendTCPDataFn([&cmd_done_flag](std::string){ cmd_done_flag = true; });
 
 	asio::streambuf MAwrite_buffer;
 	std::ostream MAoutput(&MAwrite_buffer);
@@ -1928,9 +1969,10 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 		uint8_t Group = (CommandResponse[1] >> 4) & 0x0F;
 
 		// We need to have 16 Masters Defined and send the command on the appropriate Master..
+		cmd_done_flag = false;
 		CBMAPort[Station]->SendFn10SOEScanCommand(Group, nullptr);
 
-		WaitIOS(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return cmd_done_flag.load(); }));
 
 		// Just ignore the command sent by the Master - need to send it so it is expecting a response.
 
@@ -1938,7 +1980,7 @@ TEST_CASE("Master - 16 Master Multidrop SOE Stream Test")
 		MAoutput << CommandResponse;
 		CBMAPort[Station]->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		WaitIOS(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return MAwrite_buffer.size() == 0; }));
 
 		// We can just look at the logging output to see if we got any framing errors or other unexpected issues.
 		// We could create a config file for each station that had every group/point in the SOE stream configured so that we could then process them through to
@@ -1970,29 +2012,30 @@ TEST_CASE("Master - F9 Time Test Using TCP")
 
 	WaitIOS(*IOS, 1);
 
-	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	std::atomic<CommandStatus> res{CommandStatus::NOT_AUTHORIZED};
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
 			Log.Debug("Callback on CONTROL command result : {} ", static_cast<int>(command_stat));
-			res = command_stat;
+			res.store(command_stat);
 		});
 
 	// Send an ODC DigitalOutput command to the Master.
 	CBMAPort->SendFn9TimeUpdate(pStatusCallback, -10);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(*IOS, 2);
+	REQUIRE(WaitForCond(*IOS, [&]{ return res.load() != CommandStatus::NOT_AUTHORIZED; }));
 
-	REQUIRE(res == CommandStatus::SUCCESS);
+	REQUIRE(res.load() == CommandStatus::SUCCESS);
 
 	REQUIRE(CBOSPort->GetSOEOffsetMinutes() == -10);
 
+	res.store(CommandStatus::NOT_AUTHORIZED); // Re-arm before sending (IOS thread runs concurrently)
 	CBMAPort->SendFn9TimeUpdate(pStatusCallback, 15);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(*IOS, 2);
+	REQUIRE(WaitForCond(*IOS, [&]{ return res.load() != CommandStatus::NOT_AUTHORIZED; }));
 
-	REQUIRE(res == CommandStatus::SUCCESS);
+	REQUIRE(res.load() == CommandStatus::SUCCESS);
 
 	REQUIRE(CBOSPort->GetSOEOffsetMinutes() == 15);
 
@@ -2035,11 +2078,11 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	// We should then have an Event triggered on the outstation caused by the POM. We need to capture this to check that it was the correct POM Event.
 
 	// Send a POM command by injecting an ODC event to the Master
-	CommandStatus res = CommandStatus::NOT_AUTHORIZED;
+	std::atomic<CommandStatus> res{CommandStatus::NOT_AUTHORIZED};
 	auto pStatusCallback = std::make_shared<std::function<void(CommandStatus)>>([=, &res](CommandStatus command_stat)
 		{
 			Log.Debug("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
-			res = command_stat;
+			res.store(command_stat);
 		});
 
 	bool point_on = true;
@@ -2055,16 +2098,16 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort->Event(event, "TestHarness", pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(*IOS, 5);
+	REQUIRE(WaitForCond(*IOS, [&]{ return res.load() != CommandStatus::NOT_AUTHORIZED; }));
 
-	REQUIRE(res == CommandStatus::SUCCESS);
+	REQUIRE(res.load() == CommandStatus::SUCCESS);
 
 	// Now do the other Master/Outstation combination.
-	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
+	std::atomic<CommandStatus> res2{CommandStatus::NOT_AUTHORIZED};
 	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
 		{
 			Log.Debug("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
-			res2 = command_stat;
+			res2.store(command_stat);
 		});
 
 	ODCIndex = 20;
@@ -2079,9 +2122,9 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 	CBMAPort2->Event(event2, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(*IOS, 3);
+	REQUIRE(WaitForCond(*IOS, [&]{ return res2.load() != CommandStatus::NOT_AUTHORIZED; }));
 
-	REQUIRE(res2 == CommandStatus::SUCCESS);
+	REQUIRE(res2.load() == CommandStatus::SUCCESS);
 
 	////////////////////////////
 	// Now do an Analog Control point on the first pair
@@ -2092,15 +2135,15 @@ TEST_CASE("Master - Control Output Multi-drop Test Using TCP")
 
 	auto event3 = std::make_shared<EventInfo>(EventType::AnalogOutputInt16, ODCIndex, "TestHarness");
 	event3->SetPayload<EventType::AnalogOutputInt16>(std::move(val3));
-	res2 = CommandStatus::NOT_AUTHORIZED;
+	res2.store(CommandStatus::NOT_AUTHORIZED); // Re-arm before sending
 
 	// Send an ODC DigitalOutput command to the Master.
 	CBMAPort->Event(event3, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	WaitIOS(*IOS, 3);
+	REQUIRE(WaitForCond(*IOS, [&]{ return res2.load() != CommandStatus::NOT_AUTHORIZED; }));
 
-	REQUIRE(res2 == CommandStatus::SUCCESS);
+	REQUIRE(res2.load() == CommandStatus::SUCCESS);
 
 	CBOSPort->Disable();
 	CBOSPort2->Disable();
@@ -2132,13 +2175,14 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 	WaitIOS(*IOS, 2);
 
 	std::string Response = "Not Set";
-	CBMAPort->SetSendTCPDataFn([&Response](std::string MD3Message) { Response = std::move(MD3Message); });
+	std::atomic_bool cmd_sent_flag(false);
+	CBMAPort->SetSendTCPDataFn([&Response, &cmd_sent_flag](std::string MD3Message) { Response = std::move(MD3Message); cmd_sent_flag = true; });
 
 	// Master sends a scan command
 	CBBlockData sendcommandblock(9, 3, FUNC_SCAN_DATA, 0, true);
 	CBMAPort->QueueCBCommand(sendcommandblock, nullptr);
 
-	WaitIOS(*IOS, 1);
+	REQUIRE(WaitForCond(*IOS, [&]{ return cmd_sent_flag.load(); }));
 
 	// We check the command, but it does not go anywhere, we would normally (in testing) inject the expected response below.
 	const std::string DesiredResult = "09300025";
@@ -2146,10 +2190,9 @@ TEST_CASE("Master - Cause a Command Resend on Timeout Using subscribed Master an
 
 	// Instead of injecting the expected response, we don't send anything, which should result in a timeout.
 	// That timeout should then result in the point quality being set to COMMS_LOST??
-
 	// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
 	// Need to give ASIO time to process them
-	WaitIOS(*IOS, 10);
+	WaitIOS(*IOS, 4);
 
 	// To check the result, the quality of the points will be set to comms_lost
 	/*

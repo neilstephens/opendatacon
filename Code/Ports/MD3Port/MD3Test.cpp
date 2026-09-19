@@ -41,7 +41,10 @@
 #include "ProducerConsumerQueue.h"
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <array>
+#include <atomic>
 #include <cassert>
+#include <chrono>
+#include <cstdlib>
 #include <fstream>
 #include <opendatacon/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -279,6 +282,23 @@ void Wait(odc::asio_service &IOS, const size_t seconds)
 	auto timer = IOS.make_steady_timer();
 	timer->expires_from_now(std::chrono::seconds(seconds));
 	timer->wait();
+}
+template<typename Pred>
+bool WaitForCond(odc::asio_service &IOS, Pred&& pred, const int timeout_ms = 5000)
+{
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+	while(!pred())
+	{
+		const auto now = std::chrono::steady_clock::now();
+		if(now >= deadline)
+			return false;
+		auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
+		auto slice = std::min(remaining, std::chrono::milliseconds(50));
+		auto timer = IOS.make_steady_timer();
+		timer->expires_from_now(slice);
+		timer->wait();
+	}
+	return true;
 }
 
 
@@ -2699,10 +2719,10 @@ TEST_CASE("Station - Multi-drop TCP Test")
 						Response.Push(S); // Store so we can check
 					};
 
-	bool socketisopen = false;
+	std::atomic_bool socketisopen{false};
 	auto SocketStateHandler = [&socketisopen](bool state)
 					  {
-						  socketisopen = state;
+						  socketisopen.store(state);
 					  };
 
 	// An outstation is a server by default (Master connects to it...)
@@ -2716,21 +2736,20 @@ TEST_CASE("Station - Multi-drop TCP Test")
 		                250);
 	pSockMan->Open();
 
-	Wait(*IOS, 3);
-	REQUIRE(socketisopen); // Should be set in a callback.
+	REQUIRE(WaitForCond(*IOS, [&]{ return socketisopen.load(); })); // Should be set in a callback.
 
 	// Send the Command - results in an async write
 	//  Station 0x7C
 	MD3BlockFn16MtoS commandblock(0x7C, true);
 	pSockMan->Write(commandblock.ToBinaryString());
 
-	Wait(*IOS, 2);
+	REQUIRE(WaitForCond(*IOS, [&]{ return Response.Size() >= 1; }));
 
 	//  Station 0x7D
 	MD3BlockFn16MtoS commandblock2(0x7D, true);
 	pSockMan->Write(commandblock2.ToBinaryString());
 
-	Wait(*IOS, 3); // Just pause to make sure any queued work is done (events)
+	REQUIRE(WaitForCond(*IOS, [&]{ return Response.Size() >= 2; }));
 
 	MD3OSPort->Disable();
 	MD3OSPort2->Disable();
@@ -2910,7 +2929,7 @@ TEST_CASE("Master - Analog")
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
 		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
 
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return Response != "Not Set"; }));
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		const std::string DesiredResponse = ("7c05200f5200");
@@ -2936,7 +2955,26 @@ TEST_CASE("Master - Analog")
 		// Send the Analog Unconditional command in as if came from TCP channel. This should stop a resend of the command due to timeout...
 		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
 
-		Wait(*IOS, 2);
+		{
+			uint16_t res = 0;
+			bool hasbeenset = false;
+			auto MasterLanded = [&]() -> bool
+						  {
+							  const uint16_t expected[] = {0x1000, 0x1101};
+							  for (uint8_t ch = 0; ch < 2; ch++)
+							  {
+								  MD3MAPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, ch, res, hasbeenset);
+								  if(!(hasbeenset && res == expected[ch]))
+									  return false;
+							  }
+							  MD3MAPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+							  if(!(hasbeenset && res == 0x1707))
+								  return false;
+							  MD3MAPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+							  return hasbeenset && res == 0x1808;
+						  };
+			REQUIRE(WaitForCond(*IOS, MasterLanded));
+		}
 
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
@@ -2951,8 +2989,19 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808);
 
 		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
-		// Need to give ASIO time to process them?
-		Wait(*IOS, 2);
+		{
+			uint16_t res = 0;
+			bool hasbeenset = false;
+			auto OutstationLanded = [&]() -> bool
+							{
+								MD3OSPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
+								if(!(hasbeenset && res == 0x1000))
+									return false;
+								MD3OSPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+								return hasbeenset && res == 0x1808;
+							};
+			REQUIRE(WaitForCond(*IOS, OutstationLanded));
+		}
 
 		MD3OSPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x1000);
@@ -2966,11 +3015,11 @@ TEST_CASE("Master - Analog")
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above
 		MD3MAPort->ClearMD3CommandQueue(); // Make sure nothing is lurking around.
-		Wait(*IOS, 2);
+		Wait(*IOS, 1);
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
 		Response = "Not Set";
 		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return Response != "Not Set"; }));
 
 		// The command we queued above will show up in the response, we inject the expected response below. This should stop a resend of the command due to timeout...
 		const std::string DesiredResponse = ("7c06200f7600");
@@ -2997,7 +3046,27 @@ TEST_CASE("Master - Analog")
 
 		// Send the command in as if came from TCP channel
 		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
-		Wait(*IOS, 2);
+		// Wait for the master point table to reflect the delta
+		{
+			uint16_t res = 0;
+			bool hasbeenset = false;
+			auto DeltaLanded = [&]() -> bool
+						 {
+							 const uint16_t expected[] = {0x0FFF, 0x1102};
+							 for (uint8_t ch = 0; ch < 2; ch++)
+							 {
+								 MD3MAPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, ch, res, hasbeenset);
+								 if(!(hasbeenset && res == expected[ch]))
+									 return false;
+							 }
+							 MD3MAPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+							 if(!(hasbeenset && res == 0x168A))
+								 return false;
+							 MD3MAPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 8, res, hasbeenset);
+							 return hasbeenset && res == 0x1808;
+						 };
+			REQUIRE(WaitForCond(*IOS, DeltaLanded));
+		}
 
 		// To check the result, see if the points in the master point list have been changed to the correct values.
 		uint16_t res = 0;
@@ -3013,8 +3082,24 @@ TEST_CASE("Master - Analog")
 		REQUIRE(res == 0x1808); // Unchanged
 
 		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
-		// Need to give ASIO time to process them?
-		Wait(*IOS, 2);
+		// Predicate mirrors all moved-value assertions (split-batch safety).
+		{
+			uint16_t res = 0;
+			bool hasbeenset = false;
+			auto DeltaForwarded = [&]() -> bool
+						    {
+							    const uint16_t expected[] = {0x0FFF, 0x1102};
+							    for (uint8_t ch = 0; ch < 2; ch++)
+							    {
+								    MD3OSPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, ch, res, hasbeenset);
+								    if(!(hasbeenset && res == expected[ch]))
+									    return false;
+							    }
+							    MD3OSPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 7, res, hasbeenset);
+							    return hasbeenset && res == 0x168A;
+						    };
+			REQUIRE(WaitForCond(*IOS, DeltaForwarded));
+		}
 
 		MD3OSPort->GetPointTable()->GetAnalogValueUsingMD3Index(0x20, 0, res, hasbeenset);
 		REQUIRE(res == 0x0FFF); // -1
@@ -3030,14 +3115,14 @@ TEST_CASE("Master - Analog")
 	INFO("Analog Delta Fn6 - No Change Response")
 	{
 		MD3MAPort->ClearMD3CommandQueue(); // Make sure nothing is lurking around.
-		Wait(*IOS, 2);
+		Wait(*IOS, 1);
 		// We need to have done an Unconditional to correctly test a delta so do following the previous test.
 		// Same address and channels as above, the value remain unchanged
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_DELTA_SCAN, 0x20, 16, true);
 		Response = "Not Set";
 		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
 
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return Response != "Not Set"; }));
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		const std::string DesiredResponse = ("7c06200f7600");
@@ -3051,7 +3136,7 @@ TEST_CASE("Master - Analog")
 
 		// Send the command in as if came from TCP channel
 		MD3MAPort->InjectSimulatedTCPMessage(write_buffer);
-		Wait(*IOS, 2);
+		Wait(*IOS, 1);
 
 		// To check the result, see if the points in the master point list have not changed
 		// Current settings do not update the timestamp...
@@ -3087,11 +3172,11 @@ TEST_CASE("Master - Analog")
 		// Now send a request analog unconditional command
 		// The analog unconditional command would normally be created by a poll event, or us receiving an ODC read analog event, which might trigger us to check for an updated value.
 		MD3MAPort->ClearMD3CommandQueue(); // Make sure nothing is lurking around.
-		Wait(*IOS, 2);
+		Wait(*IOS, 1);
 		MD3BlockFormatted sendcommandblock(0x7C, true, ANALOG_UNCONDITIONAL, 0x20, 16, true);
 		Response = "Not Set";
 		MD3MAPort->QueueMD3Command(sendcommandblock, nullptr);
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return Response != "Not Set"; }));
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		const std::string DesiredResponse = ("7c05200f5200");
@@ -3099,9 +3184,7 @@ TEST_CASE("Master - Analog")
 
 		// Instead of injecting the expected response, we don't send anything, which should result in a timeout.
 		// That timeout should then result in the analog value being set to 0x8000 to indicate it is invalid??
-
 		// Also need to check that the MasterPort fired off events to ODC. We do this by checking values in the OutStation point table.
-		// Need to give ASIO time to process them
 		Wait(*IOS, 20);
 
 		// To check the result, the quality of the points will be set to comms_lost - and this will result in the values being set to 0x8000 which is MD3 for something has failed.
@@ -3145,7 +3228,7 @@ TEST_CASE("Master - ODC Comms Up Send Data/Comms Down (TCP) Quality Setting")
 
 	MD3MAPort->Event(event,"TestHarness", pStatusCallback);
 
-	Wait(*IOS, 2);
+	REQUIRE(WaitForCond(*IOS, [&]{ return done_flag.load(); }));
 
 	REQUIRE(res == CommandStatus::SUCCESS); // The Get will Wait for the result to be set. 1 is defined
 
@@ -3418,9 +3501,10 @@ TEST_CASE("Master - TimeDate Poll Tests")
 	INFO("Time Set Poll Command")
 	{
 		// The config file has the timeset poll as group 2.
+		MAResponse.clear(); // So the size check below only passes on a real send
 		MD3MAPort->DoPoll(3);
 
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return MAResponse.size() == 12; }));
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		// The value for the time will always be different...
@@ -3507,12 +3591,19 @@ TEST_CASE("Master - Digital Fn11 Command Test")
 
 		// Send the command
 		auto cmdblock = MD3BlockFn11MtoS(0x7C, 15, 1, 2); // Up to 15 events, sequence #1, Two modules.
+		MAResponse.clear();                               // So the size check below only passes on a real send
 		MD3MAPort->QueueMD3Command(cmdblock, nullptr);    // No callback, does not originate from ODC
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return !MAResponse.empty(); }));
 
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer); // Sends MAoutput
 
-		Wait(*IOS, 3);
+		{
+			bool ModuleFailed = false;
+			REQUIRE(WaitForCond(*IOS, [&]
+				{
+					return MD3OSPort->GetPointTable()->CollectModuleBitsIntoWord(0x22, ModuleFailed) == 0xfe00;
+				}));
+		}
 
 		// Check the module values made it into the point table
 		bool ModuleFailed = false;
@@ -3585,8 +3676,9 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		// We could also check the linked OutStation to make sure its point table was updated as well.
 
 		MD3MAPort->DoPoll(1); // Will send an unconditional the first time on startup, or if forced. From the logging on the RTU the response is packet 11 either way
+		MAResponse.clear();   // So the byte checks below only pass on a real send
 
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return MAResponse.size() >= 4; }));
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		// Request DigitalUnconditional (Fn 12), Station 0x7C,  sequence #1, up to 2 modules returned - that is what the RTU we are testing has
@@ -3611,7 +3703,7 @@ TEST_CASE("Master - Digital Poll Tests (New Commands Fn11/12)")
 		MAResponse = "Not Set";
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
-		Wait(*IOS, 10);
+		Wait(*IOS, 1);
 
 		// Check there is no resend of the command - the response must have been ok.
 		REQUIRE(MAResponse == "Not Set");
@@ -3679,8 +3771,9 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 		// Poll group 5, we want to send out the poll command from the master, then check the response.
 
 		MD3MAPort->DoPoll(5); // Expect the RTU to be in startup mode with flags set
+		MAResponse.clear();   // So the check below only passes on a real send
 
-		Wait(*IOS, 2);
+		REQUIRE(WaitForCond(*IOS, [&]{ return !MAResponse.empty(); }));
 
 		// We check the command, but it does not go anywhere, we inject the expected response below.
 		const std::string DesiredResult1 = ("7c3400006100");
@@ -3700,7 +3793,7 @@ TEST_CASE("Master - System Flag Scan Poll Test")
 
 		MD3MAPort->InjectSimulatedTCPMessage(MAwrite_buffer);
 
-		Wait(*IOS, 4);
+		REQUIRE(WaitForCond(*IOS, [&]{ return MAResponse.size() == 12; }));
 
 		// There are a lot of things to check  here depending on what functionality is enabled.
 		// A time response, all digital scans, all analog scans...
@@ -3773,16 +3866,18 @@ TEST_CASE("Master - POM Multi-drop Test Using TCP")
 	MD3MAPort->Event(event, "TestHarness", pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(*IOS, 3);
+	REQUIRE(WaitForCond(*IOS, [&]{ return done_flag.load(); }));
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
 	// Now do the other Master/Outstation combination.
 	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
-	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
+	std::atomic_bool done_flag2(false);
+	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2, &done_flag2](CommandStatus command_stat)
 		{
 			Log.Debug("Callback on POM command result : " + std::to_string(static_cast<int>(command_stat)));
 			res2 = command_stat;
+			done_flag2 = true;
 		});
 
 	ODCIndex = 16;
@@ -3797,7 +3892,7 @@ TEST_CASE("Master - POM Multi-drop Test Using TCP")
 	MD3MAPort2->Event(event2, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(*IOS, 3);
+	REQUIRE(WaitForCond(*IOS, [&]{ return done_flag2.load(); }));
 
 	REQUIRE(res2 == CommandStatus::SUCCESS);
 
@@ -3866,16 +3961,18 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 	MD3MAPort->Event(event1, "TestHarness", pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(*IOS, 5);
+	REQUIRE(WaitForCond(*IOS, [&]{ return done_flag.load(); }));
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
 	// Now do the other Master/Outstation combination.
 	CommandStatus res2 = CommandStatus::NOT_AUTHORIZED;
-	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2](CommandStatus command_stat)
+	std::atomic_bool done_flag2(false);
+	auto pStatusCallback2 = std::make_shared<std::function<void(CommandStatus)>>([=, &res2, &done_flag2](CommandStatus command_stat)
 		{
 			Log.Debug("Callback on CONTROL command result : {}", std::to_string(static_cast<int>(command_stat)));
 			res2 = command_stat;
+			done_flag2 = true;
 		});
 
 	ODCIndex = 16;
@@ -3890,14 +3987,15 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 	MD3MAPort2->Event(event2, "TestHarness2", pStatusCallback2);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(*IOS, 3);
+	REQUIRE(WaitForCond(*IOS, [&]{ return done_flag2.load(); }));
 
 	REQUIRE(res2 == CommandStatus::SUCCESS);
 
 	// Now Disable on port, and check that the other still works.
 	MD3OSPort2->Disable();
 	res = CommandStatus::NON_PARTICIPATING;
-	Wait(*IOS, 2);
+	done_flag.store(false); // Re-arm before the next round trip
+	Wait(*IOS, 1);
 
 	// Do the POM control again
 	ODCIndex = 116;
@@ -3911,13 +4009,14 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 	MD3MAPort->Event(event3, "TestHarness", pStatusCallback);
 
 	// Wait for it to go to the OutStation and Back again
-	Wait(*IOS, 5);
+	REQUIRE(WaitForCond(*IOS, [&]{ return done_flag.load(); }));
 
 	REQUIRE(res == CommandStatus::SUCCESS);
 
 	// Now check that the disabled port does not work!
 	res2 = CommandStatus::NON_PARTICIPATING;
-	Wait(*IOS, 2);
+	done_flag2.store(false); // Re-arm before the next round trip
+	Wait(*IOS, 1);
 
 	ODCIndex = 16;
 
@@ -3938,6 +4037,7 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 	//--- Reenable and then test the reenabled port
 	MD3OSPort2->Enable();
 	res2 = CommandStatus::NON_PARTICIPATING;
+	done_flag2.store(false); // Re-arm before the next round trip
 	Wait(*IOS, 2);
 
 	EventTypePayload<EventType::ControlRelayOutputBlock>::type val5;
@@ -3951,6 +4051,8 @@ TEST_CASE("Master - Multi-drop Disable/Enable Single Port Test Using TCP")
 
 	// Wait for it to go to the OutStation and Back again
 	Wait(*IOS, 3);
+
+	REQUIRE(res2 == CommandStatus::SUCCESS);
 
 	REQUIRE(res2 == CommandStatus::SUCCESS);
 
@@ -4007,6 +4109,12 @@ const char *md3masterconffile = R"011(
 TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 {
 	// This is not a REAL TEST, just for testing against a unit. Will always pass..
+
+	if(std::getenv("ODC_TEST_HARDWARE") == nullptr)
+	{
+		WARN("Skipped: set ODC_TEST_HARDWARE=1 to run against lab hardware");
+		return;
+	}
 
 	// So we have an actual RTU connected to the network we are on, given the parameters in the config file above.
 	STANDARD_TEST_SETUP();
@@ -4077,6 +4185,12 @@ TEST_CASE("RTU - Binary Scan TO MD3311 ON 172.21.136.80:5001 MD3 0x20")
 TEST_CASE("RTU - GetScanned MD3311 ON 172.21.8.111:5001 MD3 0x20")
 {
 	// This is not a REAL TEST, just for testing against a unit. Will always pass..
+
+	if(std::getenv("ODC_TEST_HARDWARE") == nullptr)
+	{
+		WARN("Skipped: set ODC_TEST_HARDWARE=1 to run against lab hardware");
+		return;
+	}
 
 	// So we are pretending to be a standalone RTU given the parameters in the config file above.
 	STANDARD_TEST_SETUP();

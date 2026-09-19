@@ -68,7 +68,7 @@ const char *conffilename1 = "PyConfig.conf";
 const char *conffile1 = R"001(
 {
 	"IP" : "127.0.0.1",
-	"Port" : 10000,
+	"Port" : 10020,
 
 	// Python Module/Class/Method name definitions
 	"ModuleName" : "PyPortSim",
@@ -500,9 +500,9 @@ TEST_CASE("Py.TestsUsingPython")
 
 	INFO("WebServerTest")
 	{
-		std::string hroot = "http://localhost:10000";
-		std::string h1 = "http://localhost:10000/TestMaster";
-		std::string h2 = "http://localhost:10000/TestMaster2";
+		std::string hroot = "http://localhost:10020";
+		std::string h1 = "http://localhost:10020/TestMaster";
+		std::string h2 = "http://localhost:10020/TestMaster2";
 
 		// Do a http request to the root port and make sure we are getting the answer we expect.
 		std::string expectedresponse("Content-Length: 185\r\nContent-Type: text/html\r\n\n"
@@ -511,26 +511,26 @@ TEST_CASE("Py.TestsUsingPython")
 
 		Log.Error("If the Tests Hang here, the client making a HTTP request is waiting for an answer from the HTTP server - and is not getting it..");
 		std::string callresp;
-		bool res = DoHttpRequst("localhost", "10000", "/", callresp);
+		bool res = DoHttpRequst("localhost", "10020", "/", callresp);
 
-		Log.Debug("GET http://localhost:10000 - We got back {}", callresp);
+		Log.Debug("GET http://localhost:10020 - We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(expectedresponse == callresp);
 
 		callresp = "";
 
-		res = DoHttpRequst("localhost", "10000", "/TestMaster", callresp);
+		res = DoHttpRequst("localhost", "10020", "/TestMaster", callresp);
 
-		Log.Debug("GET http://localhost:10000/TestMaster We got back {}", callresp);
+		Log.Debug("GET http://localhost:10020/TestMaster We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(callresp.find("\"processedevents\": 2") != std::string::npos);
 		REQUIRE(callresp.find("\"test\": \"GET\"") != std::string::npos);
 
-		res = DoHttpRequst("localhost", "10000", "/TestMaster2", callresp);
+		res = DoHttpRequst("localhost", "10020", "/TestMaster2", callresp);
 
-		Log.Debug("GET http://localhost:10000/TestMaster2 We got back {}", callresp);
+		Log.Debug("GET http://localhost:10020/TestMaster2 We got back {}", callresp);
 
 		REQUIRE(res);
 		REQUIRE(callresp.find("\"processedevents\": 1") != std::string::npos);
@@ -680,11 +680,11 @@ TEST_CASE("Py.TestsUsingPython")
 		// Query through the Restful interface
 		std::string callresp = "";
 
-		bool resp = DoHttpRequst("localhost", "10000", "/TestMaster5", callresp);
+		bool resp = DoHttpRequst("localhost", "10020", "/TestMaster5", callresp);
 
 		REQUIRE(resp);
 
-		Log.Debug("GET http://localhost:10000/TestMaster5 We got back {}", callresp);
+		Log.Debug("GET http://localhost:10020/TestMaster5 We got back {}", callresp);
 
 		std::string matchstr("json\r\n\n");
 		size_t pos = callresp.find(matchstr);

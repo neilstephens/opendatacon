@@ -31,7 +31,12 @@ int main( int argc, char* argv[] )
 {
 	int new_argc = argc;
 	char** new_argv = argv;
-	if (argc > 1)
+	auto is_valid_level = [](const std::string& arg)
+				    {
+					    return arg == "trace" || arg == "debug" || arg == "info" || arg == "warning" ||
+					           arg == "error" || arg == "critical" || arg == "off";
+				    };
+	if (argc > 1 && is_valid_level(argv[1]))
 	{
 		level_str = argv[1];
 		new_argc = argc - 1;

@@ -34,4 +34,6 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS ON)
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${INSTALLDIR_BINS})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER tests)
-add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+_odc_test_log_level_args(_odc_test_args)
+add_test(NAME CTEST_${PROJECT_NAME} COMMAND ${PROJECT_NAME} ${_odc_test_args})
+set_tests_properties(CTEST_${PROJECT_NAME} PROPERTIES TIMEOUT 1200)
