@@ -36,6 +36,7 @@ UDPMITM::UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
 	local_ep_ms(asio::ip::address_v4::loopback(), mitm_port_ms),
 	remote_ep_ms(asio::ip::address_v4::loopback(), ms_actual),
 	ios(odc::asio_service::Get()),
+	pStrand(ios->make_strand()),
 	sock_os(ios->make_udp_socket()),
 	sock_ms(ios->make_udp_socket()),
 	readbuf_os(65536),
@@ -72,40 +73,72 @@ std::shared_ptr<UDPMITM> UDPMITM::create(
 
 UDPMITM::~UDPMITM()
 {
-	asio::error_code ec;
-	sock_os->cancel(ec);
-	sock_ms->cancel(ec);
-	sock_os->close();
-	sock_ms->close();
+	//Cancel/close on the strand, taking the sockets and their in-flight
+	//receive buffers with it, so this can return without waiting for it
+	pStrand->post(
+		[sock_os = std::move(sock_os), sock_ms = std::move(sock_ms),
+		 readbuf_os = std::move(readbuf_os), readbuf_ms = std::move(readbuf_ms)]()
+		{
+			asio::error_code ec;
+			sock_os->cancel(ec);
+			sock_ms->cancel(ec);
+			sock_os->close(ec);
+			sock_ms->close(ec);
+		});
 }
 
 void UDPMITM::Up()
 {
-	auto log = spdlog::get(log_name);
-	if(log)
-		log->debug("[UDPMITM] Up() — rebinding sockets");
+	pStrand->post([weak = weak_from_this()]()
+		{
+			auto self = weak.lock();
+			if(!self)
+				return;
 
-	sock_os = ios->make_udp_socket();
-	sock_os->open(asio::ip::udp::v4());
-	sock_os->bind(local_ep_os);
-	sock_ms = ios->make_udp_socket();
-	sock_ms->open(asio::ip::udp::v4());
-	sock_ms->bind(local_ep_ms);
-	allow = true;
-	StartRead(true);
-	StartRead(false);
+			auto log = spdlog::get(self->log_name);
+			if(log)
+				log->debug("[UDPMITM] Up() — rebinding sockets");
+
+			//Never let an exception escape a strand-posted handler
+			try
+			{
+				self->sock_os = self->ios->make_udp_socket();
+				self->sock_os->open(asio::ip::udp::v4());
+				self->sock_os->bind(self->local_ep_os);
+				self->sock_ms = self->ios->make_udp_socket();
+				self->sock_ms->open(asio::ip::udp::v4());
+				self->sock_ms->bind(self->local_ep_ms);
+			}
+			catch(const std::exception& e)
+			{
+				if(log)
+					log->error("[UDPMITM] Up() failed to rebind: {}", e.what());
+				return;
+			}
+
+			self->allow = true;
+			self->StartRead(true);
+			self->StartRead(false);
+		});
 }
 
 void UDPMITM::Down()
 {
-	auto log = spdlog::get(log_name);
-	if(log)
-		log->debug("[UDPMITM] Down() — closing sockets");
+	pStrand->post([weak = weak_from_this()]()
+		{
+			auto self = weak.lock();
+			if(!self)
+				return;
 
-	allow = false;
-	asio::error_code ec;
-	sock_os->close(ec);
-	sock_ms->close(ec);
+			auto log = spdlog::get(self->log_name);
+			if(log)
+				log->debug("[UDPMITM] Down() — closing sockets");
+
+			self->allow = false;
+			asio::error_code ec;
+			self->sock_os->close(ec);
+			self->sock_ms->close(ec);
+		});
 }
 
 void UDPMITM::Drop()
@@ -120,21 +153,22 @@ void UDPMITM::Allow()
 
 void UDPMITM::StartRead(const bool dir)
 {
+	//Always called on pStrand
 	std::weak_ptr<UDPMITM> weak = weak_from_this();
 	if(dir)
 		sock_os->async_receive(asio::buffer(readbuf_os),
-			[weak, dir](std::error_code ec, size_t num)
-			{
-				if(auto self = weak.lock())
-					self->ReadHandler(dir, ec, num);
-			});
+			pStrand->wrap([weak, dir](std::error_code ec, size_t num)
+				{
+					if(auto self = weak.lock())
+						self->ReadHandler(dir, ec, num);
+				}));
 	else
 		sock_ms->async_receive(asio::buffer(readbuf_ms),
-			[weak, dir](std::error_code ec, size_t num)
-			{
-				if(auto self = weak.lock())
-					self->ReadHandler(dir, ec, num);
-			});
+			pStrand->wrap([weak, dir](std::error_code ec, size_t num)
+				{
+					if(auto self = weak.lock())
+						self->ReadHandler(dir, ec, num);
+				}));
 }
 
 void UDPMITM::ReadHandler(const bool dir, std::error_code ec, size_t num)

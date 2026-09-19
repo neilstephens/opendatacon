@@ -68,6 +68,9 @@ private:
 
 	std::shared_ptr<odc::asio_service> ios;
 
+	//Strand to sync access to the sockets below
+	std::unique_ptr<odc::strand_t, odc::deleter> pStrand;
+
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_os;
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_ms;
 
