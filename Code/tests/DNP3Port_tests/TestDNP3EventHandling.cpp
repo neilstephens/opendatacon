@@ -27,6 +27,7 @@
 #include <catch.hpp>
 #include <cmath>
 #include <cstddef>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <opendatacon/asio.h>
@@ -114,12 +115,15 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 bool WaitForLink(const std::shared_ptr<DataPort>& port, const std::string& FromStatusStr, const std::string& ToStatusStr, const size_t timeout_ms = 20000)
 {
 	unsigned int count = 0;
-	while((port->GetStatus()["Result"].asString() == FromStatusStr) && count < timeout_ms)
+	while(port->GetStatus()["Result"].asString() != ToStatusStr && count < timeout_ms)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
 	}
-	return (port->GetStatus()["Result"].asString() == ToStatusStr);
+	auto FinalStatusStr = port->GetStatus()["Result"].asString();
+	if(FinalStatusStr != ToStatusStr)
+		std::cout<<"WaitForLink "<<FromStatusStr<<" -> "<<ToStatusStr<<" timed out at \""<<FinalStatusStr<<"\""<<std::endl;
+	return FinalStatusStr == ToStatusStr;
 }
 
 template<odc::EventType ET, typename PayloadT>
