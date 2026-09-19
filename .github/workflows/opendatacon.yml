@@ -269,7 +269,7 @@ jobs:
 
     - name: Run all tests (parallel)
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
-      run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 4
+      run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 2
     - name: Install-tree smoke test
       # check *installed* binaries load with all shared libs resolving.
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
