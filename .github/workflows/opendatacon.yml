@@ -206,6 +206,7 @@ jobs:
         Start-Process -FilePath "openssl-installer-x64.exe" -ArgumentList "/verysilent /sp- /suppressmsgboxes" -Wait
         Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe" -OutFile "python-installer-x64.exe"
         Start-Process -FilePath "python-installer-x64.exe" -ArgumentList "/quiet ModifyAll=1 InstallAllUsers=1 Include_debug=1 TargetDir=C:\hostedtoolcache\windows\Python\3.9.13\x64" -Wait
+        echo "C:\hostedtoolcache\windows\Python\3.9.13\x64" >> $env:GITHUB_PATH
     
     - if: contains(matrix.os,'windows')
       name: Setup Windows Environment
@@ -247,7 +248,7 @@ jobs:
       run: echo "GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct" >> $GITHUB_ENV
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON -G Ninja
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON -DODC_TEST_FROM_INSTALL_TREE=ON -G Ninja
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 8
@@ -270,10 +271,6 @@ jobs:
     - name: Run all tests (parallel)
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 2
-    - name: Install-tree smoke test
-      # check *installed* binaries load with all shared libs resolving.
-      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
-      run: ${{github.workspace}}/build/install/${{env.BINDIR}}DNP3Port_tests debug -d yes "*ConstructEnableDisableDestroy"
       
     - name: Upload Installer
       uses: actions/upload-artifact@v4
