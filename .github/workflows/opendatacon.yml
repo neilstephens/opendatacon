@@ -14,68 +14,8 @@ env:
   LOG_LVL: ${{ secrets.ACTIONS_STEP_DEBUG == 'true' && 'debug' || 'error' }}
 
 jobs:
-  opendatacon-dockerfile-builds:
-    name: ${{matrix.name}}
+  # opendatacon-dockerfile-builds job disabled entirely for this throw-away experiment branch
 
-    # THROW-AWAY EXPERIMENT BRANCH: docker matrix builds disabled (empty) to
-    # save CI minutes while iterating solely on the Windows Debug flake below.
-    strategy:
-      fail-fast: false
-
-      matrix:
-        include: []
-
-    runs-on: ${{ matrix.host-runner }}
-    
-    steps:
-    
-    - uses: actions/checkout@v4
-      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-      with:
-        fetch-depth: 0
-    
-    - run: git fetch --force --tags
-      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-    
-    - name: Upload release text
-      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-      run: git tag -l --format='%(contents)' $(git describe) > tag_annotation.txt
-      
-    - name: Run Setup Commands
-      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-      run: ${{ matrix.setup-cmds }}
-      
-    - name: Dockerfile Build
-      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-      run: |
-        docker build \
-        --build-arg BUILD_TYPE=${{ matrix.build-type }} \
-        --build-arg BUILD_COMMIT=${{ github.sha }} \
-        --build-arg "GOPROXY=https://proxy.golang.org|https://goproxy.io|https://goproxy.cn|direct" \
-        ${{ matrix.docker-args }} \
-        --output type=local,dest=./ \
-        -t opendatacon-builder -f DockerFiles/${{ matrix.docker-file }} .
-        
-    - name: Upload Installer
-      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.name }} Installer
-        retention-days: 7
-        path: |
-          opendatacon-*.sh
-          opendatacon-*.exe
-          tag_annotation.txt
-          
-    - name: Upload Logs
-      if: ${{ matrix.build-on == 'all' || github.ref_type == 'tag' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.run-os }} Logs
-        retention-days: 7
-        path: |
-          ODC_Log*
-    
   opendatacon-native:
     name: ${{matrix.os}} ${{matrix.build-type}} ${{matrix.bits}} 
   
@@ -249,7 +189,7 @@ jobs:
          
   opendatacon-deploy:
     if: always() && contains(github.ref, 'tag')
-    needs: [opendatacon-native,opendatacon-dockerfile-builds]
+    needs: [opendatacon-native]
     runs-on: macos-latest
     steps:
       - name: Download Installers
@@ -276,7 +216,7 @@ jobs:
 
   opendatacon-clean:
     if: github.event_name != 'pull_request'
-    needs: [opendatacon-native,opendatacon-dockerfile-builds]
+    needs: [opendatacon-native]
     runs-on: ubuntu-latest
     steps:
       - name: Remove old artifacts
