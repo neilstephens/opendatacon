@@ -130,6 +130,10 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 8
 
+    # THROW-AWAY EXPERIMENT BRANCH: confirm sccache is actually being used
+    - name: sccache stats
+      run: sccache --show-stats
+
     - name: Setup tmate session (if LOG_LVL is "debug")
       uses: mxschmitt/action-tmate@v3
       if: ${{ env.LOG_LVL == 'debug' }}
@@ -149,25 +153,9 @@ jobs:
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 2
 
-    # THROW-AWAY EXPERIMENT BRANCH: stress-repeat just the flaky suite so one
-    # CI run gives many chances to reproduce it, instead of one.
-    - name: Stress full suite (parallel 4 - reproduces the DNP3Port_tests flake)
-      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
-      shell: pwsh
-      run: |
-        $iterations = 6
-        $failures = 0
-        for ($i = 1; $i -le $iterations; $i++) {
-          Write-Host "=== full-suite stress iteration $i/$iterations (parallel 4) ==="
-          ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 4
-          if ($LASTEXITCODE -ne 0) {
-            $failures++
-            Write-Host "::warning::iteration $i failed (exit $LASTEXITCODE)"
-          }
-        }
-        Write-Host "full suite (parallel 4): $failures/$iterations iterations failed"
-        if ($failures -gt 0) { exit 1 }
-
+    # THROW-AWAY EXPERIMENT BRANCH: stress loop disabled for now - the single
+    # 'Run all tests' run above is already reliably reproducing failures, no
+    # need to pay for 6x more runtime per push while iterating quickly.
 
     - name: Upload Installer
       uses: actions/upload-artifact@v4
