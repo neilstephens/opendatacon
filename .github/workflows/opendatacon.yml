@@ -125,7 +125,12 @@ jobs:
       uses: mozilla-actions/sccache-action@v0.0.11
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON -DODC_TEST_FROM_INSTALL_TREE=ON -G Ninja
+      # THROW-AWAY EXPERIMENT BRANCH: force sccache explicitly - the project's
+      # own USE_COMPILER_LAUNCHER auto-detect does find_program(NAMES ccache
+      # sccache), and Windows runners ship a ccache.exe bundled with Strawberry
+      # Perl that wins the search (with no persistent cache dir configured),
+      # so the sccache we installed above was never actually being used.
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.INSTALL_PREFIX}} ${{env.TOOLCHAIN_OPT}} ${{env.SYSVER_OPT}} -DFULL=ON -DODC_TEST_FROM_INSTALL_TREE=ON -DUSE_COMPILER_LAUNCHER=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -G Ninja
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --parallel 8
