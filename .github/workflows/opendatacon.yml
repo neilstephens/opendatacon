@@ -154,13 +154,42 @@ jobs:
       shell: bash
       run: echo "INSTALL_DONE=true" >> $GITHUB_ENV
 
+    # THROW-AWAY EXPERIMENT BRANCH: capture a minidump on crash so we can get
+    # a real stack trace instead of guessing from the exit code.
+    - name: Enable WER local crash dumps
+      shell: pwsh
+      run: |
+        $key = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
+        New-Item -Path $key -Force | Out-Null
+        New-ItemProperty -Path $key -Name DumpFolder -Value 'D:\crashdumps' -PropertyType ExpandString -Force | Out-Null
+        New-ItemProperty -Path $key -Name DumpType -Value 2 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $key -Name DumpCount -Value 20 -PropertyType DWord -Force | Out-Null
+        New-Item -Path 'D:\crashdumps' -ItemType Directory -Force | Out-Null
+
     - name: Run all tests (parallel)
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 2
 
-    # THROW-AWAY EXPERIMENT BRANCH: stress loop disabled for now - the single
-    # 'Run all tests' run above is already reliably reproducing failures, no
-    # need to pay for 6x more runtime per push while iterating quickly.
+    - name: Upload crash dumps
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{env.JOB_NAME}} CrashDumps
+        retention-days: 7
+        path: |
+          D:\crashdumps\*.dmp
+
+    - name: Analyze crash dumps (best-effort)
+      if: always()
+      shell: pwsh
+      run: |
+        $cdb = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits","C:\Program Files\Microsoft Visual Studio" -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $cdb) { Write-Host "cdb.exe not found - skipping dump analysis"; exit 0 }
+        Write-Host "Using cdb: $($cdb.FullName)"
+        Get-ChildItem D:\crashdumps\*.dmp -ErrorAction SilentlyContinue | ForEach-Object {
+          Write-Host "=== Analyzing $($_.FullName) ==="
+          & $cdb.FullName -z $_.FullName -c "!analyze -v; ~*k; q" 2>&1 | Write-Host
+        }
 
     - name: Upload Installer
       uses: actions/upload-artifact@v4
