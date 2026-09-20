@@ -555,6 +555,14 @@ void scenario_single_drop(const TrxCfg& cfg)
 			port_pair.first->Disable();
 			port_pair.second->Disable();
 
+			//destroy the DNP3 ports while the MITM connection is still
+			//up, matching the original teardown order - dropping the
+			//MITM connection first (via Down() below) while a port is
+			//mid-destruction races a channel state-change notification
+			//against the port's own shutdown
+			port_pair.first.reset();
+			port_pair.second.reset();
+
 			//break the read loop and free the port before the next
 			//iteration (or scope exit) drops/replaces pMITM
 			pMITM->Down();
