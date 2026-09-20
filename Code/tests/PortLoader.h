@@ -25,6 +25,7 @@
 
 #include <opendatacon/DataPort.h>
 #include <opendatacon/Platform.h>
+#include <unordered_map>
 
 using namespace odc;
 
@@ -34,5 +35,30 @@ typedef void (*delptr)(DataPort*);
 symbol_ptr GetPortFunc(module_ptr pluginlib, const std::string& objname, bool destroy = false);
 newptr GetPortCreator(module_ptr pluginlib, const std::string& objname);
 delptr GetPortDestroyer(module_ptr pluginlib, const std::string& objname);
+
+// Unloading and reloading a plugin dozens of times per test binary (one
+// LoadModule()/UnLoadModule() pair per TEST_CASE) risks a still-in-flight
+// callback on the shared io_service later calling into memory that's no
+// longer mapped once the library is freed - sporadic, inconsistent crashes
+// with no fixed signature. Load each library once per process and never
+// really unload it; the OS cleans up at exit. Redirects the plain
+// LoadModule()/UnLoadModule() calls already used throughout the test suites.
+inline module_ptr CachedLoadModule(const std::string& path, bool global = false)
+{
+	static std::unordered_map<std::string, module_ptr> cache;
+	auto it = cache.find(path);
+	if(it != cache.end())
+		return it->second;
+	auto handle = LoadModule(path, global);
+	if(handle)
+		cache.emplace(path, handle);
+	return handle;
+}
+inline bool CachedUnLoadModule(module_ptr)
+{
+	return true; //no-op - see CachedLoadModule() above
+}
+#define LoadModule CachedLoadModule
+#define UnLoadModule CachedUnLoadModule
 
 #endif
