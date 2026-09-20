@@ -208,7 +208,7 @@ jobs:
         Push-Location "${{github.workspace}}/Code/tests/DNP3Port_tests"
         for ($i = 1; $i -le 6; $i++) {
           Write-Host "=== cdb iteration $i ==="
-          $logPath = "D:\crashdumps\cdb_iter_$i.log"
+          $logPath = "D:\crashdumps\cdb_iter_${i}.log"
           $cdbArgLine = '-g -G -hd -y "' + $exe.Directory.FullName + '" -logo "' + $logPath + '" -c "sxd e06d7363; g; !analyze -v; ~*k; q" "' + $exe.FullName + '"'
           $p = Start-Process -FilePath $cdb.FullName -ArgumentList $cdbArgLine -PassThru -NoNewWindow
           if (-not $p.WaitForExit(240000)) {
@@ -217,10 +217,10 @@ jobs:
           }
           if (Test-Path $logPath) {
             if (Select-String -Path $logPath -Pattern "ExceptionAddress|STACK_TEXT|FAULTING_IP" -Quiet) {
-              Write-Host "*** iteration $i: crash detected, dumping log ***"
+              Write-Host "*** iteration ${i}: crash detected, dumping log ***"
               Get-Content $logPath | Write-Host
             } else {
-              Write-Host "iteration $i: no crash (log tail follows)"
+              Write-Host "iteration ${i}: no crash (log tail follows)"
               Get-Content $logPath -Tail 5 | Write-Host
             }
           }
