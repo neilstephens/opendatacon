@@ -53,6 +53,15 @@ if(USE_COMPILER_LAUNCHER)
 		set(CMAKE_CXX_COMPILER_LAUNCHER "${_odc_compiler_launcher}")
 		set(CMAKE_C_COMPILER_LAUNCHER "${_odc_compiler_launcher}")
 		message(STATUS "Using compiler launcher: ${_odc_compiler_launcher}")
+		if(MSVC)
+			# ccache/sccache can't reliably handle MSVC's /Zi (debug info in a
+			# separate, shared-per-target PDB) - swap in /Z7 (debug info
+			# embedded in each object file) instead, avoiding the shared PDB
+			# entirely rather than just adding /FS and hoping.
+			foreach(_flags CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO)
+				string(REPLACE "/Zi" "/Z7" ${_flags} "${${_flags}}")
+			endforeach()
+		endif()
 	else()
 		message(STATUS "No ccache/sccache found - building without compiler launcher")
 	endif()
