@@ -20,6 +20,9 @@
 /**
  */
 #define CATCH_CONFIG_RUNNER
+//THROW-AWAY EXPERIMENT: let raw crashes propagate to Windows/WER instead of
+//Catch2's own SEH handler intercepting them, so we can get a real dump/stack.
+#define CATCH_CONFIG_NO_WINDOWS_SEH
 
 #include "TestDNP3Helpers.h"
 #include <opendatacon/util.h>
