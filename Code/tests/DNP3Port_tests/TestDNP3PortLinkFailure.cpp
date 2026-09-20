@@ -555,6 +555,15 @@ void scenario_single_drop(const TrxCfg& cfg)
 			port_pair.first->Disable();
 			port_pair.second->Disable();
 		}
+
+		// Wait out any posts still in flight (eg PublishEvent()) before we
+		// unload the library - relies on single thread in the pool
+		{
+			std::promise<void> post_done;
+			auto f = post_done.get_future();
+			odc::asio_service::Get()->post([&](){post_done.set_value();});
+			f.wait();
+		}
 	}
 	//Unload the library
 	UnLoadModule(portlib);
@@ -677,6 +686,15 @@ void scenario_multi_drop(const TrxCfg& cfg)
 		//wait another keepalive periods just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
 		pMITM.reset();
+
+		// Wait out any posts still in flight (eg PublishEvent()) before we
+		// unload the library - relies on single thread in the pool
+		{
+			std::promise<void> post_done;
+			auto f = post_done.get_future();
+			odc::asio_service::Get()->post([&](){post_done.set_value();});
+			f.wait();
+		}
 	}
 	//Unload the library
 	UnLoadModule(portlib);
