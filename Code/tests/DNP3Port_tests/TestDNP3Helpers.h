@@ -46,6 +46,12 @@ inline void TestSetup()
 	std::call_once(once_flag,[]()
 		{
 			InitLibaryLoading();
+			#if defined(_WIN32) && defined(_MSC_VER)
+			//THROW-AWAY EXPERIMENT: InitLibaryLoading() disables _CALL_REPORTFAULT
+			//to avoid noisy dialogs/WER during normal CI runs. Re-enable it here so
+			//an abort() (eg an _STL_VERIFY assertion) actually produces a WER dump.
+			_set_abort_behavior(_CALL_REPORTFAULT, _CALL_REPORTFAULT);
+			#endif
 		});
 }
 inline void TestTearDown()
