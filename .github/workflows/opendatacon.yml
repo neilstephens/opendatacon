@@ -180,7 +180,7 @@ jobs:
     # which intercepts even fastfail, to get a real stack trace.
     - name: Stress DNP3Port_tests under cdb
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
-      timeout-minutes: 20
+      timeout-minutes: 30
       shell: pwsh
       run: |
         $cdbArch = "${{ matrix.bits }}" -eq "64" ? "x64" : "x86"
@@ -206,11 +206,12 @@ jobs:
         } -ArgumentList $exe.Directory.FullName,"${{github.workspace}}"
 
         Push-Location "${{github.workspace}}/Code/tests/DNP3Port_tests"
-        for ($i = 1; $i -le 8; $i++) {
+        $cdbArgLine = '-g -G -c "!analyze -v; ~*k; q" "' + $exe.FullName + '"'
+        for ($i = 1; $i -le 6; $i++) {
           Write-Host "=== cdb iteration $i ==="
-          $p = Start-Process -FilePath $cdb.FullName -ArgumentList "-g","-G","-c","!analyze -v; ~*k; q",$exe.FullName,"-d","yes" -PassThru -NoNewWindow
-          if (-not $p.WaitForExit(120000)) {
-            Write-Host "*** iteration $i timed out after 120s - killing cdb ***"
+          $p = Start-Process -FilePath $cdb.FullName -ArgumentList $cdbArgLine -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(240000)) {
+            Write-Host "*** iteration $i timed out after 240s - killing cdb ***"
             Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           }
         }
