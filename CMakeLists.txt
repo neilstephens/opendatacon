@@ -53,22 +53,25 @@ if(USE_COMPILER_LAUNCHER)
 		set(CMAKE_CXX_COMPILER_LAUNCHER "${_odc_compiler_launcher}")
 		set(CMAKE_C_COMPILER_LAUNCHER "${_odc_compiler_launcher}")
 		message(STATUS "Using compiler launcher: ${_odc_compiler_launcher}")
-		if(MSVC)
-			# ccache/sccache can't reliably handle MSVC's /Zi (debug info in a
-			# separate, shared-per-target PDB) - swap in /Z7 (debug info
-			# embedded in each object file) instead, avoiding the shared PDB
-			# entirely rather than just adding /FS and hoping.
-			# CACHE+FORCE so it can't be shadowed by nested project() calls
-			# (e.g. Code/Libs/Lua's FetchContent'd project(Lua C)).
-			foreach(_flags CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO)
-				string(REPLACE "/Zi" "/Z7" _replaced "${${_flags}}")
-				set(${_flags} "${_replaced}" CACHE STRING "" FORCE)
-			endforeach()
-			message(STATUS "MSVC+launcher: CMAKE_CXX_FLAGS_DEBUG is now: ${CMAKE_CXX_FLAGS_DEBUG}")
-		endif()
 	else()
 		message(STATUS "No ccache/sccache found - building without compiler launcher")
 	endif()
+endif()
+
+# A compiler launcher may have been set either by the auto-detect above, or
+# passed straight in via -DCMAKE_CXX_COMPILER_LAUNCHER (e.g. to force a
+# specific one) - either way, MSVC's /Zi (debug info in a separate,
+# shared-per-target PDB) doesn't work reliably through a launcher like
+# ccache/sccache. Swap in /Z7 (debug info embedded in each object file)
+# instead, avoiding the shared PDB entirely.
+# CACHE+FORCE so it can't be shadowed by nested project() calls (e.g.
+# Code/Libs/Lua's FetchContent'd project(Lua C)).
+if(MSVC AND (CMAKE_CXX_COMPILER_LAUNCHER OR CMAKE_C_COMPILER_LAUNCHER))
+	foreach(_flags CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO)
+		string(REPLACE "/Zi" "/Z7" _replaced "${${_flags}}")
+		set(${_flags} "${_replaced}" CACHE STRING "" FORCE)
+	endforeach()
+	message(STATUS "Compiler launcher + MSVC: CMAKE_CXX_FLAGS_DEBUG is now: ${CMAKE_CXX_FLAGS_DEBUG}")
 endif()
 
 # Precompiled header helpers
