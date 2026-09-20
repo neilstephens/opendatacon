@@ -39,8 +39,8 @@ UDPMITM::UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
 	pStrand(ios->make_strand()),
 	sock_os(ios->make_udp_socket()),
 	sock_ms(ios->make_udp_socket()),
-	readbuf_os(65536),
-	readbuf_ms(65536)
+	readbuf_os(std::make_unique<std::vector<char>>(65536)),
+	readbuf_ms(std::make_unique<std::vector<char>>(65536))
 {
 	sock_os->open(asio::ip::udp::v4());
 	sock_ms->open(asio::ip::udp::v4());
@@ -156,14 +156,14 @@ void UDPMITM::StartRead(const bool dir)
 	//Always called on pStrand
 	std::weak_ptr<UDPMITM> weak = weak_from_this();
 	if(dir)
-		sock_os->async_receive(asio::buffer(readbuf_os),
+		sock_os->async_receive(asio::buffer(*readbuf_os),
 			pStrand->wrap([weak, dir](std::error_code ec, size_t num)
 				{
 					if(auto self = weak.lock())
 						self->ReadHandler(dir, ec, num);
 				}));
 	else
-		sock_ms->async_receive(asio::buffer(readbuf_ms),
+		sock_ms->async_receive(asio::buffer(*readbuf_ms),
 			pStrand->wrap([weak, dir](std::error_code ec, size_t num)
 				{
 					if(auto self = weak.lock())
@@ -185,12 +185,12 @@ void UDPMITM::ReadHandler(const bool dir, std::error_code ec, size_t num)
 	{
 		if(dir)
 		{
-			sock_ms->async_send_to(asio::buffer(readbuf_os.data(), num), remote_ep_ms,
+			sock_ms->async_send_to(asio::buffer(readbuf_os->data(), num), remote_ep_ms,
 				[](std::error_code, size_t) {});
 		}
 		else
 		{
-			sock_os->async_send_to(asio::buffer(readbuf_ms.data(), num), remote_ep_os,
+			sock_os->async_send_to(asio::buffer(readbuf_ms->data(), num), remote_ep_os,
 				[](std::error_code, size_t) {});
 		}
 	}

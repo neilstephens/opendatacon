@@ -74,8 +74,11 @@ private:
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_os;
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_ms;
 
-	std::vector<char> readbuf_os;
-	std::vector<char> readbuf_ms;
+	// heap-allocated so the destructor can hand ownership to the strand
+	// without moving the vector itself out from under an in-flight
+	// receive's debug buffer iterator
+	std::unique_ptr<std::vector<char>> readbuf_os;
+	std::unique_ptr<std::vector<char>> readbuf_ms;
 };
 
 #endif // UDPMITM_H
