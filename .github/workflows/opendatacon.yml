@@ -180,7 +180,7 @@ jobs:
     # which intercepts even fastfail, to get a real stack trace.
     - name: Stress DNP3Port_tests under cdb
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
-      timeout-minutes: 30
+      timeout-minutes: 45
       shell: pwsh
       run: |
         $cdbArch = "${{ matrix.bits }}" -eq "64" ? "x64" : "x86"
@@ -206,13 +206,16 @@ jobs:
         } -ArgumentList $exe.Directory.FullName,"${{github.workspace}}"
 
         Push-Location "${{github.workspace}}/Code/tests/DNP3Port_tests"
-        for ($i = 1; $i -le 6; $i++) {
+        # Targeting a specific fast test case (~7s standalone) so we can
+        # afford many more iterations than a full-suite run would allow
+        $testFilter = '"*Quality and CommsPoint - UDP connected*"'
+        for ($i = 1; $i -le 40; $i++) {
           Write-Host "=== cdb iteration $i ==="
           $logPath = "D:\crashdumps\cdb_iter_${i}.log"
-          $cdbArgLine = '-g -G -hd -y "' + $exe.Directory.FullName + '" -logo "' + $logPath + '" -c "sxd e06d7363; g; !analyze -v; ~*k; q" "' + $exe.FullName + '"'
+          $cdbArgLine = '-g -G -hd -y "' + $exe.Directory.FullName + '" -logo "' + $logPath + '" -c "sxd e06d7363; g; !analyze -v; ~*k; q" "' + $exe.FullName + '" ' + $testFilter
           $p = Start-Process -FilePath $cdb.FullName -ArgumentList $cdbArgLine -PassThru -NoNewWindow
-          if (-not $p.WaitForExit(240000)) {
-            Write-Host "*** iteration $i timed out after 240s - killing cdb ***"
+          if (-not $p.WaitForExit(60000)) {
+            Write-Host "*** iteration $i timed out after 60s - killing cdb ***"
             Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           }
           if (Test-Path $logPath) {
