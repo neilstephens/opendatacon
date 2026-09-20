@@ -206,7 +206,7 @@ jobs:
         } -ArgumentList $exe.Directory.FullName,"${{github.workspace}}"
 
         Push-Location "${{github.workspace}}/Code/tests/DNP3Port_tests"
-        $cdbArgLine = '-g -G -y "' + $exe.Directory.FullName + '" -c "sxd eh; g; !analyze -v; ~*k; q" "' + $exe.FullName + '"'
+        $cdbArgLine = '-g -G -y "' + $exe.Directory.FullName + '" -c "sxd e06d7363; g; !analyze -v; ~*k; q" "' + $exe.FullName + '"'
         for ($i = 1; $i -le 6; $i++) {
           Write-Host "=== cdb iteration $i ==="
           $p = Start-Process -FilePath $cdb.FullName -ArgumentList $cdbArgLine -PassThru -NoNewWindow
