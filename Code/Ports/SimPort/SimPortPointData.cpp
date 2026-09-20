@@ -254,10 +254,16 @@ std::string SimPortPointData::CurrentState(odc::EventType type, std::vector<std:
 
 ptimer_t SimPortPointData::Timer(const std::string& name)
 {
-	std::shared_lock<std::shared_timed_mutex> lck(timer_mutex);
-	auto pTimer = m_timers[name];
+	{
+		std::shared_lock<std::shared_timed_mutex> lck(timer_mutex);
+		auto it = m_timers.find(name);
+		if(it != m_timers.end())
+			return it->second;
+	}
+	std::unique_lock<std::shared_timed_mutex> lck(timer_mutex);
+	auto& pTimer = m_timers[name];
 	if(!pTimer)
-		m_timers[name] = pTimer = odc::asio_service::Get()->make_steady_timer();
+		pTimer = odc::asio_service::Get()->make_steady_timer();
 	return pTimer;
 }
 
