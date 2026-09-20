@@ -58,9 +58,13 @@ if(USE_COMPILER_LAUNCHER)
 			# separate, shared-per-target PDB) - swap in /Z7 (debug info
 			# embedded in each object file) instead, avoiding the shared PDB
 			# entirely rather than just adding /FS and hoping.
+			# CACHE+FORCE so it can't be shadowed by nested project() calls
+			# (e.g. Code/Libs/Lua's FetchContent'd project(Lua C)).
 			foreach(_flags CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO)
-				string(REPLACE "/Zi" "/Z7" ${_flags} "${${_flags}}")
+				string(REPLACE "/Zi" "/Z7" _replaced "${${_flags}}")
+				set(${_flags} "${_replaced}" CACHE STRING "" FORCE)
 			endforeach()
+			message(STATUS "MSVC+launcher: CMAKE_CXX_FLAGS_DEBUG is now: ${CMAKE_CXX_FLAGS_DEBUG}")
 		endif()
 	else()
 		message(STATUS "No ccache/sccache found - building without compiler launcher")
