@@ -554,18 +554,6 @@ void scenario_single_drop(const TrxCfg& cfg)
 
 			port_pair.first->Disable();
 			port_pair.second->Disable();
-
-			//destroy the DNP3 ports while the MITM connection is still
-			//up, matching the original teardown order - dropping the
-			//MITM connection first (via Down() below) while a port is
-			//mid-destruction races a channel state-change notification
-			//against the port's own shutdown
-			port_pair.first.reset();
-			port_pair.second.reset();
-
-			//break the read loop and free the port before the next
-			//iteration (or scope exit) drops/replaces pMITM
-			pMITM->Down();
 		}
 
 		// Wait out any posts still in flight (eg PublishEvent()) before we
@@ -697,8 +685,6 @@ void scenario_multi_drop(const TrxCfg& cfg)
 
 		//wait another keepalive periods just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
-		//break the read loop and free the port before dropping pMITM
-		pMITM->Down();
 		pMITM.reset();
 
 		// Wait out any posts still in flight (eg PublishEvent()) before we

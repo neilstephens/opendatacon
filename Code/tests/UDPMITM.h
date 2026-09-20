@@ -74,11 +74,17 @@ private:
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_os;
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_ms;
 
-	// safe as plain value members: ~UDPMITM() only runs once
-	// shared_from_this() in StartRead()'s completion has released every
-	// last reference, meaning no receive can still be in flight
 	std::vector<char> readbuf_os;
 	std::vector<char> readbuf_ms;
+
+	// Captured (by value) alongside a raw `this` in every StartRead()
+	// completion, matching TCPSocketManager's shutdown pattern: the
+	// destructor waits for every tracker copy to be released (ie every
+	// dispatched completion to have actually finished running) before
+	// touching the buffers above - not relying on shared_from_this to
+	// keep the object alive, so it doesn't need any external Down()/
+	// cancel call to ever destruct.
+	std::shared_ptr<void> handler_tracker;
 };
 
 #endif // UDPMITM_H

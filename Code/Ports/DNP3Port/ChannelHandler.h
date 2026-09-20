@@ -50,48 +50,27 @@ private:
 	std::shared_ptr<odc::asio_service> pIOS;
 	std::unique_ptr<odc::strand_t, odc::deleter> pSyncStrand;
 	std::shared_ptr<void> handler_tracker;
-	//Set before pPort's owning DNP3Port starts tearing down its derived
-	//state (ie before Shutdown()), so no more channel/link notifications
-	//get queued that could run pPort's virtual methods after the derived
-	//class destructor has already returned
-	std::atomic_bool shutting_down = false;
 
 public:
 	ChannelHandler() = delete;
 	ChannelHandler(DNP3Port* p);
 	~ChannelHandler();
 
-	//Call before starting to tear down the owning port (eg before
-	//Shutdown()), to stop any new notifications being queued that could
-	//otherwise run against a port mid-destruction
-	inline void PrepareForShutdown()
-	{
-		shutting_down = true;
-	}
-
 	//Synchronised versions of their private couterparts
 	inline void SetLinkStatus(opendnp3::LinkStatus status)
 	{
-		if(shutting_down)
-			return;
 		pSyncStrand->post([this,status,h{handler_tracker}](){SetLinkStatus_(status);});
 	}
 	inline void LinkUp()
 	{
-		if(shutting_down)
-			return;
 		pSyncStrand->post([this,h{handler_tracker}](){LinkUp_();});
 	}
 	inline void LinkDown()
 	{
-		if(shutting_down)
-			return;
 		pSyncStrand->post([this,h{handler_tracker}](){LinkDown_();});
 	}
 	inline void StateListener(opendnp3::ChannelState state)
 	{
-		if(shutting_down)
-			return;
 		pSyncStrand->post([this,state,h{handler_tracker}](){StateListener_(state);});
 	}
 
@@ -99,8 +78,6 @@ public:
 	template<typename T>
 	inline void Post(T&& handler)
 	{
-		if(shutting_down)
-			return;
 		pSyncStrand->post([handler,h{handler_tracker}](){handler();});
 	}
 

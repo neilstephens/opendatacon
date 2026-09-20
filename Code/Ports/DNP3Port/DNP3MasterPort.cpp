@@ -40,11 +40,6 @@
 
 DNP3MasterPort::~DNP3MasterPort()
 {
-	//stop queuing new channel/link notifications before Shutdown() starts
-	//closing the channel - otherwise one could still be dispatched after
-	//this destructor returns, calling our (by-then invalid) virtual
-	//methods via a base DNP3Port vtable
-	pChanH->PrepareForShutdown();
 	if(pMaster)
 	{
 		pMaster->Shutdown();

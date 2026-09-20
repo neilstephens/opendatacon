@@ -26,7 +26,6 @@
 
 #include "UDPMITM.h"
 #include <spdlog/spdlog.h>
-#include <future>
 
 UDPMITM::UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
 	uint16_t os_actual, uint16_t ms_actual,
@@ -41,7 +40,8 @@ UDPMITM::UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
 	sock_os(ios->make_udp_socket()),
 	sock_ms(ios->make_udp_socket()),
 	readbuf_os(65536),
-	readbuf_ms(65536)
+	readbuf_ms(65536),
+	handler_tracker(std::make_shared<char>())
 {
 	sock_os->open(asio::ip::udp::v4());
 	sock_ms->open(asio::ip::udp::v4());
@@ -74,19 +74,28 @@ std::shared_ptr<UDPMITM> UDPMITM::create(
 
 UDPMITM::~UDPMITM()
 {
-	//shared_from_this() in StartRead()'s completion capture keeps this
-	//object alive for as long as any receive is outstanding (including
-	//through asio's own internal buffer validation on completion, which
-	//runs before our handler and can't be synchronized via the strand
-	//alone). So by the time we get here, no reads are in flight - callers
-	//must call Down() first to break the read loop and let it drain.
-	//Cancel/close defensively anyway, in case that wasn't done; safe to
-	//call on an already-closed socket, and never touches the buffers.
-	asio::error_code ec;
-	sock_os->cancel(ec);
-	sock_ms->cancel(ec);
-	sock_os->close(ec);
-	sock_ms->close(ec);
+	//Cancel/close on the strand - safe to call from any thread, and
+	//never touches the buffers. This is what forces any outstanding
+	//receive to actually complete (with an aborted status), which the
+	//drain below is waiting for.
+	pStrand->post([sock_os = sock_os.get(), sock_ms = sock_ms.get()]()
+		{
+			asio::error_code ec;
+			sock_os->cancel(ec);
+			sock_ms->cancel(ec);
+			sock_os->close(ec);
+			sock_ms->close(ec);
+		});
+
+	//Matches TCPSocketManager's shutdown pattern: wait for every
+	//handler_tracker copy (ie every already-dispatched StartRead()
+	//completion, including the one the cancel() above will trigger) to
+	//be released - meaning it has actually finished running - before
+	//continuing on to destroy the buffers as plain members below.
+	std::weak_ptr<void> tracker = handler_tracker;
+	handler_tracker.reset();
+	while(!tracker.expired() && !ios->stopped())
+		if(!ios->poll_one()) std::this_thread::yield();
 }
 
 void UDPMITM::Up()
@@ -126,29 +135,21 @@ void UDPMITM::Up()
 
 void UDPMITM::Down()
 {
-	//Blocking: callers rely on the socket actually being closed (freeing
-	//the port for reuse, and letting any outstanding reads drain via
-	//shared_from_this()) by the time this returns. Safe to block here -
-	//always called from outside the strand.
-	std::promise<void> done;
-	auto fut = done.get_future();
-	pStrand->post([weak = weak_from_this(), &done]()
+	pStrand->post([weak = weak_from_this()]()
 		{
 			auto self = weak.lock();
-			if(self)
-			{
-				auto log = spdlog::get(self->log_name);
-				if(log)
-					log->debug("[UDPMITM] Down() — closing sockets");
+			if(!self)
+				return;
 
-				self->allow = false;
-				asio::error_code ec;
-				self->sock_os->close(ec);
-				self->sock_ms->close(ec);
-			}
-			done.set_value();
+			auto log = spdlog::get(self->log_name);
+			if(log)
+				log->debug("[UDPMITM] Down() — closing sockets");
+
+			self->allow = false;
+			asio::error_code ec;
+			self->sock_os->close(ec);
+			self->sock_ms->close(ec);
 		});
-	fut.wait();
 }
 
 void UDPMITM::Drop()
@@ -164,22 +165,23 @@ void UDPMITM::Allow()
 void UDPMITM::StartRead(const bool dir)
 {
 	//Always called on pStrand
-	//Capture shared_from_this() (not weak) so this object - and its
-	//buffers - stay alive for the full lifetime of the outstanding
-	//operation, including asio's own internal completion processing
-	//(buffer validity checks) that happens before our handler runs and
-	//isn't itself synchronized via the strand.
+	//Capture a handler_tracker copy alongside raw `this` (not
+	//shared_from_this) - matches TCPSocketManager's pattern. The
+	//destructor drains until every such copy is released (ie every
+	//dispatched completion has actually finished running) before it
+	//touches the buffers, so this object never needs to outlive an
+	//outstanding operation via refcounting.
 	if(dir)
 		sock_os->async_receive(asio::buffer(readbuf_os),
-			pStrand->wrap([self = shared_from_this(), dir](std::error_code ec, size_t num)
+			pStrand->wrap([this,dir,tracker{handler_tracker}](std::error_code ec, size_t num)
 				{
-					self->ReadHandler(dir, ec, num);
+					ReadHandler(dir, ec, num);
 				}));
 	else
 		sock_ms->async_receive(asio::buffer(readbuf_ms),
-			pStrand->wrap([self = shared_from_this(), dir](std::error_code ec, size_t num)
+			pStrand->wrap([this,dir,tracker{handler_tracker}](std::error_code ec, size_t num)
 				{
-					self->ReadHandler(dir, ec, num);
+					ReadHandler(dir, ec, num);
 				}));
 }
 
@@ -198,12 +200,12 @@ void UDPMITM::ReadHandler(const bool dir, std::error_code ec, size_t num)
 		if(dir)
 		{
 			sock_ms->async_send_to(asio::buffer(readbuf_os.data(), num), remote_ep_ms,
-				[](std::error_code, size_t) {});
+				[tracker{handler_tracker}](std::error_code, size_t) {});
 		}
 		else
 		{
 			sock_os->async_send_to(asio::buffer(readbuf_ms.data(), num), remote_ep_os,
-				[](std::error_code, size_t) {});
+				[tracker{handler_tracker}](std::error_code, size_t) {});
 		}
 	}
 
