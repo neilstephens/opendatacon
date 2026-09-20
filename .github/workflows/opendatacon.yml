@@ -173,6 +173,47 @@ jobs:
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 2
 
+    # THROW-AWAY EXPERIMENT BRANCH: the crash exits 0xC0000409
+    # (STATUS_STACK_BUFFER_OVERRUN), which is what MSVC's STL iterator checks
+    # raise via __fastfail() - that bypasses abort()/WER entirely, so run
+    # DNP3Port_tests directly under cdb (attached from launch) a few times,
+    # which intercepts even fastfail, to get a real stack trace.
+    - name: Stress DNP3Port_tests under cdb
+      if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
+      shell: pwsh
+      run: |
+        $cdb = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits","C:\Program Files\Microsoft Visual Studio" -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $cdb) { Write-Host "cdb.exe not found - skipping"; exit 0 }
+        Write-Host "Using cdb: $($cdb.FullName)"
+        $exe = Get-ChildItem -Path ${{github.workspace}}/build -Recurse -Filter DNP3Port_tests.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $exe) { Write-Host "DNP3Port_tests.exe not found - skipping"; exit 0 }
+        Write-Host "Using exe: $($exe.FullName)"
+
+        # generate real competing CPU load - the crash needs actual
+        # contention, an isolated run under cdb alone won't reproduce it
+        $loadJob = Start-Job -ScriptBlock {
+          param($buildDir, $workspace)
+          while ($true) {
+            Push-Location "$workspace/Code/tests/ODC_tests"
+            & "$buildDir/ODC_tests.exe" *> $null
+            Pop-Location
+            Push-Location "$workspace/Code/tests/MD3Port_tests"
+            & "$buildDir/MD3Port_tests.exe" *> $null
+            Pop-Location
+          }
+        } -ArgumentList $exe.Directory.FullName,"${{github.workspace}}"
+
+        Push-Location "${{github.workspace}}/Code/tests/DNP3Port_tests"
+        for ($i = 1; $i -le 8; $i++) {
+          Write-Host "=== cdb iteration $i ==="
+          & $cdb.FullName -g -G -c "!analyze -v; ~*k; q" $exe.FullName -d yes 2>&1 | Write-Host
+        }
+        Pop-Location
+
+        Stop-Job $loadJob -ErrorAction SilentlyContinue
+        Remove-Job $loadJob -Force -ErrorAction SilentlyContinue
+        Get-Process ODC_tests,MD3Port_tests -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
     - name: Upload crash dumps
       if: always()
       uses: actions/upload-artifact@v4
