@@ -214,7 +214,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 		# If you dont want the ZERO_CHECK project in VS have the following line enabled.
 		set(CMAKE_SUPPRESS_REGENERATION true)
 	endif()
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP /Zc:rvalueCast")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP /Zc:rvalueCast /FS")
+	# /FS: allow concurrent cl.exe processes (parallel builds, compiler
+	# launchers like sccache) to share one PDB without racing on it -
+	# without this, parallel MSVC debug builds intermittently fail with
+	# "fatal error C1041: cannot open program database"
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP /FS")
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_SEPARATE_COMPILATION")
