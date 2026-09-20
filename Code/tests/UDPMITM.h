@@ -74,11 +74,11 @@ private:
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_os;
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_ms;
 
-	// heap-allocated so the destructor can hand ownership to the strand
-	// without moving the vector itself out from under an in-flight
-	// receive's debug buffer iterator
-	std::unique_ptr<std::vector<char>> readbuf_os;
-	std::unique_ptr<std::vector<char>> readbuf_ms;
+	// safe as plain value members: ~UDPMITM() only runs once
+	// shared_from_this() in StartRead()'s completion has released every
+	// last reference, meaning no receive can still be in flight
+	std::vector<char> readbuf_os;
+	std::vector<char> readbuf_ms;
 };
 
 #endif // UDPMITM_H

@@ -554,6 +554,10 @@ void scenario_single_drop(const TrxCfg& cfg)
 
 			port_pair.first->Disable();
 			port_pair.second->Disable();
+
+			//break the read loop and free the port before the next
+			//iteration (or scope exit) drops/replaces pMITM
+			pMITM->Down();
 		}
 
 		// Wait out any posts still in flight (eg PublishEvent()) before we
@@ -685,6 +689,8 @@ void scenario_multi_drop(const TrxCfg& cfg)
 
 		//wait another keepalive periods just in case
 		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
+		//break the read loop and free the port before dropping pMITM
+		pMITM->Down();
 		pMITM.reset();
 
 		// Wait out any posts still in flight (eg PublishEvent()) before we
