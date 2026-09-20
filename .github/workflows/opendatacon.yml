@@ -182,7 +182,8 @@ jobs:
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
       shell: pwsh
       run: |
-        $cdb = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits","C:\Program Files\Microsoft Visual Studio" -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        $cdbArch = "${{ matrix.bits }}" -eq "64" ? "x64" : "x86"
+        $cdb = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\Debuggers\$cdbArch","C:\Program Files\Microsoft Visual Studio" -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Select-Object -First 1
         if (-not $cdb) { Write-Host "cdb.exe not found - skipping"; exit 0 }
         Write-Host "Using cdb: $($cdb.FullName)"
         $exe = Get-ChildItem -Path ${{github.workspace}}/build -Recurse -Filter DNP3Port_tests.exe -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -227,7 +228,8 @@ jobs:
       if: always()
       shell: pwsh
       run: |
-        $cdb = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits","C:\Program Files\Microsoft Visual Studio" -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        $cdbArch = "${{ matrix.bits }}" -eq "64" ? "x64" : "x86"
+        $cdb = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\Debuggers\$cdbArch","C:\Program Files\Microsoft Visual Studio" -Recurse -Filter cdb.exe -ErrorAction SilentlyContinue | Select-Object -First 1
         if (-not $cdb) { Write-Host "cdb.exe not found - skipping dump analysis"; exit 0 }
         Write-Host "Using cdb: $($cdb.FullName)"
         Get-ChildItem D:\crashdumps\*.dmp -ErrorAction SilentlyContinue | ForEach-Object {
