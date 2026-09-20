@@ -159,11 +159,14 @@ jobs:
     - name: Enable WER local crash dumps
       shell: pwsh
       run: |
-        $key = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
-        New-Item -Path $key -Force | Out-Null
-        New-ItemProperty -Path $key -Name DumpFolder -Value 'D:\crashdumps' -PropertyType ExpandString -Force | Out-Null
-        New-ItemProperty -Path $key -Name DumpType -Value 2 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $key -Name DumpCount -Value 20 -PropertyType DWord -Force | Out-Null
+        # both views: a 32-bit test process on 64-bit Windows reads the
+        # WOW6432Node-redirected key, not the native 64-bit one
+        foreach ($key in 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\Windows Error Reporting\LocalDumps') {
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpFolder -Value 'D:\crashdumps' -PropertyType ExpandString -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpType -Value 2 -PropertyType DWord -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpCount -Value 20 -PropertyType DWord -Force | Out-Null
+        }
         New-Item -Path 'D:\crashdumps' -ItemType Directory -Force | Out-Null
 
     - name: Run all tests (parallel)
