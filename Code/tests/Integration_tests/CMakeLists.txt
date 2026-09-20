@@ -41,3 +41,7 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../../opendatacon/DataConcentrator.cpp .
 add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC} $<TARGET_OBJECTS:VersionStrings>)
 target_compile_definitions(${PROJECT_NAME} PRIVATE MAIN_EXE)
 target_link_libraries(${PROJECT_NAME} CAPI)
+
+# Shares real loopback ports 20000/20001 with DNP3Port_tests (see that
+# suite's CMakeLists.txt for the matching lock).
+set_tests_properties(CTEST_${PROJECT_NAME} PROPERTIES RESOURCE_LOCK dnp3_loopback_ports_20000_20001)
