@@ -78,7 +78,14 @@ UDPMITM::~UDPMITM()
 	//never touches the buffers. This is what forces any outstanding
 	//receive to actually complete (with an aborted status), which the
 	//drain below is waiting for.
-	pStrand->post([sock_os = sock_os.get(), sock_ms = sock_ms.get()]()
+	//Capture `this` (safe: this object can't be freed until the drain
+	//below finishes) and read sock_os/sock_ms *inside* the lambda, at
+	//execution time - not raw pointers captured now. If a pending Up()/
+	//Down() call is still queued ahead of us on the strand, it replaces
+	//sock_os/sock_ms with new socket objects (destroying the old ones);
+	//capturing raw pointers now would go stale and dangle by the time
+	//this lambda actually runs.
+	pStrand->post([this]()
 		{
 			asio::error_code ec;
 			sock_os->cancel(ec);
