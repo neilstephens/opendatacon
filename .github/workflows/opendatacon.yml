@@ -270,7 +270,7 @@ jobs:
 
     - name: Run all tests (parallel)
       if: ${{ always() && env.INSTALL_DONE == 'true' && !contains(github.ref, 'tag') }}
-      run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 4
+      run: ctest --test-dir ${{github.workspace}}/build --output-on-failure --timeout 1200 --parallel 2
       
     - name: Upload Installer
       uses: actions/upload-artifact@v4

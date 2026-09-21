@@ -119,6 +119,11 @@ bool WaitForLink(const std::shared_ptr<DataPort>& port, const std::string& FromS
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		count++;
 	}
+	while((port->GetStatus()["Result"].asString() != ToStatusStr) && count < timeout_ms)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		count++;
+	}
 	return (port->GetStatus()["Result"].asString() == ToStatusStr);
 }
 
