@@ -27,6 +27,7 @@
 #include "TestDNP3Helpers.h"
 #include "../PortLoader.h"
 #include "../ThreadPool.h"
+#include "../CIDetect.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <thread>
@@ -333,6 +334,12 @@ TEST_CASE(SUITE("Outstation reconnect stress"))
 */
 TEST_CASE(SUITE("Multi reconnect stress"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive stress test, low incremental CI value");
+		return;
+	}
+
 	// 3 masters + 5 outstations sharing a single UDP channel and EvilRemote.
 	// All use the same UDPListenPort/Port/IP so ChannelHandler gives them all
 	// the same ChannelID → one io_handler with 8 stacked sessions.

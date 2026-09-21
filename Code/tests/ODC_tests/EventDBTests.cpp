@@ -25,6 +25,7 @@
  */
 
 #include "TestODCHelpers.h"
+#include "../CIDetect.h"
 #include <opendatacon/EventDB.h>
 #include <catch.hpp>
 #include <vector>
@@ -76,6 +77,12 @@ TEST_CASE(SUITE("Get Set Swap"))
 
 TEST_CASE(SUITE("Thread Safety"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive stress test, low incremental CI value");
+		return;
+	}
+
 	TestSetup();
 	auto pDB = GetTestEventDB();
 	//Access the element concurrently

@@ -26,6 +26,7 @@
 #include "../MITM.h"
 #include "../ManInTheMiddle.h"
 #include "../UDPMITM.h"
+#include "../CIDetect.h"
 #include <catch.hpp>
 #include <opendatacon/asio.h>
 #include <functional>
@@ -686,6 +687,12 @@ TEST_CASE(SUITE("Quality and CommsPoint - UDP connected"))
 
 TEST_CASE(SUITE("Quality and CommsPoint - UDP connectionless"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive stress test, low incremental CI value");
+		return;
+	}
+
 	scenario_quality_full(UDP_CONNLESS_CFG);
 }
 

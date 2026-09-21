@@ -21,6 +21,7 @@
  */
 #include "TestDNP3Helpers.h"
 #include "../ThreadPool.h"
+#include "../CIDetect.h"
 #include "../../Ports/DNP3Port/CommsRideThroughTimer.h"
 #include "../../Ports/DNP3Port/CommsRideThroughTimer.cpp"
 #include <opendatacon/asio.h>
@@ -350,6 +351,12 @@ TEST_CASE(SUITE("Pause Trigger Cancel Resume"))
 
 TEST_CASE(SUITE("Random"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive stress test, low incremental CI value");
+		return;
+	}
+
 	TestSetup();
 	auto pIOS = odc::asio_service::Get();
 	ThreadPool thread_pool(1);
