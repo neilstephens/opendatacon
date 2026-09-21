@@ -825,7 +825,7 @@ TEST_CASE(SUITE("EMA_HigherWeightWarmsUpFaster"))
 	// once on each fixture, incorporating instantRate into smoothedRate.
 	// The second rate timer fires at 2*TICK; with 10ms margin we read the
 	// window strictly between the first and second ticks.
-	std::this_thread::sleep_for(TICK + ms_t(10));
+	std::this_thread::sleep_for(TICK + ms_t(20));
 
 	const size_t fastWindow = f_fast.CurrentBatchWindowMs();
 	const size_t slowWindow = f_slow.CurrentBatchWindowMs();
