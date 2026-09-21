@@ -546,7 +546,7 @@ bool WaitForCommsPoint(std::shared_ptr<DataPort> pPort, bool val, size_t timeout
 		}
 		catch(std::exception&)
 		{}
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	return ((odc::msSinceEpoch() - start_time) < timeout);
 }
@@ -560,7 +560,7 @@ bool WaitForQualityFlags(std::shared_ptr<DataPort> pPort, odc::EventType ET, siz
 		auto event = pPort->pEventDB()->Get(ET, idx);
 		if((event->GetQuality() & qual) == qual)
 			break;
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	return ((odc::msSinceEpoch() - start_time) < timeout);
 }

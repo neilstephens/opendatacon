@@ -47,7 +47,7 @@ inline void WaitFor(const std::atomic_bool& var, const bool state)
 	auto pIOS = odc::asio_service::Get();
 	auto start_time = odc::msSinceEpoch();
 	while((odc::msSinceEpoch() - start_time) < testTimeout && var != state)
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	CHECK(var == state);
 }
 
@@ -56,7 +56,7 @@ inline void WaitFor(size_t ms)
 	auto pIOS = odc::asio_service::Get();
 	auto start_time = odc::msSinceEpoch();
 	while((odc::msSinceEpoch() - start_time) < ms)
-		pIOS->poll_one();
+		if(!pIOS->poll_one()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
 }
 
 TEST_CASE(SUITE("Stale Timeout"))

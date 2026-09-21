@@ -2307,10 +2307,10 @@ TEST_CASE("SQLiteDB_EmptyTable")
 
 		sim_port->Enable();
 		REQUIRE(WaitForEnabled(sim_port));
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 		CHECK(sim_port->Enabled());
-		CHECK(std::stod(sim_port->GetCurrentState()["AnalogPayload"]["500001"].asString()) == 77.0);
+		auto seen = PollPointValues(sim_port, "AnalogPayload", 500001, std::chrono::milliseconds(200));
+		CHECK(seen == std::set<double>{77.0});
 
 		sim_port->Disable();
 	}

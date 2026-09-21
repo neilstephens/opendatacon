@@ -47,7 +47,7 @@ void require_equal(const T& thing1, const T& thing2)
 	stop_timer->async_wait([&stop](const asio::error_code& err){stop = true;});
 
 	while(thing1 != thing2 && !stop)
-		odc::asio_service::Get()->poll_one();
+		if(!odc::asio_service::Get()->poll_one()) std::this_thread::yield();
 
 	if(!stop)
 		stop_timer->cancel();
@@ -198,8 +198,8 @@ TEST_CASE(SUITE("SimpleStrings"))
 	pSockMan1->Close();
 	pSockMan2->Close();
 	//wait for close
-	while(state1 || state2)
-		odc::asio_service::Get()->poll_one();
+	require_equal(state1,std::atomic_bool(false));
+	require_equal(state2,std::atomic_bool(false));
 	//echo back - the recv1 strings are ok to use now, because sockets should be closed
 	pSockMan1->Write(std::string(recv1));
 	pSockMan2->Write(std::string(recv2));

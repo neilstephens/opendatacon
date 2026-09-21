@@ -483,7 +483,7 @@ void scenario_quality_full(const TrxCfg& cfg)
 				std::promise<void> post_done;
 				auto f = post_done.get_future();
 				odc::asio_service::Get()->post([&](){post_done.set_value();});
-				f.wait();
+				REQUIRE(f.wait_for(std::chrono::milliseconds(test_timeout)) == std::future_status::ready);
 			}
 		} //lifetime of all test ojects
 	}
@@ -539,8 +539,6 @@ void scenario_single_drop(const TrxCfg& cfg)
 			require_link_down(port_pair.second);
 
 			pMITM->Allow();
-			//wait another couple of keepalive periods just in case
-			std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period*2));
 			require_link_up(port_pair.first);
 			require_link_up(port_pair.second);
 
@@ -607,8 +605,6 @@ void scenario_multi_drop(const TrxCfg& cfg)
 		port_pairs[0].first->Disable();
 		Log.Info("One down.");
 		require_link_down(port_pairs[0].second);
-		//wait another keepalive periods to check - just in case
-		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
 		for(size_t i : {1,2})
 		{
 			require_link_up(port_pairs[i].first);
@@ -617,8 +613,6 @@ void scenario_multi_drop(const TrxCfg& cfg)
 		port_pairs[1].second->Disable();
 		Log.Info("Two down.");
 		require_link_down(port_pairs[1].first);
-		//wait another keepalive periods to check - just in case
-		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
 		require_link_up(port_pairs[2].first);
 		require_link_up(port_pairs[2].second);
 
@@ -626,14 +620,13 @@ void scenario_multi_drop(const TrxCfg& cfg)
 		port_pairs[1].second->Enable();
 		Log.Info("All back.");
 
-		//wait another keepalive periods to check - just in case
-		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period));
 		for(auto port_pair : port_pairs)
 		{
 			//wait for them to connect through the man-in-the-middle
 			require_link_up(port_pair.first);
 			require_link_up(port_pair.second);
 		}
+
 
 		if(cfg.has_conn_count)
 		{
@@ -652,8 +645,6 @@ void scenario_multi_drop(const TrxCfg& cfg)
 		}
 
 		pMITM->Allow();
-		//wait another couple of keepalive periods just in case
-		std::this_thread::sleep_for(std::chrono::milliseconds(link_ka_period*2));
 		for(auto port_pair : port_pairs)
 		{
 			require_link_up(port_pair.first);
