@@ -275,6 +275,17 @@ inline ParamCollection BuildParams(const std::string& a,
 	return params;
 }
 
+inline bool WaitForEnabled(const std::shared_ptr<DataPort>& sim_port, const size_t timeout_ms = 20000)
+{
+	unsigned int count = 0;
+	while(!sim_port->Enabled() && count < timeout_ms)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		count++;
+	}
+	return sim_port->Enabled();
+}
+
 /*
   function     : SendEvent
   description  : this function will send the event to simulator
@@ -551,10 +562,7 @@ TEST_CASE("TestForcedPoint")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
-		//give some time for PortUp() to finish
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "12345.6789");
@@ -595,8 +603,7 @@ TEST_CASE("TestReleasePoint")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", "0", "");
@@ -636,10 +643,7 @@ TEST_CASE("TestAnalogEventToAll")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
-		//give some time for PortUp() to finish
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Analog", ".*", "12345.6789");
@@ -681,10 +685,7 @@ TEST_CASE("TestBinaryEventToAll")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
-		//give some time for PortUp() to finish
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
@@ -726,10 +727,7 @@ TEST_CASE("TestBinaryEventQuality")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
-		//give some time for PortUp() to finish
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
@@ -771,10 +769,7 @@ TEST_CASE("TestAnalogEventQuality")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
-		//give some time for PortUp() to finish
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 		const ParamCollection params = BuildParams("Binary", ".*", "1");
@@ -816,10 +811,7 @@ TEST_CASE("TestBinaryEventTimestamp")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
-		//give some time for PortUp() to finish
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 
@@ -877,10 +869,7 @@ TEST_CASE("TestAnalogEventTimestamp")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
-		//give some time for PortUp() to finish
-		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		REQUIRE(WaitForEnabled(sim_port));
 
 		const IUIResponder* resp = std::get<1>(sim_port->GetUIResponder());
 
@@ -2317,8 +2306,7 @@ TEST_CASE("SQLiteDB_EmptyTable")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 		CHECK(sim_port->Enabled());
@@ -2364,8 +2352,7 @@ TEST_CASE("SQLiteDB_RelativeFirstWraparound")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		//row1 re-appearing after later rows proves at least one wraparound cycle completed.
 		//(the last row before a wrap is re-anchored to "now" with ~zero dwell time, so it's
@@ -2419,8 +2406,7 @@ TEST_CASE("SQLiteDB_RelativeTOD")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		//without FASTFORWARD, all 3 (already past for today) rows fire back-to-back
 		//essentially instantly, then wrap and repeat - poll densely to catch all 3
@@ -2472,8 +2458,7 @@ TEST_CASE("SQLiteDB_RelativeTODFastForwardAllPast")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		//the found event is ~24h in the future, so no crash/hang is the main thing being
 		//verified here - the value should stay at its StartVal for the life of this test
@@ -2525,8 +2510,7 @@ TEST_CASE("SQLiteDB_Absolute")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		//wait for all 3 rows to fire, then confirm it settles on the last one and stays there
 		std::this_thread::sleep_for(std::chrono::milliseconds(400));
@@ -2579,8 +2563,7 @@ TEST_CASE("SQLiteDB_AbsoluteFastForward")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		//the two past rows (1.0, 2.0) must never be observed - only the StartVal (0.0)
 		//until the future row (3.0) fires
@@ -2630,8 +2613,7 @@ TEST_CASE("SQLiteDB_BinaryType")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		auto seen = PollPointValues(sim_port, "BinaryPayload", 500007, std::chrono::milliseconds(900));
 		CHECK(sim_port->Enabled());
@@ -2680,8 +2662,7 @@ TEST_CASE("SQLiteDB_IndexBinding")
 		ThreadPool thread_pool(1);
 
 		sim_port->Enable();
-		while(!sim_port->Enabled())
-			;
+		REQUIRE(WaitForEnabled(sim_port));
 
 		//row1 of each point (10.0/100.0) re-appearing more than once proves each point wraps
 		//independently, without cross-contaminating the other point's bound query results
