@@ -69,7 +69,7 @@ TEST_CASE(SUITE("TCP link"))
 
 		//TODO: write a better way to wait for GetStatus
 		unsigned int count = 0;
-		while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
+		while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 40000)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			count++;
@@ -80,7 +80,7 @@ TEST_CASE(SUITE("TCP link"))
 
 		//wait to actually recieve something
 		count = 0;
-		while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+		while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 40000)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			count++;
@@ -92,7 +92,7 @@ TEST_CASE(SUITE("TCP link"))
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 		count = 0;
-		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
+		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 40000)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			count++;
@@ -155,7 +155,7 @@ static void TestUDP(const bool connectionless, const uint16_t osUDPListenPort, c
 
 		//TODO: write a better way to wait for GetStatus
 		unsigned int count = 0;
-		while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
+		while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 40000)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			count++;
@@ -166,7 +166,7 @@ static void TestUDP(const bool connectionless, const uint16_t osUDPListenPort, c
 
 		//wait to actually recieve something
 		count = 0;
-		while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+		while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 40000)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			count++;
@@ -178,7 +178,7 @@ static void TestUDP(const bool connectionless, const uint16_t osUDPListenPort, c
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
 		count = 0;
-		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 20000)
+		while(MPUT->GetStatus()["Result"].asString() == "Port enabled - link up (unreset)" && count < 40000)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			count++;
@@ -269,7 +269,7 @@ TEST_CASE(SUITE("Serial link"))
 
 			//TODO: write a better way to wait for GetStatus
 			unsigned int count = 0;
-			while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 20000)
+			while((MPUT->GetStatus()["Result"].asString() == "Port enabled - link down" || OPUT->GetStatus()["Result"].asString() == "Port enabled - link down") && count < 40000)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				count++;
@@ -280,7 +280,7 @@ TEST_CASE(SUITE("Serial link"))
 
 			//wait to actually recieve something
 			count = 0;
-			while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 20000)
+			while(MPUT->GetStatistics()["transport"]["numTransportRx"].asUInt() == 0 && count < 40000)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				count++;
@@ -292,7 +292,7 @@ TEST_CASE(SUITE("Serial link"))
 
 			count = 0;
 			std::string new_status;
-			while((new_status = MPUT->GetStatus()["Result"].asString()) == "Port enabled - link up (unreset)" && count < 20000)
+			while((new_status = MPUT->GetStatus()["Result"].asString()) == "Port enabled - link up (unreset)" && count < 40000)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				count++;

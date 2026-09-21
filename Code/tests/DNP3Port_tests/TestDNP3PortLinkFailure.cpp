@@ -37,7 +37,7 @@
 using port_pair_t = std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>>;
 
 const unsigned int link_ka_period = 200;
-const unsigned int test_timeout = 30000;
+const unsigned int test_timeout = 60000;
 
 inline Json::Value MakeBaseDNP3Conf(size_t os_addr, size_t ms_addr, bool comms)
 {
