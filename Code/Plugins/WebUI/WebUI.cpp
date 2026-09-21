@@ -185,11 +185,18 @@ void WebUI::Enable()
 {
 	std::thread server_thread([this]()
 		{
-			// Start server
-			WebSrv.start([](unsigned short port)
-				{
-					Log.Info("Simple Web Server listening on port {}.",port);
-				});
+			try
+			{
+				// Start server
+				WebSrv.start([](unsigned short port)
+					{
+						Log.Info("Simple Web Server listening on port {}.",port);
+					});
+			}
+			catch(const std::exception& e)
+			{
+				Log.Error("WebUI server thread failed to start: {}",e.what());
+			}
 		});
 
 	//TODO/FIXME: make thread a member, so we can join it on disable/shutdown
