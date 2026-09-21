@@ -25,6 +25,7 @@
  */
 
 #include "UDPMITM.h"
+#include <opendatacon/util.h>
 #include <spdlog/spdlog.h>
 
 UDPMITM::UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
@@ -39,8 +40,8 @@ UDPMITM::UDPMITM(uint16_t mitm_port_os, uint16_t mitm_port_ms,
 	pStrand(ios->make_strand()),
 	sock_os(ios->make_udp_socket()),
 	sock_ms(ios->make_udp_socket()),
-	readbuf_os(65536),
-	readbuf_ms(65536)
+	readbuf_os(odc::make_shared<std::vector<char>>(std::vector<char>(65536))),
+	readbuf_ms(odc::make_shared<std::vector<char>>(std::vector<char>(65536)))
 {
 	sock_os->open(asio::ip::udp::v4());
 	sock_ms->open(asio::ip::udp::v4());
@@ -73,11 +74,8 @@ std::shared_ptr<UDPMITM> UDPMITM::create(
 
 UDPMITM::~UDPMITM()
 {
-	//Cancel/close on the strand, taking the sockets and their in-flight
-	//receive buffers with it, so this can return without waiting for it
-	pStrand->post(
-		[sock_os = std::move(sock_os), sock_ms = std::move(sock_ms),
-		 readbuf_os = std::move(readbuf_os), readbuf_ms = std::move(readbuf_ms)]()
+	//Cancel/close on the strand; transfer the socket ownership
+	pStrand->post([sock_os = std::move(sock_os), sock_ms = std::move(sock_ms)]()
 		{
 			asio::error_code ec;
 			sock_os->cancel(ec);
@@ -156,15 +154,15 @@ void UDPMITM::StartRead(const bool dir)
 	//Always called on pStrand
 	std::weak_ptr<UDPMITM> weak = weak_from_this();
 	if(dir)
-		sock_os->async_receive(asio::buffer(readbuf_os),
-			pStrand->wrap([weak, dir](std::error_code ec, size_t num)
+		sock_os->async_receive(asio::buffer(*readbuf_os),
+			pStrand->wrap([weak, dir, buf{readbuf_os}](std::error_code ec, size_t num)
 				{
 					if(auto self = weak.lock())
 						self->ReadHandler(dir, ec, num);
 				}));
 	else
-		sock_ms->async_receive(asio::buffer(readbuf_ms),
-			pStrand->wrap([weak, dir](std::error_code ec, size_t num)
+		sock_ms->async_receive(asio::buffer(*readbuf_ms),
+			pStrand->wrap([weak, dir, buf{readbuf_ms}](std::error_code ec, size_t num)
 				{
 					if(auto self = weak.lock())
 						self->ReadHandler(dir, ec, num);
@@ -185,13 +183,13 @@ void UDPMITM::ReadHandler(const bool dir, std::error_code ec, size_t num)
 	{
 		if(dir)
 		{
-			sock_ms->async_send_to(asio::buffer(readbuf_os.data(), num), remote_ep_ms,
-				[](std::error_code, size_t) {});
+			sock_ms->async_send_to(asio::buffer(readbuf_os->data(), num), remote_ep_ms,
+				[buf{readbuf_os}](std::error_code, size_t) {});
 		}
 		else
 		{
-			sock_os->async_send_to(asio::buffer(readbuf_ms.data(), num), remote_ep_os,
-				[](std::error_code, size_t) {});
+			sock_os->async_send_to(asio::buffer(readbuf_ms->data(), num), remote_ep_os,
+				[buf{readbuf_ms}](std::error_code, size_t) {});
 		}
 	}
 

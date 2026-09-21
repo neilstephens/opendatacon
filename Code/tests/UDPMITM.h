@@ -74,8 +74,8 @@ private:
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_os;
 	std::unique_ptr<asio::ip::udp::socket, odc::deleter> sock_ms;
 
-	std::vector<char> readbuf_os;
-	std::vector<char> readbuf_ms;
+	std::shared_ptr<std::vector<char>> readbuf_os;
+	std::shared_ptr<std::vector<char>> readbuf_ms;
 };
 
 #endif // UDPMITM_H
