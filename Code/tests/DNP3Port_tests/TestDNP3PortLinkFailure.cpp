@@ -308,10 +308,10 @@ struct TrxCfg
 
 const TrxCfg TCP_CFG = {
 	"TCP",
-	[](MITMConfig dir) {    return std::make_shared<ManInTheMiddle>(dir,20000,20001,"DNP3Port"); },
+	[](MITMConfig dir) {    return std::make_shared<ManInTheMiddle>(dir,21000,21001,"DNP3Port"); },
 	[](module_ptr portlib, size_t os_addr, size_t ms_addr, MITMConfig dir, bool comms)
 	{
-		return PortPair(portlib,os_addr,ms_addr,dir,20000,20001,comms);
+		return PortPair(portlib,os_addr,ms_addr,dir,21000,21001,comms);
 	},
 	[](module_ptr portlib, size_t os_addr, size_t ms_addr, bool comms)
 	{
