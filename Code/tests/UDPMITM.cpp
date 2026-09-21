@@ -85,7 +85,13 @@ UDPMITM::~UDPMITM()
 	//sock_os/sock_ms with new socket objects (destroying the old ones);
 	//capturing raw pointers now would go stale and dangle by the time
 	//this lambda actually runs.
-	pStrand->post([this]()
+	//Also capture a handler_tracker copy: if no reads happen to be
+	//outstanding right now (eg the last call was Down(), with no
+	//following Up()), the drain below would otherwise see the tracker
+	//already expired and return immediately, without ever waiting for
+	//this very lambda to run - leaving it to dereference `this` well
+	//after the object (and its members) have been destroyed.
+	pStrand->post([this,tracker{handler_tracker}]()
 		{
 			asio::error_code ec;
 			sock_os->cancel(ec);
