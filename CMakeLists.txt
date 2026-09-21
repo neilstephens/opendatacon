@@ -46,7 +46,7 @@ set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++20 instead of -std=gnu++20
 add_compile_definitions(FMT_CONSTEVAL=)
 
 # Optional compiler launcher (ccache/sccache). No-op when not installed.
-option(USE_COMPILER_LAUNCHER "Use ccache/sccache as compiler launcher if found" ON)
+option(USE_COMPILER_LAUNCHER "Use ccache/sccache as compiler launcher if found" OFF)
 if(USE_COMPILER_LAUNCHER)
 	find_program(_odc_compiler_launcher NAMES ccache sccache)
 	if(_odc_compiler_launcher)
@@ -330,10 +330,6 @@ endif()
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build/${INSTALLDIR_LIBS}" )
 set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/build" )
-
-if(WIN32)
-	set( CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" )
-endif()
 
 # Second, for multi-config builds (e.g. msvc)
 foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
