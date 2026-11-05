@@ -159,12 +159,24 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 						continue;
 					}
 
+					//Create a logger if we haven't already (used by both C++ and C API transforms)
+					if(!odc::spdlog_get(libname))
+					{
+						if(auto log = Log.GetLog())
+						{
+							auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
+								odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
+							pLogger->set_level(log->level());
+							odc::spdlog_register_logger(pLogger);
+						}
+					}
+
 					//Check for C API library
 					auto c_api_version = reinterpret_cast<const char*(*)()>(LoadSymbol(txlib, "odc_c_api_version"));
 					if(c_api_version != nullptr)
 					{
 						Log.Info("{} : Detected C API (v{}) transform library — creating C_Transform wrapper", txname, c_api_version());
-						tx_ptr.reset(new odc::C_Transform(Transforms[n]["Type"].asString(), txname, Transforms[n]["Parameters"], txlib), [txlib] (Transform* pTx){delete pTx; UnLoadModule(txlib);});
+						tx_ptr.reset(new odc::C_Transform(Transforms[n]["Type"].asString(), txname, Transforms[n]["Parameters"], txlib, libname), [txlib] (Transform* pTx){delete pTx; UnLoadModule(txlib);});
 						//Continue to sender registration below (skip C++ symbol lookup)
 					}
 					else
@@ -185,18 +197,6 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 						{
 							Log.Error("Failed to load transform '{}' : ignoring", Transforms[n]["Type"].asString());
 							continue;
-						}
-
-						//Create a logger if we haven't already
-						if(!odc::spdlog_get(libname))
-						{
-							if(auto log = Log.GetLog())
-							{
-								auto pLogger = std::make_shared<spdlog::async_logger>(libname, log->sinks().begin(), log->sinks().end(),
-									odc::spdlog_thread_pool(), spdlog::async_overflow_policy::overrun_oldest);
-								pLogger->set_level(log->level());
-								odc::spdlog_register_logger(pLogger);
-							}
 						}
 
 						tx_delete = [=](Transform* tx)

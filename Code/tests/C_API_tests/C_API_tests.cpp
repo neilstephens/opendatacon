@@ -26,6 +26,8 @@
 #include <opendatacon/LogHelpers.h>
 #include <opendatacon/util.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/ostream_sink.h>
+#include <sstream>
 
 #include "CAPI/C_Port.h"
 #include "CAPI/C_Transform.h"
@@ -167,15 +169,15 @@ static void TestSetup()
 	auto pLibLogger = std::make_shared<spdlog::logger>("opendatacon", console_sink);
 	pLibLogger->set_level(log_level);
 	odc::spdlog_register_logger(pLibLogger);
-	// Per-type logger for mock C ports (matches Type+"Port")
+	// Logger for mock C ports constructed without a logger name (defaults to Type+"Port")
 	auto pMockLogger = std::make_shared<spdlog::logger>("MockCPort", console_sink);
 	pMockLogger->set_level(log_level);
 	odc::spdlog_register_logger(pMockLogger);
-	// Per-type loggers for mock C transforms (Type, no suffix)
+	// Logger for mock C transforms constructed without a logger name (defaults to Type)
 	auto pTxLogger = std::make_shared<spdlog::logger>("TestTxType", console_sink);
 	pTxLogger->set_level(log_level);
 	odc::spdlog_register_logger(pTxLogger);
-	// Per-type logger for mock C UI plugins (Type, no suffix)
+	// Logger for mock C UI plugins constructed without a logger name (defaults to Type)
 	auto pUILogger = std::make_shared<spdlog::logger>("TestUIType", console_sink);
 	pUILogger->set_level(log_level);
 	odc::spdlog_register_logger(pUILogger);
@@ -531,6 +533,54 @@ TEST_CASE("C_API - c_odc log and should_log")
 	port->Disable();
 	tx->Disable();
 	ux->Disable();
+	TestTearDown();
+}
+
+// The loader names the logger after the library, which can differ from the type
+// (eg. Library "GoModbusPort" implements Types "GoModbusClient" and "GoModbusServer").
+// Messages from the C library must go to that logger.
+TEST_CASE("C_API - log goes to the library logger when it differs from the type")
+{
+	TestSetup();
+	ThreadPool pool;
+
+	auto self = GetCurrentModule();
+	REQUIRE(self != nullptr);
+
+	auto captured = std::make_shared<std::ostringstream>();
+	auto capture_sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(*captured);
+	capture_sink->set_pattern("%n|%v");
+	for(const auto& name : {"MockLib", "TxLib", "UILib"})
+	{
+		auto logger = std::make_shared<spdlog::logger>(name, capture_sink);
+		logger->set_level(spdlog::level::trace);
+		odc::spdlog_register_logger(logger);
+	}
+
+	auto overrides = Json::Value(Json::objectValue);
+	auto port = std::make_shared<odc::C_Port>("MockC", "LibLogPort", "conf.json", overrides, self, "MockLib");
+	auto tx = std::make_shared<odc::C_Transform>("TestTxType", "LibLogTx", Json::objectValue, self, "TxLib");
+	auto ux = std::make_shared<odc::C_UI>("TestUIType", "LibLogUI", "conf.json", overrides, self, "UILib");
+
+	REQUIRE(c_odc->should_log(port->GetCInst(), C_LOG_LEVEL_TRACE));
+	REQUIRE(c_odc->should_log(tx->GetCInst(), C_LOG_LEVEL_TRACE));
+	REQUIRE(c_odc->should_log(ux->GetCInst(), C_LOG_LEVEL_TRACE));
+
+	c_odc->log(port->GetCInst(), C_LOG_LEVEL_INFO, "port message");
+	c_odc->log(tx->GetCInst(), C_LOG_LEVEL_INFO, "tx message");
+	c_odc->log(ux->GetCInst(), C_LOG_LEVEL_INFO, "ui message");
+
+	const auto out = captured->str();
+	CHECK(out.find("MockLib|LibLogPort: port message") != std::string::npos);
+	CHECK(out.find("TxLib|LibLogTx: tx message") != std::string::npos);
+	CHECK(out.find("UILib|ui message") != std::string::npos);
+
+	// The level of the library logger is respected
+	odc::spdlog_get("MockLib")->set_level(spdlog::level::off);
+	odc::BumpLogRefreshSequenceNum(); //what the datacon does when log levels change
+	CHECK(!c_odc->should_log(port->GetCInst(), C_LOG_LEVEL_TRACE));
+	CHECK(!c_odc->should_log(port->GetCInst(), C_LOG_LEVEL_CRITICAL));
+
 	TestTearDown();
 }
 

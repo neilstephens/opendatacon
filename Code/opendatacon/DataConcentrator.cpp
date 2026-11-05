@@ -1101,7 +1101,8 @@ void DataConcentrator::ProcessPorts(const Json::Value& Ports)
 						Ports[n]["Name"].asString(),
 						Ports[n]["ConfFilename"].asString(),
 						Ports[n]["ConfOverrides"],
-						portlib),
+						portlib,
+						libname),
 					port_cleanup));
 			set_init_mode(DataPorts.at(Ports[n]["Name"].asString()).get());
 			continue;
@@ -1248,7 +1249,7 @@ void DataConcentrator::ProcessPlugins(const Json::Value& Plugins)
 			auto plugin_cleanup = [pluginlib](IUI* plugin) { delete plugin; UnLoadModule(pluginlib);};
 			Interfaces.emplace(PluginName, std::shared_ptr<IUI>(
 				new odc::C_UI(Plugins[n]["Type"].asString(), PluginName, Plugins[n]["ConfFilename"].asString(),
-					Plugins[n]["ConfOverrides"], pluginlib),
+					Plugins[n]["ConfOverrides"], pluginlib, libname),
 				plugin_cleanup));
 			continue;
 		}

@@ -56,9 +56,10 @@ namespace odc
 
 C_Port::C_Port(const std::string& aType, const std::string& aName,
 	const std::string& aConfFilename, const Json::Value& aConfOverrides,
-	module_ptr lib_handle):
+	module_ptr lib_handle, const std::string& aLoggerName):
 	DataPort(aName, aConfFilename, aConfOverrides),
 	Type(aType),
+	ModuleLog(aLoggerName.empty() ? aType+"Port" : aLoggerName),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr),
@@ -172,15 +173,13 @@ void C_Port::ProcessElements(const Json::Value& JSONRoot)
 
 void C_Port::Log(uint8_t level, const std::string& msg)
 {
-	if(auto log = odc::spdlog_get(Type+"Port"))
+	if(auto log = ModuleLog.GetLog())
 		log->log(static_cast<spdlog::level::level_enum>(level), "{}: {}", Name, msg);
 }
 
 bool C_Port::ShouldLog(uint8_t level) const
 {
-	if(auto log = odc::spdlog_get(Type+"Port"))
-		return log->should_log(static_cast<spdlog::level::level_enum>(level));
-	return false;
+	return ModuleLog.ShouldLog(static_cast<spdlog::level::level_enum>(level));
 }
 
 void C_Port::Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName,

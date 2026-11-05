@@ -31,6 +31,7 @@
 #include <opendatacon/Transform.h>
 #include <opendatacon/asio.h>
 #include <opendatacon/odc_c_api.h>
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/Platform.h>
 #include <json/json.h>
 #include <string>
@@ -44,8 +45,10 @@ extern std::unordered_map<void*, C_Transform*> C_Transform_instances;
 class C_Transform: public Transform
 {
 public:
+	// aLoggerName: name of the spdlog logger to use for messages from the library
+	//	(the loader passes the library name). Empty means "<Type>".
 	C_Transform(const std::string& aType, const std::string& aName,
-		const Json::Value& params, module_ptr lib_handle);
+		const Json::Value& params, module_ptr lib_handle, const std::string& aLoggerName = "");
 	~C_Transform() override;
 
 	void Enable() override
@@ -79,6 +82,7 @@ private:
 	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
 
 	std::string Type;
+	LogHelpers ModuleLog; //logger for messages from the C library (odc_Log)
 	void* c_inst;
 
 	decltype(&odc_transform_create) p_create;

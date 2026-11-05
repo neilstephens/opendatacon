@@ -34,8 +34,10 @@ std::unordered_map<void*, C_UI*> C_UI_instances;
 
 C_UI::C_UI(const std::string& aType, const std::string& aName,
 	const std::string& aConfFilename,
-	const Json::Value& aConfOverrides, module_ptr lib_handle):
+	const Json::Value& aConfOverrides, module_ptr lib_handle,
+	const std::string& aLoggerName):
 	Type(aType),
+	ModuleLog(aLoggerName.empty() ? aType : aLoggerName),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
 	p_build(nullptr), p_enable(nullptr), p_disable(nullptr)
@@ -124,15 +126,13 @@ void C_UI::Disable_()
 
 void C_UI::Log(uint8_t level, const std::string& msg)
 {
-	if(auto log = odc::spdlog_get(Type))
+	if(auto log = ModuleLog.GetLog())
 		log->log(static_cast<spdlog::level::level_enum>(level), "{}", msg);
 }
 
 bool C_UI::ShouldLog(uint8_t level) const
 {
-	if(auto log = odc::spdlog_get(Type))
-		return log->should_log(static_cast<spdlog::level::level_enum>(level));
-	return false;
+	return ModuleLog.ShouldLog(static_cast<spdlog::level::level_enum>(level));
 }
 
 } // namespace odc

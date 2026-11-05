@@ -30,6 +30,7 @@
 #include <future>
 #include <opendatacon/DataPort.h>
 #include <opendatacon/odc_c_api.h>
+#include <opendatacon/LogHelpers.h>
 #include <opendatacon/Platform.h>
 #include <opendatacon/MergeJsonConf.h>
 #include <json/json.h>
@@ -46,9 +47,11 @@ extern std::unordered_map<void*, C_Port*> C_Port_instances;
 class C_Port: public DataPort
 {
 public:
+	// aLoggerName: name of the spdlog logger to use for messages from the library
+	//	(the loader passes the library name). Empty means "<Type>Port".
 	C_Port(const std::string& aType, const std::string& aName,
 		const std::string& aConfFilename, const Json::Value& aConfOverrides,
-		module_ptr lib_handle);
+		module_ptr lib_handle, const std::string& aLoggerName = "");
 	~C_Port() override;
 
 	void Enable() override
@@ -122,6 +125,7 @@ private:
 	const Json::Value GetStatus_() const;
 
 	std::string Type;
+	LogHelpers ModuleLog; //logger for messages from the C library (odc_Log)
 	Json::Value configJSON;
 	std::string configJSONstr;
 	void* c_inst;

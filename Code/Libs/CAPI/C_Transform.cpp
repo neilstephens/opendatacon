@@ -33,9 +33,10 @@ namespace odc
 std::unordered_map<void*, C_Transform*> C_Transform_instances;
 
 C_Transform::C_Transform(const std::string& aType, const std::string& aName,
-	const Json::Value& params, module_ptr lib_handle):
+	const Json::Value& params, module_ptr lib_handle, const std::string& aLoggerName):
 	Transform(aName, params),
 	Type(aType),
+	ModuleLog(aLoggerName.empty() ? aType : aLoggerName),
 	c_inst(nullptr),
 	p_create(nullptr), p_destroy(nullptr),
 	p_enable(nullptr), p_disable(nullptr), p_event(nullptr)
@@ -274,15 +275,13 @@ void C_Transform::Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow
 
 void C_Transform::Log(uint8_t level, const std::string& msg)
 {
-	if(auto log = odc::spdlog_get(Type))
+	if(auto log = ModuleLog.GetLog())
 		log->log(static_cast<spdlog::level::level_enum>(level), "{}: {}", Name, msg);
 }
 
 bool C_Transform::ShouldLog(uint8_t level) const
 {
-	if(auto log = odc::spdlog_get(Type))
-		return log->should_log(static_cast<spdlog::level::level_enum>(level));
-	return false;
+	return ModuleLog.ShouldLog(static_cast<spdlog::level::level_enum>(level));
 }
 
 } // namespace odc
