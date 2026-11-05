@@ -9,7 +9,7 @@
 	//   Binaries / BinaryOutputStatuses  : poll coil / DI → publish ODC Binary / BinaryOS
 	//   Analogs / AnalogOutputStatuses   : poll HR / IR → publish ODC Analog / AnalogOS
 	//   OctetStrings                     : poll HR block → publish ODC OctetString
-	//   BinaryControls                   : receive ODC CROB / Binary → write Modbus coil
+	//   BinaryControls                   : receive ODC CROB → write Modbus coil
 	//   AnalogControls                   : receive ODC AnalogOutput* → write Modbus HR
 
 	"Inherits": ["shared_points.conf.json"],

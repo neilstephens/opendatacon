@@ -1,15 +1,15 @@
 --[[
   DataSink.lua  –  GoModbus-LuaPort-E2E example
 
-  Receives events from two sources:
-    Client2Sink connector: polled values from GoModbusClient (Analog indices
-      shifted +1000 by IndexShiftTransform, ConnectState dropped).
-    Server2Sink connector: events published by GoModbusServer when the Modbus
-      client writes a mapped coil or holding register.
+  Connected (only) to GoModbusClient, through the bidirectional Client2Sink connector:
+    - Receives the client's polled values (Analog indices shifted +1000 by
+      IndexShiftTransform, ConnectState dropped).
+    - After ControlDelayMs a one-shot timer sends control events (CROB, AO16,
+      AOF32, AOD64) to the client, which writes them to the server.  The server
+      publishes them back to DataGenerator, which checks the round trip.
 
-  After ControlDelayMs the sink fires a one-shot timer and sends control events
-  (CROB, AO16, AOF32, AOD64) to GoModbusClient via the Sink2Client connector.
-  The client writes them to the server; the server publishes them back.
+  Because DataSink has a single peer, each control's status callback is the
+  client's actual write result (SUCCESS, or HARDWARE_ERROR/NOT_SUPPORTED).
 
   ODC host-API functions exercised (via LuaPort's odc.* wrappers):
     in_demand               – checked before expensive per-event processing
@@ -102,12 +102,13 @@ function Enable()
     end
   end))
 
-  -- One-shot timer to send controls after the client has had time to connect
-  local delay = odc.Config.ControlDelayMs or 3000
+  -- One-shot timer to send controls after the client has had time to connect.
+  -- The callback receives an error-message string (not a CommandStatus), and is also
+  -- invoked if the timer is cancelled, so sendControls() guards on 'running' instead.
+  local delay = math.tointeger(odc.Config.ControlDelayMs) or 3000
   controlTimerCancel = odc.msTimerCallback(delay, function(err)
-    if err == odc.CommandStatus.SUCCESS then
-      sendControls()
-    end
+    controlTimerCancel = nil
+    sendControls()
   end)
 end
 
@@ -182,25 +183,12 @@ function handleEventByType(ev, sender)
       odc.log.debug("  OctetString round-trip OK")
     end
 
-  -- ConnectState from server: log with connect_state_to_string
+  -- ConnectState: log with connect_state_to_string
+  -- (the IndexShift transform drops the client's, so normally none arrive here)
   elseif et == odc.EventType.ConnectState then
     -- connect_state_to_string vtable function
     odc.log.info("  ConnectState from " .. sender .. ": " ..
       odc.ToString.ConnectState(ev.Payload or 0))
-
-  -- ControlRelayOutputBlock from server (echoed back after client wrote coil 20)
-  elseif et == odc.EventType.ControlRelayOutputBlock and sender == "ModbusServer" then
-    -- control_code_to_string vtable function
-    local cc = (ev.Payload and ev.Payload.ControlCode) or 0
-    odc.log.info("  Server CROB echo: ControlCode=" .. odc.ToString.ControlCode(cc))
-
-  -- Analog output events from server (echoed back after client wrote HRs)
-  elseif (et == odc.EventType.AnalogOutputInt16 or
-          et == odc.EventType.AnalogOutputFloat32 or
-          et == odc.EventType.AnalogOutputDouble64) and sender == "ModbusServer" then
-    local val = (ev.Payload and ev.Payload.Value) or 0
-    odc.log.info(string.format("  Server AO echo: %s idx=%d val=%s",
-      etName(ev), ev.Index, tostring(val)))
   end
 end
 
@@ -219,6 +207,8 @@ function sendControls()
   local crob = odc.MakePayload.ControlRelayOutputBlock()
   crob.ControlCode = odc.ControlCode.LATCH_ON
   crob.Count = 1
+  -- control_code_to_string vtable function
+  odc.log.info("DataSink: CROB(20) ControlCode=" .. odc.ToString.ControlCode(crob.ControlCode))
   odc.PublishEvent(
     { EventType = odc.EventType.ControlRelayOutputBlock, Index = 20, Payload = crob },
     function(s)
@@ -255,10 +245,6 @@ function sendControls()
 end
 
 -- ── Helpers ────────────────────────────────────────────────────────────────────
-
-function etName(ev)
-  return odc.ToString.EventType(ev.EventType)
-end
 
 function formatPayload(ev)
   local et = ev.EventType

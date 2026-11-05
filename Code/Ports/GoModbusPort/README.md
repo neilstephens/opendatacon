@@ -27,13 +27,19 @@ within the opendatacon C API framework.
 
 ### Client mode — polling a Modbus TCP device
 
+The port config can be supplied in a file (`ConfFilename`), inline (`ConfOverrides`), or both
+(overrides are deep-merged on top of the file). `ConfFilename` is a required key, but may be `""`.
+`Library` must be set, because the library name (`GoModbusPort`) can't be derived from the port type.
+
 ```json
 {
   "Ports": [
     {
       "Name": "MyPLC",
       "Type": "GoModbusClient",
-      "Conf": {
+      "Library": "GoModbusPort",
+      "ConfFilename": "",
+      "ConfOverrides": {
         "TCP": { "Address": "192.168.1.100:502" },
         "UnitID": 1,
         "TimeoutMs": 2000,
@@ -44,13 +50,17 @@ within the opendatacon C API framework.
         ],
         "Analogs": [
           { "Index": 0, "Modbus": { "Type": "HoldingRegister", "Address": 100 }, "Scale": 0.1, "DataType": "Int16" },
-          { "Index": 1, "Modbus": { "Type": "InputRegister", "Address": 200 }, "Endian": "DCBA", "DataType": "Float32" }
+          { "Index": 1, "Modbus": { "Type": "InputRegister", "Address": 200, "Count": 2 }, "Endian": "DCBA", "DataType": "Float32" }
         ]
       }
     }
   ]
 }
 ```
+
+The client only polls while it's "in demand": at least one port connected to it (via a
+connector) must have published a `CONNECTED` ConnectState event. DNP3 outstations, Null ports and
+well-behaved Lua ports all do this.
 
 ### Server mode — exposing ODC events as a Modbus device
 
@@ -60,8 +70,10 @@ within the opendatacon C API framework.
     {
       "Name": "MyServer",
       "Type": "GoModbusServer",
-      "Conf": {
-        "TCP": { "Listen": "0.0.0.0:502" },
+      "Library": "GoModbusPort",
+      "ConfFilename": "",
+      "ConfOverrides": {
+        "TCP": { "Listen": "0.0.0.0:1502" },
         "UnitID": 1,
         "Binaries": [
           { "Index": 0, "Modbus": { "Type": "Coil", "Address": 0 } }
@@ -70,10 +82,11 @@ within the opendatacon C API framework.
           { "Index": 10, "Modbus": { "Type": "HoldingRegister", "Address": 100, "Count": 2 }, "Endian": "ABCD", "DataType": "Float32" }
         ],
         "BinaryControls": [
-          { "Index": 20, "Modbus": { "Type": "Coil", "Address": 50 }, "OnAction": "On", "OffAction": "Off" }
+          { "Index": 20, "Modbus": { "Type": "Coil", "Address": 50 } }
         ],
         "AnalogControls": [
-          { "Index": 30, "Modbus": { "Type": "HoldingRegister", "Address": 200, "Count": 2 }, "ControlType": "AnalogOutputFloat32" }
+          { "Index": 30, "Modbus": { "Type": "HoldingRegister", "Address": 200, "Count": 2 },
+            "ControlType": "AnalogOutputFloat32", "DataType": "Float32", "Endian": "ABCD" }
         ]
       }
     }
@@ -91,9 +104,13 @@ within the opendatacon C API framework.
   - Per-point or global poll rate; `Range` notation for bulk point configuration
   - Configurable endianness and data-type interpretation for register-based values
   - Scale/Offset transformation on analog values
-  - Bit extraction from holding registers for binary points
+  - Bit extraction from holding/input registers for binary points
   - OctetString support (register pairs → byte array)
-  - Outbound control writes (CROB/Binary/Analog → WriteCoil/WriteRegister)
+  - Outbound control writes: ODC CROB → WriteCoil; ODC AnalogOutputInt16/Int32/Float32/Double64 →
+    WriteRegister(s). The incoming event type must match the point config exactly (see
+    [ControlConfig](#controlconfig) and [AnalogControlConfig](#analogcontrolconfig))
+  - `ConnectState` events from peers are acknowledged with `SUCCESS`; every other received
+    event is treated as a control
   - Automatic reconnection with exponential back-off (1–30 s)
   - Transport-disconnect detection triggers reconnect cycle
   - Configurable concurrency via `MaxConcurrentPolls` (default 1)
@@ -182,25 +199,36 @@ Exactly one of `TCP` or `RTU` must be specified.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `Scale` | float | 0 | `raw_value * Scale + Offset` applied to polled values (client); inverse applied for server store writes |
+| `Scale` | float | 0 (no scaling) | `raw_value * Scale + Offset` applied to polled values (client); inverse applied for server store writes. A `Scale` of 0 (or omitted) is treated as 1. |
 | `Offset` | float | 0 | See Scale |
 | `Endian` | string | `"ABCD"` | Byte/word order for multi-register values (see [Endian reference](#endian--datatype-reference)) |
-| `DataType` | string | `"Int16"` (count=1), `"Int32"` (count=2) | Interpretation of raw register(s): `Int16`, `Uint16`, `Int32`, `Uint32`, `Float32`, `Float64` |
+| `DataType` | string | `"Int16"` (count=1), `"Int32"` (count=2) | Interpretation of raw register(s): `Int16`, `Uint16`, `Int32`, `Uint32`, `Float32`, `Float64`. `Modbus.Count` must match: 2 for 32-bit types, 4 for `Float64` (the decode width is chosen by `Count`, so e.g. `Float32` with `Count` 1 decodes as `Int16`) |
 
 ### ControlConfig
 
+`BinaryControls` entries. Only `"Type": "Coil"` is valid.
+
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `OnAction` | string | `"On"` | Coil value to write for ON/LATCH_ON/CROB-on events. Any value other than "Off" is treated as ON. |
-| `OffAction` | string | `"Off"` | Coil value to write for OFF/LATCH_OFF/CROB-off events. `"Off"` = false, anything else = true. |
+| `OnAction` | string | `"On"` | Client only. Coil value written for CROB `LATCH_ON`/`PULSE_ON`/`CLOSE_PULSE_ON`. Any value other than "Off" is treated as ON. |
+| `OffAction` | string | `"Off"` | Client only. Coil value written for any other CROB control code. `"Off"` = false, anything else = true. |
+
+- **Client:** only ODC `ControlRelayOutputBlock` events match a `BinaryControls` point. Other event
+  types at the same index are answered `NOT_SUPPORTED`.
+- **Server:** a Modbus client write to the coil publishes an ODC `Binary` event with the written
+  value. `OnAction`/`OffAction` aren't used.
 
 ### AnalogControlConfig
 
+`AnalogControls` entries. Only `"Type": "HoldingRegister"` is valid.
+
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `ControlType` | string | `"AnalogOutputInt16"` | ODC event type for the published value: `AnalogOutputInt16`, `AnalogOutputInt32`, `AnalogOutputFloat32`, `AnalogOutputDouble64` |
-| `Endian` | string | `"ABCD"` | Byte/word order for decoding raw Modbus registers before publishing the ODC event |
-| `DataType` | string | `"Int16"` | How to interpret the raw Modbus register(s) |
+| `ControlType` | string | `"AnalogOutputInt16"` | `AnalogOutputInt16`, `AnalogOutputInt32`, `AnalogOutputFloat32` or `AnalogOutputDouble64`. **Client:** the only ODC event type accepted for this point (others are answered `NOT_SUPPORTED`); it also chooses the write width (1, 2, 2 or 4 registers). **Server:** the ODC event type published when a Modbus client writes the register(s). |
+| `Endian` | string | `"ABCD"` | Server only: byte/word order used to decode the written registers. The client always writes multi-register values big-endian, high word first. |
+| `DataType` | string | `"Int16"` (count=1), `"Int32"` (count=2) | Server only: how to interpret the written register(s). Set it to `"Float32"` for float setpoints. |
+
+The client doesn't apply scaling to controls, so send raw register values.
 
 ---
 

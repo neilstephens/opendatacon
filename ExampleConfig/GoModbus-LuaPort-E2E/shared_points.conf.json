@@ -71,7 +71,7 @@
 
 	// ── Binary controls ──────────────────────────────────────────────────────
 	// Index 20: Coil 20
-	//   Client side:  receives CROB/Binary ODC event → writes Coil 20 on server.
+	//   Client side:  receives CROB ODC event → writes Coil 20 on server.
 	//   Server side:  when Modbus client writes Coil 20 → publishes Binary(20) to subscribers.
 	"BinaryControls":
 	[
@@ -82,6 +82,10 @@
 	// Index 20: HR 20, 1 register, AnalogOutputInt16 — simple 16-bit setpoint
 	// Index 21: HR 22, 2 registers, AnalogOutputFloat32 ABCD — float setpoint
 	// Index 22: HR 26, 4 registers, AnalogOutputDouble64 — exercises Float64 path
+	//
+	// DataType/Endian are only used by the server, to decode the registers a Modbus client
+	// writes (the client always writes big-endian, high word first).  Without
+	// "DataType": "Float32", a 2-register write would be decoded as Int32.
 	"AnalogControls":
 	[
 		{ "Index": 20,
@@ -89,9 +93,9 @@
 		  "ControlType": "AnalogOutputInt16" },
 		{ "Index": 21,
 		  "Modbus": { "Type": "HoldingRegister", "Address": 22, "Count": 2 },
-		  "ControlType": "AnalogOutputFloat32" },
+		  "ControlType": "AnalogOutputFloat32", "DataType": "Float32", "Endian": "ABCD" },
 		{ "Index": 22,
 		  "Modbus": { "Type": "HoldingRegister", "Address": 26, "Count": 4 },
-		  "ControlType": "AnalogOutputDouble64" }
+		  "ControlType": "AnalogOutputDouble64", "DataType": "Float64" }
 	]
 }

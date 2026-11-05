@@ -3,7 +3,8 @@
   
   Periodically publishes ODC events that flow into GoModbusServer's data store
   via the Gen2Server connector.  GoModbusClient then polls those values and
-  publishes them to DataSink.
+  publishes them to DataSink.  Also checks the events GoModbusServer publishes
+  back when DataSink's controls are written to it (see Event()).
   
   ODC host-API functions exercised (via LuaPort's odc.* wrappers):
     ms_repeating_callback   – via odc.msCoroutineLoop
@@ -77,12 +78,42 @@ function Disable()
   end
 end
 
--- Mandatory event handler – generator does not subscribe to anything meaningful,
--- but the function is required.  Log and acknowledge every event.
+-- Event handler.  The only peer is ModbusServer (via Gen2Server), which publishes:
+--   - ConnectState changes
+--   - Binary(20) when a Modbus client writes coil 20
+--   - AnalogOutputInt16(20) / AnalogOutputFloat32(21) / AnalogOutputDouble64(22) when a
+--     Modbus client writes the matching holding registers
+-- The latter two complete the control round trip DataSink → ModbusClient → Modbus →
+-- ModbusServer → here, so check them against the values DataSink.sendControls() sends.
+local EXPECTED_ECHO =
+{
+  [odc.EventType.Binary]               = { [20] = true },
+  [odc.EventType.AnalogOutputInt16]    = { [20] = 1234 },
+  [odc.EventType.AnalogOutputFloat32]  = { [21] = 3.14159 },
+  [odc.EventType.AnalogOutputDouble64] = { [22] = 2.718281828 },
+}
+
 function Event(EventInfo, SenderName, StatusCallback)
-  odc.log.debug("DataGenerator received event from " .. SenderName ..
-    " type=" .. odc.ToString.EventType(EventInfo.EventType) ..
-    " idx=" .. EventInfo.Index)
+  local et = EventInfo.EventType
+  local expected = EXPECTED_ECHO[et] and EXPECTED_ECHO[et][EventInfo.Index]
+  if expected ~= nil then
+    local got = EventInfo.Payload
+    if type(got) == "table" then got = got.Value end
+    local ok
+    if type(expected) == "number" then
+      ok = type(got) == "number" and math.abs(got - expected) <= math.abs(expected) * 1e-6
+    else
+      ok = (got == expected)
+    end
+    local msg = string.format("control round trip %s idx=%d value=%s expected=%s : %s",
+      odc.ToString.EventType(et), EventInfo.Index, tostring(got), tostring(expected),
+      ok and "OK" or "MISMATCH")
+    if ok then odc.log.info(msg) else odc.log.error(msg) end
+  else
+    odc.log.debug("DataGenerator received event from " .. SenderName ..
+      " type=" .. odc.ToString.EventType(et) ..
+      " idx=" .. EventInfo.Index)
+  end
   StatusCallback(odc.CommandStatus.SUCCESS)
 end
 
