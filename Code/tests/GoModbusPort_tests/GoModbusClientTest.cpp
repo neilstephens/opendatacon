@@ -59,6 +59,33 @@ TEST_CASE(SUITE("ConstructEnableDisableDestroy"))
 	TestTearDown();
 }
 
+// ConnectState events from peers are notifications, not controls → SUCCESS,
+// even when the client hasn't connected to a device (nothing is listening on the port).
+TEST_CASE(SUITE("ConnectStateEventAcknowledged"))
+{
+	TestSetup();
+
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
+	{
+		ThreadPool pool(1);
+		auto port = std::make_shared<odc::C_Port>("GoModbusClient", "ClientConnectState",
+			"", MakeMinimalClientConfig(), portlib);
+		REQUIRE(port != nullptr);
+
+		port->Build();
+		port->Enable();
+
+		auto event = std::make_shared<odc::EventInfo>(odc::EventType::ConnectState, 0);
+		event->SetPayload<odc::EventType::ConnectState>(odc::ConnectState::CONNECTED);
+
+		REQUIRE(SendEvent(*port, event) == odc::CommandStatus::SUCCESS);
+		port->Disable();
+	}
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
 TEST_CASE(SUITE("ConfigPassthrough"))
 {
 	TestSetup();

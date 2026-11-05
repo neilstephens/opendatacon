@@ -522,6 +522,13 @@ func (p *GoModbusServerPort) handleEvent(event *C.struct_C_EventInfo, sender str
 		return
 	}
 
+	// ConnectState events are peer notifications, not data for the store.
+	// Demand tracking is handled by the C++ wrapper, so just acknowledge them.
+	if uint8(C.odc_GetEventType(event)) == C.C_EventType_ConnectState {
+		invokeStatusCallback(cb, C.C_CommandStatus_SUCCESS)
+		return
+	}
+
 	work := eventWork{
 		event:  *event,
 		sender: sender,

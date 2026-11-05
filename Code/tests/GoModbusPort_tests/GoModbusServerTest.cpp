@@ -229,6 +229,43 @@ TEST_CASE(SUITE("UnmappedEventNotSupported"))
 	TestTearDown();
 }
 
+// ConnectState events from peers are notifications, not data → SUCCESS.
+TEST_CASE(SUITE("ConnectStateEventAcknowledged"))
+{
+	TestSetup();
+
+	auto portlib = LoadModule(GetLibFileName("GoModbusPort"));
+	REQUIRE(portlib != nullptr);
+
+	{
+		ThreadPool pool(1);
+		const int port = 1502;
+
+		Json::Value pts;
+		Json::Value bin;
+		bin["Index"]         = 0;
+		bin["Modbus"]["Type"]    = "Coil";
+		bin["Modbus"]["Address"] = 0;
+		pts["Binaries"].append(bin);
+
+		auto srv = std::make_shared<odc::C_Port>("GoModbusServer", "SrvConnectState",
+			"", MakeServerConfig(port, pts), portlib);
+		REQUIRE(srv != nullptr);
+
+		srv->Build();
+		srv->Enable();
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+		auto event = std::make_shared<odc::EventInfo>(odc::EventType::ConnectState, 0);
+		event->SetPayload<odc::EventType::ConnectState>(odc::ConnectState::CONNECTED);
+
+		REQUIRE(SendEvent(*srv, event) == odc::CommandStatus::SUCCESS);
+		srv->Disable();
+	}
+
+	TestTearDown();
+}
+
 // Event received before Enable() → HARDWARE_ERROR.
 TEST_CASE(SUITE("EventWhileDisabled"))
 {
