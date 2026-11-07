@@ -108,7 +108,7 @@ TEST_CASE(SUITE("Allow: directories and files, after resolving links and .."))
 	const auto a = d.File("A/a.lua");
 	const auto a_sub = d.File("A/sub/b.lua");
 	const auto b = d.File("B/c.lua");
-	const auto near = d.File("A_x/d.lua");
+	const auto sibling = d.File("A_x/d.lua");
 	const auto other = d.File("B/other.lua");
 	const auto root = d.root.string();
 	Json::Value conf;
@@ -124,7 +124,7 @@ TEST_CASE(SUITE("Allow: directories and files, after resolving links and .."))
 	CHECK(allowed(a_sub));
 	CHECK(allowed(b));
 	CHECK(allowed(root+"/A/../B/c.lua"));               //the same file, by another path
-	CHECK_FALSE(allowed(near));                         //A_x is not under A
+	CHECK_FALSE(allowed(sibling));                      //A_x is not under A
 	CHECK_FALSE(allowed(other));                        //only c.lua of B
 	CHECK_FALSE(allowed(root+"/A/../B/other.lua"));     //out of A by ".."
 	CHECK_FALSE(DecideNetAccess(conf,nullptr).allowed); //code not from a file

@@ -1123,29 +1123,30 @@ TEST_CASE(SUITE("the peer answers the select or the operate with a data access e
 		{DA::ObjectNonExistent, CS::NOT_SUPPORTED}, {DA::ObjectValueInvalid, CS::FORMAT_ERROR}, {DA::ObjectAttributeInconsistent, CS::OUT_OF_RANGE},
 		{DA::HardwareFault, CS::HARDWARE_ERROR}
 	};
-	for(const auto& [error, expected] : table)
+	for(const auto& [tableError, expected] : table)
 		for(const char* step : {"read", "operate"})
 		{
 			B5Fixture f;
+			const int64_t daError = tableError;
 			f.StartClient();
 			//a scripted peer: serve the sequence by hand, fail at `step`
-			f.link.b.requestHook = [&f, error, step](uint32_t id, const mms::ConfirmedServiceRequest& req)
+			f.link.b.requestHook = [&f, daError, step](uint32_t id, const mms::ConfirmedServiceRequest& req)
 						     {
 							     auto& conn = f.link.b.conn;
 							     if(std::get_if<mms::ReadRequest>(&req))
 							     {
 								     mms::ReadResponse rr;
-								     rr.results.push_back(std::string(step) == "read" ? mms::AccessResult::Failure(error) : mms::AccessResult::Success(tase2::SelectToData(77)));
+								     rr.results.push_back(std::string(step) == "read" ? mms::AccessResult::Failure(daError) : mms::AccessResult::Success(tase2::SelectToData(77)));
 								     conn.Respond(id, rr);
 								     return true;
 							     }
 							     mms::WriteResponse wr;
-							     wr.results.push_back(std::string(step) == "operate" ? mms::WriteResult{false, error} : mms::WriteResult{true, 0});
+							     wr.results.push_back(std::string(step) == "operate" ? mms::WriteResult{false, daError} : mms::WriteResult{true, 0});
 							     conn.Respond(id, wr);
 							     return true;
 						     };
 			const auto r = f.Operate("DEV_CMD_01", B5Fixture::On());
-			INFO("error " << error << " at " << step);
+			INFO("error " << daError << " at " << step);
 			REQUIRE(r->has_value());
 			CHECK(**r == expected);
 			CHECK(f.client->ControlCounters().failures == 1);
