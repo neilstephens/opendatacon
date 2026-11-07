@@ -49,12 +49,14 @@ TCPSocketManager::TCPSocketManager
 	const bool useKeepalives,
 	const unsigned int KeepAliveTimeout_s,
 	const unsigned int KeepAliveRetry_s,
-	const unsigned int KeepAliveFailcount):
+	const unsigned int KeepAliveFailcount,
+	const bool aDropWritesBetweenConnections):
 	handler_tracker(std::make_shared<char>()),
 	isConnected(false),
 	pending_write(false),
 	pending_read(false),
 	manuallyClosed(true),
+	drop_writes_between_connections(aDropWritesBetweenConnections),
 	pIOS(apIOS),
 	isServer(aisServer),
 	ReadCallback(aReadCallback),
@@ -87,10 +89,10 @@ void TCPSocketManager::Open()
 }
 
 
-void TCPSocketManager::Close()
+void TCPSocketManager::Close(unsigned int abort_after_ms)
 {
 	auto tracker = handler_tracker;
-	pSockStrand->post([this,tracker]()
+	pSockStrand->post([this,tracker,abort_after_ms]()
 		{
 			LogCallback("debug","Connection manual close.");
 			manuallyClosed = true;
@@ -100,6 +102,22 @@ void TCPSocketManager::Close()
 				ps->close();
 			CandidatepSocks.clear();
 			pAcceptor.reset();
+			close_abort_ms = abort_after_ms;
+			if(!isConnected)
+				return;
+			ArmCloseTimer(tracker);
+			//what was written is sent first: the write handler ends the connection when it's done
+			if(!pending_write)
+			{
+				std::error_code err;
+				auto remote_end = pSock->remote_endpoint(err);
+				WriteBuffer(pSock,err ? "'"+err.message()+"'" : remote_end.address().to_string()+":"+std::to_string(remote_end.port()),tracker);
+			}
+			if(pending_write || delayed_writes > 0)
+			{
+				flushing = true;
+				return;
+			}
 			AutoClose(tracker);
 		});
 }
@@ -120,13 +138,39 @@ TCPSocketManager::~TCPSocketManager()
 //----------------Public^^^
 //----------------Private
 
+//the peer is expected to close its side when it sees ours shut. If it doesn't, the socket is closed.
+void TCPSocketManager::ArmCloseTimer(std::shared_ptr<void> tracker)
+{
+	if(pCloseTimer)
+		pCloseTimer->cancel();
+	if(!pending_read)
+		return;
+	std::weak_ptr<odc::tcp::socket> pSockWeak = pSock;
+	std::shared_ptr<odc::steady_timer> pTimer = pIOS->make_steady_timer();
+	pCloseTimer = pTimer;
+	pTimer->expires_from_now(std::chrono::milliseconds(close_abort_ms));
+	pTimer->async_wait(pSockStrand->wrap([this,pSockWeak,pTimer,tracker](std::error_code err_code)
+		{
+			if(err_code)
+				return;
+			if(auto pOldSock = pSockWeak.lock())
+			{
+				std::error_code err;
+				pOldSock->close(err);
+				LogCallback("debug","Connection closed after waiting for the peer to close it.");
+			}
+		}));
+}
+
 void TCPSocketManager::Write(shared_const_buffer buf)
 {
 	auto tracker = handler_tracker;
 	std::shared_ptr<odc::steady_timer> pTimer = pIOS->make_steady_timer();
 	auto write_execute = pSockStrand->wrap([this,tracker,buf,pTimer](std::error_code)
 		{
-			if(!isConnected || manuallyClosed || pending_write)
+			if(throttle_writedelay_ms)
+				--delayed_writes;
+			if(!isConnected || (manuallyClosed && !flushing) || pending_write)
 			{
 				queue_writebufs->push_back(buf);
 				if(queue_writebufs->size() > buffer_limit)
@@ -191,6 +235,7 @@ void TCPSocketManager::Write(shared_const_buffer buf)
 	// A better way would be to use a queue to manage all the throttled writes when throttling is enabled
 	if(throttle_writedelay_ms)
 	{
+		++delayed_writes;
 		pTimer->expires_from_now(std::chrono::milliseconds(throttle_writedelay_ms));
 		pTimer->async_wait(write_execute);
 	}
@@ -312,9 +357,16 @@ void TCPSocketManager::ClientOpen(std::shared_ptr<odc::tcp::socket> pCandidateSo
 void TCPSocketManager::CheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker)
 {
 	pending_write = false;
-	//if the connection is still the active one, keep writing
-	if(pWriteSock == pSock && isConnected && !manuallyClosed)
+	//if the connection is still the active one, keep writing (when it is being closed, until what was written before is sent)
+	if(pWriteSock == pSock && isConnected && (!manuallyClosed || flushing))
+	{
 		WriteBuffer(pWriteSock,remote_addr_str,tracker);
+		if(flushing && !pending_write && delayed_writes == 0) //Close() was waiting for this
+		{
+			flushing = false;
+			AutoClose(tracker);
+		}
+	}
 	else
 	{ //this socket is finished with - we're responsible for shutting down send
 		LogCallback("debug","Finished sending to "+remote_addr_str+" - shutting socket send");
@@ -322,6 +374,8 @@ void TCPSocketManager::CheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSo
 		pWriteSock->shutdown(odc::tcp::socket::shutdown_send,err);
 		if(err)
 			LogCallback("debug","Send shutdown failed from write handler: "+err.message());
+		if(drop_writes_between_connections)
+			dispatch_writebufs->clear(); //what is left of a write for a connection that has ended
 		AutoOpen(tracker);
 	}
 }
@@ -429,7 +483,25 @@ void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, s
 		return;
 	}
 
+	if(!pCandidateSock->is_open()) //Close() closed it as the connect (or accept) completed
+	{
+		LogCallback("debug","Connection from "+addr_str+" to "+remote_addr_str+" was closed as it completed.");
+		if(CandidatepSocks.size() == 0)
+			AutoOpen(tracker);
+		return;
+	}
+
 	pSock = pCandidateSock;
+	if(drop_writes_between_connections)
+	{
+		//nothing left over from an earlier connection is sent on this one (a write still in progress on the old one is cleared when it ends)
+		if(!queue_writebufs->empty() || (!pending_write && !dispatch_writebufs->empty()))
+			LogCallback("debug","Discarding writes left over from the previous connection.");
+		queue_writebufs->clear();
+		if(!pending_write)
+			dispatch_writebufs->clear();
+	}
+	flushing = false;
 	SetTCPKeepalives(*pSock,Keepalives.enabled,Keepalives.idle_timeout_s,Keepalives.retry_interval_s,Keepalives.fail_count);
 	isConnected = true;
 	StateCallback(isConnected);
@@ -441,6 +513,7 @@ void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, s
 		//still close the socket nicely and read anything off the socket
 		//but don't write anything
 		LogCallback("debug","Closing unneeded connection on "+addr_str+" from "+remote_addr_str);
+		ArmCloseTimer(tracker); //(as Close() would have)
 		AutoClose(tracker);
 		return;
 	}
@@ -482,6 +555,8 @@ void TCPSocketManager::ThrottleReadHandler(const size_t n, std::error_code err_c
 	pending_read = false;
 	if(err_code)
 	{
+		if(pCloseTimer) //Close() was waiting for this
+			pCloseTimer->cancel();
 		auto level = (err_code == asio::error::eof) ? "info" : "warning";
 		LogCallback(level,"Async read from "+remote_addr_str+" ("+std::to_string(n)+" bytes) : "+err_code.message());
 		pSock->shutdown(odc::tcp::socket::shutdown_receive,err_code);

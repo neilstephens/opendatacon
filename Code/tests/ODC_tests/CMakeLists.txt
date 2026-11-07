@@ -23,3 +23,7 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h)
 
 add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 target_link_libraries(${PROJECT_NAME} CAPI)
+# the TLS tests make their certificates with OpenSSL (when the library has it)
+if(ODC_ASIO_SSL)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE ODC_ASIO_SSL)
+endif()

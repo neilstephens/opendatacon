@@ -32,7 +32,8 @@
 //	-- Data will continuously be read from socket if available and passed to the read callback, unitl the socket is closed
 //	-- Optionally Write() to the socket. Data will be buffered if the connection isn't open.
 //	-- If the socket closes for any reason you'll get a state callback
-//	-- Call Close() to intentionally close the socket 8-)
+//	-- Call Close() to intentionally close the socket 8-) What was written before is sent first.
+//	-- Post() and Wrap() run something on the socket strand, where the callbacks run (for a layer built on top of the manager)
 
 #ifndef TCPSOCKETMANAGER
 #define TCPSOCKETMANAGER
@@ -44,6 +45,7 @@
 #include <functional>
 #include <set>
 #include <limits>
+#include <atomic>
 
 namespace odc
 {
@@ -101,10 +103,14 @@ public:
 		const bool useKeepalives = true,                                  //Set TCP keepalive socket option
 		const unsigned int KeepAliveTimeout_s = 599,                      //TCP keepalive idle timeout (seconds)
 		const unsigned int KeepAliveRetry_s = 10,                         //TCP keepalive retry interval (seconds)
-		const unsigned int KeepAliveFailcount = 3);                       //TCP keepalive fail count
+		const unsigned int KeepAliveFailcount = 3,                        //TCP keepalive fail count
+		const bool aDropWritesBetweenConnections = false);                //Discard what is left unsent when a connection ends, instead of sending it on the next one
 
 	void Open();
-	void Close();
+	//Stop: end the connection (if there is one) and stop reconnecting until Open(). What was written before (including writes still delayed by
+	//throttle_writedelay_ms) is sent first, then the sending side is shut down. If the peer hasn't closed its side abort_after_ms later, the
+	//socket is closed. A write made while it is sending goes out on that connection too.
+	void Close(unsigned int abort_after_ms = 30000);
 
 	template <typename Q> //Q must be a container with a data(), size() and get_allocator() members
 	void Write(Q&& aContainer)
@@ -112,6 +118,19 @@ public:
 		//shared_const_buffer is a ref counted wraper that will delete the data in good time
 		shared_const_buffer buf(std::make_shared<Q>(std::move(aContainer)));
 		Write(buf);
+	}
+
+	//Run f on the socket strand, in order with the manager's own handlers and callbacks. The destructor waits for it.
+	template <typename F>
+	void Post(F&& f)
+	{
+		pSockStrand->post([tracker{handler_tracker},f{std::forward<F>(f)}]() mutable { f(); });
+	}
+	//Make a completion handler (for a timer, say) that runs f on the socket strand. The destructor waits for it.
+	template <typename F>
+	auto Wrap(F&& f)
+	{
+		return pSockStrand->wrap([tracker{handler_tracker},f{std::forward<F>(f)}](auto&&... args) mutable { f(std::forward<decltype(args)>(args)...); });
 	}
 
 	~TCPSocketManager();
@@ -122,6 +141,13 @@ private:
 	bool pending_write;
 	bool pending_read;
 	bool manuallyClosed;
+	const bool drop_writes_between_connections;
+	//Close(): sending what is left before the connection is ended, and the timer that closes the socket if the peer doesn't close its side
+	bool flushing = false;
+	std::shared_ptr<odc::steady_timer> pCloseTimer;
+	unsigned int close_abort_ms = 30000; //the abort time of the last Close()
+	void ArmCloseTimer(std::shared_ptr<void> tracker);
+	std::atomic<size_t> delayed_writes{0}; //writes waiting for throttle_writedelay_ms
 	std::shared_ptr<odc::asio_service> pIOS;
 	const bool isServer;
 	const std::function<void(buf_t&)> ReadCallback;
