@@ -109,15 +109,15 @@ void ParseTranslationSettings(const Json::Value& JSONRoot, TranslationSettings& 
 	if(JSONRoot.isMember("KeyClashDetection"))
 	{
 		if(JSONRoot["KeyClashDetection"].asString() == "STRICT")
-			settings.ClashDetection = KeyClashDetection::STRICT;
+			settings.ClashDetection = KeyClashDetection::Strict;
 		else if(JSONRoot["KeyClashDetection"].asString() == "WARN")
-			settings.ClashDetection = KeyClashDetection::WARN;
+			settings.ClashDetection = KeyClashDetection::Warn;
 		else if(JSONRoot["KeyClashDetection"].asString() == "DYNAMIC")
-			settings.ClashDetection = KeyClashDetection::DYNAMIC;
+			settings.ClashDetection = KeyClashDetection::Dynamic;
 		else
 		{
 			Log.Error("Unknown KeyClashDetection '{}'. Defaulting to WARN.", JSONRoot["KeyClashDetection"].asString());
-			settings.ClashDetection = KeyClashDetection::WARN;
+			settings.ClashDetection = KeyClashDetection::Warn;
 		}
 	}
 	if(JSONRoot.isMember("PointTraslationSource"))
@@ -433,7 +433,7 @@ struct TranslationEngine::Impl
 		auto non_static = pKeySer->FindNonStaticElement(settings.PointTraslationSource);
 		if(non_static.empty())
 			return true;
-		if(settings.ClashDetection != KeyClashDetection::DYNAMIC)
+		if(settings.ClashDetection != KeyClashDetection::Dynamic)
 			throw std::runtime_error("Key for "+what+" uses '"+non_static+"', which isn't static for a point. Only KeyClashDetection DYNAMIC allows non-static keys.");
 		return false;
 	}
@@ -549,9 +549,9 @@ struct TranslationEngine::Impl
 					continue;
 				auto msg = "Channel '"+rk.Channel+"', key '"+KeyToString(rk.Key)+"' is used by points with different deserialisers: "
 				           +TidToString(first_tid)+" and "+TidToString(tid);
-				if(settings.ClashDetection == KeyClashDetection::STRICT)
+				if(settings.ClashDetection == KeyClashDetection::Strict)
 					throw std::runtime_error(msg);
-				if(settings.ClashDetection == KeyClashDetection::WARN)
+				if(settings.ClashDetection == KeyClashDetection::Warn)
 					Log.Warn("{}. Using the first.", msg);
 				break;
 			}
@@ -572,7 +572,7 @@ struct TranslationEngine::Impl
 			Reverse.emplace(rk, std::move(target));
 		}
 
-		if(settings.ClashDetection == KeyClashDetection::DYNAMIC)
+		if(settings.ClashDetection == KeyClashDetection::Dynamic)
 			FallbackDeserialiser = GetDeserialiser(settings.TranslationMethod, PayloadSpec(nullptr));
 	}
 };

@@ -28,7 +28,7 @@
  *      the message is for (see KeyContext::Hint), otherwise the payload does.
  *
  *  Keys are static by default: a point's key is generated once from its identity, cached, and hashed for the
- *  reverse lookup. KeyClashDetection::DYNAMIC relaxes this.
+ *  reverse lookup. KeyClashDetection::Dynamic relaxes this.
  */
 
 #ifndef ODC_TRANSLATIONENGINE_H
@@ -50,7 +50,7 @@ struct TranslationSettings
 	KeyTranslationMethod KeyMethod = KeyTranslationMethod::Literal;
 	TranslationConfig Config;
 	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
-	KeyClashDetection ClashDetection = KeyClashDetection::WARN;
+	KeyClashDetection ClashDetection = KeyClashDetection::Warn;
 
 	std::string DefaultChannel = "";
 

@@ -66,15 +66,16 @@ enum class SourceLookupMethod
 };
 
 //How to treat keys that are associated with more than one (de)serialiser
-//	STRICT:  config error
-//	WARN:    warn, and the first one wins
-//	DYNAMIC: keys may be non-static (evaluated per event, never cached),
+//(the config values are STRICT, WARN and DYNAMIC, but not as enumerator names: STRICT is a macro in the Windows SDK)
+//	Strict:  config error
+//	Warn:    warn, and the first one wins
+//	Dynamic: keys may be non-static (evaluated per event, never cached),
 //	         no clash detection, and unmatched keys fall back to the default deserialiser
 enum class KeyClashDetection
 {
-	STRICT,
-	WARN,
-	DYNAMIC
+	Strict,
+	Warn,
+	Dynamic
 };
 
 //Which side of a translation a (de)serialiser is for

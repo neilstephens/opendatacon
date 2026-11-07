@@ -193,7 +193,7 @@ TEST_CASE(SUITE("Settings parsing"))
 	TranslationSettings s;
 	CHECK(s.TranslationMethod == EventTranslationMethod::Template);
 	CHECK(s.KeyMethod == KeyTranslationMethod::Literal);
-	CHECK(s.ClashDetection == KeyClashDetection::WARN);
+	CHECK(s.ClashDetection == KeyClashDetection::Warn);
 
 	ParseTranslationSettings(ParseJSON(R"({
 		"TranslationMethod": "CBOR",
@@ -210,7 +210,7 @@ TEST_CASE(SUITE("Settings parsing"))
 	})"), s);
 	CHECK(s.TranslationMethod == EventTranslationMethod::CBOR);
 	CHECK(s.KeyMethod == KeyTranslationMethod::Template);
-	CHECK(s.ClashDetection == KeyClashDetection::STRICT);
+	CHECK(s.ClashDetection == KeyClashDetection::Strict);
 	CHECK(s.PointTraslationSource == SourceLookupMethod::SenderName);
 	CHECK(s.DefaultKey.size() == 5);
 	CHECK(s.DefaultKeyTemplate == "k/<INDEX>");
@@ -400,18 +400,18 @@ TEST_CASE(SUITE("Engine - non-static keys"))
 
 	SECTION("WARN rejects")
 	{
-		s.ClashDetection = KeyClashDetection::WARN;
+		s.ClashDetection = KeyClashDetection::Warn;
 		CHECK_THROWS(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward));
 		CHECK_THROWS(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse));
 	}
 	SECTION("STRICT rejects")
 	{
-		s.ClashDetection = KeyClashDetection::STRICT;
+		s.ClashDetection = KeyClashDetection::Strict;
 		CHECK_THROWS(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward));
 	}
 	SECTION("DYNAMIC evaluates per event")
 	{
-		s.ClashDetection = KeyClashDetection::DYNAMIC;
+		s.ClashDetection = KeyClashDetection::Dynamic;
 		s.DefaultTemplate = "<PAYLOAD>";
 		auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward);
 		CHECK(Str(engine->Serialise(MakeAnalog(1, 1, "s", 100), "").Key) == "k/1/100");
@@ -448,7 +448,7 @@ TEST_CASE(SUITE("Engine - key clashes"))
 
 	SECTION("WARN - first wins")
 	{
-		s.ClashDetection = KeyClashDetection::WARN;
+		s.ClashDetection = KeyClashDetection::Warn;
 		auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse);
 		std::string a = "A:1,Analog,5", b = "B:2,Analog,5";
 		auto key = std::string("shared");
@@ -457,14 +457,14 @@ TEST_CASE(SUITE("Engine - key clashes"))
 	}
 	SECTION("STRICT - error")
 	{
-		s.ClashDetection = KeyClashDetection::STRICT;
+		s.ClashDetection = KeyClashDetection::Strict;
 		CHECK_THROWS(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse));
 		//only consumers care
 		CHECK_NOTHROW(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward));
 	}
 	SECTION("many points with the same deserialiser is fine")
 	{
-		s.ClashDetection = KeyClashDetection::STRICT;
+		s.ClashDetection = KeyClashDetection::Strict;
 		auto same = ParsePTM(R"({"Analog": [{"Range": {"Start": 1, "Stop": 100}}]})");
 		CHECK_NOTHROW(TranslationEngine::Create(s, same, TranslationEngine::Direction::Reverse));
 	}
@@ -489,7 +489,7 @@ TEST_CASE(SUITE("Engine - DYNAMIC falls back to the default deserialiser"))
 {
 	TranslationSettings s;
 	s.DefaultChannel = "c";
-	s.ClashDetection = KeyClashDetection::DYNAMIC;
+	s.ClashDetection = KeyClashDetection::Dynamic;
 	s.KeyMethod = KeyTranslationMethod::Template;
 	s.DefaultKeyTemplate = "k/<TIMESTAMP>";
 	s.DefaultTemplate = "<INDEX>,<EVENTTYPE>,<PAYLOAD>";
