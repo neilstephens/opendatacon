@@ -321,6 +321,39 @@ TEST_CASE("Py.TestEventStringConversions")
 
 		CheckEventStringConversions(odcevent);
 	}
+	INFO("Counter")
+	{
+		uint32_t uval = 4000000000u;
+		auto odcevent = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, "Testing", QualityFlags::ONLINE);
+		odcevent->SetPayload<EventType::Counter>(std::move(uval));
+
+		CheckEventStringConversions(odcevent);
+	}
+	INFO("FrozenCounter")
+	{
+		uint32_t uval = 12345;
+		auto odcevent = std::make_shared<EventInfo>(EventType::FrozenCounter, ODCIndex, "Testing", QualityFlags::ONLINE | QualityFlags::DISCONTINUITY);
+		odcevent->SetPayload<EventType::FrozenCounter>(std::move(uval));
+
+		CheckEventStringConversions(odcevent);
+	}
+	INFO("Counter bad payload")
+	{
+		size_t idx = ODCIndex;
+		CHECK_FALSE(PyPort::CreateEventFromStrParams("Counter", idx, "|ONLINE|", "not a number", "Testing"));
+		CHECK_FALSE(PyPort::CreateEventFromStrParams("FrozenCounter", idx, "|ONLINE|", "not a number", "Testing"));
+	}
+	INFO("CounterQuality")
+	{
+		size_t idx = ODCIndex;
+		auto pubevent = PyPort::CreateEventFromStrParams("CounterQuality", idx, "|ONLINE|", "|ONLINE|DISCONTINUITY|", "Testing");
+		REQUIRE(pubevent);
+		CHECK(pubevent->GetEventType() == EventType::CounterQuality);
+		CHECK(pubevent->GetPayload<EventType::CounterQuality>() == (QualityFlags::ONLINE | QualityFlags::DISCONTINUITY));
+		pubevent = PyPort::CreateEventFromStrParams("FrozenCounterQuality", idx, "|ONLINE|", "|COMM_LOST|", "Testing");
+		REQUIRE(pubevent);
+		CHECK(pubevent->GetPayload<EventType::FrozenCounterQuality>() == QualityFlags::COMM_LOST);
+	}
 	INFO("ControlRelayOutputBlock")
 	{
 		EventTypePayload<EventType::ControlRelayOutputBlock>::type val;

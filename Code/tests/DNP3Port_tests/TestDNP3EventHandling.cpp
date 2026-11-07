@@ -45,12 +45,12 @@ constexpr size_t demand_stale_time = 1000;
 
 constexpr const char* AnaOutTypes[] = {"AnalogOutputInt16", "AnalogOutputInt32", "AnalogOutputFloat32", "AnalogOutputDouble64"};
 
-std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const module_ptr portlib, const std::string& OutstationServerType = "PERSISTENT", const std::string& MasterServerType = "PERSISTENT", bool RideThroughDemandPause = true)
+std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const module_ptr portlib, const std::string& OutstationServerType = "PERSISTENT", const std::string& MasterServerType = "PERSISTENT", bool RideThroughDemandPause = true, size_t IntegrityScanRatems = 0, size_t FreezeScanRatems = 0)
 {
 	//make a config
 	Json::Value conf = Json::objectValue;
 	//add some points
-	for(auto& PointType : {"Analogs", "Binaries", "OctetStrings", "BinaryControls", "AnalogControls", "BinaryOutputStatuses", "AnalogOutputStatuses"})
+	for(auto& PointType : {"Analogs", "Counters", "FrozenCounters", "Binaries", "OctetStrings", "BinaryControls", "AnalogControls", "BinaryOutputStatuses", "AnalogOutputStatuses"})
 	{
 		conf[PointType] = Json::arrayValue;
 		for(size_t idx = 0; idx < num_indexes; ++idx)
@@ -70,12 +70,15 @@ std::pair<std::shared_ptr<DataPort>,std::shared_ptr<DataPort>> MakePorts(const m
 	conf["UnsolClass2"] = true;
 	conf["UnsolClass3"] = true;
 	conf["DisableUnsolOnStartup"] = true;
-	conf["IntegrityScanRatems"] = Json::UInt(0);
+	conf["IntegrityScanRatems"] = Json::UInt(IntegrityScanRatems);
+	conf["FreezeScanRatems"] = Json::UInt(FreezeScanRatems);
 	conf["EventClass1ScanRatems"] = Json::UInt(0);
 	conf["EventClass2ScanRatems"] = Json::UInt(0);
 	conf["EventClass3ScanRatems"] = Json::UInt(0);
 	conf["MaxBinaryEvents"] = Json::UInt(num_indexes+1);
 	conf["MaxAnalogEvents"] = Json::UInt(num_indexes+1);
+	conf["MaxCounterEvents"] = Json::UInt(num_indexes+1);
+	conf["MaxFrozenCounterEvents"] = Json::UInt(num_indexes+1);
 	conf["MaxBinaryOutputStatusEvents"] = Json::UInt(num_indexes+1);
 	conf["MaxAnalogOutputStatusEvents"] = Json::UInt(num_indexes+1);
 	conf["MaxOctetStringEvents"] = Json::UInt(num_indexes+1);
@@ -260,6 +263,236 @@ TEST_CASE(SUITE("Analogs"))
 		CheckPointDB<odc::EventType::Analog>(MPUT, values);
 
 		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("Counters"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports up and going
+		auto [OPUT, MPUT] = MakePorts(portlib);
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		//send a value to each index
+		std::vector<uint32_t> values;
+		for(size_t idx = 0; idx < num_indexes; ++idx)
+		{
+			values.push_back((uint32_t)rand());
+			SendEvent<odc::EventType::Counter>(OPUT, idx, values.back());
+		}
+		CheckPointDB<odc::EventType::Counter>(MPUT, values);
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("FrozenCounters"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Get some ports up and going
+		auto [OPUT, MPUT] = MakePorts(portlib);
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		//send a value to each index
+		std::vector<uint32_t> values;
+		for(size_t idx = 0; idx < num_indexes; ++idx)
+		{
+			values.push_back((uint32_t)rand());
+			SendEvent<odc::EventType::FrozenCounter>(OPUT, idx, values.back());
+		}
+		//opendnp3 can't set a frozen counter value directly, so only the outstation's point DB is checked here
+		CheckPointDB<odc::EventType::FrozenCounter>(OPUT, values);
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("MasterTriggeredFreeze"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		//Short integrity and freeze scan periods
+		auto [OPUT, MPUT] = MakePorts(portlib, "PERSISTENT", "PERSISTENT", true, 200, 200);
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		const size_t idx = 7;
+		const uint32_t value = 123456;
+		SendEvent<odc::EventType::Counter>(OPUT, idx, value);
+
+		//the master should freeze the counter, then read the frozen value back
+		size_t ms_count = 0;
+		bool frozen_as_expected = false;
+		while(!frozen_as_expected && ms_count < test_timeout_ms)
+		{
+			auto event = MPUT->pEventDB()->Get(odc::EventType::FrozenCounter, idx);
+			if(event && event->HasPayload() && event->GetPayload<odc::EventType::FrozenCounter>() == value)
+				frozen_as_expected = true;
+			else
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				ms_count += 50;
+			}
+		}
+		CHECK(frozen_as_expected);
+
+		//turn things off
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("Counter Quality Discontinuity"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		auto [OPUT, MPUT] = MakePorts(portlib);
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		const size_t idx = 3;
+		const uint32_t value = 4242;
+		const auto quality = odc::QualityFlags::ONLINE | odc::QualityFlags::DISCONTINUITY;
+		auto event = std::make_shared<odc::EventInfo>(odc::EventType::Counter, idx, "Test", quality);
+		event->SetPayload<odc::EventType::Counter>(uint32_t(value));
+		OPUT->Event(event, "Test", std::make_shared<std::function<void (CommandStatus status)>>([] (CommandStatus status){}));
+
+		size_t ms_count = 0;
+		bool as_expected = false;
+		while(!as_expected && ms_count < test_timeout_ms)
+		{
+			auto mevent = MPUT->pEventDB()->Get(odc::EventType::Counter, idx);
+			if(mevent && mevent->HasPayload() && mevent->GetPayload<odc::EventType::Counter>() == value
+			   && (mevent->GetQuality() & odc::QualityFlags::DISCONTINUITY) == odc::QualityFlags::DISCONTINUITY)
+				as_expected = true;
+			else
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				ms_count += 50;
+			}
+		}
+		CHECK(as_expected);
+
+		OPUT->Disable();
+		MPUT->Disable();
+	}
+	//Unload the library
+	UnLoadModule(portlib);
+	TestTearDown();
+}
+
+TEST_CASE(SUITE("Counter Mapped To Analog"))
+{
+	TestSetup();
+	auto portlib = LoadModule(GetLibFileName("DNP3Port"));
+	REQUIRE(portlib);
+	{
+		Json::Value conf = Json::objectValue;
+		const size_t idx = 5;
+		conf["Counters"] = Json::arrayValue;
+		Json::Value point = Json::objectValue;
+		point["Index"] = Json::UInt(idx);
+		point["Type"] = "Analog";
+		conf["Counters"].append(point);
+		conf["FrozenCounters"] = Json::arrayValue;
+		point["Index"] = Json::UInt(idx+1);
+		conf["FrozenCounters"].append(point);
+		conf["EnableUnsol"] = true;
+		conf["UnsolClass1"] = true;
+		conf["UnsolClass2"] = true;
+		conf["UnsolClass3"] = true;
+		conf["DisableUnsolOnStartup"] = true;
+		conf["IntegrityScanRatems"] = Json::UInt(0);
+		conf["EventClass1ScanRatems"] = Json::UInt(0);
+		conf["EventClass2ScanRatems"] = Json::UInt(0);
+		conf["EventClass3ScanRatems"] = Json::UInt(0);
+
+		conf["ServerType"] = "PERSISTENT";
+		newptr newOutstation = GetPortCreator(portlib, "DNP3Outstation");
+		REQUIRE(newOutstation);
+		delptr delOutstation = GetPortDestroyer(portlib, "DNP3Outstation");
+		REQUIRE(delOutstation);
+		auto OPUT = std::shared_ptr<DataPort>(newOutstation("OutstationUnderTest", "", conf), delOutstation);
+		REQUIRE(OPUT);
+		newptr newMaster = GetPortCreator(portlib, "DNP3Master");
+		REQUIRE(newMaster);
+		delptr delMaster = GetPortDestroyer(portlib, "DNP3Master");
+		REQUIRE(delMaster);
+		auto MPUT = std::shared_ptr<DataPort>(newMaster("MasterUnderTest", "", conf), delMaster);
+		REQUIRE(MPUT);
+		OPUT->Build();
+		MPUT->Build();
+
+		ThreadPool thread_pool(1); //TODO: Use more threads
+		OPUT->Enable();
+		MPUT->Enable();
+		CHECK(WaitForLink(MPUT,"Port enabled - link down","Port enabled - link up (unreset)"));
+
+		//the mapped points live as Analog, not Counter/FrozenCounter
+		CHECK_FALSE(MPUT->pEventDB()->Get(odc::EventType::Counter, idx));
+		CHECK_FALSE(OPUT->pEventDB()->Get(odc::EventType::Counter, idx));
+		CHECK(MPUT->pEventDB()->Get(odc::EventType::Analog, idx));
+		CHECK(OPUT->pEventDB()->Get(odc::EventType::Analog, idx));
+		CHECK_FALSE(MPUT->pEventDB()->Get(odc::EventType::FrozenCounter, idx+1));
+		CHECK(MPUT->pEventDB()->Get(odc::EventType::Analog, idx+1));
+
+		const double value = 1234;
+		SendEvent<odc::EventType::Analog>(OPUT, idx, value);
+
+		size_t ms_count = 0;
+		bool as_expected = false;
+		while(!as_expected && ms_count < test_timeout_ms)
+		{
+			auto event = MPUT->pEventDB()->Get(odc::EventType::Analog, idx);
+			if(event && event->HasPayload() && event->GetPayload<odc::EventType::Analog>() == value)
+				as_expected = true;
+			else
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				ms_count += 50;
+			}
+		}
+		CHECK(as_expected);
+		CHECK_FALSE(MPUT->pEventDB()->Get(odc::EventType::Counter, idx));
+
 		OPUT->Disable();
 		MPUT->Disable();
 	}

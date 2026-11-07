@@ -128,6 +128,8 @@ void JSONPort::Build()
 
 	std::vector<std::shared_ptr<const EventInfo>> init_events;
 	init_events.reserve(pConf->pPointConf->Analogs.size()+
+		pConf->pPointConf->Counters.size()+
+		pConf->pPointConf->FrozenCounters.size()+
 		pConf->pPointConf->Binaries.size()+
 		pConf->pPointConf->OctetStrings.size()+
 		pConf->pPointConf->Controls.size()+
@@ -135,6 +137,10 @@ void JSONPort::Build()
 
 	for(const auto& point : pConf->pPointConf->Analogs)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,point.first,"",QualityFlags::RESTART));
+	for(const auto& point : pConf->pPointConf->Counters)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Counter,point.first,"",QualityFlags::RESTART));
+	for(const auto& point : pConf->pPointConf->FrozenCounters)
+		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::FrozenCounter,point.first,"",QualityFlags::RESTART));
 	for(const auto& point : pConf->pPointConf->Binaries)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,point.first,"",QualityFlags::RESTART));
 	for(const auto& point : pConf->pPointConf->OctetStrings)
@@ -284,6 +290,74 @@ void JSONPort::ProcessBraced(const std::string& braced)
 				{
 					Log.Error("Error decoding Analog for index {}",point_pair.first);
 					event->SetPayload<EventType::Analog>(0);
+					event->SetQuality(QualityFlags::OVERRANGE);
+				}
+				events.push_back(event);
+			}
+		}
+
+		for(auto& point_pair : pConf->pPointConf->Counters)
+		{
+			if(!point_pair.second.isMember("JSONPath"))
+				continue;
+			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
+			//if the path existed, load up the point
+			if(!val.isNull())
+			{
+				auto event = std::make_shared<EventInfo>(EventType::Counter,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
+				if(val.isNumeric())
+					event->SetPayload<EventType::Counter>(val.asUInt());
+				else if(val.isString())
+				{
+					try
+					{
+						event->SetPayload<EventType::Counter>(static_cast<uint32_t>(std::stoul(val.asString())));
+					}
+					catch(std::exception&)
+					{
+						Log.Error("Error decoding Counter from string '{}', for index {}",val.asString(),point_pair.first);
+						event->SetPayload<EventType::Counter>(0);
+						event->SetQuality(QualityFlags::OVERRANGE);
+					}
+				}
+				else
+				{
+					Log.Error("Error decoding Counter for index {}",point_pair.first);
+					event->SetPayload<EventType::Counter>(0);
+					event->SetQuality(QualityFlags::OVERRANGE);
+				}
+				events.push_back(event);
+			}
+		}
+
+		for(auto& point_pair : pConf->pPointConf->FrozenCounters)
+		{
+			if(!point_pair.second.isMember("JSONPath"))
+				continue;
+			Json::Value val = TraversePath(point_pair.second["JSONPath"]);
+			//if the path existed, load up the point
+			if(!val.isNull())
+			{
+				auto event = std::make_shared<EventInfo>(EventType::FrozenCounter,point_pair.first,Name,QualityFlags::ONLINE,timestamp);
+				if(val.isNumeric())
+					event->SetPayload<EventType::FrozenCounter>(val.asUInt());
+				else if(val.isString())
+				{
+					try
+					{
+						event->SetPayload<EventType::FrozenCounter>(static_cast<uint32_t>(std::stoul(val.asString())));
+					}
+					catch(std::exception&)
+					{
+						Log.Error("Error decoding FrozenCounter from string '{}', for index {}",val.asString(),point_pair.first);
+						event->SetPayload<EventType::FrozenCounter>(0);
+						event->SetQuality(QualityFlags::OVERRANGE);
+					}
+				}
+				else
+				{
+					Log.Error("Error decoding FrozenCounter for index {}",point_pair.first);
+					event->SetPayload<EventType::FrozenCounter>(0);
 					event->SetQuality(QualityFlags::OVERRANGE);
 				}
 				events.push_back(event);
@@ -621,6 +695,36 @@ inline Json::Value JSONPort::ToJSON(std::shared_ptr<const EventInfo> event, cons
 			          : Json::Value::nullSingleton());
 			break;
 		}
+		case EventType::Counter:
+		{
+			typename EventTypePayload<EventType::Counter>::type v;
+			try
+			{
+				v = event->GetPayload<EventType::Counter>();
+			}
+			catch(std::runtime_error&)
+			{}
+			auto& m = pConf->pPointConf->Counters;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
+		case EventType::FrozenCounter:
+		{
+			typename EventTypePayload<EventType::FrozenCounter>::type v;
+			try
+			{
+				v = event->GetPayload<EventType::FrozenCounter>();
+			}
+			catch(std::runtime_error&)
+			{}
+			auto& m = pConf->pPointConf->FrozenCounters;
+			output = (m.count(i) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,m[i]["Name"].asString(),sp,s)
+			          : (pConf->print_all) ? pConf->pPointConf->pJOT->Instantiate(i,v,q,t,"UNKNOWN",sp,s)
+			          : Json::Value::nullSingleton());
+			break;
+		}
 		case EventType::Binary:
 		{
 			typename EventTypePayload<EventType::Binary>::type v;
@@ -730,12 +834,18 @@ const Json::Value JSONPort::GetCurrentState() const
 	auto time_str = since_epoch_to_datetime(msSinceEpoch());
 	Json::Value ret;
 	ret[time_str]["Analogs"] = Json::arrayValue;
+	ret[time_str]["Counters"] = Json::arrayValue;
+	ret[time_str]["FrozenCounters"] = Json::arrayValue;
 	ret[time_str]["Binaries"] = Json::arrayValue;
 	ret[time_str]["Controls"] = Json::arrayValue;
 	ret[time_str]["AnalogControls"] = Json::arrayValue;
 
 	for(const auto& point : pConf->pPointConf->Analogs)
 		ret[time_str]["Analogs"].append(ToJSON(pDB->Get(EventType::Analog,point.first)));
+	for(const auto& point : pConf->pPointConf->Counters)
+		ret[time_str]["Counters"].append(ToJSON(pDB->Get(EventType::Counter,point.first)));
+	for(const auto& point : pConf->pPointConf->FrozenCounters)
+		ret[time_str]["FrozenCounters"].append(ToJSON(pDB->Get(EventType::FrozenCounter,point.first)));
 	for(const auto& point : pConf->pPointConf->Binaries)
 		ret[time_str]["Binaries"].append(ToJSON(pDB->Get(EventType::Binary,point.first)));
 	for(const auto& point : pConf->pPointConf->Controls)

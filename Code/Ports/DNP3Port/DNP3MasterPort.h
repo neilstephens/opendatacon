@@ -129,6 +129,7 @@ private:
 
 	//access only on pChanH strand
 	std::shared_ptr<asio::steady_timer> pEnableUnsolTimer;
+	std::shared_ptr<asio::steady_timer> pFreezeTimer;
 
 	std::shared_ptr<CommsRideThroughTimer> pCommsRideThroughTimer;
 
@@ -144,6 +145,8 @@ private:
 	void LinkUpIntegrityIfNeeded();
 	void StartPeriodicEnableUnsol();
 	void StopPeriodicEnableUnsol();
+	void StartPeriodicFreeze();
+	void StopPeriodicFreeze();
 	template<typename T>
 	inline void DoOverrideControlCode(T& arCommand){}
 	void PortUp();

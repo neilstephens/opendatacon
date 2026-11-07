@@ -116,6 +116,10 @@ public:
 
 	// Master Station scanning configuration
 	size_t IntegrityScanRatems;
+	/// Period (ms) for the master to send a counter freeze request; 0 = disabled
+	uint32_t FreezeScanRatems;
+	enum class FreezeMode_t { IMMED_FREEZE, FREEZE_CLEAR };
+	FreezeMode_t FreezeMode;
 	size_t EventClass1ScanRatems;
 	size_t EventClass2ScanRatems;
 	size_t EventClass3ScanRatems;
@@ -142,6 +146,7 @@ public:
 	opendnp3::StaticBinaryVariation StaticBinaryResponse;
 	opendnp3::StaticAnalogVariation StaticAnalogResponse;
 	opendnp3::StaticCounterVariation StaticCounterResponse;
+	opendnp3::StaticFrozenCounterVariation StaticFrozenCounterResponse;
 	opendnp3::StaticAnalogOutputStatusVariation StaticAnalogOutputStatusResponse;
 	opendnp3::StaticBinaryOutputStatusVariation StaticBinaryOutputStatusResponse;
 
@@ -149,6 +154,7 @@ public:
 	opendnp3::EventBinaryVariation EventBinaryResponse;
 	opendnp3::EventAnalogVariation EventAnalogResponse;
 	opendnp3::EventCounterVariation EventCounterResponse;
+	opendnp3::EventFrozenCounterVariation EventFrozenCounterResponse;
 	opendnp3::EventAnalogOutputStatusVariation EventAnalogOutputStatusResponse;
 	opendnp3::EventBinaryOutputStatusVariation EventBinaryOutputStatusResponse;
 
@@ -164,6 +170,7 @@ public:
 	uint16_t MaxBinaryEvents;             /// The number of binary events the outstation will buffer before overflowing
 	uint16_t MaxAnalogEvents;             /// The number of analog events the outstation will buffer before overflowing
 	uint16_t MaxCounterEvents;            /// The number of counter events the outstation will buffer before overflowing
+	uint16_t MaxFrozenCounterEvents;      /// The number of frozen counter events the outstation will buffer before overflowing
 	uint16_t MaxOctetStringEvents;        /// The number of octet string events the outstation will buffer before overflowing
 	uint16_t MaxAnalogOutputStatusEvents; /// The number of analog output status events the outstation will buffer before overflowing
 	uint16_t MaxBinaryOutputStatusEvents; /// The number of binary output status events the outstation will buffer before overflowing
@@ -194,6 +201,30 @@ public:
 	std::map<uint16_t, opendnp3::EventAnalogVariation> EventAnalogResponses;
 	std::map<uint16_t, opendnp3::PointClass> AnalogClasses;
 	std::map<uint16_t, double> AnalogDeadbands;
+
+	// Counter Point Configuration
+	std::vector<uint16_t> CounterIndexes;
+	std::map<uint16_t, opendnp3::Counter> CounterStartVals;
+	std::map<uint16_t, opendnp3::StaticCounterVariation> StaticCounterResponses;
+	std::map<uint16_t, opendnp3::EventCounterVariation> EventCounterResponses;
+	std::map<uint16_t, opendnp3::PointClass> CounterClasses;
+	std::map<uint16_t, uint32_t> CounterDeadbands;
+	std::vector<uint16_t> CounterIndexesAsAnalog; /// Subset of CounterIndexes that behave as EventType::Analog in opendatacon
+	std::vector<uint16_t> CounterIndexesNative;   /// Complement of CounterIndexesAsAnalog
+
+	// Frozen Counter Point Configuration
+	std::vector<uint16_t> FrozenCounterIndexes;
+	std::map<uint16_t, opendnp3::FrozenCounter> FrozenCounterStartVals;
+	std::map<uint16_t, opendnp3::StaticFrozenCounterVariation> StaticFrozenCounterResponses;
+	std::map<uint16_t, opendnp3::EventFrozenCounterVariation> EventFrozenCounterResponses;
+	std::map<uint16_t, opendnp3::PointClass> FrozenCounterClasses;
+	std::map<uint16_t, uint32_t> FrozenCounterDeadbands;
+	std::vector<uint16_t> FrozenCounterIndexesAsAnalog; /// Subset of FrozenCounterIndexes that behave as EventType::Analog in opendatacon
+	std::vector<uint16_t> FrozenCounterIndexesNative;   /// Complement of FrozenCounterIndexesAsAnalog
+
+	/// The EventType a Counter/FrozenCounter point actually behaves as in opendatacon, given any Analog mapping
+	odc::EventType CounterEventType(uint16_t index) const;
+	odc::EventType FrozenCounterEventType(uint16_t index) const;
 
 	//Analog Output Status Point Configuration
 	std::vector<uint16_t> AnalogOutputStatusIndexes;

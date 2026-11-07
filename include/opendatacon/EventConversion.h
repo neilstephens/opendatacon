@@ -29,6 +29,8 @@
 
 #include "IOTypes.h"
 #include "opendatacon/util.h"
+#include <cmath>
+#include <type_traits>
 
 namespace odc
 {
@@ -51,6 +53,45 @@ auto CapAnalogOutputValue(const std::shared_ptr<const EventInfo>& fromEvent)
 	}
 	to_val.first = static_cast<decltype(to_val.first)>(from_val.first);
 	to_val.second = from_val.second;
+	auto toEvent = std::make_shared<EventInfo>(ToET,fromEvent->GetIndex(),fromEvent->GetSourcePort(),fromEvent->GetQuality(),fromEvent->GetTimestamp());
+	toEvent->SetPayload<ToET>(std::move(to_val));
+	return toEvent;
+}
+
+//Plain scalar numeric conversion (Counter/FrozenCounter/Analog) - clamps and rounds when the destination is integral
+template <EventType FromET, EventType ToET>
+auto ConvertNumericValue(const std::shared_ptr<const EventInfo>& fromEvent)
+{
+	using ToT = typename EventTypePayload<ToET>::type;
+	const auto from_val = fromEvent->GetPayload<FromET>();
+	ToT to_val;
+	if constexpr(std::is_integral_v<ToT>)
+	{
+		auto d = static_cast<double>(from_val);
+		const auto HighLimit = static_cast<double>(std::numeric_limits<ToT>::max());
+		const auto LowLimit = static_cast<double>(std::numeric_limits<ToT>::lowest());
+		if(std::isnan(d))
+		{
+			Log.Warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' of NaN resulted in zero");
+			d = 0;
+		}
+		if(d >= HighLimit)
+		{
+			if(d > HighLimit)
+				Log.Warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the high limit");
+			to_val = std::numeric_limits<ToT>::max();
+		}
+		else if(d <= LowLimit)
+		{
+			if(d < LowLimit)
+				Log.Warn("EventConversion: Conversion from '"+ToString(FromET)+"' to '"+ToString(ToET)+"' resulted in value being capped at the low limit");
+			to_val = std::numeric_limits<ToT>::lowest();
+		}
+		else
+			to_val = static_cast<ToT>(std::llround(d));
+	}
+	else
+		to_val = static_cast<ToT>(from_val);
 	auto toEvent = std::make_shared<EventInfo>(ToET,fromEvent->GetIndex(),fromEvent->GetSourcePort(),fromEvent->GetQuality(),fromEvent->GetTimestamp());
 	toEvent->SetPayload<ToET>(std::move(to_val));
 	return toEvent;
@@ -117,6 +158,45 @@ inline std::shared_ptr<const EventInfo> ConvertEvent(const std::shared_ptr<const
 					return CapAnalogOutputValue<EventType::AnalogOutputDouble64,EventType::AnalogOutputFloat32>(fromEvent);
 				case EventType::AnalogOutputDouble64:
 					return CapAnalogOutputValue<EventType::AnalogOutputDouble64,EventType::AnalogOutputDouble64>(fromEvent);
+				default:
+					break;
+			}
+			break;
+		case EventType::Counter:
+			switch(ToET)
+			{
+				case EventType::Counter:
+					return ConvertNumericValue<EventType::Counter,EventType::Counter>(fromEvent);
+				case EventType::FrozenCounter:
+					return ConvertNumericValue<EventType::Counter,EventType::FrozenCounter>(fromEvent);
+				case EventType::Analog:
+					return ConvertNumericValue<EventType::Counter,EventType::Analog>(fromEvent);
+				default:
+					break;
+			}
+			break;
+		case EventType::FrozenCounter:
+			switch(ToET)
+			{
+				case EventType::Counter:
+					return ConvertNumericValue<EventType::FrozenCounter,EventType::Counter>(fromEvent);
+				case EventType::FrozenCounter:
+					return ConvertNumericValue<EventType::FrozenCounter,EventType::FrozenCounter>(fromEvent);
+				case EventType::Analog:
+					return ConvertNumericValue<EventType::FrozenCounter,EventType::Analog>(fromEvent);
+				default:
+					break;
+			}
+			break;
+		case EventType::Analog:
+			switch(ToET)
+			{
+				case EventType::Counter:
+					return ConvertNumericValue<EventType::Analog,EventType::Counter>(fromEvent);
+				case EventType::FrozenCounter:
+					return ConvertNumericValue<EventType::Analog,EventType::FrozenCounter>(fromEvent);
+				case EventType::Analog:
+					return ConvertNumericValue<EventType::Analog,EventType::Analog>(fromEvent);
 				default:
 					break;
 			}

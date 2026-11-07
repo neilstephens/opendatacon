@@ -30,6 +30,7 @@
 #include "DNP3OutstationPortCollection.h"
 #include "TypeConversion.h"
 #include "Log.h"
+#include <opendatacon/EventConversion.h>
 #include <opendnp3/outstation/UpdateBuilder.h>
 #include <opendnp3/outstation/Updates.h>
 #include <opendnp3/master/IUTCTimeSource.h>
@@ -268,6 +269,24 @@ void DNP3OutstationPort::Build()
 		                                                      pConf->pPointConf->StaticAnalogResponses.at(index) : pConf->pPointConf->StaticAnalogResponse;
 		StackConfig.database.analog_input[index].deadband = pConf->pPointConf->AnalogDeadbands[index];
 	}
+	for(auto index : pConf->pPointConf->CounterIndexes)
+	{
+		StackConfig.database.counter[index].clazz = pConf->pPointConf->CounterClasses[index];
+		StackConfig.database.counter[index].evariation = pConf->pPointConf->EventCounterResponses.count(index) ?
+		                                                 pConf->pPointConf->EventCounterResponses.at(index) : pConf->pPointConf->EventCounterResponse;
+		StackConfig.database.counter[index].svariation = pConf->pPointConf->StaticCounterResponses.count(index) ?
+		                                                 pConf->pPointConf->StaticCounterResponses.at(index) : pConf->pPointConf->StaticCounterResponse;
+		StackConfig.database.counter[index].deadband = pConf->pPointConf->CounterDeadbands[index];
+	}
+	for(auto index : pConf->pPointConf->FrozenCounterIndexes)
+	{
+		StackConfig.database.frozen_counter[index].clazz = pConf->pPointConf->FrozenCounterClasses[index];
+		StackConfig.database.frozen_counter[index].evariation = pConf->pPointConf->EventFrozenCounterResponses.count(index) ?
+		                                                        pConf->pPointConf->EventFrozenCounterResponses.at(index) : pConf->pPointConf->EventFrozenCounterResponse;
+		StackConfig.database.frozen_counter[index].svariation = pConf->pPointConf->StaticFrozenCounterResponses.count(index) ?
+		                                                        pConf->pPointConf->StaticFrozenCounterResponses.at(index) : pConf->pPointConf->StaticFrozenCounterResponse;
+		StackConfig.database.frozen_counter[index].deadband = pConf->pPointConf->FrozenCounterDeadbands[index];
+	}
 	for(auto index : pConf->pPointConf->BinaryIndexes)
 	{
 		StackConfig.database.binary_input[index].clazz = pConf->pPointConf->BinaryClasses[index];
@@ -332,6 +351,7 @@ void DNP3OutstationPort::Build()
 	StackConfig.outstation.eventBufferConfig.maxBinaryEvents = pConf->pPointConf->MaxBinaryEvents;                         /// The number of binary events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxAnalogEvents = pConf->pPointConf->MaxAnalogEvents;                         /// The number of analog events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxCounterEvents = pConf->pPointConf->MaxCounterEvents;                       /// The number of counter events the outstation will buffer before overflowing
+	StackConfig.outstation.eventBufferConfig.maxFrozenCounterEvents = pConf->pPointConf->MaxFrozenCounterEvents;           /// The number of frozen counter events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxOctetStringEvents =pConf->pPointConf->MaxOctetStringEvents;                /// The number of octet string events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxAnalogOutputStatusEvents = pConf->pPointConf->MaxAnalogOutputStatusEvents; /// The number of analog output status events the outstation will buffer before overflowing
 	StackConfig.outstation.eventBufferConfig.maxBinaryOutputStatusEvents = pConf->pPointConf->MaxBinaryOutputStatusEvents; /// The number of binary output status events the outstation will buffer before overflowing
@@ -543,7 +563,24 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 			if(point_exists) EventT(FromODC<opendnp3::Binary>(event), event->GetIndex());
 			break;
 		case EventType::Analog:
-			if(point_exists) EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
+			if(point_exists)
+			{
+				const auto index = event->GetIndex();
+				if(std::binary_search(pConf->pPointConf->CounterIndexesAsAnalog.begin(),pConf->pPointConf->CounterIndexesAsAnalog.end(),index))
+					EventT(FromODC<opendnp3::Counter>(ConvertEvent(event,EventType::Counter)), index);
+				else if(std::binary_search(pConf->pPointConf->FrozenCounterIndexesAsAnalog.begin(),pConf->pPointConf->FrozenCounterIndexesAsAnalog.end(),index))
+					Log.Warn("{}: Analog event for index {} mapped to FrozenCounter stored locally only - frozen values on the wire come from a freeze of the live Counter.", Name, index);
+				else
+					EventT(FromODC<opendnp3::Analog>(event), index);
+			}
+			break;
+		case EventType::Counter:
+			if(point_exists) EventT(FromODC<opendnp3::Counter>(event), event->GetIndex());
+			break;
+		case EventType::FrozenCounter:
+			// opendnp3 provides no way to set a frozen counter value directly (only FreezeCounter()),
+			// so the value is held in the local point DB only. Wire values come from freezing the live counter.
+			if(point_exists) Log.Warn("{}: FrozenCounter event for index {} stored locally only - frozen values on the wire come from a freeze of the live Counter.", Name, event->GetIndex());
 			break;
 		case EventType::OctetString:
 			if(point_exists) EventT(FromODC<opendnp3::OctetString>(event), event->GetIndex());
@@ -561,6 +598,14 @@ void DNP3OutstationPort::Event(std::shared_ptr<const EventInfo> event, const std
 		case EventType::AnalogQuality:
 			std::tie(point_exists,event) = UpdateQuality(EventType::Analog,event->GetIndex(),event->GetPayload<EventType::AnalogQuality>(),event->GetTimestamp());
 			if(event) EventT(FromODC<opendnp3::Analog>(event), event->GetIndex());
+			break;
+		case EventType::CounterQuality:
+			std::tie(point_exists,event) = UpdateQuality(EventType::Counter,event->GetIndex(),event->GetPayload<EventType::CounterQuality>(),event->GetTimestamp());
+			if(event) EventT(FromODC<opendnp3::Counter>(event), event->GetIndex());
+			break;
+		case EventType::FrozenCounterQuality:
+			std::tie(point_exists,event) = UpdateQuality(EventType::FrozenCounter,event->GetIndex(),event->GetPayload<EventType::FrozenCounterQuality>(),event->GetTimestamp());
+			//frozen counter values can't be set on the stack directly, so the quality only goes in the local point DB
 			break;
 		case EventType::AnalogOutputStatusQuality:
 			std::tie(point_exists,event) = UpdateQuality(EventType::AnalogOutputStatus,event->GetIndex(),event->GetPayload<EventType::AnalogOutputStatusQuality>(),event->GetTimestamp());

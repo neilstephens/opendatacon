@@ -162,6 +162,18 @@ void DNP3MasterPort::RePublishEvents()
 		if(ev->HasPayload())
 			PublishEvent(ev);
 	}
+	for (auto index : pConf->pPointConf->CounterIndexes)
+	{
+		auto ev = pDB->Get(pConf->pPointConf->CounterEventType(index),index);
+		if(ev && ev->HasPayload())
+			PublishEvent(ev);
+	}
+	for (auto index : pConf->pPointConf->FrozenCounterIndexes)
+	{
+		auto ev = pDB->Get(pConf->pPointConf->FrozenCounterEventType(index),index);
+		if(ev && ev->HasPayload())
+			PublishEvent(ev);
+	}
 	for (auto index : pConf->pPointConf->OctetStringIndexes)
 	{
 		auto ev = pDB->Get(EventType::OctetString,index);
@@ -206,6 +218,10 @@ void DNP3MasterPort::SetCommsFailed()
 
 		SetPointQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes, Set, Clear);
 		SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes, Set, Clear);
+		SetPointQuality<EventType::Counter, EventType::CounterQuality>(pConf->pPointConf->CounterIndexesNative, Set, Clear);
+		SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->CounterIndexesAsAnalog, Set, Clear);
+		SetPointQuality<EventType::FrozenCounter, EventType::FrozenCounterQuality>(pConf->pPointConf->FrozenCounterIndexesNative, Set, Clear);
+		SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->FrozenCounterIndexesAsAnalog, Set, Clear);
 		SetPointQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes, Set, Clear);
 		SetPointQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes, Set, Clear);
 		SetPointQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes, Set, Clear);
@@ -231,6 +247,10 @@ void DNP3MasterPort::SetPointsStale()
 
 	SetPointQuality<EventType::Binary, EventType::BinaryQuality>(pConf->pPointConf->BinaryIndexes, Set, Clear);
 	SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->AnalogIndexes, Set, Clear);
+	SetPointQuality<EventType::Counter, EventType::CounterQuality>(pConf->pPointConf->CounterIndexesNative, Set, Clear);
+	SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->CounterIndexesAsAnalog, Set, Clear);
+	SetPointQuality<EventType::FrozenCounter, EventType::FrozenCounterQuality>(pConf->pPointConf->FrozenCounterIndexesNative, Set, Clear);
+	SetPointQuality<EventType::Analog, EventType::AnalogQuality>(pConf->pPointConf->FrozenCounterIndexesAsAnalog, Set, Clear);
 	SetPointQuality<EventType::AnalogOutputStatus, EventType::AnalogOutputStatusQuality>(pConf->pPointConf->AnalogOutputStatusIndexes, Set, Clear);
 	SetPointQuality<EventType::BinaryOutputStatus, EventType::BinaryOutputStatusQuality>(pConf->pPointConf->BinaryOutputStatusIndexes, Set, Clear);
 	SetPointQuality<EventType::OctetString, EventType::OctetStringQuality>(pConf->pPointConf->OctetStringIndexes, Set, Clear);
@@ -303,6 +323,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		PortUp();
 
 		StartPeriodicEnableUnsol();
+		StartPeriodicFreeze();
 
 		if(pConf->pPointConf->LinkUpIntegrityTrigger == DNP3PointConf::LinkUpIntegrityTrigger_t::ON_EVERY)
 		{
@@ -331,6 +352,7 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		NotifyOfDisconnection();
 
 		StopPeriodicEnableUnsol();
+		StopPeriodicFreeze();
 
 		IntegrityScanDone = false;
 		pStartupIntegrityGraceTimer->cancel();
@@ -441,6 +463,50 @@ void DNP3MasterPort::StopPeriodicEnableUnsol()
 		Log.Debug("{}: Stopping periodic EnableUnsol.", Name);
 		pEnableUnsolTimer->cancel();
 		pEnableUnsolTimer.reset();
+	}
+}
+
+//Only call on pChanH strand - kicks off coroutine to freeze counters periodically while link is up
+void DNP3MasterPort::StartPeriodicFreeze()
+{
+	const auto& pPointConf = static_cast<DNP3PortConf*>(this->pConf.get())->pPointConf;
+	auto period = pPointConf->FreezeScanRatems;
+	if(period == 0)
+		return;
+
+	const auto func = pPointConf->FreezeMode == DNP3PointConf::FreezeMode_t::FREEZE_CLEAR ?
+	                  opendnp3::FunctionCode::FREEZE_CLEAR : opendnp3::FunctionCode::IMMED_FREEZE;
+
+	Log.Debug("{}: Starting periodic freeze (interval {}ms).", Name, period);
+
+	// Freeze requests always use variation 0 of the live counter group
+	std::vector<opendnp3::Header> headers{opendnp3::Header::AllObjects(20,0)};
+
+	auto send_loop = [this,period,func,headers]() -> asio::awaitable<void>
+			     {
+				     while(pFreezeTimer)
+				     {
+					     pFreezeTimer->expires_after(std::chrono::milliseconds(period));
+					     auto [ec] = co_await pFreezeTimer->async_wait(asio::as_tuple(asio::use_awaitable));
+					     if(ec) co_return; // cancelled
+
+					     Log.Debug("{}: PeriodicFreeze: sending counter freeze request.", Name);
+					     pMaster->PerformFunction("PeriodicFreeze", func, headers);
+				     }
+			     };
+
+	pFreezeTimer = pIOS->make_steady_timer();
+	pIOS->co_spawn(send_loop,asio::detached);
+}
+
+//Only call on pChanH strand
+void DNP3MasterPort::StopPeriodicFreeze()
+{
+	if(pFreezeTimer)
+	{
+		Log.Debug("{}: Stopping periodic freeze.", Name);
+		pFreezeTimer->cancel();
+		pFreezeTimer.reset();
 	}
 }
 
@@ -566,7 +632,19 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 				    || (TSO == DNP3PointConf::TimestampOverride_t::ZERO && pair.value.time.value == 0))
 					event->SetTimestamp(msSinceEpoch()+sys_time_offset);
 
-			bool unknown_point = !pDB->Set(event);
+			std::shared_ptr<const EventInfo> final_event = event;
+			if constexpr(std::is_same<T,opendnp3::Counter>())
+			{
+				if(pConf->pPointConf->CounterEventType(pair.index) == EventType::Analog)
+					final_event = ConvertEvent(event,EventType::Analog);
+			}
+			else if constexpr(std::is_same<T,opendnp3::FrozenCounter>())
+			{
+				if(pConf->pPointConf->FrozenCounterEventType(pair.index) == EventType::Analog)
+					final_event = ConvertEvent(event,EventType::Analog);
+			}
+
+			bool unknown_point = !pDB->Set(final_event);
 			bool publish = true;
 			if(unknown_point)
 			{
@@ -578,20 +656,20 @@ inline void DNP3MasterPort::LoadT(const opendnp3::ICollection<opendnp3::Indexed<
 
 				if(auto log = Log.GetLog())
 					log->log(log_level, "{}: Received {} from stack for unconfigured index ({})",
-						Name, ToString(event->GetEventType()), event->GetIndex());
+						Name, ToString(final_event->GetEventType()), final_event->GetIndex());
 			}
 
 			//log an error if we get a binary that clashes with the index of our comms point
 			if(pConf->pPointConf->mCommsPoint.first.flags.IsSet(opendnp3::BinaryQuality::ONLINE)
-			   && event->GetEventType() == EventType::Binary
-			   && event->GetIndex() == pConf->pPointConf->mCommsPoint.second)
+			   && final_event->GetEventType() == EventType::Binary
+			   && final_event->GetIndex() == pConf->pPointConf->mCommsPoint.second)
 			{
 				publish = false;
-				Log.Error("{}: Received Binary that clashes with comms point index ({})", Name, event->GetIndex());
+				Log.Error("{}: Received Binary that clashes with comms point index ({})", Name, final_event->GetIndex());
 			}
 
 			if(publish)
-				PublishEvent(event);
+				PublishEvent(final_event);
 		});
 }
 

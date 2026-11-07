@@ -99,6 +99,24 @@ void JSONPointConf::ProcessElements(const Json::Value& JSONRoot)
 				this->Analogs[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
 			}
 		}
+		else if(PointType == "Counter")
+		{
+			for (Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
+			{
+				if(!check_index(PointConfs[n]["Points"][k]))
+					continue;
+				this->Counters[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
+			}
+		}
+		else if(PointType == "FrozenCounter")
+		{
+			for (Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)
+			{
+				if(!check_index(PointConfs[n]["Points"][k]))
+					continue;
+				this->FrozenCounters[PointConfs[n]["Points"][k]["Index"].asUInt()] = PointConfs[n]["Points"][k];
+			}
+		}
 		else if(PointType == "Binary")
 		{
 			for(Json::ArrayIndex k = 0; k < PointConfs[n]["Points"].size(); ++k)

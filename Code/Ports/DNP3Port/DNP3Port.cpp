@@ -79,6 +79,8 @@ void DNP3Port::InitEventDB()
 
 	std::vector<std::shared_ptr<const EventInfo>> init_events;
 	init_events.reserve(pConf->pPointConf->AnalogIndexes.size()+
+		pConf->pPointConf->CounterIndexes.size()+
+		pConf->pPointConf->FrozenCounterIndexes.size()+
 		pConf->pPointConf->BinaryIndexes.size()+
 		pConf->pPointConf->OctetStringIndexes.size()+
 		pConf->pPointConf->ControlIndexes.size()+
@@ -88,6 +90,10 @@ void DNP3Port::InitEventDB()
 
 	for(auto index : pConf->pPointConf->AnalogIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Analog,index,"",QualityFlags::RESTART));
+	for(auto index : pConf->pPointConf->CounterIndexes)
+		init_events.emplace_back(std::make_shared<const EventInfo>(pConf->pPointConf->CounterEventType(index),index,"",QualityFlags::RESTART));
+	for(auto index : pConf->pPointConf->FrozenCounterIndexes)
+		init_events.emplace_back(std::make_shared<const EventInfo>(pConf->pPointConf->FrozenCounterEventType(index),index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->BinaryIndexes)
 		init_events.emplace_back(std::make_shared<const EventInfo>(EventType::Binary,index,"",QualityFlags::RESTART));
 	for(auto index : pConf->pPointConf->OctetStringIndexes)
@@ -202,6 +208,8 @@ const Json::Value DNP3Port::GetCurrentState() const
 	auto time_str = since_epoch_to_datetime(msSinceEpoch());
 	Json::Value ret;
 	ret[time_str]["Analogs"] = Json::arrayValue;
+	ret[time_str]["Counters"] = Json::arrayValue;
+	ret[time_str]["FrozenCounters"] = Json::arrayValue;
 	ret[time_str]["Binaries"] = Json::arrayValue;
 	ret[time_str]["OctetStrings"] = Json::arrayValue;
 	ret[time_str]["BinaryControls"] = Json::arrayValue;
@@ -235,6 +243,40 @@ const Json::Value DNP3Port::GetCurrentState() const
 		try
 		{
 			state["Value"] = event->GetPayload<EventType::Analog>();
+		}
+		catch(std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for(const auto index : pConf->pPointConf->CounterIndexes)
+	{
+		auto event = pDB->Get(pConf->pPointConf->CounterEventType(index),index);
+		auto& state = ret[time_str]["Counters"].append(Json::Value());
+		state["Index"] =  Json::UInt(index);
+		if(!event)
+			continue;
+		try
+		{
+			state["Value"] = event->GetPayloadString();
+		}
+		catch(std::runtime_error&)
+		{}
+		state["Quality"] = ToString(event->GetQuality());
+		state["Timestamp"] = since_epoch_to_datetime(event->GetTimestamp());
+		state["SourcePort"] = event->GetSourcePort();
+	}
+	for(const auto index : pConf->pPointConf->FrozenCounterIndexes)
+	{
+		auto event = pDB->Get(pConf->pPointConf->FrozenCounterEventType(index),index);
+		auto& state = ret[time_str]["FrozenCounters"].append(Json::Value());
+		state["Index"] =  Json::UInt(index);
+		if(!event)
+			continue;
+		try
+		{
+			state["Value"] = event->GetPayloadString();
 		}
 		catch(std::runtime_error&)
 		{}

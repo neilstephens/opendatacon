@@ -48,6 +48,8 @@ class PortMapClass
 {
 public:
 	std::unordered_map<size_t, std::string> AnalogMap;
+	std::unordered_map<size_t, std::string> CounterMap;
+	std::unordered_map<size_t, std::string> FrozenCounterMap;
 	std::unordered_map<size_t, std::string> BinaryMap;
 	std::unordered_map<size_t, std::string> OctetStringMap;
 	std::unordered_map<size_t, std::string> BinaryControlMap;

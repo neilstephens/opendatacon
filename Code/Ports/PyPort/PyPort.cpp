@@ -383,10 +383,30 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 			}
 			break;
 		case EventType::Counter:
-			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::Counter, ODCIndex, SourcePort, QualityResult);
+				uint32_t uval = static_cast<uint32_t>(std::stoul(PayloadStr));
+				pubevent->SetPayload<EventType::Counter>(std::move(uval));
+			}
+			catch (std::exception& e)
+			{
+				Log.Error("Counter Value passed from Python failed to be converted to an unsigned integer - {}, {}", PayloadStr, e.what());
+				pubevent.reset();
+			}
 			break;
 		case EventType::FrozenCounter:
-			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
+			try
+			{
+				pubevent = std::make_shared<EventInfo>(EventType::FrozenCounter, ODCIndex, SourcePort, QualityResult);
+				uint32_t uval = static_cast<uint32_t>(std::stoul(PayloadStr));
+				pubevent->SetPayload<EventType::FrozenCounter>(std::move(uval));
+			}
+			catch (std::exception& e)
+			{
+				Log.Error("FrozenCounter Value passed from Python failed to be converted to an unsigned integer - {}, {}", PayloadStr, e.what());
+				pubevent.reset();
+			}
 			break;
 		case EventType::BinaryOutputStatus:
 			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
@@ -496,14 +516,34 @@ std::shared_ptr<odc::EventInfo> PyPort::CreateEventFromStrParams(const std::stri
 			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
 		case EventType::CounterQuality:
-			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
-			break;
+		{
+			// The payload is a quality flags string, e.g. "|ONLINE|COMM_LOST|"
+			QualityFlags payload_quality = QualityFlagsFromString(PayloadStr);
+			if (payload_quality == QualityFlags::NONE)
+			{
+				Log.Error("CounterQuality passed from Python had an invalid or empty quality string payload - {}", PayloadStr);
+				break;
+			}
+			pubevent = std::make_shared<EventInfo>(EventType::CounterQuality, ODCIndex, SourcePort, QualityResult);
+			pubevent->SetPayload<EventType::CounterQuality>(std::move(payload_quality));
+		}
+		break;
 		case EventType::BinaryOutputStatusQuality:
 			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
 		case EventType::FrozenCounterQuality:
-			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
-			break;
+		{
+			// The payload is a quality flags string, e.g. "|ONLINE|COMM_LOST|"
+			QualityFlags payload_quality = QualityFlagsFromString(PayloadStr);
+			if (payload_quality == QualityFlags::NONE)
+			{
+				Log.Error("FrozenCounterQuality passed from Python had an invalid or empty quality string payload - {}", PayloadStr);
+				break;
+			}
+			pubevent = std::make_shared<EventInfo>(EventType::FrozenCounterQuality, ODCIndex, SourcePort, QualityResult);
+			pubevent->SetPayload<EventType::FrozenCounterQuality>(std::move(payload_quality));
+		}
+		break;
 		case EventType::AnalogOutputStatusQuality:
 			Log.Error("PublishEvent from Python passed an EventType that is not implemented - {}", ToString(EventTypeResult));
 			break;
@@ -573,6 +613,20 @@ std::string PyPort::GetTagValue(const std::string & SenderName, EventType Eventt
 			{
 				auto search = foundport->AnalogMap.find(Index);
 				if (search != foundport->AnalogMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::Counter:
+			{
+				auto search = foundport->CounterMap.find(Index);
+				if (search != foundport->CounterMap.end())
+					Tag = search->second;
+			}
+			break;
+			case EventType::FrozenCounter:
+			{
+				auto search = foundport->FrozenCounterMap.find(Index);
+				if (search != foundport->FrozenCounterMap.end())
 					Tag = search->second;
 			}
 			break;
@@ -818,6 +872,18 @@ void PyPort::ProcessElements(const Json::Value& JSONRoot)
 		Log.Debug("Conf processed - Analog Points");
 		ProcessPoints(EventType::Analog, Analogs);
 	}
+	if (JSONRoot.isMember("Counters"))
+	{
+		const auto Counters = JSONRoot["Counters"];
+		Log.Debug("Conf processed - Counter Points");
+		ProcessPoints(EventType::Counter, Counters);
+	}
+	if (JSONRoot.isMember("FrozenCounters"))
+	{
+		const auto FrozenCounters = JSONRoot["FrozenCounters"];
+		Log.Debug("Conf processed - FrozenCounter Points");
+		ProcessPoints(EventType::FrozenCounter, FrozenCounters);
+	}
 	if (JSONRoot.isMember("Binaries"))
 	{
 		const auto Binaries = JSONRoot["Binaries"];
@@ -853,6 +919,12 @@ void PyPort::ProcessPoints(EventType ptype, const Json::Value& JSONNode)
 	{
 		case EventType::Analog:
 			Name = "Analog";
+			break;
+		case EventType::Counter:
+			Name = "Counter";
+			break;
+		case EventType::FrozenCounter:
+			Name = "FrozenCounter";
 			break;
 		case EventType::Binary:
 			Name = "Binary";
@@ -914,6 +986,12 @@ void PyPort::ProcessPoints(EventType ptype, const Json::Value& JSONNode)
 			{
 				case EventType::Analog:
 					foundport->AnalogMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::Counter:
+					foundport->CounterMap.emplace(std::make_pair(index, Tag));
+					break;
+				case EventType::FrozenCounter:
+					foundport->FrozenCounterMap.emplace(std::make_pair(index, Tag));
 					break;
 				case EventType::Binary:
 					foundport->BinaryMap.emplace(std::make_pair(index, Tag));

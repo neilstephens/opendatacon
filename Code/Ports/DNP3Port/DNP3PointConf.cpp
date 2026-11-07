@@ -31,8 +31,19 @@
 #include <algorithm>
 #include <opendatacon/util.h>
 #include <opendnp3/app/ClassField.h>
+#include <iterator>
 #include <regex>
 
+
+odc::EventType DNP3PointConf::CounterEventType(uint16_t index) const
+{
+	return std::binary_search(CounterIndexesAsAnalog.begin(),CounterIndexesAsAnalog.end(),index) ? odc::EventType::Analog : odc::EventType::Counter;
+}
+
+odc::EventType DNP3PointConf::FrozenCounterEventType(uint16_t index) const
+{
+	return std::binary_search(FrozenCounterIndexesAsAnalog.begin(),FrozenCounterIndexesAsAnalog.end(),index) ? odc::EventType::Analog : odc::EventType::FrozenCounter;
+}
 
 DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& ConfOverrides):
 	ConfigParser(FileName, ConfOverrides),
@@ -90,6 +101,8 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	PeriodicEnableUnsolms(0),
 	// Master Station scanning configuration
 	IntegrityScanRatems(3600000),
+	FreezeScanRatems(0),
+	FreezeMode(FreezeMode_t::IMMED_FREEZE),
 	EventClass1ScanRatems(1000),
 	EventClass2ScanRatems(1000),
 	EventClass3ScanRatems(1000),
@@ -113,12 +126,14 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	StaticBinaryResponse(opendnp3::StaticBinaryVariation::Group1Var2),
 	StaticAnalogResponse(opendnp3::StaticAnalogVariation::Group30Var5),
 	StaticCounterResponse(opendnp3::StaticCounterVariation::Group20Var1),
+	StaticFrozenCounterResponse(opendnp3::StaticFrozenCounterVariation::Group21Var1),
 	StaticAnalogOutputStatusResponse(opendnp3::StaticAnalogOutputStatusVariation::Group40Var4),
 	StaticBinaryOutputStatusResponse(opendnp3::StaticBinaryOutputStatusVariation::Group10Var2),
 	// Default Event Variations
 	EventBinaryResponse(opendnp3::EventBinaryVariation::Group2Var2),
 	EventAnalogResponse(opendnp3::EventAnalogVariation::Group32Var7),
 	EventCounterResponse(opendnp3::EventCounterVariation::Group22Var1),
+	EventFrozenCounterResponse(opendnp3::EventFrozenCounterVariation::Group23Var1),
 	EventAnalogOutputStatusResponse(opendnp3::EventAnalogOutputStatusVariation::Group42Var8),
 	EventBinaryOutputStatusResponse(opendnp3::EventBinaryOutputStatusVariation::Group11Var2),
 	// Default Analog Control Type
@@ -129,6 +144,7 @@ DNP3PointConf::DNP3PointConf(const std::string& FileName, const Json::Value& Con
 	MaxBinaryEvents(1000),
 	MaxAnalogEvents(1000),
 	MaxCounterEvents(1000),
+	MaxFrozenCounterEvents(1000),
 	MaxOctetStringEvents(1000),
 	MaxAnalogOutputStatusEvents(1000),
 	MaxBinaryOutputStatusEvents(1000),
@@ -375,6 +391,18 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 	// Master Station scanning configuration
 	if (JSONRoot.isMember("IntegrityScanRatems"))
 		IntegrityScanRatems = JSONRoot["IntegrityScanRatems"].asUInt();
+	if (JSONRoot.isMember("FreezeScanRatems"))
+		FreezeScanRatems = JSONRoot["FreezeScanRatems"].asUInt();
+	if (JSONRoot.isMember("FreezeMode"))
+	{
+		const auto mode = JSONRoot["FreezeMode"].asString();
+		if (mode == "IMMED_FREEZE")
+			FreezeMode = FreezeMode_t::IMMED_FREEZE;
+		else if (mode == "FREEZE_CLEAR")
+			FreezeMode = FreezeMode_t::FREEZE_CLEAR;
+		else
+			Log.Error("Invalid FreezeMode: {}, should be IMMED_FREEZE or FREEZE_CLEAR - defaulting to IMMED_FREEZE", mode);
+	}
 	if (JSONRoot.isMember("EventClass1ScanRatems"))
 		EventClass1ScanRatems = JSONRoot["EventClass1ScanRatems"].asUInt();
 	if (JSONRoot.isMember("EventClass2ScanRatems"))
@@ -433,6 +461,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		StaticAnalogResponse = StringToStaticAnalogResponse(JSONRoot["StaticAnalogResponse"].asString());
 	if (JSONRoot.isMember("StaticCounterResponse"))
 		StaticCounterResponse = StringToStaticCounterResponse(JSONRoot["StaticCounterResponse"].asString());
+	if (JSONRoot.isMember("StaticFrozenCounterResponse"))
+		StaticFrozenCounterResponse = StringToStaticFrozenCounterResponse(JSONRoot["StaticFrozenCounterResponse"].asString());
 	if (JSONRoot.isMember("StaticAnalogOutputStatusResponse"))
 		StaticAnalogOutputStatusResponse = StringToStaticAnalogOutputStatusResponse(JSONRoot["StaticAnalogOutputStatusResponse"].asString());
 	if (JSONRoot.isMember("StaticBinaryOutputStatusResponse"))
@@ -447,6 +477,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		EventCounterResponse = StringToEventCounterResponse(JSONRoot["EventCounterResponse"].asString());
 	if (JSONRoot.isMember("EventBinaryOutputStatusResponse"))
 		EventBinaryOutputStatusResponse = StringToEventBinaryOutputStatusResponse(JSONRoot["EventBinaryOutputStatusResponse"].asString());
+	if (JSONRoot.isMember("EventFrozenCounterResponse"))
+		EventFrozenCounterResponse = StringToEventFrozenCounterResponse(JSONRoot["EventFrozenCounterResponse"].asString());
 	if (JSONRoot.isMember("EventAnalogOutputStatusResponse"))
 		EventAnalogOutputStatusResponse = StringToEventAnalogOutputStatusResponse(JSONRoot["EventAnalogOutputStatusResponse"].asString());
 
@@ -494,6 +526,8 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 		MaxAnalogEvents = cap_evenbuffer_size("MaxAnalogEvents");
 	if (JSONRoot.isMember("MaxCounterEvents"))
 		MaxCounterEvents = cap_evenbuffer_size("MaxCounterEvents");
+	if (JSONRoot.isMember("MaxFrozenCounterEvents"))
+		MaxFrozenCounterEvents = cap_evenbuffer_size("MaxFrozenCounterEvents");
 	if (JSONRoot.isMember("MaxOctetStringEvents"))
 		MaxOctetStringEvents = cap_evenbuffer_size("MaxOctetStringEvents");
 	if (JSONRoot.isMember("MaxAnalogOutputStatusEvents"))
@@ -597,6 +631,153 @@ void DNP3PointConf::ProcessElements(const Json::Value& JSONRoot)
 			}
 		}
 		std::sort(AnalogIndexes.begin(),AnalogIndexes.end());
+	}
+
+	if(JSONRoot.isMember("Counters"))
+	{
+		const auto Counters = JSONRoot["Counters"];
+		for(Json::ArrayIndex n = 0; n < Counters.size(); ++n)
+		{
+			auto [success, start, stop] = GetIndexRange(Counters[n]);
+			if(!success)
+				continue;
+
+			uint32_t deadband = 0;
+			if(Counters[n].isMember("Deadband"))
+				deadband = Counters[n]["Deadband"].asUInt();
+
+			for(auto index = start; index <= stop; index++)
+			{
+				CounterClasses[index] = GetClass(Counters[n]);
+				if (Counters[n].isMember("StaticCounterResponse"))
+					StaticCounterResponses[index] = StringToStaticCounterResponse(Counters[n]["StaticCounterResponse"].asString());
+				if (Counters[n].isMember("EventCounterResponse"))
+					EventCounterResponses[index] = StringToEventCounterResponse(Counters[n]["EventCounterResponse"].asString());
+
+				CounterDeadbands[index] = deadband;
+
+				if(Counters[n].isMember("Type"))
+				{
+					if(Counters[n]["Type"].asString() == "Analog")
+					{
+						if(std::find(CounterIndexesAsAnalog.begin(),CounterIndexesAsAnalog.end(),index) == CounterIndexesAsAnalog.end())
+							CounterIndexesAsAnalog.push_back(index);
+					}
+					else
+						Log.Error("Invalid Counters Type: '{}', only 'Analog' is supported - leaving index {} native", Counters[n]["Type"].asString(), index);
+				}
+
+				if(!InsertOrDeleteIndex(Counters[n],CounterIndexes,index))
+				{
+					CounterIndexesAsAnalog.erase(std::remove(CounterIndexesAsAnalog.begin(),CounterIndexesAsAnalog.end(),index),CounterIndexesAsAnalog.end());
+					CounterStartVals.erase(index);
+					CounterClasses.erase(index);
+					StaticCounterResponses.erase(index);
+					EventCounterResponses.erase(index);
+					CounterDeadbands.erase(index);
+					continue;
+				}
+
+				if(Counters[n].isMember("StartVal"))
+				{
+					opendnp3::Flags flags;
+					std::string start_val = Counters[n]["StartVal"].asString();
+					if(start_val == "X")
+					{
+						flags.Set(opendnp3::CounterQuality::COMM_LOST);
+						CounterStartVals[index] = opendnp3::Counter(0,flags);
+					}
+					else
+					{
+						flags.Set(opendnp3::CounterQuality::ONLINE);
+						CounterStartVals[index] = opendnp3::Counter(static_cast<uint32_t>(std::stoul(start_val)),flags);
+					}
+				}
+				else
+					CounterStartVals.erase(index);
+			}
+		}
+		std::sort(CounterIndexes.begin(),CounterIndexes.end());
+		std::sort(CounterIndexesAsAnalog.begin(),CounterIndexesAsAnalog.end());
+		CounterIndexesNative.clear();
+		std::set_difference(CounterIndexes.begin(),CounterIndexes.end(),CounterIndexesAsAnalog.begin(),CounterIndexesAsAnalog.end(),std::back_inserter(CounterIndexesNative));
+	}
+
+	if(JSONRoot.isMember("FrozenCounters"))
+	{
+		const auto FrozenCounters = JSONRoot["FrozenCounters"];
+		for(Json::ArrayIndex n = 0; n < FrozenCounters.size(); ++n)
+		{
+			auto [success, start, stop] = GetIndexRange(FrozenCounters[n]);
+			if(!success)
+				continue;
+
+			uint32_t deadband = 0;
+			if(FrozenCounters[n].isMember("Deadband"))
+				deadband = FrozenCounters[n]["Deadband"].asUInt();
+
+			for(auto index = start; index <= stop; index++)
+			{
+				FrozenCounterClasses[index] = GetClass(FrozenCounters[n]);
+				if (FrozenCounters[n].isMember("StaticFrozenCounterResponse"))
+					StaticFrozenCounterResponses[index] = StringToStaticFrozenCounterResponse(FrozenCounters[n]["StaticFrozenCounterResponse"].asString());
+				if (FrozenCounters[n].isMember("EventFrozenCounterResponse"))
+					EventFrozenCounterResponses[index] = StringToEventFrozenCounterResponse(FrozenCounters[n]["EventFrozenCounterResponse"].asString());
+
+				FrozenCounterDeadbands[index] = deadband;
+
+				if(FrozenCounters[n].isMember("Type"))
+				{
+					if(FrozenCounters[n]["Type"].asString() == "Analog")
+					{
+						if(std::find(FrozenCounterIndexesAsAnalog.begin(),FrozenCounterIndexesAsAnalog.end(),index) == FrozenCounterIndexesAsAnalog.end())
+							FrozenCounterIndexesAsAnalog.push_back(index);
+					}
+					else
+						Log.Error("Invalid FrozenCounters Type: '{}', only 'Analog' is supported - leaving index {} native", FrozenCounters[n]["Type"].asString(), index);
+				}
+
+				if(!InsertOrDeleteIndex(FrozenCounters[n],FrozenCounterIndexes,index))
+				{
+					FrozenCounterIndexesAsAnalog.erase(std::remove(FrozenCounterIndexesAsAnalog.begin(),FrozenCounterIndexesAsAnalog.end(),index),FrozenCounterIndexesAsAnalog.end());
+					FrozenCounterStartVals.erase(index);
+					FrozenCounterClasses.erase(index);
+					StaticFrozenCounterResponses.erase(index);
+					EventFrozenCounterResponses.erase(index);
+					FrozenCounterDeadbands.erase(index);
+					continue;
+				}
+
+				if(FrozenCounters[n].isMember("StartVal"))
+				{
+					opendnp3::Flags flags;
+					std::string start_val = FrozenCounters[n]["StartVal"].asString();
+					if(start_val == "X")
+					{
+						flags.Set(opendnp3::CounterQuality::COMM_LOST);
+						FrozenCounterStartVals[index] = opendnp3::FrozenCounter(0,flags);
+					}
+					else
+					{
+						flags.Set(opendnp3::CounterQuality::ONLINE);
+						FrozenCounterStartVals[index] = opendnp3::FrozenCounter(static_cast<uint32_t>(std::stoul(start_val)),flags);
+					}
+				}
+				else
+					FrozenCounterStartVals.erase(index);
+			}
+		}
+		std::sort(FrozenCounterIndexes.begin(),FrozenCounterIndexes.end());
+		std::sort(FrozenCounterIndexesAsAnalog.begin(),FrozenCounterIndexesAsAnalog.end());
+		FrozenCounterIndexesNative.clear();
+		std::set_difference(FrozenCounterIndexes.begin(),FrozenCounterIndexes.end(),FrozenCounterIndexesAsAnalog.begin(),FrozenCounterIndexesAsAnalog.end(),std::back_inserter(FrozenCounterIndexesNative));
+	}
+
+	{
+		std::vector<uint16_t> overlap;
+		std::set_intersection(CounterIndexes.begin(),CounterIndexes.end(),FrozenCounterIndexes.begin(),FrozenCounterIndexes.end(),std::back_inserter(overlap));
+		for(auto index : overlap)
+			Log.Warn("Index {} is configured in both Counters and FrozenCounters - this outstation will report both Group20 and Group21 objects for this index in Class 0 responses, which is valid DNP3 but is often unintentional", index);
 	}
 
 	if(JSONRoot.isMember("Binaries"))

@@ -33,6 +33,7 @@
 #include "ThresholdTransform.h"
 #include "BlackHoleTransform.h"
 #include "AnalogScalingTransform.h"
+#include "TypeConversionTransform.h"
 #include <iostream>
 
 #include "CAPI/C_Transform.h"
@@ -132,6 +133,8 @@ void DataConnector::ProcessElements(const Json::Value& JSONRoot)
 					tx_ptr.reset(new BlackHoleTransform(txname,Transforms[n]["Parameters"]), tx_delete);
 				else if (Transforms[n]["Type"].asString() == "AnalogScaling")
 					tx_ptr.reset(new AnalogScalingTransform(txname,Transforms[n]["Parameters"]), tx_delete);
+				else if (Transforms[n]["Type"].asString() == "TypeConversion")
+					tx_ptr.reset(new TypeConversionTransform(txname,Transforms[n]["Parameters"]), tx_delete);
 				else
 				{
 

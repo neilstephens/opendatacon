@@ -92,6 +92,16 @@ opendnp3::EventCounterVariation StringToEventCounterResponse(const std::string& 
 	throw std::runtime_error("Unknown event counter response type");
 }
 
+opendnp3::StaticFrozenCounterVariation StringToStaticFrozenCounterResponse(const std::string& str)
+{
+	return opendnp3::StaticFrozenCounterVariationSpec::from_string(str);
+}
+
+opendnp3::EventFrozenCounterVariation StringToEventFrozenCounterResponse(const std::string& str)
+{
+	return opendnp3::EventFrozenCounterVariationSpec::from_string(str);
+}
+
 opendnp3::EventBinaryOutputStatusVariation StringToEventBinaryOutputStatusResponse(const std::string& str)
 {
 	if (str == "Group11Var1") return opendnp3::EventBinaryOutputStatusVariation::Group11Var1;
