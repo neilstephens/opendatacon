@@ -81,3 +81,23 @@ extern "C" bool test_func()
 	lua_close(L);
 	return (ret == LUA_OK);
 }
+
+//The wrappers every Lua host gets (ExportWrappersToLua) include the network objects when the host says the script is to have them
+extern "C" bool test_network_wrappers(bool network)
+{
+	auto L = luaL_newstate();
+	lua_newtable(L);
+	lua_setglobal(L,"odc");
+	luaL_openlibs(L);
+
+	std::shared_ptr<odc::strand_t> pStrand = odc::asio_service::Get()->make_strand();
+	std::shared_ptr<void> tracker = std::make_shared<char>();
+	ExportWrappersToLua(L,pStrand,tracker,"LuaTestPlugin","opendatacon",network);
+
+	auto ret = luaL_dostring(L,network ?
+		"return odc.msTimerCallback ~= nil and odc.TCPSocket ~= nil and odc.TLSSocket ~= nil and odc.HTTPServer ~= nil and odc.HTTPClient ~= nil and odc.HTTP ~= nil" :
+		"return odc.msTimerCallback ~= nil and odc.TCPSocket == nil and odc.TLSSocket == nil and odc.HTTPServer == nil and odc.HTTPClient == nil and odc.HTTP == nil");
+	const bool ok = (ret == LUA_OK) && lua_toboolean(L,-1);
+	lua_close(L);
+	return ok;
+}

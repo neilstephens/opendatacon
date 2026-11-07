@@ -46,7 +46,8 @@ public:
 		const MessageHandler& MsgHandler,
 		const std::string& LoggerName,
 		const std::string& ID,
-		std::stringstream& script_args);
+		std::stringstream& script_args,
+		const bool network); //the script gets the network objects
 	~LuaInst();
 	bool Completed();
 private:

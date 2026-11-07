@@ -64,7 +64,10 @@ private:
 
 	Json::Value ScriptCommandHandler(const std::string& responder_name, const std::string& cmd, std::stringstream& args_iss);
 	void ScriptMessageHandler(const std::string& ID, const std::string& msg);
-	bool Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args);
+	//script_file: the file the code was loaded from, nullptr for code given directly (for NetEnabled)
+	bool Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args, const std::string* script_file);
+	//the "NetEnabled" configuration item: which scripts get the network objects (see NetAccess.h of the Lua wrappers)
+	Json::Value NetEnabled;
 	void Cancel(const std::string& ID);
 	void ClearAll();
 	bool Completed(const std::string& ID);

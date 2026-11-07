@@ -1,3 +1,6 @@
+-- (The network objects, odc.TCPSocket, odc.TLSSocket, odc.HTTPServer, odc.HTTPClient and odc.HTTP, are documented in
+--  Code/Libs/LuaWrappers/README.md, with the NetEnabled setting that decides which scripts get them.)
+
 --opendatacon mandates an Enable() function
 function Enable()
 	odc.log.info("Enable()");

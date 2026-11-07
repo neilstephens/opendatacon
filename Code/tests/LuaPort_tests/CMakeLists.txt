@@ -37,3 +37,19 @@ configure_file(ConfStrings.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/ConfStrings.cpp)
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h ../PortLoader.cpp ../PortLoader.h ConfStrings.cpp.in)
 
 add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+#for NetObjectCount(): the tests of the network objects check that nothing is leaked
+target_link_libraries(${PROJECT_NAME} LuaWrappers)
+#the documentation example is run by a test
+target_compile_definitions(${PROJECT_NAME} PRIVATE ODC_NETWORK_README="${CMAKE_SOURCE_DIR}/Code/Libs/LuaWrappers/README.md")
+target_compile_definitions(${PROJECT_NAME} PRIVATE ODC_LUA_NETWORK_EXAMPLE="${CMAKE_SOURCE_DIR}/ExampleConfig/Lua-Network/NetworkStatus.lua")
+#the examples that move ODC events over a network are run by NetExamplesTest.cpp
+target_compile_definitions(${PROJECT_NAME} PRIVATE ODC_LUA_TRANSPORT_DIR="${CMAKE_SOURCE_DIR}/ExampleConfig/Lua-Transport")
+#the TLS tests make their certificates with the test PKI of the ODC tests (and are compiled out without TLS)
+if(ODC_ASIO_SSL)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE ODC_ASIO_SSL)
+	target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Code/tests/ODC_tests)
+	#the HTTPS tests need Simple-Web-Server built with TLS as well
+	if(SIMPLEWEB_SSL)
+		target_compile_definitions(${PROJECT_NAME} PRIVATE ODC_HTTPS_TESTS)
+	endif()
+endif()

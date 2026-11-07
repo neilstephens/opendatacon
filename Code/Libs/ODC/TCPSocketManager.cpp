@@ -286,7 +286,11 @@ bool TCPSocketManager::EndPointResolved(std::shared_ptr<void> tracker)
 				LogCallback("debug","Resolved endpoint(s).");
 				EndpointIterator = std::move(results);
 				resolve_time = msSinceEpoch();
-				AutoOpen(tracker);
+				//(AutoOpen() does nothing without auto_reopen, so there the attempt that waited for the resolve is started here)
+				if(auto_reopen)
+					AutoOpen(tracker);
+				else
+					Open(tracker);
 			}));
 		return false;
 	}

@@ -642,3 +642,27 @@ TEST_CASE(SUITE("Post and Wrap"))
 	}
 	TestTearDown();
 }
+
+TEST_CASE(SUITE("A client without auto_reopen connects on Open() and does not reconnect"))
+{
+	TestSetup();
+	{
+		ThreadPool pool(2);
+		Recorder server;
+		server.Make(true,22245);
+		server.pSockMan->Open();
+		std::this_thread::sleep_for(std::chrono::milliseconds(200)); //(listening: the client makes one attempt only)
+		std::atomic<int> ups = 0, downs = 0;
+		auto client = std::make_unique<TCPSocketManager>(odc::asio_service::Get(),false,"127.0.0.1","22245",[](odc::buf_t& buf){ buf.consume(buf.size()); },
+			[&](bool up){ (up ? ups : downs)++; },std::numeric_limits<size_t>::max(),false);
+		client->Open();
+		WaitFor([&]{return ups == 1 && server.Count(true) == 1;},"the connection");
+		server.pSockMan->Close();
+		WaitFor([&]{return downs == 1;},"the end of the connection");
+		server.pSockMan->Open();
+		CHECK(StaysFalse([&]{return ups > 1;}));
+		client->Close();
+		server.pSockMan->Close();
+	}
+	TestTearDown();
+}

@@ -1,0 +1,3 @@
+# the throw-away certificates and keys made by make-certs.sh / make-certs.ps1: never commit them
+certs/
+ODC_Log*

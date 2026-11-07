@@ -26,7 +26,11 @@ file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h include/Lua/*.h DynamicSymbols.cpp.in)
 add_library(${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRC})
 
 target_include_directories(${PROJECT_NAME} PUBLIC include)
-target_link_libraries(${PROJECT_NAME} ODC ${LUA_LIBNAME})
+target_link_libraries(${PROJECT_NAME} ODC ${LUA_LIBNAME} simple-web-server)
+if(MSVC)
+	#the HTTP objects instantiate the SWS templates (server and client, with and without TLS) in one file
+	set_source_files_properties(HttpWrappers.cpp PROPERTIES COMPILE_OPTIONS /bigobj)
+endif()
 
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION ${INSTALLDIR_SHARED} ARCHIVE DESTINATION ${INSTALLDIR_LIBS} RUNTIME DESTINATION ${INSTALLDIR_SHARED})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER libs)

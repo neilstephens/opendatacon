@@ -1,3 +1,4 @@
+-- (A transform script can use the network objects too: see Code/Libs/LuaWrappers/README.md and its NetEnabled setting.)
 --opendatacon mandates an Event() function so you can receive events to transform
 function Event(EventInfo,AllowFn)
 	odc.log.info("Event(): EventType ".. odc.ToString.EventType(EventInfo.EventType)..

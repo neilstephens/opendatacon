@@ -19,8 +19,27 @@
  # 
 project(libLua_tests)
 
-set(${PROJECT_NAME}_SRC CatchTestStart.cpp Loading.cpp)
+set(${PROJECT_NAME}_SRC CatchTestStart.cpp Loading.cpp NetAccessTest.cpp)
+#the network objects in the Lua hosts other than LuaPort: each host is loaded from its library, as opendatacon does (only those that are built)
+set(LUA_HOSTS)
+foreach(host LuaTransform LuaLogSink LuaUICommander)
+	if(TARGET ${host})
+		list(APPEND LUA_HOSTS ${host})
+	endif()
+endforeach()
+list(LENGTH LUA_HOSTS NUM_LUA_HOSTS)
+if(NUM_LUA_HOSTS EQUAL 3)
+	list(APPEND ${PROJECT_NAME}_SRC NetHostsTest.cpp)
+endif()
 add_test_executable(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+#DecideNetAccess() and NetObjectCount()
+target_link_libraries(${PROJECT_NAME} LuaWrappers)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Code/Libs/LuaWrappers)
+if(NUM_LUA_HOSTS EQUAL 3)
+	add_dependencies(${PROJECT_NAME} ${LUA_HOSTS})
+	target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/Code/Transforms/LuaTransform ${CMAKE_SOURCE_DIR}/Code/Plugins/LuaLogSink
+		${CMAKE_SOURCE_DIR}/Code/Plugins/LuaUICommander)
+endif()
 
 add_library(LuaTestPlugin MODULE Plugin.cpp Plugin.def)
 target_link_libraries(LuaTestPlugin LuaWrappers)

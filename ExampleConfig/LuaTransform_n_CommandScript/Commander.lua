@@ -1,3 +1,4 @@
+-- (A UI command script can use the network objects too, if the plugin's NetEnabled setting allows it: see Code/Libs/LuaWrappers/README.md.)
 
 --required function for sending UI commands
 -- you could use a plain function called SendCommands

@@ -1,3 +1,4 @@
+-- (A log sink script can use the network objects too: see Code/Libs/LuaWrappers/README.md and its NetEnabled setting.)
  
 -- provide a function called LogSink opendatacon will call it with args:
 --    Time - integer ms since epoch

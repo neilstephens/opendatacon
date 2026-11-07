@@ -63,3 +63,19 @@ TEST_CASE("LuaLoading")
 	UnLoadModule(handle);
 	TestTearDown();
 }
+
+TEST_CASE("LuaWrappersGiveNetworkAccessWhenAsked")
+{
+	TestSetup();
+
+	auto handle = LoadModule(GetLibFileName("LuaTestPlugin"));
+	REQUIRE(handle);
+
+	auto func = reinterpret_cast<bool (*)(bool)>(LoadSymbol(handle,"test_network_wrappers"));
+	REQUIRE(func);
+	CHECK(func(true));
+	CHECK(func(false));
+
+	UnLoadModule(handle);
+	TestTearDown();
+}

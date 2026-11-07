@@ -44,7 +44,13 @@ LuaTransform::LuaTransform(const std::string& Name, const Json::Value& params): 
 	lua_setglobal(LuaState,"odc");
 
 	luaL_openlibs(LuaState);
-	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaTransform");
+	const std::string LuaFile = params["LuaFile"].asString();
+	const auto net = DecideNetAccess(params["NetEnabled"],&LuaFile);
+	if(net.config_error)
+		Log.Error("{}: {}",Name,net.why);
+	else
+		Log.Info("{}: network access {} ({})",Name,net.allowed ? "on" : "off",net.why);
+	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaTransform",net.allowed);
 
 	//load the lua code
 	auto ret = luaL_dofile(LuaState, params["LuaFile"].asCString());

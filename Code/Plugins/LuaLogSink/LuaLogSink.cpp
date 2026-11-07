@@ -47,6 +47,17 @@ LuaLogSink::LuaLogSink(const std::string& Name, const std::string& LuaFile, cons
 	ExportMetaTables(L);
 	ExportLogWrappers(L,Name,"opendatacon");
 	ExportUtilWrappers(L,pStrand,handler_tracker,Name,"opendatacon");
+	const auto net = DecideNetAccess(Config["NetEnabled"],&LuaFile);
+	if(net.config_error)
+		Log.Error("{}: {}",Name,net.why);
+	else
+		Log.Info("{}: network access {} ({})",Name,net.allowed ? "on" : "off",net.why);
+	if(net.allowed)
+	{
+		//(what the network objects log starts with Name, which LogSink() is not given: see sink_it_())
+		ExportNetWrappers(L,pStrand,handler_tracker,Name,"opendatacon");
+		ExportHttpWrappers(L,pStrand,handler_tracker,Name,"opendatacon");
+	}
 	luaL_openlibs(L);
 
 	//load the lua code

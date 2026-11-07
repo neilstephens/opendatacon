@@ -29,16 +29,21 @@
 #include "../../IOTypeWrappers.h"
 #include "../../LogWrappers.h"
 #include "../../UtilWrappers.h"
+#include "../../NetWrappers.h"
+#include "../../HttpWrappers.h"
+#include "../../NetAccess.h"
 #include <opendatacon/asio.h>
 #include <string>
 
 extern "C" void ExportMetaTables(lua_State* const L);
 
+//network: whether the script gets the network objects (odc.TCPSocket, odc.TLSSocket, odc.HTTPServer, odc.HTTPClient, odc.HTTP): see NetAccess.h
 inline void ExportWrappersToLua(lua_State* const L,
 	std::shared_ptr<odc::strand_t> pSyncStrand,
 	std::shared_ptr<void> handler_tracker,
 	const std::string& Name,
-	const std::string& LogName)
+	const std::string& LogName,
+	const bool network)
 {
 	//UserData Metatables
 	ExportMetaTables(L);
@@ -54,6 +59,12 @@ inline void ExportWrappersToLua(lua_State* const L,
 	ExportLogWrappers(L,Name,LogName);
 	//Util
 	ExportUtilWrappers(L,pSyncStrand,handler_tracker,Name,LogName);
+	//Network
+	if(network)
+	{
+		ExportNetWrappers(L,pSyncStrand,handler_tracker,Name,LogName);
+		ExportHttpWrappers(L,pSyncStrand,handler_tracker,Name,LogName);
+	}
 }
 
 #endif // WRAPPERS_H

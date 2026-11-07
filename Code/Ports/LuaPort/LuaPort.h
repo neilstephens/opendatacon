@@ -46,7 +46,7 @@ public:
 
 	void Disable() override
 	{
-		pLuaSyncStrand->post([this,h{handler_tracker}](){Disable_();});
+		pLuaSyncStrand->post([this,h{handler_tracker}](){Disable_(h);});
 	}
 
 	void Build() override;
@@ -67,7 +67,7 @@ private:
 
 	//synchronised versions of pubil counterparts above
 	void Enable_();
-	void Disable_();
+	void Disable_(const std::shared_ptr<void>& tracker);
 	void Event_(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback);
 
 	void ExportLuaPublishEvent();

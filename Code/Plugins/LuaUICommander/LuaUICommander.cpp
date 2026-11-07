@@ -25,6 +25,8 @@
  */
 #include "LuaUICommander.h"
 #include "Log.h"
+#include <Lua/Wrappers.h>
+#include <opendatacon/ConfigParser.h>
 #include <opendatacon/util.h>
 
 inline std::stringstream ParamsToSStream(const ParamCollection &params)
@@ -37,11 +39,36 @@ inline std::stringstream ParamsToSStream(const ParamCollection &params)
 	return script_args;
 }
 
+namespace
+{
+//the plugin's configuration: the file, then the overrides
+class LuaUICommanderConf: public ConfigParser
+{
+public:
+	LuaUICommanderConf(const std::string& File, const Json::Value& Overrides): ConfigParser(File,Overrides)
+	{
+		ProcessFile();
+	}
+	Json::Value NetEnabled;
+private:
+	void ProcessElements(const Json::Value& JSONRoot) override
+	{
+		if(JSONRoot.isMember("NetEnabled"))
+			NetEnabled = JSONRoot["NetEnabled"];
+	}
+};
+}
+
 LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File, const Json::Value& Overrides):
 	Name(Name),
 	mute_scripts(true),
 	maxQ(500)
 {
+	NetEnabled = LuaUICommanderConf(File,Overrides).NetEnabled;
+	const auto net = DecideNetAccess(NetEnabled,nullptr);
+	if(net.config_error)
+		Log.Error("{}: {}",Name,net.why);
+
 	IUIResponder::AddCommand("ExecuteFile", [this](const ParamCollection &params) -> const Json::Value
 		{
 			auto LineStream = ParamsToSStream(params);
@@ -52,7 +79,7 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 				if(fin.is_open())
 				{
 					std::string lua_code((std::istreambuf_iterator<char>(fin)),std::istreambuf_iterator<char>());
-					auto started = Execute(lua_code,ID,LineStream);
+					auto started = Execute(lua_code,ID,LineStream,&filename);
 					auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
 					return IUIResponder::GenerateResult(msg);
 				}
@@ -61,7 +88,8 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 			return IUIResponder::GenerateResult("Bad parameter");
 
 		},"Load a Lua script to automate sending UI commands. Usage: 'ExecuteFile <lua_filename> <ID> [script args]'. "
-		"ID is a arbitrary user-specified ID that can be used with 'StatExecution'");
+		"ID is a arbitrary user-specified ID that can be used with 'StatExecution'. "
+		"The script gets the network objects (odc.TCPSocket ...) as the plugin's 'NetEnabled' setting says: by default it does");
 
 	IUIResponder::AddCommand("Base64Execute", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -72,13 +100,14 @@ LuaUICommander::LuaUICommander(const std::string& Name, const std::string& File,
 				std::string lua_code = odc::b64decode(Base64);
 				if(Log.ShouldLog(spdlog::level::trace))
 					Log.Trace("Decoded base64 as:\n{}",lua_code);
-				auto started = Execute(lua_code,ID,LineStream);
+				auto started = Execute(lua_code,ID,LineStream,nullptr);
 				auto msg = "Execution start: "+std::string(started ? "SUCCESS" : "FAILURE");
 				return IUIResponder::GenerateResult(msg);
 			}
 			return IUIResponder::GenerateResult("Bad parameter");
 		},"Similar to 'ExecuteFile', but instead of loading the lua code from file, decodes it directly from base64 entered at the console. "
-		"Usage: 'Base64Execute <base64_encoded_script> <ID> [script args]'");
+		"Usage: 'Base64Execute <base64_encoded_script> <ID> [script args]'. "
+		"The script gets no network objects (odc.TCPSocket ...) unless the plugin's 'NetEnabled' setting is true");
 
 	IUIResponder::AddCommand("StatExecution", [this](const ParamCollection &params) -> const Json::Value
 		{
@@ -168,8 +197,13 @@ void LuaUICommander::ScriptMessageHandler(const std::string& ID, const std::stri
 		Messages.at(ID).pop_front();
 }
 
-bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args)
+bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID, std::stringstream& script_args, const std::string* script_file)
 {
+	const auto net = DecideNetAccess(NetEnabled,script_file);
+	if(net.config_error)
+		Log.Error("{}: {}: {}",Name,ID,net.why);
+	else
+		Log.Info("{}: {}: network access {} ({})",Name,ID,net.allowed ? "on" : "off",net.why);
 	decltype(Scripts) destroy_outside_lock_scope;
 	try
 	{
@@ -188,7 +222,7 @@ bool LuaUICommander::Execute(const std::string& lua_code, const std::string& ID,
 		if(script_it != Scripts.end())
 			throw std::runtime_error(ID+": Attempt to execute a script with the same ID as a running script.");
 
-		Scripts[ID] = std::make_shared<LuaInst>(lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args);
+		Scripts[ID] = std::make_shared<LuaInst>(lua_code,CmdHandler,MsgHandler,LoggerName,ID,script_args,net.allowed);
 
 		//clear messages from any previous execution with this ID
 		Messages.erase(ID);

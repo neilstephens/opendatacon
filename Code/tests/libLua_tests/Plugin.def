@@ -20,3 +20,4 @@
 LIBRARY LuaTestPlugin
 EXPORTS
 	test_func
+	test_network_wrappers

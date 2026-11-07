@@ -34,7 +34,8 @@ LuaInst::LuaInst(const std::string& lua_code,
 	const MessageHandler& MsgHandler,
 	const std::string& LoggerName,
 	const std::string& ID,
-	std::stringstream& script_args):
+	std::stringstream& script_args,
+	const bool network):
 	CmdHandler(CmdHandler),
 	MsgHandler(MsgHandler),
 	LoggerName(LoggerName),
@@ -97,7 +98,7 @@ LuaInst::LuaInst(const std::string& lua_code,
 	lua_setglobal(L,"odc");
 
 	luaL_openlibs(L);
-	ExportWrappersToLua(L,pStrand,handler_tracker,ID,LoggerName);
+	ExportWrappersToLua(L,pStrand,handler_tracker,ID,LoggerName,network);
 
 	//load the lua code
 	auto ret = luaL_dostring(L, lua_code.c_str());

@@ -14,6 +14,9 @@ port/plugin/transform types in a single directory.
   `LogicInv`, `BlackHole`, `AnalogScaling`
 - Dynamic transform: `Lua`
 
+The Lua port, transform, log sink and UI command scripts can also use the network objects (TCP, TLS, HTTP, HTTPS): see
+[Network objects for Lua scripts](../../Code/Libs/LuaWrappers/README.md) and its `NetEnabled` setting.
+
 ## Structure
 
 - `opendatacon.conf` contains all high-level objects.

@@ -240,6 +240,7 @@ Ports are the interface between opendatacon and the outside world. A Port transl
 *   Lua port
     * Lua port allows custom run-time port implementations
     * See the ExampleConfig directory to see how you can write your own port in Lua
+    * Lua scripts (ports, transforms, log sinks and UI command scripts) can talk to the network: TCP and TLS sockets, an HTTP(S) server and client. See [Network objects for Lua scripts](Code/Libs/LuaWrappers/README.md), and its `NetEnabled` setting for which scripts get them
 
 Apart from custom run-time implementations in Lua, native ports can be implemented via the C API if compiling separately (and dropped into the plugin dir), or developed in-tree in C++ (compiled with opendatacon for C++ ABI compatibility). 
 
@@ -255,7 +256,7 @@ Connections simply open a bi-directional data path between two ports, by subscri
 
 Transforms filter and transform data on entry to a Connector (ie. they're uni-directional), for a single source of data (sending port). They can be thought of as a subscription filter. For example, a transform could be implemented to add timestamps to untimestamped data, or deadband or throttle a data stream.
 
-Custom Transforms can be implemented in Lua (see example configs in the repo)
+Custom Transforms can be implemented in Lua (see example configs in the repo). A Lua transform can use the network objects too: see [Network objects for Lua scripts](Code/Libs/LuaWrappers/README.md).
 
 ### Plugins
 
@@ -494,6 +495,7 @@ ExampleConfig/SelfDocumentingLuaPort/
 ```
 ExampleConfig/LuaTransform_n_CommandScript/
 ```
+Each kind of Lua script can also talk to the network (TCP, TLS, HTTP and HTTPS), as its `NetEnabled` setting allows: see [Network objects for Lua scripts](Code/Libs/LuaWrappers/README.md).
 ### DNP3 Port Library
 
 #### Features

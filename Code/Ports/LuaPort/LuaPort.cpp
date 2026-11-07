@@ -56,15 +56,13 @@ void LuaPort::Enable_()
 	CallLuaGlobalVoidVoidFunc("Enable");
 }
 //only called on Lua sync strand
-void LuaPort::Disable_()
+void LuaPort::Disable_(const std::shared_ptr<void>& tracker)
 {
 	CallLuaGlobalVoidVoidFunc("Disable");
 	//Force garbage collection. Lingering shared_ptr finalizers can block shutdown etc
 	//post() just in case anything is queued on the strand
-	this->pLuaSyncStrand->post([this,h{handler_tracker}]()
-		{
-			lua_gc(LuaState,LUA_GCCOLLECT);
-		});
+	//(the tracker comes from the handler that is running: the member may have been reset by the destructor already, and the destructor must wait for this one)
+	this->pLuaSyncStrand->post([this,h{tracker}](){lua_gc(LuaState,LUA_GCCOLLECT);});
 }
 
 //Build is called while there's only one active thread, so we don't need to sync access to LuaState here
@@ -84,12 +82,17 @@ void LuaPort::Build()
 	lua_setglobal(LuaState,"odc");
 
 	luaL_openlibs(LuaState);
-	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaPort");
+	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
+	const auto net = DecideNetAccess(static_cast<const Json::Value&>(JSONConf)["NetEnabled"],&pConf->LuaFile);
+	if(net.config_error)
+		Log.Error("{}: {}",Name,net.why);
+	else
+		Log.Info("{}: network access {} ({})",Name,net.allowed ? "on" : "off",net.why);
+	ExportWrappersToLua(LuaState,pLuaSyncStrand,handler_tracker,Name,"LuaPort",net.allowed);
 	ExportLuaPublishEvent();
 	ExportLuaInDemand();
 
 	//load the lua code
-	auto pConf = static_cast<LuaPortConf*>(this->pConf.get());
 	auto ret = luaL_dofile(LuaState, pConf->LuaFile.c_str());
 	if(ret != LUA_OK)
 	{
