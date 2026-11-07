@@ -32,6 +32,10 @@ if(CBPORT)
 add_subdirectory(CBPort_tests)
 endif()
 
+if(ICCPPORT)
+add_subdirectory(ICCPPort_tests)
+endif()
+
 if(PYPORT)
 add_subdirectory(PyPort_tests)
 endif()
