@@ -66,6 +66,9 @@ extern std::unordered_map<void*, C_Port*> C_Port_instances;
 
 void SerializePayload(const odc::EventInfo& src, union C_Payload* dst);
 
+/* C_EventInfo -> EventInfo (copies everything) */
+std::shared_ptr<odc::EventInfo> EventFromC(const struct C_EventInfo* cevt);
+
 /* Host API vtable — defined in C_Helpers.cpp, used by C_Port/Transform/UI
    constructors to call odc_library_init() on each loaded library. */
 extern C_ODC_HostAPI g_host_api;

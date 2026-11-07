@@ -29,6 +29,15 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	"${SPDLOG_HOME}/include"
 	"${ASIO_HOME}/include")
 
+#the CBOR library used by the translation (de)serialisers
+#	(it's a whole json lib with CBOR extension, but the best CBOR interface I've found)
+#	header only, and only used internally, so it's a private include
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/jsoncons/.git")
+	execute_process(COMMAND git submodule update --init -- Code/submodules/jsoncons
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/Code/submodules/jsoncons/include")
+
 set(ODC_ASIO_SSL OFF CACHE BOOL "Enable TLS/SSL is ASIO compiled into libODC (requires OpenSSL)")
 if(FULL)
 	set(ODC_ASIO_SSL ON CACHE BOOL "Enable TLS/SSL is ASIO compiled into libODC (requires OpenSSL)" FORCE)

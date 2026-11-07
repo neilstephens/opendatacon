@@ -33,7 +33,6 @@
 
 using namespace odc;
 namespace KCP = kafka::clients::producer;
-using OptionalPoint = std::optional<std::reference_wrapper<const PointTranslationEntry>>;
 
 class KafkaProducerPort: public KafkaPort
 {
@@ -50,7 +49,6 @@ protected:
 	void PortDown() override;
 
 private:
-	OptionalPoint CheckPointTranslationMap(std::shared_ptr<const EventInfo> event, const std::string& SenderName);
 	void Send(const kafka::Topic& topic, const OctetStringBuffer& key_buffer, const OctetStringBuffer& val_buffer, SharedStatusCallback_t pStatusCallback);
 
 	std::shared_ptr<KCP::KafkaProducer> pKafkaProducer;

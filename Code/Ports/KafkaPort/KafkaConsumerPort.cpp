@@ -26,9 +26,7 @@
 
 #include "KafkaConsumerPort.h"
 #include "KafkaPort.h"
-#include "TemplateDeserialiser.h"
-#include "CBORDeserialiser.h"
-#include "LuaDeserialiser.h"
+#include <opendatacon/TranslationEngine.h>
 #include "kafka/Types.h"
 #include <opendatacon/asio.h>
 #include <opendatacon/spdlog.h>
@@ -41,35 +39,17 @@ void KafkaConsumerPort::Build()
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
 
-	//iterate over the PointTranslationMap and build a ConsumerTranslationMap
-	ConsumerTranslationMap CTM;
-	for(const auto& [tid, pte] : *pConf->pPointMap)
+	//resolve keys and build the deserialisers
+	try
 	{
-		auto key_buffer = pte.pKey ? *pte.pKey : pConf->DefaultKey;
-		ConsumptionID cid(pte.pTopic ? *pte.pTopic : pConf->DefaultTopic, kafka::Key(key_buffer.data(),key_buffer.size()));
-		ConsumerTranslationEntry cte;
-
-		//TODO: check the template/cbor structure to make sure it's valid for de-serialisation
-		//  or leave it to the deserialisers to throw errors/exceptions
-
-		if(pConf->TranslationMethod == EventTranslationMethod::Template)
-		{
-			const auto& Template = pte.pTemplate ? *pte.pTemplate : pConf->DefaultTemplate;
-			cte.pTemplateDeserialiser = std::make_unique<TemplateDeserialiser>(Template, pConf->DateTimeFormat, pConf->DateTimeIsUTC, !pConf->RegexEscapeTemplates);
-		}
-
-		if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
-		{
-			auto pSerialiser = pte.pCBORer ? pte.pCBORer.get() : &pConf->DefaultCBORSerialiser;
-			cte.pCBORDeserialiser = std::make_unique<CBORDeserialiser>(pSerialiser, pConf->DateTimeFormat, pConf->DateTimeIsUTC);
-		}
-
-		if(pConf->TranslationMethod == EventTranslationMethod::Lua)
-			cte.pLuaDeserialiser = std::make_unique<LuaDeserialiser>(/*FIXME*/ "","", pConf->DateTimeFormat, pConf->DateTimeIsUTC);
-
-		CTM.emplace(std::move(cid), std::move(cte));
+		static const PointTranslationMap empty_ptm;
+		pConf->pEngine = TranslationEngine::Create(pConf->Translation, pConf->pPointMap ? *pConf->pPointMap : empty_ptm, TranslationEngine::Direction::Reverse);
 	}
-	pConf->pKafkaMap = std::make_unique<ConsumerTranslationMap>(std::move(CTM));
+	catch(const std::exception& e)
+	{
+		Log.Error("{}: Failed to build the event translation: {}", Name, e.what());
+		throw;
+	}
 
 	if(!pConf->NativeKafkaProperties.contains("client.id"))
 	{
@@ -83,15 +63,7 @@ void KafkaConsumerPort::Build()
 	}
 
 	//find all the topics we need to subscribe to
-	mTopics.insert(pConf->DefaultTopic);
-	if(pConf->pPointMap)
-	{
-		for(const auto& [key, trans_entry] : *pConf->pPointMap)
-		{
-			if(trans_entry.pTopic)
-				mTopics.insert(*trans_entry.pTopic);
-		}
-	}
+	mTopics = pConf->pEngine->Channels();
 }
 
 void KafkaConsumerPort::Event(std::shared_ptr<const EventInfo> event, const std::string& SenderName, SharedStatusCallback_t pStatusCallback)
@@ -263,28 +235,17 @@ void KafkaConsumerPort::Poll(std::weak_ptr<asio::steady_timer> wTimer)
 void KafkaConsumerPort::ProcessRecord(const KCC::ConsumerRecord& record)
 {
 	auto pConf = static_cast<KafkaPortConf*>(this->pConf.get());
-	std::shared_ptr<EventInfo> event = nullptr;
 
-	//build a consumer key and look up the deserialiser
-	ConsumptionID cid(record.topic(), kafka::Key(record.key().data(),record.key().size()));
-	auto it = pConf->pKafkaMap->find(cid);
-	if(it != pConf->pKafkaMap->end())
-	{
-		if(pConf->TranslationMethod == EventTranslationMethod::Template)
-			event = TemplateDeserialise(record,it->second.pTemplateDeserialiser);
-		else if(pConf->TranslationMethod == EventTranslationMethod::CBOR)
-			event = CBORDeserialise(record,it->second.pCBORDeserialiser);
-		else if(pConf->TranslationMethod == EventTranslationMethod::Lua)
-			event = LuaDeserialise(record,it->second.pLuaDeserialiser);
-		else
-		{
-			Log.Error("{}: Translation method {} not implemented", Name, static_cast<std::underlying_type_t<EventTranslationMethod>>(pConf->TranslationMethod));
-		}
-	}
-	else
-	{
+	//the engine looks up the deserialiser using the topic and key
+	bool matched = false;
+	std::shared_ptr<EventInfo> event = pConf->pEngine->Deserialise(
+		record.topic(),
+		static_cast<const uint8_t*>(record.key().data()), record.key().size(),
+		static_cast<const uint8_t*>(record.value().data()), record.value().size(),
+		&matched);
+
+	if(!matched)
 		Log.Warn("{}: No deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
-	}
 
 	if(!event)
 	{
@@ -298,34 +259,3 @@ void KafkaConsumerPort::ProcessRecord(const KCC::ConsumerRecord& record)
 
 	PublishEvent(event);
 }
-
-std::shared_ptr<EventInfo> KafkaConsumerPort::TemplateDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<TemplateDeserialiser>& pTemplateDeserialiser)
-{
-	if(!pTemplateDeserialiser)
-	{
-		Log.Warn("{}: Null template deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
-		return nullptr;
-	}
-	return pTemplateDeserialiser->Deserialise(record);
-}
-
-std::shared_ptr<EventInfo> KafkaConsumerPort::CBORDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<CBORDeserialiser>& pCBORDeserialiser)
-{
-	if(!pCBORDeserialiser)
-	{
-		Log.Warn("{}: Null CBOR deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
-		return nullptr;
-	}
-	return pCBORDeserialiser->Deserialise(record);
-}
-
-std::shared_ptr<EventInfo> KafkaConsumerPort::LuaDeserialise(const KCC::ConsumerRecord& record, const std::unique_ptr<LuaDeserialiser>& pLuaDeserialiser)
-{
-	if(!pLuaDeserialiser)
-	{
-		Log.Warn("{}: Null Lua deserialiser found for topic '{}' and key '{}'", Name, record.topic(), record.key().toString());
-		return nullptr;
-	}
-	return pLuaDeserialiser->Deserialise(record);
-}
-

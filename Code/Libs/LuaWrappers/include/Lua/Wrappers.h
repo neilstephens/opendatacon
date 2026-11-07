@@ -32,6 +32,7 @@
 #include "../../NetWrappers.h"
 #include "../../HttpWrappers.h"
 #include "../../NetAccess.h"
+#include "../../TranslationWrappers.h"
 #include <opendatacon/asio.h>
 #include <string>
 
@@ -65,6 +66,8 @@ inline void ExportWrappersToLua(lua_State* const L,
 		ExportNetWrappers(L,pSyncStrand,handler_tracker,Name,LogName);
 		ExportHttpWrappers(L,pSyncStrand,handler_tracker,Name,LogName);
 	}
+	//Translation
+	ExportTranslationWrappers(L);
 }
 
 #endif // WRAPPERS_H

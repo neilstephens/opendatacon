@@ -28,11 +28,17 @@
 #include "CAPI/C_Transform.h"
 #include "CAPI/C_UI.h"
 #include "C_Internal.h"
+#include "CAPI/C_Version.h"
+#include <opendatacon/TranslationEngine.h>
 #include <opendatacon/util.h>
 #include <opendatacon/IOTypes.h>
 #include <whereami++.h>
 #include <filesystem>
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <sstream>
+#include <json/json.h>
 
 namespace odc
 {
@@ -175,30 +181,8 @@ void SerializePayload(const odc::EventInfo& src, union C_Payload* dst)
 	}
 }
 
-extern "C" void odc_InvokeStatusCallback(C_StatusCallback** cb, uint8_t status)
+std::shared_ptr<odc::EventInfo> EventFromC(const struct C_EventInfo* cevt)
 {
-	if(!cb || !*cb)
-	{
-		if(auto log = odc::spdlog_get("opendatacon"))
-			log->warn("odc_InvokeStatusCallback: null callback (already invoked?)");
-		return;
-	}
-	auto* p = *cb;
-	(*(p->cb))(static_cast<odc::CommandStatus>(status));
-	delete p;
-	*cb = nullptr;
-}
-
-extern "C" void odc_PublishEvent(void* inst, const struct C_EventInfo* cevt,
-	C_StatusCallbackFunc_t callback, void* handle)
-{
-	if(!inst || !cevt)
-		return;
-	auto it = odc::C_Port_instances.find(inst);
-	if(it == odc::C_Port_instances.end())
-		return;
-
-	// Deserialize C_EventInfo → EventInfo
 	auto event_type = static_cast<odc::EventType>(cevt->event_type);
 	auto event = std::make_shared<odc::EventInfo>(event_type, cevt->index,
 		"", static_cast<odc::QualityFlags>(cevt->quality), cevt->timestamp);
@@ -366,6 +350,35 @@ extern "C" void odc_PublishEvent(void* inst, const struct C_EventInfo* cevt,
 			// Stub types: no meaningful payload to copy
 			break;
 	}
+
+	return event;
+}
+
+extern "C" void odc_InvokeStatusCallback(C_StatusCallback** cb, uint8_t status)
+{
+	if(!cb || !*cb)
+	{
+		if(auto log = odc::spdlog_get("opendatacon"))
+			log->warn("odc_InvokeStatusCallback: null callback (already invoked?)");
+		return;
+	}
+	auto* p = *cb;
+	(*(p->cb))(static_cast<odc::CommandStatus>(status));
+	delete p;
+	*cb = nullptr;
+}
+
+extern "C" void odc_PublishEvent(void* inst, const struct C_EventInfo* cevt,
+	C_StatusCallbackFunc_t callback, void* handle)
+{
+	if(!inst || !cevt)
+		return;
+	auto it = odc::C_Port_instances.find(inst);
+	if(it == odc::C_Port_instances.end())
+		return;
+
+	// Deserialize C_EventInfo → EventInfo
+	auto event = EventFromC(cevt);
 
 	if(callback)
 	{
@@ -778,6 +791,226 @@ extern "C" int odc_QualityFlagsToString(uint16_t flags, char* buf, size_t buflen
 }
 
 /* ------------------------------------------------------------------ */
+/*  C API version compatibility                                       */
+/* ------------------------------------------------------------------ */
+namespace odc
+{
+static bool ParseVersion(const std::string& str, int& major, int& minor)
+{
+	char extra;
+	return std::sscanf(str.c_str(), "%d.%d%c", &major, &minor, &extra) == 2 && major >= 0 && minor >= 0;
+}
+
+bool CAPIVersionCompatible(const std::string& lib_version)
+{
+	int host_major, host_minor, lib_major, lib_minor;
+	if(!ParseVersion(ODC_C_API_VERSION, host_major, host_minor) || !ParseVersion(lib_version, lib_major, lib_minor))
+		return false;
+	return lib_major == host_major && lib_minor <= host_minor;
+}
+}
+
+/* ------------------------------------------------------------------ */
+/*  Translation                                                       */
+/* ------------------------------------------------------------------ */
+struct C_TranslationEngine
+{
+	std::unique_ptr<const odc::TranslationEngine> pEngine;
+	std::vector<std::string> Channels;
+};
+
+static std::string& TranslationLastError()
+{
+	thread_local std::string last_error;
+	return last_error;
+}
+
+extern "C" C_TranslationEngine* odc_TranslationCreate(const char* config_json, int direction)
+{
+	try
+	{
+		if(!config_json)
+			throw std::invalid_argument("config_json is null");
+		if(direction < C_TRANSLATION_FORWARD || direction > C_TRANSLATION_BOTH)
+			throw std::invalid_argument("Invalid translation direction");
+
+		Json::Value root;
+		Json::CharReaderBuilder builder;
+		std::string errs;
+		std::istringstream ss(config_json);
+		if(!Json::parseFromStream(builder, ss, &root, &errs) || !root.isObject())
+			throw std::invalid_argument("config_json isn't a JSON object: "+errs);
+
+		odc::TranslationSettings settings;
+		odc::ParseTranslationSettings(root, settings);
+		if(root.isMember("DefaultChannel"))
+			settings.DefaultChannel = root["DefaultChannel"].asString();
+
+		odc::PointTranslationMap ptm;
+		if(root.isMember("PointTranslationMap"))
+		{
+			auto handler = [](const std::string& member, const Json::Value& entry, odc::PointTranslationEntry& pte)
+					   {
+						   if(member != "Channel")
+							   return false;
+						   pte.Channel = entry["Channel"].asString();
+						   return true;
+					   };
+			odc::ParsePointTranslationMap(root["PointTranslationMap"], ptm, false, false, settings.Config.LogName, handler);
+		}
+
+		auto pHandle = std::make_unique<C_TranslationEngine>();
+		pHandle->pEngine = odc::TranslationEngine::Create(settings, ptm, static_cast<odc::TranslationEngine::Direction>(direction));
+		for(const auto& ch : pHandle->pEngine->Channels())
+			pHandle->Channels.push_back(ch);
+		return pHandle.release();
+	}
+	catch(const std::exception& e)
+	{
+		TranslationLastError() = e.what();
+		return nullptr;
+	}
+}
+
+extern "C" void odc_TranslationDestroy(C_TranslationEngine* engine)
+{
+	delete engine;
+}
+
+extern "C" int odc_TranslationIsMapped(C_TranslationEngine* engine, const struct C_EventInfo* event, const char* sender_name)
+{
+	if(!engine || !event)
+		return 0;
+	try
+	{
+		return engine->pEngine->IsMapped(EventFromC(event), sender_name ? sender_name : "") ? 1 : 0;
+	}
+	catch(const std::exception& e)
+	{
+		TranslationLastError() = e.what();
+		return 0;
+	}
+}
+
+extern "C" void odc_TranslationFreeMessage(struct C_TranslationMessage* message);
+
+extern "C" int odc_TranslationSerialise(C_TranslationEngine* engine, const struct C_EventInfo* event, const char* sender_name, struct C_TranslationMessage* out_message)
+{
+	if(!engine || !event || !out_message)
+	{
+		TranslationLastError() = "Null argument";
+		return 1;
+	}
+	std::memset(out_message, 0, sizeof(*out_message));
+	try
+	{
+		auto msg = engine->pEngine->Serialise(EventFromC(event), sender_name ? sender_name : "");
+
+		auto copy = [](const std::vector<uint8_t>& v)
+				{
+					auto p = static_cast<uint8_t*>(std::malloc(v.empty() ? 1 : v.size()));
+					if(!p)
+						throw std::bad_alloc();
+					if(!v.empty())
+						std::memcpy(p, v.data(), v.size());
+					return p;
+				};
+		out_message->channel = static_cast<char*>(std::malloc(msg.Channel.size()+1));
+		if(!out_message->channel)
+			throw std::bad_alloc();
+		std::memcpy(out_message->channel, msg.Channel.c_str(), msg.Channel.size()+1);
+		out_message->key = copy(msg.Key);
+		out_message->key_size = msg.Key.size();
+		out_message->value = copy(msg.Value);
+		out_message->value_size = msg.Value.size();
+		return 0;
+	}
+	catch(const std::exception& e)
+	{
+		odc_TranslationFreeMessage(out_message);
+		TranslationLastError() = e.what();
+		return 1;
+	}
+}
+
+extern "C" void odc_TranslationFreeMessage(struct C_TranslationMessage* message)
+{
+	if(!message)
+		return;
+	std::free(message->channel);
+	std::free(message->key);
+	std::free(message->value);
+	std::memset(message, 0, sizeof(*message));
+}
+
+extern "C" int odc_TranslationDeserialise(C_TranslationEngine* engine, const char* channel,
+	const uint8_t* key, size_t key_size, const uint8_t* value, size_t value_size,
+	struct C_EventInfo* out_event, void** out_owner)
+{
+	if(!engine || !out_event || !out_owner || (!value && value_size))
+	{
+		TranslationLastError() = "Null argument";
+		return C_TRANSLATION_FAILED;
+	}
+	*out_owner = nullptr;
+	try
+	{
+		bool matched = false;
+		auto event = engine->pEngine->Deserialise(channel ? channel : "", key, key_size, value, value_size, &matched);
+		if(!matched)
+		{
+			TranslationLastError() = "No deserialiser for the channel and key";
+			return C_TRANSLATION_NO_MATCH;
+		}
+		if(!event)
+		{
+			TranslationLastError() = "Failed to deserialise the message";
+			return C_TRANSLATION_FAILED;
+		}
+
+		auto pOwner = new std::shared_ptr<odc::EventInfo>(std::move(event));
+		const auto& evt = **pOwner;
+		out_event->event_type = static_cast<uint8_t>(evt.GetEventType());
+		out_event->index = evt.GetIndex();
+		out_event->timestamp = evt.GetTimestamp();
+		out_event->quality = static_cast<uint16_t>(evt.GetQuality());
+		out_event->source_port = evt.GetSourcePort().c_str();
+		std::memset(&out_event->payload, 0, sizeof(out_event->payload));
+		if(evt.HasPayload())
+			SerializePayload(evt, &out_event->payload);
+		*out_owner = pOwner;
+		return C_TRANSLATION_OK;
+	}
+	catch(const std::exception& e)
+	{
+		TranslationLastError() = e.what();
+		return C_TRANSLATION_FAILED;
+	}
+}
+
+extern "C" void odc_TranslationReleaseEvent(void* owner)
+{
+	delete static_cast<std::shared_ptr<odc::EventInfo>*>(owner);
+}
+
+extern "C" size_t odc_TranslationChannelCount(C_TranslationEngine* engine)
+{
+	return engine ? engine->Channels.size() : 0;
+}
+
+extern "C" const char* odc_TranslationChannel(C_TranslationEngine* engine, size_t index)
+{
+	if(!engine || index >= engine->Channels.size())
+		return nullptr;
+	return engine->Channels[index].c_str();
+}
+
+extern "C" const char* odc_TranslationLastError(void)
+{
+	return TranslationLastError().c_str();
+}
+
+/* ------------------------------------------------------------------ */
 /*  Host API vtable — populated once, passed to port/transform/plugin */
 /*  libraries via odc_library_init() so they have no link-time deps.  */
 /* ------------------------------------------------------------------ */
@@ -807,5 +1040,16 @@ C_ODC_HostAPI g_host_api = {
 	odc_CommandStatusToString,
 	odc_ControlCodeToString,
 	odc_ConnectStateToString,
-	odc_QualityFlagsToString
+	odc_QualityFlagsToString,
+	//C API 1.1: translation. Only ever append new members.
+	odc_TranslationCreate,
+	odc_TranslationDestroy,
+	odc_TranslationIsMapped,
+	odc_TranslationSerialise,
+	odc_TranslationFreeMessage,
+	odc_TranslationDeserialise,
+	odc_TranslationReleaseEvent,
+	odc_TranslationChannelCount,
+	odc_TranslationChannel,
+	odc_TranslationLastError
 };

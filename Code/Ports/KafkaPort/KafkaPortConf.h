@@ -26,38 +26,14 @@
 
 #ifndef KafkaPortConf_H_
 #define KafkaPortConf_H_
-#include "CBORSerialiser.h"
-#include "EventTranslation.h"
-#include "ConsumerTranslation.h"
 #include <kafka/Types.h>
 #include <kafka/Properties.h>
 #include <opendatacon/IOTypes.h>
 #include <opendatacon/DataPortConf.h>
+#include <opendatacon/TranslationEngine.h>
 #include <string>
 #include <cstddef>
 
-inline std::string JSONwPlaceholders()
-{
-	return R"(
-{
-	"EventType": "<EVENTTYPE>",
-	"NumericEventType": <EVENTTYPE_RAW>,
-	"Index": <INDEX>,
-	"Description": "<POINT:Name>",
-	"Timestamp": <TIMESTAMP>,
-	"DateTime": "<DATETIME>",
-	"Quality": "<QUALITY>",
-	"NumericQuality": <QUALITY_RAW>,
-	"Payload": <PAYLOAD>,
-	"SourcePort": "<SOURCEPORT>",
-	"SenderName": "<SENDERNAME>"
-}
-)";
-}
-inline std::string CBORStructure()
-{
-	return R"( ["TIMESTAMP","EVENTTYPE_RAW","SOURCEPORT","INDEX","QUALITY_RAW","PAYLOAD"] )";
-}
 enum class server_type_t {ONDEMAND,PERSISTENT,MANUAL};
 
 class KafkaPortConf: public DataPortConf
@@ -65,7 +41,11 @@ class KafkaPortConf: public DataPortConf
 public:
 	explicit KafkaPortConf(const bool isProducer):
 		isProducer(isProducer)
-	{}
+	{
+		//a Kafka topic is the translation 'channel'
+		Translation.DefaultChannel = "opendatacon";
+		Translation.Config.LogName = "KafkaPort";
+	}
 	bool isProducer;
 
 	bool ShareKafkaClient = isProducer;
@@ -73,35 +53,25 @@ public:
 	std::string SharedKafkaClientKey = "";
 	kafka::Properties NativeKafkaProperties;
 	size_t MaxPollIntervalms = 100;
-	kafka::Topic DefaultTopic = "opendatacon";
-	EventTranslationMethod TranslationMethod = EventTranslationMethod::Template;
-	std::string DefaultTemplate = JSONwPlaceholders();
-	DataToStringMethod OctetStringFormat = DataToStringMethod::Base64;
-	std::string DateTimeFormat = "%Y-%m-%d %H:%M:%S.%e";
-	bool DateTimeIsUTC = false;
 
-	//Producer
-	odc::OctetStringBuffer DefaultKey;
-	CBORSerialiser DefaultCBORSerialiser = CBORStructure();
-	const ExtraPointFields DefaultExtraFields = {};
-	bool BlockUnknownPoints = false;
-	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
+	//Payload and key translation options, and defaults for points
+	//	(DefaultTopic is Translation.DefaultChannel)
+	odc::TranslationSettings Translation;
 	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
 	//	then accessed by multiple threads in Event, so it needs to be const
-	std::unique_ptr<const PointTranslationMap> pPointMap = nullptr;
+	std::unique_ptr<const odc::PointTranslationMap> pPointMap = nullptr;
+	//Built from Translation and pPointMap at Build time. Const, for the same reason.
+	std::unique_ptr<const odc::TranslationEngine> pEngine = nullptr;
+
+	//Producer
+	bool BlockUnknownPoints = false;
 	bool OverridesCreateNewPTMEntries = false;
 	bool MustOverridePTMEntries = false;
 	bool DeduplicateEvents = true;
-	//TODO: make key dynamic, like the value
-	//TODO: Support for Lua translation
 	//TODO: Support for Template {} vs <> for std::format specifiers
 
 	//Consumer
 	int64_t ConsumerFastForwardOffset = 0;
-	//Use pointer to const map, because it will be populated at DataPort::ProcessElements/Build time
-	//	then accessed by multiple threads in Event, so it needs to be const
-	std::unique_ptr<const ConsumerTranslationMap> pKafkaMap = nullptr;
-	bool RegexEscapeTemplates = true;
 };
 
 #endif /* KafkaPortConf_H_ */

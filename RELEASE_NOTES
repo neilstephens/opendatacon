@@ -1,5 +1,15 @@
 # opendatacon version 1.11.0
 
+## Unreleased
+  * Event translation (serialisation/deserialisation and point mapping) extracted from KafkaPort into libODC, for reuse by other ports
+    * Template and CBOR translation moved to libODC; new Lua translation (in LuaWrappers) with the same default + per-point semantics
+    * New KafkaPort options (existing config is unchanged): `DefaultLua`/`DefaultLuaFile`, per-point `Lua`/`LuaFile`
+    * Message keys can now be generated per point from a template, a CBOR structure or Lua: `KeyTranslationMethod`, `DefaultKeyTemplate`, `DefaultKeyCBORStructure`, `DefaultKeyLua`/`DefaultKeyLuaFile`, and per-point `KeyTemplate`, `KeyCBORStructure`, `KeyLua`/`KeyLuaFile`
+    * Consumers use a generated key to identify the point, so the payload needn't carry the index and event type
+    * New `KeyClashDetection` option: `WARN` (default), `STRICT`, `DYNAMIC` (allows non-static keys)
+  * C API 1.1: translation functions added to `C_ODC_HostAPI`
+    * The host now accepts C libraries built against the same major version and an equal or older minor version
+
 ## 1.11.0
   * New C API — implement custom Ports, Transforms, and UI plugins in C, or any language that can impement C bindings
     * A Go-based Modbus port (GoModbusPort) is included as a working example

@@ -26,6 +26,7 @@
 
 #include "CAPI/C_Port.h"
 #include "C_Internal.h"
+#include "CAPI/C_Version.h"
 
 #include <cstring>
 #include <memory>
@@ -75,10 +76,10 @@ C_Port::C_Port(const std::string& aType, const std::string& aName,
 			log->error("C_Port '{}': missing C API version symbol", aName);
 		throw std::runtime_error("C_Port missing C API version symbol");
 	}
-	if(std::string(c_api_version()) != ODC_C_API_VERSION)
+	if(!odc::CAPIVersionCompatible(c_api_version()))
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("C_Port '{}': C API version mismatch (expected {}, got {})", aName, ODC_C_API_VERSION, c_api_version());
+			log->error("C_Port '{}': C API version mismatch (host is {}, library is {})", aName, ODC_C_API_VERSION, c_api_version());
 		throw std::runtime_error("C_Port C API version mismatch");
 	}
 

@@ -26,8 +26,6 @@
 
 #include "KafkaPort.h"
 #include "KafkaPortConf.h"
-#include "CBORSerialiser.h"
-#include "EventTranslation.h"
 #include "Log.h"
 #include <kafka/Types.h>
 #include <opendatacon/IOTypes.h>
@@ -46,14 +44,8 @@ KafkaPort::KafkaPort(const std::string& Name, const std::string& Filename, const
 		PointTranslationMap ptm;
 		for(const auto& [tid,pte] : *pConf->pPointMap)
 		{
-			if(!pte.override)
-				continue;
-			ptm[tid].override = pte.override;
-			ptm[tid].pCBORer = pte.pCBORer ? std::make_unique<CBORSerialiser>(std::move(*pte.pCBORer)) : nullptr;
-			ptm[tid].pExtraFields = pte.pExtraFields ? std::make_unique<ExtraPointFields>(*pte.pExtraFields) : nullptr;
-			ptm[tid].pKey = pte.pKey ? std::make_unique<odc::OctetStringBuffer>(std::move(*pte.pKey)) : nullptr;
-			ptm[tid].pTemplate = pte.pTemplate ? std::make_unique<std::string>(std::move(*pte.pTemplate)) : nullptr;
-			ptm[tid].pTopic = pte.pTopic ? std::make_unique<kafka::Topic>(std::move(*pte.pTopic)) : nullptr;
+			if(pte.override)
+				ptm[tid] = pte;
 		}
 		pConf->pPointMap = std::make_unique<const PointTranslationMap>(std::move(ptm));
 	}
@@ -162,51 +154,15 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	}
 	if(JSONRoot.isMember("DefaultTopic"))
 	{
-		pConf->DefaultTopic = JSONRoot["DefaultTopic"].asString();
+		pConf->Translation.DefaultChannel = JSONRoot["DefaultTopic"].asString();
 	}
-	if(JSONRoot.isMember("DefaultKey"))
-	{
-		pConf->DefaultKey = JSONRoot["DefaultKey"].asString();
-	}
-	if(JSONRoot.isMember("DefaultTemplate"))
-	{
-		pConf->DefaultTemplate = JSONRoot["DefaultTemplate"].asString();
-	}
-	if(JSONRoot.isMember("DefaultCBORStructure"))
-	{
-		pConf->DefaultCBORSerialiser = JSONRoot["DefaultCBORStructure"].asString();
-	}
-	if(JSONRoot.isMember("TranslationMethod"))
-	{
-		if(JSONRoot["TranslationMethod"].asString() == "Lua")
-			pConf->TranslationMethod = EventTranslationMethod::Lua;
-		else if(JSONRoot["TranslationMethod"].asString() == "Template")
-			pConf->TranslationMethod = EventTranslationMethod::Template;
-		else if(JSONRoot["TranslationMethod"].asString() == "CBOR")
-			pConf->TranslationMethod = EventTranslationMethod::CBOR;
-		else
-		{
-			Log.Error("Unknown TranslationMethod '{}'. Defaulting to Template.", JSONRoot["TranslationMethod"].asString());
-			pConf->TranslationMethod = EventTranslationMethod::Template;
-		}
-	}
+
+	//The payload/key translation options, ie. TranslationMethod, DefaultTemplate, DefaultKey, OctetStringFormat etc.
+	ParseTranslationSettings(JSONRoot, pConf->Translation);
+
 	if(JSONRoot.isMember("BlockUnknownPoints"))
 	{
 		pConf->BlockUnknownPoints = JSONRoot["BlockUnknownPoints"].asBool();
-	}
-	if(JSONRoot.isMember("PointTraslationSource"))
-	{
-		if(JSONRoot["PointTraslationSource"].asString() == "SenderName")
-			pConf->PointTraslationSource = SourceLookupMethod::SenderName;
-		else if(JSONRoot["PointTraslationSource"].asString() == "SourcePort")
-			pConf->PointTraslationSource = SourceLookupMethod::SourcePort;
-		else if(JSONRoot["PointTraslationSource"].asString() == "None")
-			pConf->PointTraslationSource = SourceLookupMethod::None;
-		else
-		{
-			Log.Error("Unknown PointTraslationSource '{}'. Defaulting to None.", JSONRoot["PointTraslationSource"].asString());
-			pConf->PointTraslationSource = SourceLookupMethod::None;
-		}
 	}
 	if(JSONRoot.isMember("OverridesCreateNewPTMEntries"))
 	{
@@ -220,32 +176,9 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 	{
 		pConf->DeduplicateEvents = JSONRoot["DeduplicateEvents"].asBool();
 	}
-	if (JSONRoot.isMember("OctetStringFormat"))
-	{
-		auto fmt = JSONRoot["OctetStringFormat"].asString();
-		if(fmt == "Hex")
-			pConf->OctetStringFormat = DataToStringMethod::Hex;
-		else if(fmt == "Raw")
-			pConf->OctetStringFormat = DataToStringMethod::Raw;
-		else if(fmt == "Base64")
-			pConf->OctetStringFormat = DataToStringMethod::Base64;
-		else Log.Error("Unknown OctetStringFormat '{}', should be Raw or Hex. Defaulting to Hex", fmt);
-	}
-	if(JSONRoot.isMember("DateTimeFormat"))
-	{
-		pConf->DateTimeFormat = JSONRoot["DateTimeFormat"].asString();
-	}
-	if(JSONRoot.isMember("DateTimeIsUTC"))
-	{
-		pConf->DateTimeIsUTC = JSONRoot["DateTimeIsUTC"].asBool();
-	}
 	if(JSONRoot.isMember("ConsumerFastForwardOffset"))
 	{
 		pConf->ConsumerFastForwardOffset = JSONRoot["ConsumerFastForwardOffset"].asInt64();
-	}
-	if(JSONRoot.isMember("RegexEscapeTemplates"))
-	{
-		pConf->RegexEscapeTemplates = JSONRoot["RegexEscapeTemplates"].asBool();
 	}
 
 	//Process PointTranslationMap
@@ -255,103 +188,17 @@ void KafkaPort::ProcessElements(const Json::Value& JSONRoot)
 		PointTranslationMap ptm;
 		//Copy the contents of the existing map if there is one
 		if(overriding)
-		{
-			for(const auto& [tid,pte] : *pConf->pPointMap)
-			{
-				ptm[tid].override = pte.override;
-				ptm[tid].pCBORer = pte.pCBORer ? std::make_unique<CBORSerialiser>(std::move(*pte.pCBORer)) : nullptr;
-				ptm[tid].pExtraFields = pte.pExtraFields ? std::make_unique<ExtraPointFields>(*pte.pExtraFields) : nullptr;
-				ptm[tid].pKey = pte.pKey ? std::make_unique<odc::OctetStringBuffer>(std::move(*pte.pKey)) : nullptr;
-				ptm[tid].pTemplate = pte.pTemplate ? std::make_unique<std::string>(std::move(*pte.pTemplate)) : nullptr;
-				ptm[tid].pTopic = pte.pTopic ? std::make_unique<kafka::Topic>(std::move(*pte.pTopic)) : nullptr;
-			}
-		}
+			ptm = *pConf->pPointMap;
 
-		auto& JSON_PTM = JSONRoot["PointTranslationMap"];
-		for(auto EventTypeStr : JSON_PTM.getMemberNames())
-		{
-			auto eventType = EventTypeFromString(EventTypeStr);
-			if(eventType == odc::EventType::AfterRange)
-			{
-				Log.Error("Unknown EventType '{}' in PointTranslationMap. Ignoring.", EventTypeStr);
-				continue;
-			}
-			if(!JSON_PTM[EventTypeStr].isArray())
-			{
-				Log.Error("PointTranslationMap member '{}' should be an array. Ignoring.", EventTypeStr);
-				continue;
-			}
-			for(auto& entry : JSON_PTM[EventTypeStr])
-			{
-				size_t start, stop, inc=1;
-				if(entry.isMember("Index"))
-					start = stop = entry["Index"].asUInt();
-				else if(entry.isMember("Range") && entry["Range"].isMember("Start") && entry["Range"].isMember("Stop"))
-				{
-					start = entry["Range"]["Start"].asUInt();
-					stop = entry["Range"]["Stop"].asUInt();
-					if(entry["Range"].isMember("Increment"))
-						inc = entry["Range"]["Increment"].asUInt();
-				}
-				else
-				{
-					Log.Error("A PointTranslationMap entry needs an \"Index\" or a \"Range\" with a \"Start\" and a \"Stop\" : skipping '{}'", entry.toStyledString());
-					continue;
-				}
-				for(size_t idx = start; idx <= stop; idx+=inc)
-				{
-					//Work out the TranslationID
-					TranslationID tid; auto& [source,point_idx,evt_type] = tid;
-					point_idx = idx; evt_type = eventType;
-					if(entry.isMember("Source"))
-						source = entry["Source"].asString();
-					else
-						source = "";
-
-					bool existing_point = ptm.find(tid) != ptm.end();
-					if(overriding && !existing_point && !pConf->OverridesCreateNewPTMEntries)
-						continue;
-
-					//Take a copy and update the existing entry, or create a new one
-					PointTranslationEntry pte = existing_point ? std::move(ptm.at(tid)) : PointTranslationEntry();
-
-					if(existing_point)
-						pte.override = true;
-
-					for(auto pte_member : entry.getMemberNames())
-					{
-						//Skip members that are already processed
-						if(pte_member == "Index" || pte_member == "Range" || pte_member == "Source")
-							continue;
-
-						if(pte_member == "Topic")
-							pte.pTopic = std::make_unique<kafka::Topic>(entry["Topic"].asString());
-						else if(pte_member == "Key")
-							pte.pKey = std::make_unique<odc::OctetStringBuffer>(entry["Key"].asString());
-						else if(pte_member == "Template")
-							pte.pTemplate = std::make_unique<std::string>(entry["Template"].asString());
-						else if(pte_member == "CBORStructure")
-						{
-							try
-							{
-								pte.pCBORer = std::make_unique<CBORSerialiser>(entry["CBORStructure"].toStyledString());
-							}
-							catch(std::exception& e)
-							{
-								Log.Error("Failed to process 'CBORStructure': {}",e.what());
-							}
-						}
-						else
-						{
-							if(!pte.pExtraFields)
-								pte.pExtraFields = std::make_unique<ExtraPointFields>();
-							pte.pExtraFields->insert_or_assign(pte_member, entry[pte_member].asString());
-						}
-					}
-					ptm[tid] = std::move(pte);
-				}
-			}
-		}
+		//A point's Kafka topic is its translation channel
+		auto handler = [](const std::string& member, const Json::Value& entry, PointTranslationEntry& pte)
+				   {
+					   if(member != "Topic")
+						   return false;
+					   pte.Channel = entry["Topic"].asString();
+					   return true;
+				   };
+		ParsePointTranslationMap(JSONRoot["PointTranslationMap"], ptm, overriding, pConf->OverridesCreateNewPTMEntries, "KafkaPort", handler);
 		pConf->pPointMap = std::make_unique<const PointTranslationMap>(std::move(ptm));
 	}
 }

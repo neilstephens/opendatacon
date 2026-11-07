@@ -26,6 +26,7 @@
 
 #include "CAPI/C_Transform.h"
 #include "C_Internal.h"
+#include "CAPI/C_Version.h"
 
 namespace odc
 {
@@ -49,10 +50,10 @@ C_Transform::C_Transform(const std::string& aType, const std::string& aName,
 			log->error("C_Transform '{}': missing C API version symbol", aName);
 		throw std::runtime_error("C_Transform missing C API version symbol");
 	}
-	if(std::string(c_api_version()) != ODC_C_API_VERSION)
+	if(!odc::CAPIVersionCompatible(c_api_version()))
 	{
 		if(auto log = odc::spdlog_get("opendatacon"))
-			log->error("C_Transform '{}': C API version mismatch (expected {}, got {})", aName, ODC_C_API_VERSION, c_api_version());
+			log->error("C_Transform '{}': C API version mismatch (host is {}, library is {})", aName, ODC_C_API_VERSION, c_api_version());
 		throw std::runtime_error("C_Transform C API version mismatch");
 	}
 

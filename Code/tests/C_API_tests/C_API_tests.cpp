@@ -32,6 +32,8 @@
 #include "CAPI/C_Port.h"
 #include "CAPI/C_Transform.h"
 #include "CAPI/C_UI.h"
+#include "CAPI/C_Version.h"
+#include <opendatacon/Translation.h>
 
 #include "../ThreadPool.h"
 
@@ -709,6 +711,140 @@ TEST_CASE("C_API - C_UI wrapper")
 	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	ui->Disable();
 	std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+	TestTearDown();
+}
+
+// ---------------------------------------------------------------------------
+//  API version compatibility
+// ---------------------------------------------------------------------------
+
+TEST_CASE("C_API - version compatibility")
+{
+	int host_major = 0, host_minor = 0;
+	REQUIRE(sscanf(ODC_C_API_VERSION, "%d.%d", &host_major, &host_minor) == 2);
+
+	// the same version
+	CHECK(odc::CAPIVersionCompatible(ODC_C_API_VERSION));
+	// libraries built against older minor versions still load
+	CHECK(odc::CAPIVersionCompatible("1.0"));
+	CHECK(odc::CAPIVersionCompatible(std::to_string(host_major)+"."+std::to_string(host_minor-1)));
+	// but not a newer minor (the host's vtable would be too short for it)
+	CHECK_FALSE(odc::CAPIVersionCompatible(std::to_string(host_major)+"."+std::to_string(host_minor+1)));
+	CHECK_FALSE(odc::CAPIVersionCompatible("1.99"));
+	// or a different major
+	CHECK_FALSE(odc::CAPIVersionCompatible(std::to_string(host_major+1)+".0"));
+	CHECK_FALSE(odc::CAPIVersionCompatible("0.0"));
+	// or rubbish
+	CHECK_FALSE(odc::CAPIVersionCompatible(""));
+	CHECK_FALSE(odc::CAPIVersionCompatible("1"));
+	CHECK_FALSE(odc::CAPIVersionCompatible("1."));
+	CHECK_FALSE(odc::CAPIVersionCompatible("1.x"));
+	CHECK_FALSE(odc::CAPIVersionCompatible("1.0.0"));
+	CHECK_FALSE(odc::CAPIVersionCompatible("v1.0"));
+}
+
+// ---------------------------------------------------------------------------
+//  Translation through the host API vtable
+// ---------------------------------------------------------------------------
+
+TEST_CASE("C_API - translation")
+{
+	TestSetup();
+
+	auto self = GetCurrentModule();
+	REQUIRE(self != nullptr);
+	auto overrides = Json::Value(Json::objectValue);
+	auto port = std::make_shared<odc::C_Port>("MockC", "TranslationPort", "conf.json", overrides, self);
+	REQUIRE(c_odc != nullptr);
+	REQUIRE(c_odc->translation_create != nullptr);
+
+	const char* conf = R"({
+		"DefaultChannel": "chan",
+		"DefaultTemplate": "<PAYLOAD>",
+		"KeyTranslationMethod": "Template",
+		"DefaultKeyTemplate": "pt/<EVENTTYPE>/<INDEX>",
+		"PointTranslationMap": {
+			"Analog": [ {"Range": {"Start": 1, "Stop": 3}}, {"Index": 9, "Channel": "other"} ]
+		}
+	})";
+	auto engine = c_odc->translation_create(conf, C_TRANSLATION_BOTH);
+	INFO(c_odc->translation_last_error());
+	REQUIRE(engine != nullptr);
+
+	CHECK(c_odc->translation_channel_count(engine) == 2);
+	CHECK(std::string(c_odc->translation_channel(engine, 0)) == "chan");
+	CHECK(std::string(c_odc->translation_channel(engine, 1)) == "other");
+	CHECK(c_odc->translation_channel(engine, 2) == nullptr);
+
+	C_EventInfo evt;
+	memset(&evt, 0, sizeof(evt));
+	evt.event_type = C_EventType_Analog;
+	evt.index = 2;
+	evt.timestamp = 1000;
+	evt.quality = C_QualityFlags_ONLINE;
+	evt.source_port = "src";
+	evt.payload.analog_val = 12.5;
+
+	CHECK(c_odc->translation_is_mapped(engine, &evt, "") != 0);
+	evt.index = 5;
+	CHECK(c_odc->translation_is_mapped(engine, &evt, "") == 0);
+	evt.index = 2;
+
+	C_TranslationMessage msg;
+	REQUIRE(c_odc->translation_serialise(engine, &evt, "sender", &msg) == 0);
+	CHECK(std::string(msg.channel) == "chan");
+	CHECK(std::string(reinterpret_cast<char*>(msg.key), msg.key_size) == "pt/Analog/2");
+	CHECK(std::string(reinterpret_cast<char*>(msg.value), msg.value_size) == "12.500000");
+
+	// and back again
+	C_EventInfo out;
+	void* owner = nullptr;
+	REQUIRE(c_odc->translation_deserialise(engine, msg.channel, msg.key, msg.key_size, msg.value, msg.value_size, &out, &owner) == C_TRANSLATION_OK);
+	CHECK(out.event_type == C_EventType_Analog);
+	CHECK(out.index == 2);
+	CHECK(out.payload.analog_val == 12.5);
+	c_odc->translation_release_event(owner);
+
+	// a key that isn't known
+	std::string unknown = "pt/Analog/77";
+	CHECK(c_odc->translation_deserialise(engine, "chan", reinterpret_cast<const uint8_t*>(unknown.data()), unknown.size(), msg.value, msg.value_size, &out, &owner) == C_TRANSLATION_NO_MATCH);
+	// a known key, but a payload that can't be parsed
+	std::string garbage = "not a number";
+	CHECK(c_odc->translation_deserialise(engine, msg.channel, msg.key, msg.key_size, reinterpret_cast<const uint8_t*>(garbage.data()), garbage.size(), &out, &owner) == C_TRANSLATION_FAILED);
+
+	c_odc->translation_free_message(&msg);
+	CHECK(msg.channel == nullptr);
+	c_odc->translation_destroy(engine);
+
+	// config errors
+	CHECK(c_odc->translation_create("not json", C_TRANSLATION_BOTH) == nullptr);
+	CHECK(std::string(c_odc->translation_last_error()).size() > 0);
+	CHECK(c_odc->translation_create(nullptr, C_TRANSLATION_BOTH) == nullptr);
+	CHECK(c_odc->translation_create("{}", 0) == nullptr);
+	// non-static key
+	CHECK(c_odc->translation_create(R"({"KeyTranslationMethod": "Template", "DefaultKeyTemplate": "<TIMESTAMP>"})", C_TRANSLATION_FORWARD) == nullptr);
+
+	// Lua is available if the LuaWrappers library can be loaded
+	auto lua_engine = c_odc->translation_create(R"({"TranslationMethod": "Lua", "DefaultLua": "function serialise(event) return 'lua' end"})", C_TRANSLATION_FORWARD);
+	if(odc::TranslationFactory::IsAvailable(odc::EventTranslationMethod::Lua))
+	{
+		INFO(c_odc->translation_last_error());
+		REQUIRE(lua_engine != nullptr);
+		C_EventInfo lua_evt;
+		memset(&lua_evt, 0, sizeof(lua_evt));
+		lua_evt.event_type = C_EventType_Analog;
+		C_TranslationMessage lua_msg;
+		REQUIRE(c_odc->translation_serialise(lua_engine, &lua_evt, "", &lua_msg) == 0);
+		CHECK(std::string(reinterpret_cast<char*>(lua_msg.value), lua_msg.value_size) == "lua");
+		c_odc->translation_free_message(&lua_msg);
+	}
+	else
+	{
+		CHECK(lua_engine == nullptr);
+		CHECK(std::string(c_odc->translation_last_error()).find("LuaWrappers") != std::string::npos);
+	}
+	c_odc->translation_destroy(lua_engine);
 
 	TestTearDown();
 }

@@ -9,7 +9,14 @@
 extern "C" {
 #endif
 
-#define ODC_C_API_VERSION "1.0"
+/* Version is "major.minor".
+   A library can be loaded by a host if the major versions are equal, and the library's minor
+   version is not greater than the host's.
+     - minor is bumped for backward compatible additions (eg. new C_ODC_HostAPI members,
+       which are only ever appended to the end of the struct)
+     - major is bumped when something is removed, reordered or changes signature
+   1.1: translation functions added to C_ODC_HostAPI */
+#define ODC_C_API_VERSION "1.1"
 /* ------------------------------------------------------------------ */
 /*  Version detection                                                 */
 /*  If a shared library exports this symbol, the loader treats it     */
@@ -245,6 +252,40 @@ typedef struct C_PassContext C_PassContext;
    a negative value to stop the repetition. */
 typedef int64_t (*C_RepeatingCallbackFunc_t)(void* handle);
 
+/* ------------------------------------------------------------------- */
+/*  Translation: (de)serialisation of events to/from keyed messages    */
+/*  (added in C API 1.1)                                               */
+/* ------------------------------------------------------------------- */
+
+/* Opaque translation engine. Created by translation_create(). */
+typedef struct C_TranslationEngine C_TranslationEngine;
+
+/* Which direction(s) an engine is built for (translation_create direction argument) */
+enum C_TranslationDirection
+{
+	C_TRANSLATION_FORWARD = 1, /* events -> messages (producing) */
+	C_TRANSLATION_REVERSE = 2, /* messages -> events (consuming) */
+	C_TRANSLATION_BOTH    = 3
+};
+
+/* translation_deserialise() results */
+enum C_TranslationResult
+{
+	C_TRANSLATION_OK       = 0,
+	C_TRANSLATION_NO_MATCH = 1, /* no deserialiser for the channel/key */
+	C_TRANSLATION_FAILED   = 2  /* a deserialiser was found, but it couldn't make an event */
+};
+
+/* A serialised message. Release with translation_free_message(). */
+struct C_TranslationMessage
+{
+	char* channel; /* eg. topic. NUL terminated */
+	uint8_t* key;
+	size_t key_size;
+	uint8_t* value;
+	size_t value_size;
+};
+
 struct C_ODC_HostAPI
 {
 	/* Invoke a status callback exactly once (then nulls *cb). */
@@ -326,6 +367,58 @@ struct C_ODC_HostAPI
 	const char* (*control_code_to_string)(uint8_t code);
 	const char* (*connect_state_to_string)(uint8_t state);
 	int (*quality_flags_to_string)(uint16_t flags, char* buf, size_t buflen);
+
+	/* ---- Translation (C API 1.1) ----
+	   An engine maps events to/from messages with a channel, key and value. It holds the
+	   point map, and builds the serialisers and deserialisers (Template, CBOR, and Lua when
+	   a Lua-enabled module has made it available). */
+
+	/* Create an engine. config_json is a JSON object with the same translation options and
+	   "PointTranslationMap" as the KafkaPort (TranslationMethod, DefaultTemplate, DefaultCBORStructure,
+	   DefaultKey, KeyTranslationMethod, DefaultKeyTemplate, KeyClashDetection, OctetStringFormat,
+	   DateTimeFormat, PointTraslationSource, etc.), plus "DefaultChannel".
+	   A point map entry's channel is its "Channel" member.
+	   direction: a C_TranslationDirection.
+	   Returns NULL on error: see translation_last_error(). */
+	C_TranslationEngine* (*translation_create)(const char* config_json, int direction);
+
+	/* Destroy an engine created by translation_create(). */
+	void (*translation_destroy)(C_TranslationEngine* engine);
+
+	/* Returns non-zero if the event's point is in the engine's point map (forward engines). */
+	int (*translation_is_mapped)(C_TranslationEngine* engine,
+		const struct C_EventInfo* event, const char* sender_name);
+
+	/* Serialise an event to a message (forward engines). Returns 0 on success,
+	   otherwise non-zero: see translation_last_error().
+	   Release the message with translation_free_message(). */
+	int (*translation_serialise)(C_TranslationEngine* engine,
+		const struct C_EventInfo* event, const char* sender_name,
+		struct C_TranslationMessage* out_message);
+
+	/* Release the memory in a message from translation_serialise(). */
+	void (*translation_free_message)(struct C_TranslationMessage* message);
+
+	/* Deserialise a message to an event (reverse engines). Returns a C_TranslationResult.
+	   On C_TRANSLATION_OK, *out_event is filled in and *out_owner must be released with
+	   translation_release_event(). *out_event's source_port and any octet string payload are
+	   borrowed from the owner, so are valid until then. */
+	int (*translation_deserialise)(C_TranslationEngine* engine,
+		const char* channel,
+		const uint8_t* key, size_t key_size,
+		const uint8_t* value, size_t value_size,
+		struct C_EventInfo* out_event, void** out_owner);
+
+	/* Release what translation_deserialise() returned in out_owner. */
+	void (*translation_release_event)(void* owner);
+
+	/* The channels (eg. topics to subscribe to) the engine knows about: the default and any per-point.
+	   The strings are owned by the engine. */
+	size_t (*translation_channel_count)(C_TranslationEngine* engine);
+	const char* (*translation_channel)(C_TranslationEngine* engine, size_t index);
+
+	/* A description of the last translation error on the calling thread. Never NULL. */
+	const char* (*translation_last_error)(void);
 };
 
 /* ------------------------------------------------------------------ */

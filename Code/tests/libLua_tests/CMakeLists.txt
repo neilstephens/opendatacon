@@ -19,7 +19,7 @@
  # 
 project(libLua_tests)
 
-set(${PROJECT_NAME}_SRC CatchTestStart.cpp Loading.cpp NetAccessTest.cpp)
+set(${PROJECT_NAME}_SRC CatchTestStart.cpp Loading.cpp NetAccessTest.cpp LuaTranslation.cpp)
 #the network objects in the Lua hosts other than LuaPort: each host is loaded from its library, as opendatacon does (only those that are built)
 set(LUA_HOSTS)
 foreach(host LuaTransform LuaLogSink LuaUICommander)

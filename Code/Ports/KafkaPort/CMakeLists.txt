@@ -32,12 +32,6 @@ if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/.git")
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 
-#and the CBOR library (it's a whole json lib with CBOR extension, but the best CBOR interface I've found)
-if(NOT EXISTS "${CMAKE_SOURCE_DIR}/Code/submodules/jsoncons/.git")
-	execute_process(COMMAND git submodule update --init -- Code/submodules/jsoncons
-	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif()
-
 #this is the actual port
 file(GLOB ${PROJECT_NAME}_SRC *.cpp *.h *.def)
 add_port_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
@@ -47,7 +41,7 @@ if(WIN32 AND ODC_ASIO_SSL)
 endif()
 
 target_link_libraries(${PROJECT_NAME} RdKafka::rdkafka)
+#Lua translation is provided by the LuaWrappers library, if it's built. It's loaded by libODC when needed.
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
-	${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/include
-	${CMAKE_SOURCE_DIR}/Code/submodules/jsoncons/include)
+	${CMAKE_SOURCE_DIR}/Code/submodules/modern-cpp-kafka/include)
 
