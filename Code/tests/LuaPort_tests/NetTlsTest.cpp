@@ -545,11 +545,13 @@ local cases =
 	{ "key_pw_wrong", function() return odc.TLSSocket{ host = H, port = P, server = true, tls = { CAFile = C.ca, CertFile = C.enc_cert, KeyFile = C.enc_key, KeyPasswordEnv = "ODC_TEST_KEY_PW_WRONG" } } end },
 	{ "key_pw_unset", function() return odc.TLSSocket{ host = H, port = P, server = true, tls = { CAFile = C.ca, CertFile = C.enc_cert, KeyFile = C.enc_key, KeyPasswordEnv = "ODC_TEST_KEY_PW_UNSET" } } end },
 }
-for _, c in ipairs(cases) do
-	local obj, err = c[2]()
-	report("case_"..c[1], obj and "object" or tostring(err))
+function Enable()
+	for _, c in ipairs(cases) do
+		local obj, err = c[2]()
+		report("case_"..c[1], obj and "object" or tostring(err))
+	end
+	report("done", "")
 end
-report("done", "")
 )lua",conf);
 	h.Enable();
 	h.Expect("done");
