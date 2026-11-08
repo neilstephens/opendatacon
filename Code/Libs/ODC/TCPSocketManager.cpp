@@ -52,6 +52,7 @@ TCPSocketManager::TCPSocketManager
 	const unsigned int KeepAliveFailcount,
 	const bool aDropWritesBetweenConnections):
 	handler_tracker(std::make_shared<char>()),
+	tracker_weak(handler_tracker),
 	isConnected(false),
 	pending_write(false),
 	pending_read(false),
@@ -85,13 +86,13 @@ TCPSocketManager::TCPSocketManager
 
 void TCPSocketManager::Open()
 {
-	pSockStrand->post([this,h{handler_tracker}](){Open(h);});
+	pSockStrand->post([this,h{Tracker()}](){Open(h);});
 }
 
 
 void TCPSocketManager::Close(unsigned int abort_after_ms)
 {
-	auto tracker = handler_tracker;
+	auto tracker = Tracker();
 	pSockStrand->post([this,tracker,abort_after_ms]()
 		{
 			LogCallback("debug","Connection manual close.");
@@ -164,7 +165,7 @@ void TCPSocketManager::ArmCloseTimer(std::shared_ptr<void> tracker)
 
 void TCPSocketManager::Write(shared_const_buffer buf)
 {
-	auto tracker = handler_tracker;
+	auto tracker = Tracker();
 	std::shared_ptr<odc::steady_timer> pTimer = pIOS->make_steady_timer();
 	auto write_execute = pSockStrand->wrap([this,tracker,buf,pTimer](std::error_code)
 		{

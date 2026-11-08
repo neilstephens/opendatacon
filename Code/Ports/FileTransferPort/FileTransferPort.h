@@ -97,10 +97,12 @@ private:
 
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = odc::make_shared(char {});
+	//what a handler makes gets that handler's tracker (the destructor resets the member first)
+	std::weak_ptr<void> tracker_weak = handler_tracker;
 	std::unique_ptr<odc::strand_t, odc::deleter> pSyncStrand = pIOS->make_strand();
 	std::function<void()> ConfirmHandler = [] {};
 
-	bool enabled = false;
+	std::atomic_bool enabled = false;
 	size_t seq = 0;
 	uint16_t crc = crc_ccitt(nullptr,0);
 	uint8_t crc_size = 2;

@@ -124,19 +124,23 @@ public:
 	template <typename F>
 	void Post(F&& f)
 	{
-		pSockStrand->post([tracker{handler_tracker},f{std::forward<F>(f)}]() mutable { f(); });
+		pSockStrand->post([tracker{Tracker()},f{std::forward<F>(f)}]() mutable { f(); });
 	}
 	//Make a completion handler (for a timer, say) that runs f on the socket strand. The destructor waits for it.
 	template <typename F>
 	auto Wrap(F&& f)
 	{
-		return pSockStrand->wrap([tracker{handler_tracker},f{std::forward<F>(f)}](auto&&... args) mutable { f(std::forward<decltype(args)>(args)...); });
+		return pSockStrand->wrap([tracker{Tracker()},f{std::forward<F>(f)}](auto&&... args) mutable { f(std::forward<decltype(args)>(args)...); });
 	}
 
 	~TCPSocketManager();
 
 private:
 	std::shared_ptr<void> handler_tracker;
+	//for getting a tracker, even if handler_tracker is reset already
+	std::weak_ptr<void> tracker_weak;
+	std::shared_ptr<void> Tracker() const { return tracker_weak.lock(); }
+
 	bool isConnected;
 	bool pending_write;
 	bool pending_read;

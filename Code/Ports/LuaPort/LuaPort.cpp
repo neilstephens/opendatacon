@@ -189,7 +189,7 @@ void LuaPort::ExportLuaPublishEvent()
 			{
 				lua_pushvalue(L,2);                             //push a copy, because luaL_ref pops
 				auto LuaCBref = luaL_ref(L, LUA_REGISTRYINDEX); //pop
-				auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self,h{self->handler_tracker}](CommandStatus status)
+				auto cb = std::make_shared<std::function<void (CommandStatus status)>>(self->pLuaSyncStrand->wrap([L,LuaCBref,self,h{self->tracker_weak.lock()}](CommandStatus status)
 					{
 						auto lua_status = static_cast< std::underlying_type_t<odc::CommandStatus> >(status);
 						//get callback from the registry back on stack

@@ -848,7 +848,7 @@ TEST_CASE(SUITE("TCP: every type arrives in order and the controls go back with 
 
 TEST_CASE(SUITE("TCP: the Sender keeps events while the Receiver is away and sends them in order when it is back"))
 {
-	Chain c("TCP",SocketSender("TCP",21011),SocketReceiver("TCP",21011));
+	Chain c("TCP",SocketSender("TCP",21016),SocketReceiver("TCP",21016));
 	c.Enable();
 	REQUIRE(Logged(c.rig,"Receiver: the Sender connected"));
 	for(size_t i = 0; i < 10; i++)

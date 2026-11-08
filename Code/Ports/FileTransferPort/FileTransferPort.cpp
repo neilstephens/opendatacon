@@ -46,8 +46,13 @@ FileTransferPort::FileTransferPort(const std::string& aName, const std::string& 
 
 FileTransferPort::~FileTransferPort()
 {
+	enabled = false;
 	for(const auto& t : Timers)
 		t->cancel();
+	pThrottleTimer->cancel();
+	pTransferTimeoutTimer->cancel();
+	pIdleTimer->cancel();
+	pConfirmTimer->cancel();
 
 	//ConfirmHandler might be holding a copy of handler_tracker
 	ConfirmHandler = [] {};
@@ -135,6 +140,10 @@ void FileTransferPort::LoadModTimes()
 //posted on strand by Enable()
 void FileTransferPort::Enable_()
 {
+	//in case of exception (queued before, but running after, the dtor)
+	if(weak_from_this().expired())
+		return;
+
 	Log.Debug("{}: Enable_().", Name);
 
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
@@ -160,9 +169,9 @@ void FileTransferPort::Enable_()
 		}
 	}
 	pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
-	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ if(!err) ResetTransfer();}));
+	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{tracker_weak.lock()}](asio::error_code err){ if(!err) ResetTransfer();}));
 	if(!tx_filename_q.empty())
-		pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+		pSyncStrand->post([this,h{tracker_weak.lock()},next{*tx_filename_q.begin()}]
 			{
 				auto& [next_path,next_tx_name] = next;
 				TrySend(next_path, next_tx_name);
@@ -209,7 +218,7 @@ void FileTransferPort::Periodic(asio::error_code err, std::shared_ptr<asio::stea
 		Tx(only_modified);
 
 	pTimer->expires_from_now(std::chrono::milliseconds(periodms));
-	pTimer->async_wait(pSyncStrand->wrap([=, this, h{handler_tracker}](asio::error_code err)
+	pTimer->async_wait(pSyncStrand->wrap([=, this, h{tracker_weak.lock()}](asio::error_code err)
 		{
 			Periodic(err,pTimer,periodms,only_modified);
 		}));
@@ -433,7 +442,7 @@ void FileTransferPort::ConfirmEvent(std::shared_ptr<const EventInfo> event, cons
 
 	//FIXME: do I really have to do this?
 	if(!tx_in_progress && !tx_filename_q.empty())
-		pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+		pSyncStrand->post([this,h{tracker_weak.lock()},next{*tx_filename_q.begin()}]
 			{
 				auto& [next_path,next_tx_name] = next;
 				TrySend(next_path, next_tx_name);
@@ -481,7 +490,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	if(index == pConf->FilenameInfo.Event->GetIndex())
 	{
 		pTransferTimeoutTimer->expires_from_now(std::chrono::milliseconds(pConf->TransferTimeoutms));
-		pTransferTimeoutTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ TransferTimeoutHandler(err); }));
+		pTransferTimeoutTimer->async_wait(pSyncStrand->wrap([this,h{tracker_weak.lock()}](asio::error_code err){ TransferTimeoutHandler(err); }));
 
 		if(rx_in_progress)
 		{
@@ -571,7 +580,7 @@ void FileTransferPort::RxEvent(std::shared_ptr<const EventInfo> event, const std
 	if(index >= pConf->SequenceIndexStart && index <= pConf->SequenceIndexStop)
 	{
 		pTransferTimeoutTimer->expires_from_now(std::chrono::milliseconds(pConf->TransferTimeoutms));
-		pTransferTimeoutTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ TransferTimeoutHandler(err); }));
+		pTransferTimeoutTimer->async_wait(pSyncStrand->wrap([this,h{tracker_weak.lock()}](asio::error_code err){ TransferTimeoutHandler(err); }));
 
 		//push and pop everything through the Q for simplicity - optimise if it pops up in a profile as a hot path
 		rx_event_buffer[index].push_back(event);
@@ -649,8 +658,11 @@ void FileTransferPort::TransferTimeoutHandler(const asio::error_code err)
 inline void FileTransferPort::ResetTransfer()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
-	pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
-	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ if(!err) ResetTransfer();}));
+	if(enabled)
+	{
+		pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
+		pIdleTimer->async_wait(pSyncStrand->wrap([this,h{tracker_weak.lock()}](asio::error_code err){ if(!err) ResetTransfer();}));
+	}
 	if(transfer_reset)
 		return;
 
@@ -716,8 +728,10 @@ inline void FileTransferPort::BumpSequence()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	if(++seq > pConf->SequenceIndexStop) seq = pConf->SequenceIndexStart;
+	if(!enabled)
+		return;
 	pIdleTimer->expires_from_now(std::chrono::milliseconds(pConf->SequenceResetIdleTimems));
-	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err){ if(!err) ResetTransfer();}));
+	pIdleTimer->async_wait(pSyncStrand->wrap([this,h{tracker_weak.lock()}](asio::error_code err){ if(!err) ResetTransfer();}));
 }
 
 //called on-strand from RxEvent()
@@ -840,7 +854,7 @@ void FileTransferPort::StartConfirmTimer()
 {
 	auto pConf = static_cast<FileTransferPortConf*>(this->pConf.get());
 	pConfirmTimer->expires_from_now(std::chrono::milliseconds(pConf->TransferTimeoutms));
-	pConfirmTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker}](asio::error_code err)
+	pConfirmTimer->async_wait(pSyncStrand->wrap([this,h{tracker_weak.lock()}](asio::error_code err)
 		{
 			if(err || !enabled)
 				return;
@@ -867,7 +881,7 @@ void FileTransferPort::SendEOF(const std::string path)
 								{
 									//we could just call TrySend since we're on the strand
 									//, but that would be 'cutting in line' ahead of other posted handlers
-									pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+									pSyncStrand->post([this,h{tracker_weak.lock()},next{*tx_filename_q.begin()}]
 										{
 											auto& [next_path,next_tx_name] = next;
 											TrySend(next_path, next_tx_name);
@@ -940,14 +954,14 @@ void FileTransferPort::ScheduleNextChunk(const std::string path, const std::chro
 		auto elapsed = std::chrono::high_resolution_clock::now() - start_time;
 		auto time_to_wait = elapsed < throttled_time ? throttled_time - elapsed : std::chrono::microseconds::zero();
 		pThrottleTimer->expires_from_now(time_to_wait);
-		pThrottleTimer->async_wait(pSyncStrand->wrap([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
+		pThrottleTimer->async_wait(pSyncStrand->wrap([this,h{tracker_weak.lock()},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}](asio::error_code err)
 			{
 				if(!err && enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
 			}));
 	}
 	else
 	{
-		pSyncStrand->post([this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
+		pSyncStrand->post([this,h{tracker_weak.lock()},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
 			{
 				if(enabled) SendChunk(std::move(p),std::move(st),std::move(bs));
 			});
@@ -992,7 +1006,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 		if(fin)
 		{
 			anotherChunkAvailable = true;
-			next_action = [this,h{handler_tracker},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
+			next_action = [this,h{tracker_weak.lock()},p{std::move(path)},st{std::move(start_time)},bs{std::move(bytes_sent)}]
 					  {
 						  if(enabled) ScheduleNextChunk(std::move(p),std::move(st),std::move(bs));
 					  };
@@ -1008,7 +1022,7 @@ void FileTransferPort::SendChunk(const std::string path, const std::chrono::time
 	if(!anotherChunkAvailable)
 	{
 		fin.close();
-		next_action = [this,h{handler_tracker},p{std::move(path)}]
+		next_action = [this,h{tracker_weak.lock()},p{std::move(path)}]
 				  {
 					  if(enabled) SendEOF(std::move(p));
 				  };
@@ -1039,7 +1053,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 	tx_in_progress = true;
 	transfer_reset = false;
 
-	auto send_file = std::make_shared<std::function<void (CommandStatus)>>(pSyncStrand->wrap([this,path,h{handler_tracker}](CommandStatus)
+	auto send_file = std::make_shared<std::function<void (CommandStatus)>>(pSyncStrand->wrap([this,path,h{tracker_weak.lock()}](CommandStatus)
 		{
 			if(!enabled)
 				return;
@@ -1054,7 +1068,7 @@ void FileTransferPort::TrySend(const std::string& path, std::string tx_name)
 				tx_filename_q.erase(path);
 				if(!tx_filename_q.empty())
 				{
-					pSyncStrand->post([this,h{handler_tracker},next{*tx_filename_q.begin()}]
+					pSyncStrand->post([this,h{tracker_weak.lock()},next{*tx_filename_q.begin()}]
 						{
 							auto& [next_path,next_tx_name] = next;
 							TrySend(next_path, next_tx_name);

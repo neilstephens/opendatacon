@@ -63,6 +63,9 @@ private:
 
 	//copy this to posted handlers so we can manage lifetime
 	std::shared_ptr<void> handler_tracker = odc::make_shared(char {});
+	//for getting a tracker, even if handler_tracker is reset already
+	std::weak_ptr<void> tracker_weak = handler_tracker;
+
 	std::shared_ptr<odc::strand_t> pLuaSyncStrand = odc::make_shared(pIOS->make_strand());
 
 	//synchronised versions of pubil counterparts above
