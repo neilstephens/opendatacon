@@ -23,10 +23,13 @@ include(FetchContent)
 
 #see Code/cmake/version.cmake for where LUA_VERSION is declared
 
+#lua.org is sometimes unreachable from CI runners: try the Buildroot mirror (the same file, the hash is checked) when it times out
 FetchContent_Declare(
 	lua
 	URL https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz
+	    https://sources.buildroot.net/lua/lua-${LUA_VERSION}.tar.gz
 	URL_HASH ${LUA_HASH}
+	TIMEOUT 10
 )
 
 FetchContent_MakeAvailable(lua)
