@@ -141,11 +141,17 @@ TEST_CASE(SUITE("Allow: directories and files, after resolving links and .."))
 	Json::Value slash;
 	slash["Allow"].append(root+"/A/");
 	CHECK(DecideNetAccess(slash,&a).allowed);
-	Json::Value rel;
-	rel["Allow"].append(fs::relative(d.root/"A",fs::current_path()).string());
-	CHECK(DecideNetAccess(rel,&a).allowed);
+	const auto rel_dir = fs::relative(d.root/"A",fs::current_path()).string();
 	const auto rel_script = fs::relative(a,fs::current_path()).string();
-	CHECK(DecideNetAccess(rel,&rel_script).allowed);
+	if(rel_dir.empty() || rel_script.empty()) //(no relative path to a different drive)
+		WARN("no relative path from the working directory to the temporary directory");
+	else
+	{
+		Json::Value rel;
+		rel["Allow"].append(rel_dir);
+		CHECK(DecideNetAccess(rel,&a).allowed);
+		CHECK(DecideNetAccess(rel,&rel_script).allowed);
+	}
 
 	//an empty list allows nothing
 	Json::Value none;

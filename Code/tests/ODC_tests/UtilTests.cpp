@@ -25,6 +25,7 @@
  */
 
 #include <opendatacon/util.h>
+#include <opendatacon/asio.h>
 #include <opendatacon/MergeJsonConf.h>
 #include <catch.hpp>
 #include <string>
@@ -338,3 +339,16 @@ TEST_CASE(SUITE("extract_delimited_string - fail-but-not-eof"))
 
 
 
+TEST_CASE(SUITE("make_shared shares what every asio_service factory makes"))
+{
+	auto ios = odc::asio_service::Get();
+	//(a link error here is a type that needs adding to the list in asio.cpp)
+	CHECK(odc::make_shared(ios->make_strand()));
+	CHECK(odc::make_shared(ios->make_work()));
+	CHECK(odc::make_shared(ios->make_steady_timer()));
+	CHECK(odc::make_shared(ios->make_tcp_resolver()));
+	CHECK(odc::make_shared(ios->make_tcp_socket()));
+	CHECK(odc::make_shared(ios->make_tcp_acceptor()));
+	CHECK(odc::make_shared(ios->make_udp_resolver()));
+	CHECK(odc::make_shared(ios->make_udp_socket()));
+}

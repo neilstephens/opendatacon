@@ -1426,11 +1426,16 @@ struct ClientShared
 void MapError(const std::error_code& ec, const ClientShared& sh, HttpResult& r)
 {
 	r.detail = ec.message();
+	//(the timer closed the connection under the operation in progress: what that reports is up to the platform, 'operation aborted' or a bad file descriptor etc)
+	if(sh.connect_timed_out)
+	{
+		r.error = "timeout";
+		r.detail = "the connect_timeout_ms passed before the connection (and the TLS handshake) was up";
+		return;
+	}
 	if(ec == asio::error::operation_aborted)
 	{
-		r.error = sh.connect_timed_out ? "timeout" : "aborted";
-		if(sh.connect_timed_out)
-			r.detail = "the connect_timeout_ms passed before the connection (and the TLS handshake) was up";
+		r.error = "aborted";
 		return;
 	}
 	//(on Windows asio's netdb and addrinfo categories are the system category, so the lookup errors are matched by code)

@@ -24,7 +24,7 @@
  *
  *  The network objects in the Lua hosts other than LuaPort (which has its own tests): LuaTransform, LuaLogSink and LuaUICommander, each loaded from
  *  its library as opendatacon loads it. A script opens objects; the host is torn down with them open (no hang, the peer sees the connection end,
- *  nothing leaked), and NetEnabled decides whether the script has them at all. TCP ports 20950 to 20969.
+ *  nothing leaked), and NetEnabled decides whether the script has them at all. TCP ports 21050 to 21069.
  */
 #include "../ThreadPool.h"
 #include <LuaLogSink.h>
@@ -308,18 +308,18 @@ TEST_CASE(SUITE("LuaTransform: a transform destroyed with its objects open tears
 	auto make = lib.Symbol<odc::Transform*(*)(const std::string&, const Json::Value&)>("new_LuaTransform");
 	auto destroy = lib.Symbol<void (*)(odc::Transform*)>("delete_LuaTransform");
 
-	Listener peer(20950);
+	Listener peer(21050);
 	Json::Value params;
 	params["LuaFile"] = dir.Write("tx.lua",TransformScript);
-	params["Port"] = 20950;
-	params["ServerPort"] = 20951;
+	params["Port"] = 21050;
+	params["ServerPort"] = 21051;
 	odc::Transform* tx = make("NetTransform",params);
 	REQUIRE(tx);
 	tx->Enable();
 	REQUIRE(WaitFor([&]{ return peer.Data() == "hello from the transform"; }));
 	CHECK(logging.capture->Has("transform: network"));
 	CHECK(logging.capture->Has("NetTransform: network access on"));
-	Client client_of_script(20951);
+	Client client_of_script(21051);
 	REQUIRE(client_of_script.Connected());
 
 	//destroyed without Disable(), the objects still open
@@ -340,8 +340,8 @@ TEST_CASE(SUITE("LuaTransform: NetEnabled false leaves the script without the ne
 
 	Json::Value params;
 	params["LuaFile"] = dir.Write("tx.lua",TransformScript);
-	params["Port"] = 20952;
-	params["ServerPort"] = 20953;
+	params["Port"] = 21052;
+	params["ServerPort"] = 21053;
 	params["NetEnabled"] = false;
 	odc::Transform* tx = make("NoNetTransform",params);
 	REQUIRE(tx);
@@ -372,9 +372,9 @@ TEST_CASE(SUITE("LuaLogSink: a sink that sends log lines over TCP, without its o
 	auto make = lib.Symbol<spdlog::sinks::sink*(*)(const std::string&, const std::string&, const Json::Value&)>("new_LuaLogSink");
 	auto destroy = lib.Symbol<void (*)(spdlog::sinks::sink*)>("delete_LuaLogSink");
 
-	Listener peer(20955);
+	Listener peer(21055);
 	Json::Value config;
-	config["Port"] = 20955;
+	config["Port"] = 21055;
 	const auto file = dir.Write("sink.lua",R"lua(
 local C = odc.Config
 client = odc.TCPSocket{ host = "127.0.0.1", port = C.Port, auto_reopen = true, retry_ms = 50 }
@@ -492,12 +492,12 @@ TEST_CASE(SUITE("LuaUICommander: Cancel() closes the script's objects; a script 
 	ThreadPool pool(2);
 	TempDir dir;
 	const auto file = dir.Write("cmd.lua",CommandScript);
-	Listener peer(20960);
+	Listener peer(21060);
 	{
 		Commander c(Json::Value::nullSingleton());
 
 		//cancelled: Cancel() closes the client, the peer sees it, while the plugin goes on
-		REQUIRE(c.File(file,"first",{"20960"}));
+		REQUIRE(c.File(file,"first",{"21060"}));
 		REQUIRE(WaitFor([&]{ return peer.Data() == "hello from the script"; }));
 		CHECK(c.Said("first","network"));
 		c.Run("CancelExecution",{"first"});
@@ -505,7 +505,7 @@ TEST_CASE(SUITE("LuaUICommander: Cancel() closes the script's objects; a script 
 		CHECK(WaitFor([&]{ return c.Said("first","cancelled"); }));
 
 		//finished without closing: the client stays up until the script is purged, at the next Execute
-		REQUIRE(c.File(file,"second",{"20960","finish"}));
+		REQUIRE(c.File(file,"second",{"21060","finish"}));
 		REQUIRE(WaitFor([&]{ return peer.Accepted() == 2; }));
 		REQUIRE(WaitFor([&]{ return !c.Running("second"); }));
 		std::this_thread::sleep_for(300ms);
@@ -514,7 +514,7 @@ TEST_CASE(SUITE("LuaUICommander: Cancel() closes the script's objects; a script 
 		CHECK(WaitFor([&]{ return peer.Ended() == 2; }));
 
 		//running, with its client open, when the plugin is destroyed
-		REQUIRE(c.File(file,"fourth",{"20960"}));
+		REQUIRE(c.File(file,"fourth",{"21060"}));
 		REQUIRE(WaitFor([&]{ return peer.Accepted() == 3; }));
 		CHECK(MsToRun([&]{ c.destroy(c.cmdr); c.cmdr = nullptr; }) < 10000);
 		CHECK(WaitFor([&]{ return peer.Ended() == 3; }));
@@ -529,14 +529,14 @@ TEST_CASE(SUITE("LuaUICommander: NetEnabled decides which scripts get the networ
 	TempDir dir;
 	const auto approved = dir.Write("approved/cmd.lua",CommandScript);
 	const auto other = dir.Write("other/cmd.lua",CommandScript);
-	Listener peer(20962);
+	Listener peer(21062);
 
 	SECTION("the default, FILE_SCRIPTS_ONLY: a file, not code given directly")
 	{
 		Commander c(Json::Value::nullSingleton());
-		REQUIRE(c.File(other,"file",{"20962","finish"}));
+		REQUIRE(c.File(other,"file",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("file","network"); }));
-		REQUIRE(c.Code(CommandScript,"code",{"20962","finish"}));
+		REQUIRE(c.Code(CommandScript,"code",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("code","no network"); }));
 	}
 	SECTION("true: code given directly as well")
@@ -544,7 +544,7 @@ TEST_CASE(SUITE("LuaUICommander: NetEnabled decides which scripts get the networ
 		Json::Value o;
 		o["NetEnabled"] = true;
 		Commander c(o);
-		REQUIRE(c.Code(CommandScript,"code",{"20962","finish"}));
+		REQUIRE(c.Code(CommandScript,"code",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("code","network"); }));
 	}
 	SECTION("false: not even a file")
@@ -552,7 +552,7 @@ TEST_CASE(SUITE("LuaUICommander: NetEnabled decides which scripts get the networ
 		Json::Value o;
 		o["NetEnabled"] = false;
 		Commander c(o);
-		REQUIRE(c.File(other,"file",{"20962","finish"}));
+		REQUIRE(c.File(other,"file",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("file","no network"); }));
 	}
 	SECTION("an allow list: only the files in it")
@@ -560,11 +560,11 @@ TEST_CASE(SUITE("LuaUICommander: NetEnabled decides which scripts get the networ
 		Json::Value o;
 		o["NetEnabled"]["Allow"].append((dir.root/"approved").string());
 		Commander c(o);
-		REQUIRE(c.File(approved,"approved",{"20962","finish"}));
+		REQUIRE(c.File(approved,"approved",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("approved","network"); }));
-		REQUIRE(c.File(other,"other",{"20962","finish"}));
+		REQUIRE(c.File(other,"other",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("other","no network"); }));
-		REQUIRE(c.Code(CommandScript,"code",{"20962","finish"}));
+		REQUIRE(c.Code(CommandScript,"code",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("code","no network"); }));
 	}
 	SECTION("a value that isn't valid: an error, and no network")
@@ -573,7 +573,7 @@ TEST_CASE(SUITE("LuaUICommander: NetEnabled decides which scripts get the networ
 		o["NetEnabled"] = "FILE_SCRIPTS";
 		Commander c(o);
 		CHECK(logging.capture->Has("Commander: \"NetEnabled\" must be"));
-		REQUIRE(c.File(other,"file",{"20962","finish"}));
+		REQUIRE(c.File(other,"file",{"21062","finish"}));
 		CHECK(WaitFor([&]{ return c.Said("file","no network"); }));
 	}
 	CHECK(WaitFor([]{ return NetObjectCount() == 0; }));

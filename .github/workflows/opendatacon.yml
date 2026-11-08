@@ -38,14 +38,14 @@ jobs:
             
           - name: Trixie i386 Release
             docker-file: Debian13Trixie
-            host-runner: ubuntu-latest
+            host-runner: ubuntu-24.04 #not -latest (26.04) while its Docker 29.4.2 blocks socketcall, which i386 glibc needs for DNS: actions/runner-images#14790
             build-type: Release
             docker-args: --platform linux/i386 --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
             build-on: all
             
           - name: Trixie i386 Debug
             docker-file: Debian13Trixie
-            host-runner: ubuntu-latest
+            host-runner: ubuntu-24.04 #not -latest (26.04) while its Docker 29.4.2 blocks socketcall, which i386 glibc needs for DNS: actions/runner-images#14790
             build-type: Debug
             docker-args: --platform linux/i386 --build-arg CMAKE_OPTIONS='-DARCH_DESC=x86'
             build-on: all
@@ -225,6 +225,8 @@ jobs:
       name: Setup MacOS Environment
       run: |
         brew install libmodbus socat openssl@3
+        #the runner image links openssl@4, and its headers in /opt/homebrew/include would win over openssl@3's in the librdkafka build
+        brew list --versions openssl@4 && brew unlink openssl@4 || true
         echo "TOOLCHAIN_OPT=-DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3) -DPYTHON_HOME=/opt -DMODBUS_HOME=/opt/homebrew" >> $GITHUB_ENV
         echo 'BINDIR=bin/' >> $GITHUB_ENV
     

@@ -63,3 +63,5 @@ if(WIN32)
 	target_link_libraries(TestLuaModule ${LUA_LIBNAME})
 endif()
 
+#the tests load these at run time
+add_dependencies(${PROJECT_NAME} LuaTestPlugin TestLuaModule)

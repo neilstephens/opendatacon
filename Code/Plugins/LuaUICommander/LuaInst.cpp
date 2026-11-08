@@ -113,7 +113,7 @@ LuaInst::LuaInst(const std::string& lua_code,
 		throw std::runtime_error(ID+": Lua code doesn't have 'SendCommands' function.");
 
 	std::string remaining = !script_args.eof() ? script_args.str().substr(script_args.tellg()) : "";
-	pStrand->post([this,remaining,h{handler_tracker}](){Runner(remaining);});
+	pStrand->post([this,remaining,h{handler_tracker}](){Runner(h,remaining);});
 }
 LuaInst::~LuaInst()
 {
@@ -134,7 +134,7 @@ bool LuaInst::Completed()
 }
 
 //only call Runner() on strand
-void LuaInst::Runner(const std::string& args)
+void LuaInst::Runner(const std::shared_ptr<void>& tracker, const std::string& args)
 {
 	if(!cancelled)
 	{
@@ -176,11 +176,11 @@ void LuaInst::Runner(const std::string& args)
 			return;
 		}
 		pSleepTimer->expires_from_now(std::chrono::milliseconds(sleep_time_ms));
-		pSleepTimer->async_wait(pStrand->wrap([this,h{handler_tracker}](asio::error_code err)
+		pSleepTimer->async_wait(pStrand->wrap([this,h{tracker}](asio::error_code err)
 			{
 				if(err)
 					cancelled = true;
-				Runner();
+				Runner(h);
 			}));
 		return;
 	}

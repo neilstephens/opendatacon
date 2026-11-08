@@ -506,7 +506,14 @@ void TCPSocketManager::ConnectCompletionHandler(std::shared_ptr<void> tracker, s
 			dispatch_writebufs->clear();
 	}
 	flushing = false;
-	SetTCPKeepalives(*pSock,Keepalives.enabled,Keepalives.idle_timeout_s,Keepalives.retry_interval_s,Keepalives.fail_count);
+	try
+	{
+		SetTCPKeepalives(*pSock,Keepalives.enabled,Keepalives.idle_timeout_s,Keepalives.retry_interval_s,Keepalives.fail_count);
+	}
+	catch(const std::exception& e)
+	{
+		LogCallback("warning","Failed to set keepalives for the connection from "+addr_str+" to "+remote_addr_str+" : "+e.what());
+	}
 	isConnected = true;
 	StateCallback(isConnected);
 	ramp_time_ms = 0;

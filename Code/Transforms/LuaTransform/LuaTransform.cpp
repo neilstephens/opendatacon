@@ -94,7 +94,7 @@ void LuaTransform::Enable_()
 }
 
 //only called on Lua sync strand
-void LuaTransform::Disable_()
+void LuaTransform::Disable_(const std::shared_ptr<void>& tracker)
 {
 	lua_getglobal(LuaState, "Disable");
 	if(lua_isfunction(LuaState, -1)) //Disable is optional
@@ -110,7 +110,7 @@ void LuaTransform::Disable_()
 	}
 	//Force garbage collection. Lingering shared_ptr finalizers can block shutdown etc
 	//post() just in case anything is queued on the strand
-	this->pLuaSyncStrand->post([this,h{handler_tracker}]()
+	this->pLuaSyncStrand->post([this,h{tracker}]()
 		{
 			lua_gc(LuaState,LUA_GCCOLLECT);
 		});

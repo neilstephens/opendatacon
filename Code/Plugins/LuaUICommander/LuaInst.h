@@ -52,7 +52,7 @@ public:
 	bool Completed();
 private:
 	//only call Runner() on strand
-	void Runner(const std::string& args = "");
+	void Runner(const std::shared_ptr<void>& tracker, const std::string& args = "");
 
 	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 
@@ -60,10 +60,10 @@ private:
 	std::atomic_bool completed = false;
 	lua_State* L = luaL_newstate();
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
-	std::shared_ptr<odc::strand_t> pStrand = pIOS->make_strand();
+	std::shared_ptr<odc::strand_t> pStrand = odc::make_shared(pIOS->make_strand());
 	std::shared_ptr<asio::steady_timer> pSleepTimer = pIOS->make_steady_timer();
 	//copy this to posted handlers so we can manage lifetime
-	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
+	std::shared_ptr<void> handler_tracker = odc::make_shared(char {});
 	const CommandHandler& CmdHandler;
 	const MessageHandler& MsgHandler;
 	const std::string LoggerName;

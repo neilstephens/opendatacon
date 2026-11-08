@@ -516,5 +516,6 @@ MAKE_SHARED(std::string);
 MAKE_SHARED(std::vector<char>);
 MAKE_SHARED(std::vector<uint8_t>);
 MAKE_SHARED(std::weak_ptr<spdlog::logger>);
+MAKE_SHARED(char); //for handler trackers: made here, their control blocks outlive an unloaded plugin
 
 } // namespace odc

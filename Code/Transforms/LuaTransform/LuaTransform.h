@@ -52,7 +52,7 @@ public:
 	{
 		pLuaSyncStrand->post([this,h{handler_tracker}]()
 			{
-				Disable_();
+				Disable_(h);
 			});
 	}
 
@@ -71,12 +71,12 @@ private:
 	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 	std::shared_ptr<odc::asio_service> pIOS = odc::asio_service::Get();
 	//copy this to posted handlers so we can manage lifetime
-	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::shared_ptr<odc::strand_t> pLuaSyncStrand = pIOS->make_strand();
+	std::shared_ptr<void> handler_tracker = odc::make_shared(char {});
+	std::shared_ptr<odc::strand_t> pLuaSyncStrand = odc::make_shared(pIOS->make_strand());
 
 	//synchronised versions of pubilic counterpart above
 	void Enable_();
-	void Disable_();
+	void Disable_(const std::shared_ptr<void>& tracker);
 	void Event_(std::shared_ptr<EventInfo> event, EvtHandler_ptr pAllow);
 
 	lua_State* LuaState = luaL_newstate();

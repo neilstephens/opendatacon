@@ -62,8 +62,8 @@ private:
 	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
 
 	//copy this to posted handlers so we can manage lifetime
-	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
-	std::shared_ptr<odc::strand_t> pLuaSyncStrand = pIOS->make_strand();
+	std::shared_ptr<void> handler_tracker = odc::make_shared(char {});
+	std::shared_ptr<odc::strand_t> pLuaSyncStrand = odc::make_shared(pIOS->make_strand());
 
 	//synchronised versions of pubil counterparts above
 	void Enable_();

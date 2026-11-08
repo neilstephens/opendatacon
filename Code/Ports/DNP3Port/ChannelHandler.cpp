@@ -7,7 +7,7 @@
 ChannelHandler::ChannelHandler(DNP3Port *p):
 	pIOS(odc::asio_service::Get()),
 	pSyncStrand(pIOS->make_strand()),
-	handler_tracker(std::make_shared<char>()),
+	handler_tracker(odc::make_shared(char {})),
 	pPort(p),
 	ChannelID(""),
 	pChannel(nullptr),

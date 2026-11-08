@@ -61,6 +61,11 @@ struct deleter
 	}
 };
 
+//Share what an asio_service factory made, with the control block (and the delete) in libODC, so it can't be gone if a plugin that calls this is unloaded.
+//Defined in asio.cpp for each type the factories make
+template<typename T>
+std::shared_ptr<T> make_shared(std::unique_ptr<T,deleter>&& p);
+
 // strand_wrap_t<F>: result type of strand_t::wrap(f).
 //
 // Restores the dispatch-on-direct-call semantics of the old asio::strand::wrap()

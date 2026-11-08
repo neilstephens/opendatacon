@@ -42,7 +42,7 @@ public:
 		Role(role),
 		Name("LuaTranslation("+spec.Origin+")"),
 		Log(config.LogName),
-		pStrand(odc::asio_service::Get()->make_strand())
+		pStrand(odc::make_shared(odc::asio_service::Get()->make_strand()))
 	{
 		L = luaL_newstate();
 		if(!L)
@@ -192,7 +192,7 @@ private:
 	const std::string Name;
 	odc::LogHelpers Log;
 	Lua::DynamicSymbols lua_syms; //in case lua modules need to resolve symbols
-	std::shared_ptr<void> handler_tracker = std::make_shared<char>();
+	std::shared_ptr<void> handler_tracker = odc::make_shared(char {});
 	std::shared_ptr<odc::strand_t> pStrand;
 	mutable std::mutex mtx;
 	lua_State* L = nullptr;

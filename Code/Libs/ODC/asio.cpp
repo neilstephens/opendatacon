@@ -36,6 +36,21 @@
 namespace odc
 {
 
+template<typename T>
+std::shared_ptr<T> make_shared(std::unique_ptr<T,deleter>&& p)
+{
+	return std::shared_ptr<T>(p.release(),deleter());
+}
+#define MAKE_SHARED_FROM_FACTORY(T) template std::shared_ptr<T> make_shared(std::unique_ptr<T,deleter>&&)
+MAKE_SHARED_FROM_FACTORY(strand_t);
+MAKE_SHARED_FROM_FACTORY(work_guard);
+MAKE_SHARED_FROM_FACTORY(steady_timer);
+MAKE_SHARED_FROM_FACTORY(tcp::resolver);
+MAKE_SHARED_FROM_FACTORY(tcp::socket);
+MAKE_SHARED_FROM_FACTORY(tcp::acceptor);
+MAKE_SHARED_FROM_FACTORY(udp::resolver);
+MAKE_SHARED_FROM_FACTORY(udp::socket);
+
 strand_t::~strand_t() = default;
 work_guard::~work_guard() = default;
 

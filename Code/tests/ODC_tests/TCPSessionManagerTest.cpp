@@ -1453,6 +1453,7 @@ TEST_CASE(SUITE("SetReconnectAfterSessionEnd(false): after a failed session or o
 	server.SendRaw(tls::Bytes(100, 0xFF));
 	Wait([&] { return client.Ends() == 1 && client.Count(false) == 1; }, "the failure", {&client});
 	CHECK(client.End(0).kind == TCPSessionManager::SessionEnd::Kind::Failed);
+	Wait([&] { return !client.mgr->Connected(); }, "the connection to end", {&client}); //(the end of the session is reported before the TCP connection is closed)
 	CHECK(StaysFalse([&] { return server.Accepted() > 1 || client.mgr->Connected(); }, 600));
 	client.mgr->Open();
 	Wait([&] { return client.mgr->Established() && client.Count(true) == 2; }, "the second session after Open()", {&client});
@@ -1462,6 +1463,7 @@ TEST_CASE(SUITE("SetReconnectAfterSessionEnd(false): after a failed session or o
 	server.ShutdownTls();
 	Wait([&] { return client.Ends() == 2 && client.Count(false) == 2; }, "the close by the peer", {&client});
 	CHECK(client.End(1).kind == TCPSessionManager::SessionEnd::Kind::PeerClosed);
+	Wait([&] { return !client.mgr->Connected(); }, "the connection to end", {&client});
 	CHECK(StaysFalse([&] { return server.Accepted() > 2 || client.mgr->Connected(); }, 600));
 	client.mgr->Open();
 	Wait([&] { return client.mgr->Established() && client.Count(true) == 3; }, "the third session after Open()", {&client});
