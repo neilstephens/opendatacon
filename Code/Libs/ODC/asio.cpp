@@ -52,6 +52,7 @@ MAKE_SHARED_FROM_FACTORY(udp::resolver);
 MAKE_SHARED_FROM_FACTORY(udp::socket);
 
 strand_t::~strand_t() = default;
+strand_t::strand_t(std::shared_ptr<asio_service> svc, asio::io_context& io): svc_(std::move(svc)), strand_(io.get_executor()) {}
 work_guard::~work_guard() = default;
 
 /*
@@ -95,7 +96,7 @@ std::unique_ptr<work_guard, deleter> asio_service::make_work()
 }
 std::unique_ptr<strand_t, deleter> asio_service::make_strand()
 {
-	return std::unique_ptr<strand_t, deleter>(new strand_t(io));
+	return std::unique_ptr<strand_t, deleter>(new strand_t(Get(),io));
 }
 std::unique_ptr<steady_timer, deleter> asio_service::make_steady_timer()
 {

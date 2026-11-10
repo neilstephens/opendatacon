@@ -83,10 +83,10 @@ std::shared_ptr<T> make_shared(std::unique_ptr<T,deleter>&& p);
 template<typename F>
 struct strand_wrap_t
 {
-	asio::io_context::strand strand_;
+	asio::strand<asio::io_context::executor_type> strand_;
 	F handler_;
 
-	asio::io_context::strand get_executor() const noexcept { return strand_; }
+	asio::strand<asio::io_context::executor_type> get_executor() const noexcept { return strand_; }
 
 	template<typename ... Args>
 	void operator()(Args&&... args) const
@@ -101,9 +101,11 @@ struct strand_wrap_t
 
 //Thin wrapper that preserves the ->post(f), ->dispatch(f), ->wrap(f) syntax
 //removed from asio::io_context::strand in asio 1.32.0.
+class asio_service;
 class strand_t
 {
-	asio::io_context::strand strand_;
+	std::shared_ptr<asio_service> svc_; //an asio::strand needs its io_context to outlive it
+	asio::strand<asio::io_context::executor_type> strand_;
 public:
 	~strand_t();
 	strand_t(strand_t&&) = default;
@@ -116,7 +118,7 @@ public:
 
 private:
 	friend class asio_service;
-	strand_t(asio::io_context& io): strand_(io) {}
+	strand_t(std::shared_ptr<asio_service> svc, asio::io_context& io);
 };
 
 class work_guard
