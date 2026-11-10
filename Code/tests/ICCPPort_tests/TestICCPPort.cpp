@@ -29,6 +29,7 @@
 
 #define CATCH_CONFIG_RUNNER
 #include <catch.hpp>
+#include <string>
 
 #ifdef _MSC_VER
 #include <crtdbg.h>
@@ -47,5 +48,17 @@ int main( int argc, char* argv[] )
 	}
 	_set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 	#endif
-	return Catch::Session().run(argc, argv);
+	//ctest passes the log level first (see _odc_test_log_level_args); it is not a Catch argument, or it would be taken as a test name
+	int new_argc = argc;
+	char** new_argv = argv;
+	if(argc > 1)
+	{
+		const std::string arg = argv[1];
+		if(arg == "trace" || arg == "debug" || arg == "info" || arg == "warning" || arg == "error" || arg == "critical" || arg == "off")
+		{
+			new_argc = argc - 1;
+			new_argv = argv + 1;
+		}
+	}
+	return Catch::Session().run(new_argc, new_argv);
 }

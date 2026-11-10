@@ -390,7 +390,8 @@ function(_odc_test_log_level_args outvar)
   if(NOT "$ENV{LOG_LVL}" STREQUAL "")
     list(APPEND _args "$ENV{LOG_LVL}")
   endif()
-  list(APPEND _args -d yes)
+  #-w NoTests: a filter that matches nothing is a failure, not a pass
+  list(APPEND _args -d yes -w NoTests)
   set(${outvar} ${_args} PARENT_SCOPE)
 endfunction()
 
