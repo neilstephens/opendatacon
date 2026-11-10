@@ -135,9 +135,11 @@ void DNP3Port::NotifyOfConnection()
 
 	auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 	pConnectionStabilityTimer->expires_from_now(std::chrono::milliseconds(pConf->mAddrConf.ConnectionStabilityTimems));
-	pConnectionStabilityTimer->async_wait([this,notify](asio::error_code err_code)
+	pConnectionStabilityTimer->async_wait([weak{weak_from_this()},this,notify](asio::error_code err_code)
 		{
-			if(!err_code) pChanH->Post(notify);
+			if(!err_code)
+				if(auto self = weak.lock())
+					PostToChannel(notify);
 		});
 }
 void DNP3Port::NotifyOfDisconnection()

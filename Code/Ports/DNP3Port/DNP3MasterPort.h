@@ -159,7 +159,7 @@ private:
 			return;
 		}
 
-		pChanH->Post([this]()
+		PostToChannel([this]()
 			{
 				auto pConf = static_cast<DNP3PortConf*>(this->pConf.get());
 				if(pChanH->GetLinkDeadness() != LinkDeadness::LinkUpChannelUp &&

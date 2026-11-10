@@ -81,7 +81,7 @@ void DNP3MasterPort::Enable()
 	   && pConf->pPointConf->CommsPointRideThroughDemandPause)
 		pCommsRideThroughTimer->Pause();
 
-	pChanH->Post([this,pConf]()
+	PostToChannel([this,pConf]()
 		{
 			if(pConf->pPointConf->LinkUpIntegrityTrigger >= DNP3PointConf::LinkUpIntegrityTrigger_t::ON_FIRST)
 			{
@@ -229,7 +229,7 @@ void DNP3MasterPort::SetCommsFailed()
 		// An integrity scan will be needed when/if the link comes back
 		// It's the only way to get the true state upstream
 		// Can't just reset quality, because it would make new events for old values
-		pChanH->Post([this]()
+		PostToChannel([this]()
 			{
 				Log.Debug("{}: Setting IntegrityScanNeeded for SetQualityOnLinkStatus.",Name);
 				IntegrityScanNeeded = true;
@@ -257,7 +257,7 @@ void DNP3MasterPort::SetPointsStale()
 
 	// Stale means we assume things have become out-of-date and changed in the meantime
 	// An integrity scan will be needed on the next connection
-	pChanH->Post([this]()
+	PostToChannel([this]()
 		{
 			Log.Debug("{}: Setting IntegrityScanNeeded after SetPointsStale().",Name);
 			IntegrityScanNeeded = true;
@@ -335,10 +335,11 @@ void DNP3MasterPort::LinkDeadnessChange(LinkDeadness from, LinkDeadness to)
 		NotifyOfConnection();
 
 		pStartupIntegrityGraceTimer->expires_from_now(std::chrono::milliseconds(pConf->pPointConf->LinkUpIntegrityGracePeriodms));
-		pStartupIntegrityGraceTimer->async_wait([this](asio::error_code err)
+		pStartupIntegrityGraceTimer->async_wait([weak{weak_from_this()},this](asio::error_code err)
 			{
 				if(err) return;
-				pChanH->Post([this](){ LinkUpIntegrityIfNeeded(); });
+				if(auto self = weak.lock())
+					PostToChannel([this](){ LinkUpIntegrityIfNeeded(); });
 			});
 
 		return;
@@ -378,7 +379,7 @@ void DNP3MasterPort::OnReceiveIIN(const opendnp3::IINField& iin)
 	if(Log.ShouldLog(spdlog::level::trace))
 		Log.Trace("{}: OnReceiveIIN(MSB {}, LSB {}) called.", Name, iin.MSB, iin.LSB);
 	pChanH->LinkUp();
-	pChanH->Post([this,iin]()
+	PostToChannel([this,iin]()
 		{
 			if(pChanH->GetLinkDeadness() == LinkDeadness::LinkUpChannelUp)
 			{

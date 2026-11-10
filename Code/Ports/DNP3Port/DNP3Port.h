@@ -60,6 +60,17 @@ protected:
 	void NotifyOfConnection();
 	void NotifyOfDisconnection();
 	void CheckStackState();
+	//Post to the channel strand; the handler is skipped if the port has gone by the time it runs
+	template<typename F>
+	inline void PostToChannel(F f)
+	{
+		pChanH->Post([weak{weak_from_this()},f{std::move(f)}]()
+			{
+				if(auto self = weak.lock())
+					f();
+			});
+	}
+
 	inline std::weak_ptr<DataPort> ptr()
 	{
 		return weak_from_this();
