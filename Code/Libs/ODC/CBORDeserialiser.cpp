@@ -28,6 +28,8 @@
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/cbor/cbor.hpp>
 #include <limits>
+#include <map>
+#include <optional>
 #include <string_view>
 
 using namespace jsoncons;
@@ -593,7 +595,21 @@ CBORDeserialiser::CBORDeserialiser(std::shared_ptr<const CBORSerialiser> seriali
 
 //TODO: serialiser takes DataToStringMethod and DateTimeFormat parameters, deserialiser probably should too
 //	currently deserialiser has datetime format member, but nothing for D2S
-std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_data, size_t record_size, const KeyContext& key)
+std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* data, size_t size, const KeyContext& key)
+{
+	//malformed CBOR (eg. truncated) makes the cursor throw
+	try
+	{
+		return DoDeserialise(data, size, key);
+	}
+	catch(const std::exception& e)
+	{
+		Log.Error("CBORDeserialiser: Failed to parse CBOR: {}", e.what());
+		return nullptr;
+	}
+}
+
+std::shared_ptr<EventInfo> CBORDeserialiser::DoDeserialise(const uint8_t* record_data, size_t record_size, const KeyContext& key)
 {
 	// Things we expect to find in the CBOR
 	auto et = odc::EventType::BeforeRange;
@@ -610,6 +626,29 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 	auto DoubleIt = pSerialiser->Doubles.begin();
 	auto HalfIt = pSerialiser->Halfs.begin();
 	auto BoolIt = pSerialiser->Bools.begin();
+	auto PointFieldIt = pSerialiser->PointFields.begin();
+
+	//values of the <POINT:name> fields, which might identify the point
+	std::map<std::string,std::string> point_fields;
+	std::optional<PointIdentity> resolved;
+	bool resolve_attempted = false;
+	bool have_index = false;
+	bool have_source = false;
+	auto Resolve = [&]()
+			   {
+				   resolve_attempted = true;
+				   if(key.Hint || !key.Resolver || key.Resolver->Names.empty())
+					   return;
+				   std::vector<std::string> values;
+				   for(const auto& name : key.Resolver->Names)
+				   {
+					   auto it = point_fields.find(name);
+					   if(it == point_fields.end())
+						   return;
+					   values.push_back(it->second);
+				   }
+				   resolved = key.Resolver->Resolve(values);
+			   };
 
 	//Event info that we're going to return
 	std::shared_ptr<EventInfo> event = nullptr;
@@ -625,6 +664,14 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 
 	std::string_view data(reinterpret_cast<const char*>(record_data),record_size);
 	cbor::cbor_bytes_cursor cursor(data);
+
+	//If the event type isn't known by the time the payload is reached, the payload is skipped and parsed after the rest
+	bool payload_deferred = false;
+	bool payload_is_string = false;
+	size_t payload_start = 0; //in CBOR events
+	std::string payload_string;
+	size_t events_consumed = 0; //how many CBOR events the cursor has moved past
+	auto Next = [&](){ cursor.next(); ++events_consumed; };
 
 	//Iterate over the Ops and follow along with the CBOR cursor
 	for(auto Op : pSerialiser->Ops)
@@ -647,13 +694,28 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 			case EncodeOps::BEGIN_MAP:
 			case EncodeOps::END_MAP:
 			case EncodeOps::NULL_VAL:
+			{
+				//not used for deserialisation
+				Next();
+				break;
+			}
 			case EncodeOps::POINT_FIELD_KEY:
+			{
+				++PointFieldIt;
+				Next();
+				break;
+			}
 			case EncodeOps::POINT_FIELD:
+			{
+				point_fields[*(PointFieldIt++)] = cbor_event.get<std::string>();
+				Next();
+				break;
+			}
 			case EncodeOps::SENDERNAME_KEY:
 			case EncodeOps::SENDERNAME:
 			{
 				//not used for deserialisation
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::PAYLOAD:
@@ -662,8 +724,41 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 			{
 				if(et == odc::EventType::BeforeRange)
 				{
-					Log.Error("CBORDeserialiser: Payload found before EventType. Unable to parse.");
-					return nullptr;
+					Resolve();
+					if(resolved)
+						et = resolved->Type;
+				}
+				if(et == odc::EventType::BeforeRange)
+				{
+					//The type might come later in the CBOR: skip the payload for now
+					if(payload_deferred)
+					{
+						Log.Error("CBORDeserialiser: More than one payload found. Unable to parse.");
+						return nullptr;
+					}
+					payload_deferred = true;
+					payload_is_string = Op != EncodeOps::PAYLOAD;
+					if(payload_is_string)
+					{
+						payload_string = cbor_event.get<std::string>();
+						Next();
+					}
+					else
+					{
+						//skip one complete CBOR value (that could be an array or map)
+						payload_start = events_consumed;
+						int depth = 0;
+						do
+						{
+							auto evt_type = cursor.current().event_type();
+							if(evt_type == staj_event_type::begin_array || evt_type == staj_event_type::begin_object)
+								++depth;
+							else if(evt_type == staj_event_type::end_array || evt_type == staj_event_type::end_object)
+								--depth;
+							Next();
+						} while(depth > 0 && !cursor.done());
+					}
+					break;
 				}
 
 				event = std::make_shared<EventInfo>(et);
@@ -675,7 +770,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					{
 						//TODO: support non-default D2S (data to string) methods
 						event->SetPayload(cbor_event.get<std::string>());
-						cursor.next();
+						Next();
 					}
 				}
 				catch(const std::exception& e)
@@ -699,7 +794,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					Log.Warn("CBORDeserialiser: Payload EventType {} doesn't match the key's EventType {}. Using the key's.", ToString(parsed_et), ToString(key.Hint->Type));
 				else
 					et = parsed_et;
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::DATETIME_KEY:
@@ -715,14 +810,14 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					Log.Error("CBORDeserialiser: Error parsing datetime '{}': {}", datetime_str, e.what());
 					return nullptr;
 				}
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::QUALITY_KEY:
 			case EncodeOps::QUALITY:
 			{
 				quality = odc::QualityFlagsFromString(cbor_event.get<std::string>());
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::SOURCEPORT_KEY:
@@ -732,8 +827,11 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 				if(key.Hint && key.Hint->SourcePort && parsed_source != *key.Hint->SourcePort)
 					Log.Warn("CBORDeserialiser: Payload SourcePort '{}' doesn't match the key's SourcePort '{}'. Using the key's.", parsed_source, *key.Hint->SourcePort);
 				else
+				{
 					source_port = parsed_source;
-				cursor.next();
+					have_source = true;
+				}
+				Next();
 				break;
 			}
 			case EncodeOps::INDEX:
@@ -742,14 +840,17 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 				if(key.Hint && parsed_index != key.Hint->Index)
 					Log.Warn("CBORDeserialiser: Payload Index {} doesn't match the key's Index {}. Using the key's.", parsed_index, key.Hint->Index);
 				else
+				{
 					index = parsed_index;
-				cursor.next();
+					have_index = true;
+				}
+				Next();
 				break;
 			}
 			case EncodeOps::TIMESTAMP:
 			{
 				timestamp = cbor_event.get<uint64_t>();
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::EVENTTYPE_RAW:
@@ -764,7 +865,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					Log.Warn("CBORDeserialiser: Payload EventType {} doesn't match the key's EventType {}. Using the key's.", ToString(parsed_et), ToString(key.Hint->Type));
 				else
 					et = parsed_et;
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::QUALITY_RAW:
@@ -776,7 +877,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					return nullptr;
 				}
 				quality = static_cast<odc::QualityFlags>(cbor_event.get<uint64_t>());
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::STRING:
@@ -790,7 +891,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					return nullptr;
 				}
 				++StringIt;
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::UINT:
@@ -802,7 +903,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					return nullptr;
 				}
 				++UIntIt;
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::BOOL:
@@ -814,7 +915,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					return nullptr;
 				}
 				++BoolIt;
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::DOUBLE:
@@ -826,7 +927,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					return nullptr;
 				}
 				++DoubleIt;
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::HALF:
@@ -838,7 +939,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					return nullptr;
 				}
 				++HalfIt;
-				cursor.next();
+				Next();
 				break;
 			}
 			case EncodeOps::INT:
@@ -850,7 +951,7 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 					return nullptr;
 				}
 				++IntIt;
-				cursor.next();
+				Next();
 				break;
 			}
 			default:
@@ -861,11 +962,53 @@ std::shared_ptr<EventInfo> CBORDeserialiser::Deserialise(const uint8_t* record_d
 		}
 	}
 
+	//fill in what the payload didn't say, from the <POINT:name> fields
+	if(!resolve_attempted || payload_deferred)
+		Resolve();
+
+	//If the payload was skipped because the event type came after it, parse it now
+	if(payload_deferred)
+	{
+		if(et == odc::EventType::BeforeRange && resolved)
+			et = resolved->Type;
+		if(et == odc::EventType::BeforeRange)
+		{
+			Log.Error("CBORDeserialiser: Unable to determine the EventType, so can't parse the payload.");
+			return nullptr;
+		}
+		event = std::make_shared<EventInfo>(et);
+		try
+		{
+			if(payload_is_string)
+				event->SetPayload(payload_string);
+			else
+			{
+				//replay up to the start of the payload
+				cbor::cbor_bytes_cursor payload_cursor(data);
+				for(size_t i = 0; i < payload_start; ++i)
+					payload_cursor.next();
+				PopPayloadEvent(payload_cursor,event);
+			}
+		}
+		catch(const std::exception& e)
+		{
+			Log.Error("CBORDeserialiser: Error parsing {} payload: {}", ToString(et), e.what());
+			return nullptr;
+		}
+	}
+
 	if(!event)
 	{
 		//log an error - there must not have been an event type and payload
 		Log.Error("CBORDeserialiser: Minimum event info (EventType and Payload) not found in CBOR.");
 		return nullptr;
+	}
+	if(resolved)
+	{
+		if(!have_index)
+			index = resolved->Index;
+		if(!have_source && resolved->SourcePort)
+			source_port = *resolved->SourcePort;
 	}
 
 	//update the index, quality, time etc

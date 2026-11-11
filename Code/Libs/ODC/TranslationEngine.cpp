@@ -319,6 +319,8 @@ struct TranslationEngine::Impl
 	{
 		std::shared_ptr<IDeserialiser> Deserialiser;
 		std::optional<PointIdentity> Hint;
+		//Set if the deserialiser has <POINT:name> fields that can identify the point
+		std::shared_ptr<const PointResolver> Resolver;
 	};
 
 	const TranslationSettings settings;
@@ -506,6 +508,54 @@ struct TranslationEngine::Impl
 		return true;
 	}
 
+	//Index the points that share a deserialiser by the values of the extra fields that it captures (<POINT:name>)
+	template <typename Points>
+	std::shared_ptr<const PointResolver> BuildResolver(const ReverseKey& rk, const Points& points, const PointTranslationMap& ptm)
+	{
+		const auto& first_des = points.front().second;
+		auto names = first_des->PointFieldNames();
+		if(names.empty())
+			return nullptr;
+
+		auto pResolver = std::make_shared<PointResolver>();
+		pResolver->Names = names;
+		for(const auto& [tid, pDes] : points)
+		{
+			if(pDes != first_des)
+				continue; //it's a clash, and the first wins
+			const auto& extra = ptm.at(tid).ExtraFields;
+			std::vector<std::string> values;
+			for(const auto& name : names)
+			{
+				auto it = extra.find(name);
+				if(it == extra.end())
+					break;
+				values.push_back(it->second);
+			}
+			if(values.size() != names.size())
+				continue; //the point doesn't have all the fields, so can't be identified that way
+
+			PointIdentity id;
+			const auto& [source,index,type] = tid;
+			id.Type = type;
+			id.Index = index;
+			if(settings.PointTraslationSource == SourceLookupMethod::SourcePort)
+				id.SourcePort = source;
+
+			auto inserted = pResolver->Index.emplace(PointResolver::MakeKey(values), id);
+			if(!inserted.second)
+			{
+				auto msg = "Channel '"+rk.Channel+"', key '"+KeyToString(rk.Key)+"': more than one point has the same <POINT:> field values: "
+				           +TidToString(tid);
+				if(settings.ClashDetection == KeyClashDetection::Strict)
+					throw std::runtime_error(msg);
+				if(settings.ClashDetection == KeyClashDetection::Warn)
+					Log.Warn("{}. Using the first.", msg);
+			}
+		}
+		return pResolver;
+	}
+
 	void BuildReverse(const PointTranslationMap& ptm)
 	{
 		struct Group
@@ -569,6 +619,7 @@ struct TranslationEngine::Impl
 					id.SourcePort = source;
 				target.Hint = id;
 			}
+			target.Resolver = BuildResolver(rk, points, ptm);
 			Reverse.emplace(rk, std::move(target));
 		}
 
@@ -639,6 +690,7 @@ std::shared_ptr<EventInfo> TranslationEngine::Deserialise(const std::string& Cha
 	{
 		pDes = it->second.Deserialiser.get();
 		ctx.Hint = it->second.Hint;
+		ctx.Resolver = it->second.Resolver.get();
 	}
 	else if(pImpl->FallbackDeserialiser)
 		pDes = pImpl->FallbackDeserialiser.get();

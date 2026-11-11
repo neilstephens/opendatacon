@@ -561,3 +561,258 @@ TEST_CASE(SUITE("Factory - registered method"))
 	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward);
 	CHECK(Str(engine->Serialise(MakeAnalog(3, 1), "").Value) == "IDX3");
 }
+
+TEST_CASE(SUITE("Engine - point identified by a <POINT:> field"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.DefaultTemplate = R"({"Id":"<POINT:Id>","Val":<PAYLOAD>,"TS":<TIMESTAMP>})";
+	auto ptm = ParsePTM(R"({"Analog": [
+		{"Index": 0, "Source": "ES1", "Id": "ES1.SetPoint"},
+		{"Index": 7, "Source": "ES1", "Id": "ES1.Power"},
+		{"Index": 0, "Source": "ES2", "Id": "ES2.SetPoint"}
+	]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Both);
+
+	//no key, so all the points share (channel, "")
+	std::string msg = R"({"Id":"ES1.Power","Val":12.5,"TS":99})";
+	bool matched = false;
+	auto event = engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size(), &matched);
+	CHECK(matched);
+	REQUIRE(event);
+	CHECK(event->GetEventType() == EventType::Analog);
+	CHECK(event->GetIndex() == 7);
+	CHECK(event->GetSourcePort() == "ES1");
+	CHECK(event->GetPayload<EventType::Analog>() == 12.5);
+	CHECK(event->GetTimestamp() == 99);
+
+	msg = R"({"Id":"ES2.SetPoint","Val":1,"TS":1})";
+	event = engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 0);
+	CHECK(event->GetSourcePort() == "ES2");
+
+	//unknown id, and nothing else says which point it is
+	msg = R"({"Id":"nope","Val":1,"TS":1})";
+	CHECK(engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size()) == nullptr);
+
+	//round trip from the serialising side
+	auto out = engine->Serialise(MakeAnalog(7, 3.5, "ES1", 5), "");
+	CHECK(Str(out.Value) == R"({"Id":"ES1.Power","Val":3.500000,"TS":5})");
+	event = engine->Deserialise("c", nullptr, 0, out.Value.data(), out.Value.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 7);
+}
+
+TEST_CASE(SUITE("Engine - point identified by several <POINT:> fields, with regex sub-components"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.DefaultTemplate = R"({"Id":"<POINT:Site>.<POINT:Name>","Val":<PAYLOAD>})";
+	auto ptm = ParsePTM(R"({"Analog": [
+		{"Index": 1, "Site": "A", "Name": "BC"},
+		{"Index": 2, "Site": "AB", "Name": "C"},
+		{"Index": 3, "Site": "A", "Name": "Other"}
+	]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse);
+	auto get = [&](const std::string& msg){ return engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size()); };
+
+	//the captures are lazy, so the split is at the first '.', and the tuple is hashed as a whole
+	auto event = get(R"({"Id":"A.BC","Val":1})");
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 1);
+	event = get(R"({"Id":"A.Other","Val":1})");
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 3);
+	//("AB","C") is a different point to ("A","BC")
+	event = get(R"({"Id":"AB.C","Val":1})");
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 2);
+	//case sensitive
+	CHECK(get(R"({"Id":"a.BC","Val":1})") == nullptr);
+}
+
+TEST_CASE(SUITE("Engine - <POINT:> field clashes"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.DefaultTemplate = R"({"Id":"<POINT:Id>","Val":<PAYLOAD>})";
+	auto ptm = ParsePTM(R"({"Analog": [{"Index": 1, "Id": "x"}, {"Index": 2, "Id": "x"}, {"Index": 3, "Id": "y"}]})");
+
+	SECTION("WARN - first wins")
+	{
+		s.ClashDetection = KeyClashDetection::Warn;
+		auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse);
+		std::string msg = R"({"Id":"x","Val":1})";
+		auto event = engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size());
+		REQUIRE(event);
+		CHECK(event->GetIndex() == 1);
+	}
+	SECTION("STRICT - error, but only for consumers")
+	{
+		s.ClashDetection = KeyClashDetection::Strict;
+		CHECK_THROWS(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse));
+		CHECK_NOTHROW(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward));
+	}
+}
+
+TEST_CASE(SUITE("Engine - <POINT:> lookup precedence"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.DefaultTemplate = R"(<EVENTTYPE>|<INDEX>|<POINT:Id>|<PAYLOAD>)";
+	auto ptm = ParsePTM(R"({"Analog": [{"Index": 1, "Id": "x"}]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse);
+
+	//the payload's own identity wins over the lookup
+	std::string msg = "Analog|9|x|1.5";
+	auto event = engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 9);
+
+	//and an unresolvable <POINT:> is fine when the payload has its own identity (existing behaviour)
+	msg = "Analog|4|unknown|1.5";
+	event = engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 4);
+}
+
+TEST_CASE(SUITE("Engine - key wins over <POINT:> lookup"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.KeyMethod = KeyTranslationMethod::Template;
+	s.DefaultKeyTemplate = "k<INDEX>";
+	s.DefaultTemplate = R"(<POINT:Id>=<PAYLOAD>)";
+	auto ptm = ParsePTM(R"({"Analog": [{"Index": 1, "Id": "x"}, {"Index": 2, "Id": "y"}]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse);
+	std::string key = "k2", msg = "x=1.5";
+	auto event = engine->Deserialise("c", Bytes(key), key.size(), Bytes(msg), msg.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 2);
+}
+
+TEST_CASE(SUITE("Engine - CBOR point identified by a <POINT:> field"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.TranslationMethod = EventTranslationMethod::CBOR;
+	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.DefaultCBORStructure = R"({"Id":"POINT:Id","Val":"PAYLOAD"})";
+	auto ptm = ParsePTM(R"({"Analog": [
+		{"Index": 3, "Source": "S", "Id": "p3"},
+		{"Index": 4, "Source": "S", "Id": "p4"}
+	]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Both);
+
+	auto out = engine->Serialise(MakeAnalog(4, 6.25, "S"), "");
+	auto event = engine->Deserialise("c", nullptr, 0, out.Value.data(), out.Value.size());
+	REQUIRE(event);
+	CHECK(event->GetEventType() == EventType::Analog);
+	CHECK(event->GetIndex() == 4);
+	CHECK(event->GetSourcePort() == "S");
+	CHECK(event->GetPayload<EventType::Analog>() == 6.25);
+}
+
+TEST_CASE(SUITE("Engine - template for an externally defined message with an id"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	//(%e - milliseconds - is only supported as a suffix, so no trailing 'Z' or microseconds)
+	s.Config.DateTimeFormat = "%Y-%m-%dT%H:%M:%S.%e";
+	s.Config.DateTimeIsUTC = true;
+	s.DefaultTemplate = R"({"Id":"<POINT:Id>","Val":<PAYLOAD>,"TS":"<DATETIME>"})";
+	auto ptm = ParsePTM(R"({"Analog": [{"Index": 0, "Source": "ES00000001", "Id": "ES00000001.BatterySetPoint"}]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Both);
+
+	std::string msg = R"({"Id":"ES00000001.BatterySetPoint","Val":100,"TS":"2026-11-11T06:24:08.563"})";
+	auto event = engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 0);
+	CHECK(event->GetSourcePort() == "ES00000001");
+	CHECK(event->GetPayload<EventType::Analog>() == 100.0);
+	CHECK(event->GetTimestamp() == 1794378248563ULL);
+}
+
+TEST_CASE(SUITE("Engine - regex template handles trailing microseconds and Z"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.Config.DateTimeFormat = "%Y-%m-%dT%H:%M:%S.%e";
+	s.Config.DateTimeIsUTC = true;
+	s.Config.RegexEscapeTemplates = false;
+	//the template is a regex now, so the literal braces need escaping, and the sub-millisecond digits and Z can be matched
+	s.DefaultTemplate = R"(\{"Id":"<POINT:Id>","Val":<PAYLOAD>,"TS":"<DATETIME>[0-9]{3}Z"\})";
+	auto ptm = ParsePTM(R"({"Analog": [{"Index": 0, "Source": "ES00000001", "Id": "ES00000001.BatterySetPoint"}]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Reverse);
+
+	std::string msg = R"({"Id":"ES00000001.BatterySetPoint","Val":100,"TS":"2026-11-11T06:24:08.563000Z"})";
+	auto event = engine->Deserialise("c", nullptr, 0, Bytes(msg), msg.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 0);
+	CHECK(event->GetPayload<EventType::Analog>() == 100.0);
+	CHECK(event->GetTimestamp() == 1794378248563ULL);
+}
+
+TEST_CASE(SUITE("CBOR - event type, index and ids after the payload"))
+{
+	TranslationConfig config;
+	auto ser = std::make_shared<const CBORSerialiser>(R"(["PAYLOAD","EVENTTYPE_RAW","INDEX","SOURCEPORT","TIMESTAMP","QUALITY_RAW"])", config);
+	CBORDeserialiser des(ser, config);
+
+	//scalar payload
+	auto event = MakeAnalog(5, 1.25, "src");
+	auto bytes = ser->Serialise(event, "", {});
+	CheckSameEvent(des.Deserialise(bytes.data(), bytes.size(), KeyContext()), event);
+
+	//array payloads: nested structures have to be skipped, then parsed
+	auto crob_event = std::make_shared<EventInfo>(EventType::ControlRelayOutputBlock, 9, "src", QualityFlags::ONLINE, 1700000000123);
+	ControlRelayOutputBlock crob;
+	crob.functionCode = ControlCode::LATCH_ON;
+	crob.count = 2;
+	crob.onTimeMS = 300;
+	crob.offTimeMS = 400;
+	crob.status = CommandStatus::SUCCESS;
+	crob_event->SetPayload<EventType::ControlRelayOutputBlock>(std::move(crob));
+	bytes = ser->Serialise(crob_event, "", {});
+	auto got = des.Deserialise(bytes.data(), bytes.size(), KeyContext());
+	REQUIRE(got);
+	CHECK(got->GetEventType() == EventType::ControlRelayOutputBlock);
+	CHECK(got->GetIndex() == 9);
+	CHECK(got->GetPayload<EventType::ControlRelayOutputBlock>().onTimeMS == 300);
+	CHECK(got->GetPayload<EventType::ControlRelayOutputBlock>().offTimeMS == 400);
+
+	//truncated
+	CHECK(des.Deserialise(bytes.data(), bytes.size()/2, KeyContext()) == nullptr);
+
+	//no type anywhere
+	auto ser2 = std::make_shared<const CBORSerialiser>(R"(["PAYLOAD","INDEX"])", config);
+	CBORDeserialiser des2(ser2, config);
+	bytes = ser2->Serialise(event, "", {});
+	CHECK(des2.Deserialise(bytes.data(), bytes.size(), KeyContext()) == nullptr);
+
+	//...unless the key says
+	KeyContext ctx;
+	ctx.Hint = PointIdentity{EventType::Analog, 5, std::nullopt};
+	got = des2.Deserialise(bytes.data(), bytes.size(), ctx);
+	REQUIRE(got);
+	CHECK(got->GetPayload<EventType::Analog>() == 1.25);
+}
+
+TEST_CASE(SUITE("Engine - CBOR with the <POINT:> id after the payload"))
+{
+	TranslationSettings s;
+	s.DefaultChannel = "c";
+	s.TranslationMethod = EventTranslationMethod::CBOR;
+	s.DefaultCBORStructure = R"({"Val":"PAYLOAD","Id":"POINT:Id"})";
+	auto ptm = ParsePTM(R"({"Analog": [{"Index": 3, "Id": "p3"}, {"Index": 4, "Id": "p4"}]})");
+	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Both);
+	auto out = engine->Serialise(MakeAnalog(4, 6.25), "");
+	auto event = engine->Deserialise("c", nullptr, 0, out.Value.data(), out.Value.size());
+	REQUIRE(event);
+	CHECK(event->GetIndex() == 4);
+	CHECK(event->GetPayload<EventType::Analog>() == 6.25);
+}

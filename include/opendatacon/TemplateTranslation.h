@@ -52,6 +52,7 @@ public:
 	TemplateDeserialiser(const std::string& template_str, const TranslationConfig& config);
 	~TemplateDeserialiser() override;
 	std::shared_ptr<EventInfo> Deserialise(const uint8_t* data, size_t size, const KeyContext& key) override;
+	std::vector<std::string> PointFieldNames() const override;
 
 private:
 	struct Impl;

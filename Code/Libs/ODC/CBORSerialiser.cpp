@@ -29,6 +29,7 @@
 #include <opendatacon/util.h>
 #include <jsoncons/json.hpp>
 #include <jsoncons_ext/cbor/cbor.hpp>
+#include <algorithm>
 #include <string>
 #include <sstream>
 #include <cstdint>
@@ -443,6 +444,22 @@ std::vector<uint8_t> CBORSerialiser::Serialise(const std::shared_ptr<const Event
 		}
 	}
 	return buffer;
+}
+
+std::vector<std::string> CBORSerialiser::PointFieldNames() const
+{
+	std::vector<std::string> names;
+	auto it = PointFields.begin();
+	for(auto op : Ops)
+	{
+		if(op != EncodeOps::POINT_FIELD && op != EncodeOps::POINT_FIELD_KEY)
+			continue;
+		const auto& name = *(it++);
+		//only the fields in value position are captured
+		if(op == EncodeOps::POINT_FIELD && std::find(names.begin(), names.end(), name) == names.end())
+			names.push_back(name);
+	}
+	return names;
 }
 
 std::string CBORSerialiser::FindNonStaticElement(SourceLookupMethod lookup) const

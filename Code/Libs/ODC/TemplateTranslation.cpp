@@ -175,10 +175,9 @@ TemplateDeserialiser::TemplateDeserialiser(const std::string& template_str, cons
 	std::regex whitespace_regex(R"(\s+)");
 	regex_str = std::regex_replace(regex_str, whitespace_regex, R"(\s*)");
 
-	//replace <POINT:...> or <SENDERNAME>
-	//  with .*? (ungrouped lazy match), because they're not applicable to consuming
-	std::regex point_regex(R"(<POINT:[^>]*>|<SENDERNAME>)");
-	regex_str = std::regex_replace(regex_str, point_regex, "(?:.*?)");
+	//replace <SENDERNAME> with .*? (ungrouped lazy match), because it's not applicable to consuming
+	std::regex sender_regex(R"(<SENDERNAME>)");
+	regex_str = std::regex_replace(regex_str, sender_regex, "(?:.*?)");
 
 	//now get the order that the placeholders appear in the template
 	//  ,by storing in an ordered map by position
@@ -186,6 +185,10 @@ TemplateDeserialiser::TemplateDeserialiser(const std::string& template_str, cons
 	for(const auto& place_holder : {"<SOURCEPORT>", "<EVENTTYPE>", "<EVENTTYPE_RAW>", "<INDEX>", "<TIMESTAMP>", "<DATETIME>", "<QUALITY>", "<QUALITY_RAW>", "<PAYLOAD>"})
 		for(const auto& pos : FindAll(regex_str, place_holder))
 			positions[pos] = place_holder;
+	//<POINT:name> placeholders are captured too, to identify the point from its extra fields
+	std::regex point_regex(R"(<POINT:[^>]*>)");
+	for(auto it = std::sregex_iterator(regex_str.begin(), regex_str.end(), point_regex); it != std::sregex_iterator(); ++it)
+		positions[it->position()] = it->str();
 
 	//now replace the placeholders with capturing groups, and store the group number
 	size_t group_num = 1;
@@ -217,6 +220,19 @@ TemplateDeserialiser::TemplateDeserialiser(const std::string& template_str, cons
 
 TemplateDeserialiser::~TemplateDeserialiser() = default;
 
+std::vector<std::string> TemplateDeserialiser::PointFieldNames() const
+{
+	//in order of group number, which is the order of appearance
+	std::map<size_t,std::string> by_group;
+	for(const auto& [place_holder, group_num] : pImpl->capture_groups)
+		if(place_holder.rfind("<POINT:", 0) == 0)
+			by_group[group_num] = place_holder.substr(7, place_holder.size()-8);
+	std::vector<std::string> names;
+	for(const auto& [_, name] : by_group)
+		names.push_back(name);
+	return names;
+}
+
 std::shared_ptr<EventInfo> TemplateDeserialiser::Deserialise(const uint8_t* data, size_t size, const KeyContext& key)
 {
 	auto& Log = pImpl->Log;
@@ -247,6 +263,27 @@ std::shared_ptr<EventInfo> TemplateDeserialiser::Deserialise(const uint8_t* data
 	}
 	auto has = [&](const char* ph){ return captured_values.find(ph) != captured_values.end(); };
 
+	//If the key doesn't identify the point, maybe the <POINT:name> fields do
+	std::optional<PointIdentity> resolved;
+	if(!key.Hint && key.Resolver)
+	{
+		std::vector<std::string> values;
+		for(const auto& name : key.Resolver->Names)
+		{
+			auto it = captured_values.find("<POINT:"+name+">");
+			if(it == captured_values.end())
+				break;
+			values.push_back(it->second);
+		}
+		if(values.size() == key.Resolver->Names.size() && !values.empty())
+		{
+			resolved = key.Resolver->Resolve(values);
+			if(!resolved)
+				Log.Debug("No point with the <POINT:> field values found in: '{}'", val_str);
+		}
+	}
+	const bool have_fallback = key.Hint || resolved;
+
 	EventType event_type = EventType::BeforeRange;
 	bool have_event_type = false;
 	try
@@ -259,7 +296,7 @@ std::shared_ptr<EventInfo> TemplateDeserialiser::Deserialise(const uint8_t* data
 				throw std::runtime_error("Unknown EventType: '"+captured_values["<EVENTTYPE_RAW>"]+"'.");
 			have_event_type = true;
 		}
-		else if(has("<EVENTTYPE>") || !key.Hint)
+		else if(has("<EVENTTYPE>") || !have_fallback)
 		{
 			//otherwise use EVENTTYPE string
 			event_type = EventTypeFromString(captured_values["<EVENTTYPE>"]);
@@ -279,10 +316,12 @@ std::shared_ptr<EventInfo> TemplateDeserialiser::Deserialise(const uint8_t* data
 			Log.Warn("Payload EventType {} doesn't match the key's EventType {}. Using the key's.", ToString(event_type), ToString(key.Hint->Type));
 		event_type = key.Hint->Type;
 	}
+	else if(!have_event_type)
+		event_type = resolved->Type;
 
 	size_t index = 0;
 	bool have_index = false;
-	if(has("<INDEX>") || !key.Hint)
+	if(has("<INDEX>") || !have_fallback)
 	{
 		try
 		{
@@ -301,6 +340,8 @@ std::shared_ptr<EventInfo> TemplateDeserialiser::Deserialise(const uint8_t* data
 			Log.Warn("Payload Index {} doesn't match the key's Index {}. Using the key's.", index, key.Hint->Index);
 		index = key.Hint->Index;
 	}
+	else if(!have_index)
+		index = resolved->Index;
 
 	auto timestamp = msSinceEpoch();
 	//use TIMESTAMP if available
@@ -372,6 +413,8 @@ std::shared_ptr<EventInfo> TemplateDeserialiser::Deserialise(const uint8_t* data
 			Log.Warn("Payload SourcePort '{}' doesn't match the key's SourcePort '{}'. Using the key's.", captured_values["<SOURCEPORT>"], *key.Hint->SourcePort);
 		event->SetSource(*key.Hint->SourcePort);
 	}
+	else if(resolved && resolved->SourcePort && !has("<SOURCEPORT>"))
+		event->SetSource(*resolved->SourcePort);
 
 	return event;
 }

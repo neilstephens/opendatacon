@@ -86,6 +86,8 @@ public:
 	explicit CBORSerialiser(const std::string& json_string, const TranslationConfig& config = TranslationConfig());
 	std::vector<uint8_t> Serialise(const std::shared_ptr<const EventInfo>& event, const std::string& SenderName, const ExtraPointFields& extra_fields) const override;
 	std::string FindNonStaticElement(SourceLookupMethod lookup) const override;
+	//The unique names of the POINT:name placeholders (in value position), in order of first appearance
+	std::vector<std::string> PointFieldNames() const;
 
 private:
 	EncoderSequence Ops;
@@ -107,8 +109,10 @@ class CBORDeserialiser: public IDeserialiser
 public:
 	CBORDeserialiser(std::shared_ptr<const CBORSerialiser> serialiser, const TranslationConfig& config);
 	std::shared_ptr<EventInfo> Deserialise(const uint8_t* data, size_t size, const KeyContext& key) override;
+	std::vector<std::string> PointFieldNames() const override { return pSerialiser->PointFieldNames(); }
 
 private:
+	std::shared_ptr<EventInfo> DoDeserialise(const uint8_t* data, size_t size, const KeyContext& key);
 	const std::shared_ptr<const CBORSerialiser> pSerialiser;
 	const TranslationConfig Config;
 	LogHelpers Log;
