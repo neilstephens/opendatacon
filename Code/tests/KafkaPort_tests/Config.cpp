@@ -80,7 +80,7 @@ TEST_CASE(SUITE("Existing style config builds"))
 		"OctetStringFormat": "Hex",
 		"DateTimeFormat": "%Y-%m-%d",
 		"DateTimeIsUTC": true,
-		"PointTraslationSource": "SenderName",
+		"PointTranslationSource": "SenderName",
 		"BlockUnknownPoints": true,
 		"PointTranslationMap": {
 			"Analog": [

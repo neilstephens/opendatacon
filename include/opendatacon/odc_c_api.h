@@ -376,7 +376,7 @@ struct C_ODC_HostAPI
 	/* Create an engine. config_json is a JSON object with the same translation options and
 	   "PointTranslationMap" as the KafkaPort (TranslationMethod, DefaultTemplate, DefaultCBORStructure,
 	   DefaultKey, KeyTranslationMethod, DefaultKeyTemplate, KeyClashDetection, OctetStringFormat,
-	   DateTimeFormat, PointTraslationSource, etc.), plus "DefaultChannel".
+	   DateTimeFormat, PointTranslationSource, etc.), plus "DefaultChannel".
 	   A point map entry's channel is its "Channel" member.
 	   direction: a C_TranslationDirection.
 	   Returns NULL on error: see translation_last_error(). */

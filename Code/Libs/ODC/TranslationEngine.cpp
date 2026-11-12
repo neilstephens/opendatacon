@@ -120,18 +120,18 @@ void ParseTranslationSettings(const Json::Value& JSONRoot, TranslationSettings& 
 			settings.ClashDetection = KeyClashDetection::Warn;
 		}
 	}
-	if(JSONRoot.isMember("PointTraslationSource"))
+	if(JSONRoot.isMember("PointTranslationSource"))
 	{
-		if(JSONRoot["PointTraslationSource"].asString() == "SenderName")
-			settings.PointTraslationSource = SourceLookupMethod::SenderName;
-		else if(JSONRoot["PointTraslationSource"].asString() == "SourcePort")
-			settings.PointTraslationSource = SourceLookupMethod::SourcePort;
-		else if(JSONRoot["PointTraslationSource"].asString() == "None")
-			settings.PointTraslationSource = SourceLookupMethod::None;
+		if(JSONRoot["PointTranslationSource"].asString() == "SenderName")
+			settings.PointTranslationSource = SourceLookupMethod::SenderName;
+		else if(JSONRoot["PointTranslationSource"].asString() == "SourcePort")
+			settings.PointTranslationSource = SourceLookupMethod::SourcePort;
+		else if(JSONRoot["PointTranslationSource"].asString() == "None")
+			settings.PointTranslationSource = SourceLookupMethod::None;
 		else
 		{
-			Log.Error("Unknown PointTraslationSource '{}'. Defaulting to None.", JSONRoot["PointTraslationSource"].asString());
-			settings.PointTraslationSource = SourceLookupMethod::None;
+			Log.Error("Unknown PointTranslationSource '{}'. Defaulting to None.", JSONRoot["PointTranslationSource"].asString());
+			settings.PointTranslationSource = SourceLookupMethod::None;
 		}
 	}
 	if(JSONRoot.isMember("OctetStringFormat"))
@@ -432,7 +432,7 @@ struct TranslationEngine::Impl
 	//	returns whether it's static
 	bool CheckKeySerialiser(const std::shared_ptr<ISerialiser>& pKeySer, const std::string& what)
 	{
-		auto non_static = pKeySer->FindNonStaticElement(settings.PointTraslationSource);
+		auto non_static = pKeySer->FindNonStaticElement(settings.PointTranslationSource);
 		if(non_static.empty())
 			return true;
 		if(settings.ClashDetection != KeyClashDetection::Dynamic)
@@ -443,9 +443,9 @@ struct TranslationEngine::Impl
 	std::vector<uint8_t> ResolveKey(const std::shared_ptr<ISerialiser>& pKeySer, const TranslationID& tid, const ExtraPointFields& extra) const
 	{
 		const auto& [source,index,type] = tid;
-		auto event = std::make_shared<EventInfo>(type, index, settings.PointTraslationSource == SourceLookupMethod::SourcePort ? source : "", QualityFlags::ONLINE, 0);
+		auto event = std::make_shared<EventInfo>(type, index, settings.PointTranslationSource == SourceLookupMethod::SourcePort ? source : "", QualityFlags::ONLINE, 0);
 		event->SetPayload(); //default payload, so a script can't trip over a missing one
-		return pKeySer->Serialise(event, settings.PointTraslationSource == SourceLookupMethod::SenderName ? source : "", extra);
+		return pKeySer->Serialise(event, settings.PointTranslationSource == SourceLookupMethod::SenderName ? source : "", extra);
 	}
 
 	void BuildForward(const PointTranslationMap& ptm)
@@ -539,7 +539,7 @@ struct TranslationEngine::Impl
 			const auto& [source,index,type] = tid;
 			id.Type = type;
 			id.Index = index;
-			if(settings.PointTraslationSource == SourceLookupMethod::SourcePort)
+			if(settings.PointTranslationSource == SourceLookupMethod::SourcePort)
 				id.SourcePort = source;
 
 			auto inserted = pResolver->Index.emplace(PointResolver::MakeKey(values), id);
@@ -615,7 +615,7 @@ struct TranslationEngine::Impl
 				PointIdentity id;
 				id.Type = type;
 				id.Index = index;
-				if(settings.PointTraslationSource == SourceLookupMethod::SourcePort)
+				if(settings.PointTranslationSource == SourceLookupMethod::SourcePort)
 					id.SourcePort = source;
 				target.Hint = id;
 			}
@@ -651,9 +651,9 @@ std::unique_ptr<const TranslationEngine> TranslationEngine::Create(const Transla
 static TranslationID MakeTID(const TranslationSettings& settings, const std::shared_ptr<const EventInfo>& event, const std::string& SenderName)
 {
 	std::string Source = "";
-	if(settings.PointTraslationSource == SourceLookupMethod::SenderName)
+	if(settings.PointTranslationSource == SourceLookupMethod::SenderName)
 		Source = SenderName;
-	else if(settings.PointTraslationSource == SourceLookupMethod::SourcePort)
+	else if(settings.PointTranslationSource == SourceLookupMethod::SourcePort)
 		Source = event->GetSourcePort();
 	return TranslationID(Source, event->GetIndex(), event->GetEventType());
 }

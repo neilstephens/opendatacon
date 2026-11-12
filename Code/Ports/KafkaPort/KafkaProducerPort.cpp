@@ -134,8 +134,8 @@ void KafkaProducerPort::Event(std::shared_ptr<const EventInfo> event, const std:
 
 	std::shared_ptr<EventInfo> ultimate_event;
 
-	auto DBkey = pConf->Translation.PointTraslationSource == SourceLookupMethod::None ? ""
-	                  : pConf->Translation.PointTraslationSource == SourceLookupMethod::SenderName ? SenderName
+	auto DBkey = pConf->Translation.PointTranslationSource == SourceLookupMethod::None ? ""
+	                  : pConf->Translation.PointTranslationSource == SourceLookupMethod::SenderName ? SenderName
 	                        : event->GetSourcePort();
 	auto pDB_it = pDBs.find(DBkey);
 

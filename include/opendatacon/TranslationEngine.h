@@ -49,7 +49,7 @@ struct TranslationSettings
 	EventTranslationMethod TranslationMethod = EventTranslationMethod::Template;
 	KeyTranslationMethod KeyMethod = KeyTranslationMethod::Literal;
 	TranslationConfig Config;
-	SourceLookupMethod PointTraslationSource = SourceLookupMethod::None;
+	SourceLookupMethod PointTranslationSource = SourceLookupMethod::None;
 	KeyClashDetection ClashDetection = KeyClashDetection::Warn;
 
 	std::string DefaultChannel = "";
@@ -89,7 +89,7 @@ struct PointTranslationEntry
 using PointTranslationMap = std::map<TranslationID, PointTranslationEntry>;
 
 //Parse the port level options out of a JSON config. Recognised members:
-//	TranslationMethod, KeyTranslationMethod, KeyClashDetection, PointTraslationSource,
+//	TranslationMethod, KeyTranslationMethod, KeyClashDetection, PointTranslationSource,
 //	DefaultTemplate, DefaultCBORStructure, DefaultLua, DefaultLuaFile,
 //	DefaultKey, DefaultKeyTemplate, DefaultKeyCBORStructure, DefaultKeyLua, DefaultKeyLuaFile,
 //	OctetStringFormat, DateTimeFormat, DateTimeIsUTC, RegexEscapeTemplates

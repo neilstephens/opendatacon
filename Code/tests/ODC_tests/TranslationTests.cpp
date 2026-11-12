@@ -199,7 +199,7 @@ TEST_CASE(SUITE("Settings parsing"))
 		"TranslationMethod": "CBOR",
 		"KeyTranslationMethod": "Template",
 		"KeyClashDetection": "STRICT",
-		"PointTraslationSource": "SenderName",
+		"PointTranslationSource": "SenderName",
 		"DefaultKey": "mykey",
 		"DefaultKeyTemplate": "k/<INDEX>",
 		"DefaultLuaFile": "x.lua",
@@ -211,7 +211,7 @@ TEST_CASE(SUITE("Settings parsing"))
 	CHECK(s.TranslationMethod == EventTranslationMethod::CBOR);
 	CHECK(s.KeyMethod == KeyTranslationMethod::Template);
 	CHECK(s.ClashDetection == KeyClashDetection::Strict);
-	CHECK(s.PointTraslationSource == SourceLookupMethod::SenderName);
+	CHECK(s.PointTranslationSource == SourceLookupMethod::SenderName);
 	CHECK(s.DefaultKey.size() == 5);
 	CHECK(s.DefaultKeyTemplate == "k/<INDEX>");
 	CHECK(s.DefaultLuaFile == "x.lua");
@@ -310,7 +310,7 @@ TEST_CASE(SUITE("Engine - point lookup source"))
 {
 	TranslationSettings s;
 	s.DefaultTemplate = "default";
-	s.PointTraslationSource = SourceLookupMethod::SenderName;
+	s.PointTranslationSource = SourceLookupMethod::SenderName;
 	auto ptm = ParsePTM(R"({"Analog": [{"Index": 1, "Source": "A", "Template": "from A"}]})");
 	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward);
 	auto event = MakeAnalog(1, 1);
@@ -319,7 +319,7 @@ TEST_CASE(SUITE("Engine - point lookup source"))
 	CHECK(Str(engine->Serialise(event, "A").Value) == "from A");
 	CHECK(Str(engine->Serialise(event, "B").Value) == "default");
 
-	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.PointTranslationSource = SourceLookupMethod::SourcePort;
 	engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward);
 	CHECK(engine->IsMapped(MakeAnalog(1, 1, "A"), "whatever"));
 	CHECK_FALSE(engine->IsMapped(MakeAnalog(1, 1, "B"), "A"));
@@ -428,11 +428,11 @@ TEST_CASE(SUITE("Engine - sender/source placeholders in keys"))
 	s.DefaultKeyTemplate = "<SENDERNAME>/<INDEX>";
 	auto ptm = ParsePTM(R"({"Analog": [{"Index": 1, "Source": "Snd"}]})");
 
-	s.PointTraslationSource = SourceLookupMethod::None;
+	s.PointTranslationSource = SourceLookupMethod::None;
 	CHECK_THROWS(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward));
-	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.PointTranslationSource = SourceLookupMethod::SourcePort;
 	CHECK_THROWS(TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward));
-	s.PointTraslationSource = SourceLookupMethod::SenderName;
+	s.PointTranslationSource = SourceLookupMethod::SenderName;
 	auto engine = TranslationEngine::Create(s, ptm, TranslationEngine::Direction::Forward);
 	CHECK(Str(engine->Serialise(MakeAnalog(1, 1), "Snd").Key) == "Snd/1");
 }
@@ -566,7 +566,7 @@ TEST_CASE(SUITE("Engine - point identified by a <POINT:> field"))
 {
 	TranslationSettings s;
 	s.DefaultChannel = "c";
-	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.PointTranslationSource = SourceLookupMethod::SourcePort;
 	s.DefaultTemplate = R"({"Id":"<POINT:Id>","Val":<PAYLOAD>,"TS":<TIMESTAMP>})";
 	auto ptm = ParsePTM(R"({"Analog": [
 		{"Index": 0, "Source": "ES1", "Id": "ES1.SetPoint"},
@@ -698,7 +698,7 @@ TEST_CASE(SUITE("Engine - CBOR point identified by a <POINT:> field"))
 	TranslationSettings s;
 	s.DefaultChannel = "c";
 	s.TranslationMethod = EventTranslationMethod::CBOR;
-	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.PointTranslationSource = SourceLookupMethod::SourcePort;
 	s.DefaultCBORStructure = R"({"Id":"POINT:Id","Val":"PAYLOAD"})";
 	auto ptm = ParsePTM(R"({"Analog": [
 		{"Index": 3, "Source": "S", "Id": "p3"},
@@ -719,7 +719,7 @@ TEST_CASE(SUITE("Engine - template for an externally defined message with an id"
 {
 	TranslationSettings s;
 	s.DefaultChannel = "c";
-	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.PointTranslationSource = SourceLookupMethod::SourcePort;
 	//(%e - milliseconds - is only supported as a suffix, so no trailing 'Z' or microseconds)
 	s.Config.DateTimeFormat = "%Y-%m-%dT%H:%M:%S.%e";
 	s.Config.DateTimeIsUTC = true;
@@ -740,7 +740,7 @@ TEST_CASE(SUITE("Engine - regex template handles trailing microseconds and Z"))
 {
 	TranslationSettings s;
 	s.DefaultChannel = "c";
-	s.PointTraslationSource = SourceLookupMethod::SourcePort;
+	s.PointTranslationSource = SourceLookupMethod::SourcePort;
 	s.Config.DateTimeFormat = "%Y-%m-%dT%H:%M:%S.%e";
 	s.Config.DateTimeIsUTC = true;
 	s.Config.RegexEscapeTemplates = false;
