@@ -458,6 +458,30 @@ inline std::set<double> PollPointValues(const std::shared_ptr<DataPort>& sim_por
 }
 
 /*
+  function     : WaitForValue
+  description  : this function waits for a point's current value to become 'expected'
+  param        : sim_port, the port to sample
+  param        : payload_key, "AnalogPayload" or "BinaryPayload"
+  param        : index, point index
+  param        : expected, the value to wait for
+  param        : timeout, how long to wait
+  return       : bool, whether the value was seen
+*/
+inline bool WaitForValue(const std::shared_ptr<DataPort>& sim_port, const std::string& payload_key,
+	std::size_t index, double expected, std::chrono::milliseconds timeout = std::chrono::milliseconds(20000))
+{
+	auto end = std::chrono::steady_clock::now() + timeout;
+	do
+	{
+		if(std::stod(sim_port->GetCurrentState()[payload_key][std::to_string(index)].asString()) == expected)
+			return true;
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	while(std::chrono::steady_clock::now() < end);
+	return false;
+}
+
+/*
   function     : ContainsAll
   description  : this function checks every value in 'expected' was observed in 'seen' -
                  used instead of exact equality since polling can also catch transient
@@ -2409,10 +2433,14 @@ TEST_CASE("SQLiteDB_RelativeTOD")
 		REQUIRE(WaitForEnabled(sim_port));
 
 		//without FASTFORWARD, all 3 (already past for today) rows fire back-to-back
-		//essentially instantly, then wrap and repeat - poll densely to catch all 3
-		auto seen = PollPointValues(sim_port, "AnalogPayload", 500003, std::chrono::milliseconds(300), std::chrono::milliseconds(1));
+		//essentially instantly (too fast to sample the first two), leaving the last value
+		REQUIRE(WaitForValue(sim_port, "AnalogPayload", 500003, 3.0));
+
+		//then the playback wraps to tomorrow's occurrence, rather than replaying the rows
+		//again with no delay: the value stays put
+		auto seen = PollPointValues(sim_port, "AnalogPayload", 500003, std::chrono::milliseconds(300));
 		CHECK(sim_port->Enabled());
-		CHECK(ContainsAll(seen, {1.0, 2.0, 3.0}));
+		CHECK(seen == std::set<double>{3.0});
 
 		sim_port->Disable();
 	}

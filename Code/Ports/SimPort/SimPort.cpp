@@ -592,6 +592,11 @@ bool SimPort::PopulateNextEvent(const std::shared_ptr<EventInfo>& event, int64_t
 			//re-anchor the relative offset to now
 			auto now = msSinceEpoch()+sys_time_offset;
 			time_offset = InitDBTimestampHandling(event, now);
+			//time of day playback: the data has all been played for today, so the next cycle is tomorrow's
+			//(otherwise every row is in the past and the table would be replayed with no delay, forever)
+			const auto timestamp_handling = pSimConf->TimestampHandling(event->GetEventType(),event->GetIndex());
+			if(!!(timestamp_handling & TimestampMode::TOD) && now > event->GetTimestamp()+time_offset)
+				time_offset += std::chrono::duration_cast<std::chrono::milliseconds>(days(1)).count();
 		}
 		event->SetTimestamp(event->GetTimestamp()+time_offset);
 		return true;
