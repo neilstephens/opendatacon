@@ -27,6 +27,7 @@
 
 #include "SimPortConf.h"
 #include "Log.h"
+#include <regex>
 
 SimPortConf::SimPortConf():
 	abs_analogs(false),
@@ -58,6 +59,8 @@ void SimPortConf::ProcessElements(const Json::Value& json_root)
 		auto sqlite = json_root["SQLite3Defaults"];
 		if(sqlite.isMember("TimestampHandling"))
 			m_db_defaults.timestamp_handling = m_ParseTimestampHandling(sqlite["TimestampHandling"].asString());
+		if(sqlite.isMember("DayStart"))
+			m_ParseDayStart(sqlite["DayStart"], m_db_defaults.day_start_offset_ms);
 		if(sqlite.isMember("File"))
 			m_db_defaults.db_filename = sqlite["File"].asString();
 		if(sqlite.isMember("Query"))
@@ -86,6 +89,14 @@ TimestampMode SimPortConf::TimestampHandling(const EventType ev_type, const size
 	if(tsh_it != m_db_ts_handling.end())
 		return tsh_it->second;
 	return m_db_defaults.timestamp_handling;
+}
+
+int64_t SimPortConf::DayStartOffsetMs(const EventType ev_type, const size_t index) const
+{
+	auto ds_it = m_db_day_start.find(ToString(ev_type)+std::to_string(index));
+	if(ds_it != m_db_day_start.end())
+		return ds_it->second;
+	return m_db_defaults.day_start_offset_ms;
 }
 
 void SimPortConf::Name(const std::string& name)
@@ -228,6 +239,33 @@ TimestampMode SimPortConf::m_ParseTimestampHandling(const std::string& ts_mode) 
 		tsm = TimestampMode::FIRST;
 	else Log.Error("Defaulting invalid SQLite3 'TimeStampHandling' mode '{}'.", ts_mode);
 	return tsm;
+}
+
+//"DayStart" is a UTC offset: [+-]HH:MM[:SS]. The day starts at midnight in that offset (e.g. "+10:00" is 14:00 UTC)
+//Only sets offset_ms if it's valid
+bool SimPortConf::m_ParseDayStart(const Json::Value& day_start, int64_t& offset_ms) const
+{
+	static const std::regex day_start_regex("^([+-])([0-9]{2}):([0-9]{2})(?::([0-9]{2}))?$");
+	std::smatch match;
+	auto text = day_start.isString() ? day_start.asString() : day_start.toStyledString();
+	if(!day_start.isString() && !text.empty() && text.back() == '\n')
+		text.pop_back();
+	if(!day_start.isString() || !std::regex_match(text, match, day_start_regex))
+	{
+		Log.Error("Ignoring invalid SQLite3 'DayStart' '{}': it must be a UTC offset like \"+10:00\" ([+-]HH:MM[:SS]).", text);
+		return false;
+	}
+	const int hours = std::stoi(match[2].str());
+	const int minutes = std::stoi(match[3].str());
+	const int seconds = match[4].matched ? std::stoi(match[4].str()) : 0;
+	if(hours > 23 || minutes > 59 || seconds > 59)
+	{
+		Log.Error("Ignoring invalid SQLite3 'DayStart' '{}': the offset must be less than 24 hours.", text);
+		return false;
+	}
+	const int64_t ms = ((hours*60 + minutes)*60 + seconds)*1000;
+	offset_ms = match[1].str() == "-" ? -ms : ms;
+	return true;
 }
 
 bool SimPortConf::m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const
@@ -433,6 +471,17 @@ void SimPortConf::m_ProcessSQLite3(const Json::Value& sqlite, const std::string&
 
 			if(sqlite.isMember("TimestampHandling"))
 				m_db_ts_handling[type+std::to_string(index)] = m_ParseTimestampHandling(sqlite["TimestampHandling"].asString());
+
+			if(sqlite.isMember("DayStart"))
+			{
+				int64_t day_start_ms = 0;
+				if(m_ParseDayStart(sqlite["DayStart"], day_start_ms))
+				{
+					m_db_day_start[type+std::to_string(index)] = day_start_ms;
+					if(!(TimestampHandling(EventTypeFromString(type), index) & TimestampMode::TOD))
+						Log.Warn("SQLite3 'DayStart' for {} {} has no effect: it only applies to the RELATIVE_TOD timestamp modes.", type, index);
+				}
+			}
 		}
 	}
 	sqlite3_close_v2(db);

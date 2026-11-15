@@ -2450,6 +2450,91 @@ TEST_CASE("SQLiteDB_RelativeTOD")
 }
 
 /*
+  function     : DayStartBehind
+  description  : this function returns the "DayStart" UTC offset that makes the day start 'behind_ms'
+                 before the current time (so that the test doesn't depend on when it runs)
+  param        : behind_ms, how long ago the day started
+  return       : std::string, [+-]HH:MM:SS
+*/
+inline std::string DayStartBehind(int64_t behind_ms)
+{
+	constexpr int64_t day_ms = 24*3600*1000;
+	const int64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	//the day starts at midnight in the offset, i.e. at UTC time of day == -offset
+	const int64_t start_tod_ms = ((now_ms - behind_ms) % day_ms + day_ms) % day_ms;
+	const int64_t offset_s = -(start_tod_ms/1000);
+	const int64_t abs_s = offset_s < 0 ? -offset_s : offset_s;
+	char buf[16];
+	snprintf(buf, sizeof(buf), "%c%02d:%02d:%02d", offset_s < 0 ? '-' : '+', static_cast<int>(abs_s/3600), static_cast<int>(abs_s/60%60), static_cast<int>(abs_s%60));
+	return buf;
+}
+
+/*
+  function     : TEST_CASE
+  description  : tests the DayStart option of the RELATIVE_TOD modes: the day starts at midnight in the
+                 UTC offset, which decides whether a row is in the past or the future for today
+  param        : SQLiteDB_RelativeTODDayStart, name of the test case
+  return       : NA
+*/
+TEST_CASE("SQLiteDB_RelativeTODDayStart")
+{
+	TestSetup();
+
+	auto port_lib = LoadModule(GetLibFileName("SimPort"));
+	REQUIRE(port_lib);
+
+	{
+		newptr new_sim = GetPortCreator(port_lib, "Sim");
+		REQUIRE(new_sim);
+		delptr delete_sim = GetPortDestroyer(port_lib, "Sim");
+		REQUIRE(delete_sim);
+
+		//one row, whose time of day was 2 hours ago (on an arbitrary earlier date)
+		const int64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		const int64_t row_ts = now_ms - 3*24*3600*1000LL - 2*3600*1000LL;
+		auto db_path = SQLiteTestDBPath("relative_tod_day_start");
+		CreateSQLitePlaybackDB(db_path, {
+			{row_ts,5.0,0}
+		});
+
+		Json::Value conf = GetTestConfigJSON();
+		auto point = MakeSQLitePoint(500005, db_path, "select timestamp,value from events order by timestamp asc", "RELATIVE_TOD", 77.0);
+
+		bool expect_played = false;
+		SECTION("the day started after the row's time of day: the row is for the next day, so it hasn't played")
+		{
+			point["SQLite3"]["DayStart"] = DayStartBehind(1*3600*1000);
+		}
+		SECTION("the day started before the row's time of day: the row is today and in the past, so it plays at once, and not again")
+		{
+			point["SQLite3"]["DayStart"] = DayStartBehind(3*3600*1000);
+			expect_played = true;
+		}
+		conf["Analogs"].append(point);
+
+		auto sim_port = std::shared_ptr<DataPort>(new_sim("OutstationUnderTest", "", conf), delete_sim);
+		sim_port->Build();
+
+		ThreadPool thread_pool(1);
+
+		sim_port->Enable();
+		REQUIRE(WaitForEnabled(sim_port));
+
+		if(expect_played)
+			REQUIRE(WaitForValue(sim_port, "AnalogPayload", 500005, 5.0));
+
+		//(and after playing, the playback waits for tomorrow rather than repeating)
+		auto seen = PollPointValues(sim_port, "AnalogPayload", 500005, std::chrono::milliseconds(300));
+		CHECK(seen == std::set<double>{expect_played ? 5.0 : 77.0});
+
+		sim_port->Disable();
+	}
+
+	UnLoadModule(port_lib);
+	TestTearDown();
+}
+
+/*
   function     : TEST_CASE
   description  : regression test - RELATIVE_TOD_FASTFORWARD where every row is already in the
                  past for today must roll forward exactly one day and land on a future

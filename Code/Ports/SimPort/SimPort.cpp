@@ -534,11 +534,13 @@ int64_t SimPort::InitDBTimestampHandling(const std::shared_ptr<EventInfo>& event
 		}
 		else if(!!(timestamp_handling & TimestampMode::TOD))
 		{
-			auto epoch_ts = std::chrono::milliseconds(event->GetTimestamp());
-			auto epoch_now = std::chrono::milliseconds(now);
+			//the day starts at midnight in the "DayStart" UTC offset (UTC itself by default)
+			const auto day_start = std::chrono::milliseconds(pSimConf->DayStartOffsetMs(event->GetEventType(),event->GetIndex()));
+			auto epoch_ts = std::chrono::milliseconds(event->GetTimestamp()) + day_start;
+			auto epoch_now = std::chrono::milliseconds(now) + day_start;
 
-			auto whole_days_ts = std::chrono::duration_cast<days>(epoch_ts);
-			auto whole_days_now = std::chrono::duration_cast<days>(epoch_now);
+			auto whole_days_ts = std::chrono::floor<days>(epoch_ts);
+			auto whole_days_now = std::chrono::floor<days>(epoch_now);
 
 			time_offset = std::chrono::duration_cast<std::chrono::milliseconds>(whole_days_now - whole_days_ts).count();
 		}

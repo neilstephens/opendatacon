@@ -54,6 +54,7 @@ ENABLE_BITWISE(TimestampMode)
 struct SQLite3Defaults
 {
 	TimestampMode timestamp_handling = TimestampMode::FIRST;
+	int64_t day_start_offset_ms = 0;
 	std::string db_filename = "SimPort.db3";
 	std::string db_query = "select timestamp,value from events where [index] = :INDEX and type = :TYPE";
 };
@@ -66,6 +67,8 @@ public:
 	void ProcessElements(const Json::Value& json_root);
 	DB_STATEMENT GetDBStat(const EventType ev_type, const size_t index) const;
 	TimestampMode TimestampHandling(const EventType ev_type, const size_t index) const;
+	//The UTC offset (ms) whose midnight is where the day starts, for the time of day (TOD) timestamp modes
+	int64_t DayStartOffsetMs(const EventType ev_type, const size_t index) const;
 	void Name(const std::string& name);
 	double DefaultStdDev() const;
 
@@ -106,9 +109,11 @@ private:
 	SQLite3Defaults m_db_defaults;
 	std::unordered_map<std::string, DB_STATEMENT> m_db_stats;
 	std::unordered_map<std::string, TimestampMode> m_db_ts_handling;
+	std::unordered_map<std::string, int64_t> m_db_day_start;
 	std::shared_ptr<SimPortData> m_pport_data;
 
 	TimestampMode m_ParseTimestampHandling(const std::string& ts_mode) const;
+	bool m_ParseDayStart(const Json::Value& day_start, int64_t& offset_ms) const;
 	bool m_ParseIndexes(const Json::Value& data, std::size_t& start, std::size_t& stop) const;
 
 	void m_ProcessAnalogs(const Json::Value& analogs);
