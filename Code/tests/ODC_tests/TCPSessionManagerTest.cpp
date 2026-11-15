@@ -1460,6 +1460,8 @@ TEST_CASE(SUITE("SetReconnectAfterSessionEnd(false): after a failed session or o
 	CHECK(server.Accepted() == 2);
 
 	//closed by the peer: the same
+	//(the client is established when it has the server's Finished: the server may not yet have the client's, and close_notify is only sent once it has)
+	Wait([&] { return server.Established() == 2; }, "the server end of the second session", {&client});
 	server.ShutdownTls();
 	Wait([&] { return client.Ends() == 2 && client.Count(false) == 2; }, "the close by the peer", {&client});
 	CHECK(client.End(1).kind == TCPSessionManager::SessionEnd::Kind::PeerClosed);

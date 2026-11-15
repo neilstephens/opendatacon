@@ -2937,7 +2937,8 @@ TEST_CASE(SUITE("over TCP: Critical blocked reports are acknowledged, the server
 	CHECK(s["BlockedReportsSent"].asUInt64() == s["CriticalReportsSent"].asUInt64());
 	CHECK(s["DataFailures"].asUInt64() == 0);
 	CHECK(s["ReportNacksReceived"].asUInt64() == 0);
-	CHECK(h.client->GetStatistics()["ReportAcksSent"].asUInt64() == s["CriticalReportsSent"].asUInt64());
+	//(the server counts an acknowledgement as it arrives; the client counts it just after sending it)
+	CHECK(WaitFor([&] { return h.client->GetStatistics()["ReportAcksSent"].asUInt64() == s["CriticalReportsSent"].asUInt64(); }));
 	CHECK(h.client->GetStatistics()["BlockedReportsUndecodable"].asUInt64() == 0);
 }
 

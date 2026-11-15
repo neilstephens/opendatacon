@@ -659,7 +659,8 @@ TEST_CASE(SUITE("Critical: the client acknowledges every report, so the server's
 		CHECK(s["DataFailures"].asUInt64() == 0);
 		CHECK(s["ReportAckTimeouts"].asUInt64() == 0);
 		CHECK(s["ReportNacksReceived"].asUInt64() == 0);
-		CHECK(h.client->GetStatistics()["ReportAcksSent"].asUInt64() == 5);
+		//(the server counts an acknowledgement as it arrives; the client counts it just after sending it)
+		CHECK(WaitFor([&] { return h.client->GetStatistics()["ReportAcksSent"].asUInt64() == 5; }));
 		CHECK(h.client->GetStatistics()["ReportNacksSent"].asUInt64() == 0);
 		//nothing times out later (the default timeout is 10 s: a short wait only shows the list stays empty)
 		std::this_thread::sleep_for(std::chrono::milliseconds(300));
