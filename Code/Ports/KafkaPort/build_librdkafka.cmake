@@ -91,7 +91,7 @@ endif()
 foreach(CONF ${CONFIGS})
 	message("Building librdkafka dependency")
 	execute_process(
-		COMMAND ${CMAKE_COMMAND} --build ${RDKAFKA_BUILD} --config ${CONF} --parallel 8 --target install
+		COMMAND ${CMAKE_COMMAND} --build ${RDKAFKA_BUILD} --config ${CONF} --parallel ${ODC_BUILD_PARALLEL_LEVEL} --target install
 		WORKING_DIRECTORY "${RDKAFKA_BUILD}"
 		OUTPUT_FILE librdkafka-build-output.txt
 		RESULT_VARIABLE EXEC_RESULT
@@ -102,7 +102,7 @@ foreach(CONF ${CONFIGS})
 endforeach()
 add_custom_target( build_librdkafka
 	WORKING_DIRECTORY "${RDKAFKA_BUILD}"
-	COMMAND ${CMAKE_COMMAND} --build ${RDKAFKA_BUILD} --config $<CONFIG> --parallel 8 --target install
+	COMMAND ${CMAKE_COMMAND} --build ${RDKAFKA_BUILD} --config $<CONFIG> --parallel ${ODC_BUILD_PARALLEL_LEVEL} --target install
 )
 set(RdKafka_CMAKE_MODULES "${RDKAFKA_HOME}/lib/cmake/RdKafka")
 message("RDKAFKA_HOME: ${RDKAFKA_HOME}")

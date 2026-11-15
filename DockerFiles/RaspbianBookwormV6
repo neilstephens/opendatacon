@@ -39,7 +39,7 @@ RUN cmake -DFULL=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE $CMAKE_OPTIONS \
           -DCMAKE_C_FLAGS="-target arm-linux-gnueabihf -march=armv6 -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard" \
           -DCMAKE_CXX_FLAGS="-target arm-linux-gnueabihf -march=armv6 -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard" \
           -S opendatacon -B opendatacon-build
-RUN cmake --build opendatacon-build --parallel 8
+RUN cmake --build opendatacon-build --parallel $(($(nproc) + 2))
 RUN cmake --build opendatacon-build --target install
 RUN cmake --build opendatacon-build --target package
 

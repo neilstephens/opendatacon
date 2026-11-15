@@ -105,7 +105,7 @@ if(USE_DNP3_SUBMODULE)
 	foreach(CONF ${CONFIGS})
 		message("Building DNP3 dependency")
 		execute_process(
-			COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config ${CONF} --parallel 8 --target install
+			COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config ${CONF} --parallel ${ODC_BUILD_PARALLEL_LEVEL} --target install
 			WORKING_DIRECTORY "${DNP3_BUILD}"
 			OUTPUT_FILE opendnp3-build-output.txt
 			RESULT_VARIABLE EXEC_RESULT
@@ -116,7 +116,7 @@ if(USE_DNP3_SUBMODULE)
 	endforeach()
 	add_custom_target( build_dnp3
 		WORKING_DIRECTORY "${DNP3_BUILD}"
-		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config $<CONFIG> --parallel 8 --target install
+		COMMAND ${CMAKE_COMMAND} --build ${DNP3_BUILD} --config $<CONFIG> --parallel ${ODC_BUILD_PARALLEL_LEVEL} --target install
 	)
 else()
 	if(DEFINED DNP3_HOME)
