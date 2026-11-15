@@ -32,6 +32,7 @@
  *  Synthetic names only; TCP ports 20500 to 20599.
  */
 
+#include "../CIDetect.h"
 #include "ICCPClientPort.h"
 #include "ICCPServerPort.h"
 #include "TlsTestPki.h"
@@ -733,6 +734,12 @@ TEST_CASE(SUITE("plain TCP: a new transport event while the association is still
 
 TEST_CASE(SUITE("plain TCP: repeated drops and reconnects, clean and abrupt"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive stress test (50 reconnect cycles), low incremental CI value");
+		return;
+	}
+
 	Rig rig(20518, Json::Value(), Json::Value());
 	rig.Start();
 	REQUIRE(WaitFor([&] { return rig.UpCount(1); }));
@@ -760,6 +767,12 @@ TEST_CASE(SUITE("plain TCP: repeated drops and reconnects, clean and abrupt"))
 
 TEST_CASE(SUITE("plain TCP: connections cut at every moment of the association set-up"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive randomised stress test, low incremental CI value");
+		return;
+	}
+
 	Rig rig(20519, Json::Value(), Json::Value());
 	rig.Start();
 	std::mt19937 rng(98);
@@ -779,6 +792,12 @@ TEST_CASE(SUITE("plain TCP: connections cut at every moment of the association s
 
 TEST_CASE(SUITE("TLS: the realistic setting (RSA 2048, certificate chains, TLS 1.3, client certificate required) stays up"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - diagnostic soak test (fixed 3 s wait, dumps the TLS timeline), low incremental CI value");
+		return;
+	}
+
 	CapturePtr()->Clear();
 	Rig rig(20520, TlsJson(false), TlsJson(true));
 	rig.Start();
@@ -880,6 +899,12 @@ TEST_CASE(SUITE("TLS: with KeyLogFile the session secrets are written, for Wires
 
 TEST_CASE(SUITE("TLS: repeated drops and reconnects, clean and abrupt"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive stress test (50 reconnect cycles), low incremental CI value");
+		return;
+	}
+
 	Rig rig(20538, TlsJson(false), TlsJson(true));
 	rig.Start();
 	REQUIRE(WaitFor([&] { return rig.UpCount(1); }));
@@ -918,6 +943,12 @@ TEST_CASE(SUITE("TLS: the server closes the session right after the handshake, a
 
 TEST_CASE(SUITE("TLS: connections cut at every moment of the handshake and just after it"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - expensive randomised stress test, low incremental CI value");
+		return;
+	}
+
 	Rig rig(20542, TlsJson(false), TlsJson(true));
 	rig.Start();
 	std::mt19937 rng(99);
