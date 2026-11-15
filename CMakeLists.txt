@@ -45,6 +45,15 @@ set(CMAKE_CXX_EXTENSIONS OFF) #Eg. -std=c++20 instead of -std=gnu++20
 # to keep the bundled fmt working until spdlog is upgraded to use fmt 11+.
 add_compile_definitions(FMT_CONSTEVAL=)
 
+# Honour CMAKE_BUILD_PARALLEL_LEVEL from the environment, else use logical cores + 2.
+if(DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL} AND NOT "$ENV{CMAKE_BUILD_PARALLEL_LEVEL}" STREQUAL "")
+	set(ODC_BUILD_PARALLEL_LEVEL "$ENV{CMAKE_BUILD_PARALLEL_LEVEL}")
+else()
+	cmake_host_system_information(RESULT _odc_cores QUERY NUMBER_OF_LOGICAL_CORES)
+	math(EXPR ODC_BUILD_PARALLEL_LEVEL "${_odc_cores} + 2")
+endif()
+message(STATUS "Nested dependency builds will use --parallel ${ODC_BUILD_PARALLEL_LEVEL}")
+
 # Optional compiler launcher (ccache/sccache). No-op when not installed.
 option(USE_COMPILER_LAUNCHER "Use ccache/sccache as compiler launcher if found" OFF)
 if(USE_COMPILER_LAUNCHER)
@@ -216,7 +225,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 		# If you dont want the ZERO_CHECK project in VS have the following line enabled.
 		set(CMAKE_SUPPRESS_REGENERATION true)
 	endif()
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /MP /Zc:rvalueCast")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /Zc:rvalueCast")
+	if(CMAKE_GENERATOR MATCHES "Visual Studio")
+		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+	endif()
 	# tell asio to only compile once (where <asio/impl/src.hpp> is included)
 	# use CXX_FLAGS (instead of add_definitions) so we can use it for external libraries too
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DASIO_SEPARATE_COMPILATION")
