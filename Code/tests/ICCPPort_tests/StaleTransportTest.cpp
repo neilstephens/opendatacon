@@ -266,17 +266,33 @@ private:
 			std::lock_guard<std::mutex> lock(mtx);
 			conns.push_back(c);
 		}
-		c->server->async_connect(odc::tcp::endpoint(asio::ip::address_v4::loopback(), static_cast<unsigned short>(upstreamPort)),
-			c->strand->wrap([this, c](std::error_code ec)
+		ConnectUpstream(this, c, odc::tcp::endpoint(asio::ip::address_v4::loopback(), static_cast<unsigned short>(upstreamPort)), Clock::now() + std::chrono::seconds(10));
+	}
+	//The server port is enabled asynchronously, so it may not be listening yet when the client's first connection arrives. Until it is, the client
+	//waits (as for a slow server), so the first connection through the proxy is the one that comes up, and not one refused at the start.
+	//(not touching the proxy on the retry path, which may be gone by then)
+	static void ConnectUpstream(Proxy* self, const std::shared_ptr<Conn>& c, odc::tcp::endpoint upstream, Clock::time_point give_up)
+	{
+		c->server->async_connect(upstream, c->strand->wrap([self, c, upstream, give_up](std::error_code ec)
+			{
+				if(!c->client->is_open()) //cut, or the proxy is gone
+					return;
+				if(!ec)
 				{
-					if(ec)
-					{
-						Close(c);
-						return;
-					}
-					Pump(c, true);
-					Pump(c, false);
-				}));
+					self->Pump(c, true);
+					self->Pump(c, false);
+					return;
+				}
+				if(Clock::now() >= give_up)
+				{
+					Close(c);
+					return;
+				}
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+				std::error_code ignored;
+				c->server->close(ignored);
+				ConnectUpstream(self, c, upstream, give_up);
+			}));
 	}
 	static void Close(const std::shared_ptr<Conn>& c)
 	{
@@ -935,7 +951,7 @@ TEST_CASE(SUITE("TLS: the server closes the session right after the handshake, a
 	//what the capture showed: the connection the server closed, then the next attempt. Here the proxy plays the server's FIN.
 	Rig rig(20540, TlsJson(false), TlsJson(true));
 	rig.Start();
-	REQUIRE(WaitFor([&] { return rig.clientRec.Count(odc::ConnectState::CONNECTED) == 1; }));
+	REQUIRE(WaitFor([&] { return rig.UpCount(1); }));
 	rig.proxy->Kill(0);
 	REQUIRE(WaitFor([&] { return rig.UpCount(2); }));
 	CheckAllConnections(rig, true);
