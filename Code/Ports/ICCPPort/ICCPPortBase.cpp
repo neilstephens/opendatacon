@@ -1293,6 +1293,7 @@ const Json::Value ICCPPortBase::GetCurrentState() const
 		s["Analogs"] = Json::arrayValue;
 		s["Binaries"] = Json::arrayValue;
 		s["Counters"] = Json::arrayValue;
+		s["DoubleBinaries"] = Json::arrayValue;
 		s["Controls"] = Json::arrayValue;
 
 		const auto& conf = Conf();
@@ -1316,6 +1317,7 @@ const Json::Value ICCPPortBase::GetCurrentState() const
 					case PointKind::Binary: j["Value"] = st.binary; break;
 					case PointKind::Analog: j["Value"] = st.analog; break;
 					case PointKind::Counter: j["Value"] = Json::UInt(st.counter); break;
+					case PointKind::DoubleBinary: j["Value"] = tase2::StateName(st.state); break;
 				}
 			}
 			j["Quality"] = ToString(st.known ? st.quality : QualityFlags::RESTART);
@@ -1325,6 +1327,7 @@ const Json::Value ICCPPortBase::GetCurrentState() const
 				case PointKind::Binary: s["Binaries"].append(j); break;
 				case PointKind::Analog: s["Analogs"].append(j); break;
 				case PointKind::Counter: s["Counters"].append(j); break;
+				case PointKind::DoubleBinary: s["DoubleBinaries"].append(j); break;
 			}
 		}
 		for(size_t i = 0; i < conf.controls.size(); ++i)
@@ -1485,6 +1488,7 @@ void ICCPPortBase::CreateClientSession(Association& a)
 					 case PointKind::Binary: type = EventType::Binary; break;
 					 case PointKind::Analog: type = EventType::Analog; break;
 					 case PointKind::Counter: type = EventType::Counter; break;
+					 case PointKind::DoubleBinary: type = EventType::DoubleBitBinary; break;
 				 }
 				 auto event = std::make_shared<EventInfo>(type, pt.index, Name, s.quality, s.timestamp);
 				 switch(pt.kind)
@@ -1492,6 +1496,7 @@ void ICCPPortBase::CreateClientSession(Association& a)
 					 case PointKind::Binary: event->SetPayload<EventType::Binary>(bool(s.binary)); break;
 					 case PointKind::Analog: event->SetPayload<EventType::Analog>(double(s.analog)); break;
 					 case PointKind::Counter: event->SetPayload<EventType::Counter>(uint32_t(s.counter)); break;
+					 case PointKind::DoubleBinary: event->SetPayload<EventType::DoubleBitBinary>(tase2::StateToDoubleBit(s.known ? s.state : tase2::StateValue::Invalid)); break;
 				 }
 				 PublishEvent(event);
 			 };
@@ -1594,12 +1599,21 @@ void ICCPPortBase::HandleEvent(const std::shared_ptr<const EventInfo>& event, co
 	bool binary = false;
 	double analog = 0;
 	uint32_t counter = 0;
+	tase2::StateValue state = tase2::StateValue::Between;
 	switch(event->GetEventType())
 	{
 		case EventType::Binary:
 			kind = PointKind::Binary;
 			binary = event->GetPayload<EventType::Binary>();
 			break;
+		case EventType::DoubleBitBinary:
+		{
+			kind = PointKind::DoubleBinary;
+			const auto dbb = event->GetPayload<EventType::DoubleBitBinary>();
+			state = tase2::DoubleBitToState(dbb.first, dbb.second);
+			binary = state == tase2::StateValue::On;
+			break;
+		}
 		case EventType::Analog:
 			kind = PointKind::Analog;
 			analog = event->GetPayload<EventType::Analog>();
@@ -1618,7 +1632,9 @@ void ICCPPortBase::HandleEvent(const std::shared_ptr<const EventInfo>& event, co
 		(*pStatusCallback)(CommandStatus::NOT_SUPPORTED);
 		return;
 	}
-	const auto changed = model->Update(kind, event->GetIndex(), binary, analog, counter, event->GetQuality(), event->GetTimestamp());
+	if(const std::string why = model->Unrepresentable(kind, event->GetIndex(), analog, counter); !why.empty())
+		Log(stack::LogLevel::Warn, why + ": served to the peer as not valid, never clamped");
+	const auto changed = model->Update(kind, event->GetIndex(), binary, analog, counter, event->GetQuality(), event->GetTimestamp(), state);
 	if(changed && assoc && !assoc->closed && assoc->responder)
 		assoc->responder->OnPointChanged(*changed);
 	(*pStatusCallback)(CommandStatus::SUCCESS);

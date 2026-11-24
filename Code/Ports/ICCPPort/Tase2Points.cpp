@@ -52,6 +52,15 @@ double RawValue(const IccpPointConf& pt, const PointState& s)
 }
 }
 
+std::optional<int64_t> ScaledDiscrete(const IccpPointConf& pt, double analog, uint32_t counter)
+{
+	const double v = pt.kind == PointKind::Counter ? static_cast<double>(counter) : analog;
+	const double raw = std::round((v - pt.offset) / pt.scale);
+	if(!std::isfinite(raw) || raw < static_cast<double>(INT32_MIN) || raw > static_cast<double>(INT32_MAX))
+		return std::nullopt;
+	return static_cast<int64_t>(raw);
+}
+
 double NumericValue(const IccpPointConf& pt, const PointState& s)
 {
 	switch(pt.kind)
@@ -59,6 +68,7 @@ double NumericValue(const IccpPointConf& pt, const PointState& s)
 		case PointKind::Binary: return s.binary ? 1.0 : 0.0;
 		case PointKind::Analog: return s.analog;
 		case PointKind::Counter: return static_cast<double>(s.counter);
+		case PointKind::DoubleBinary: return static_cast<double>(static_cast<uint8_t>(s.state)); //0 Between, 1 Off, 2 On, 3 Invalid
 	}
 	return 0;
 }
@@ -81,19 +91,21 @@ PointValue ToPointValue(const IccpPointConf& pt, const PointState& s, odc::msSin
 	{
 		flags = FromQuality(s.quality);
 		if(stateType)
-			flags.state = !Online(s.quality) ? StateValue::Invalid : BinaryToState(s.binary);
+			flags.state = !Online(s.quality) ? StateValue::Invalid : (pt.kind == PointKind::DoubleBinary ? s.state : BinaryToState(s.binary));
 	}
-	p.flags = PackFlags(flags);
-	p.state = flags.state;
 
 	if(IsRealType(pt.type))
 		p.real = static_cast<float>(RawValue(pt, s));
 	else if(IsDiscreteType(pt.type))
 	{
-		const double raw = RawValue(pt, s);
-		if(std::isfinite(raw))
-			p.discrete = static_cast<int64_t>(std::llround(std::max(static_cast<double>(INT32_MIN), std::min(static_cast<double>(INT32_MAX), raw))));
+		//a value that does not fit an integer of width 32 is not sent as if it did: it is served as not valid (the Event() of the port refuses such a value up front)
+		if(const auto d = ScaledDiscrete(pt, s.analog, s.counter))
+			p.discrete = *d;
+		else
+			flags.validity = Validity::NotValid;
 	}
+	p.flags = PackFlags(flags);
+	p.state = flags.state;
 
 	const odc::msSinceEpoch_t ts = s.timestamp != 0 ? s.timestamp : now;
 	switch(pt.type)
@@ -131,18 +143,25 @@ PointState FromPointValue(const IccpPointConf& pt, const PointValue& p, odc::msS
 	PointState s;
 	s.known = true;
 	const bool stateType = IsStateType(pt.type);
+	bool overrange = false; //a Counter value that a uint32 cannot hold (negative, or too big after scaling)
 
 	if(IsRealType(pt.type) || IsDiscreteType(pt.type))
 	{
 		const double raw = IsRealType(pt.type) ? p.real : static_cast<double>(p.discrete);
 		const double v = raw * pt.scale + pt.offset;
 		if(pt.kind == PointKind::Counter)
+		{
+			overrange = !std::isfinite(v) || v < -0.5 || v > static_cast<double>(std::numeric_limits<uint32_t>::max()) + 0.5;
 			s.counter = std::isfinite(v) ? static_cast<uint32_t>(std::llround(std::max(0.0, std::min(static_cast<double>(std::numeric_limits<uint32_t>::max()), v)))) : 0u;
+		}
 		else
 			s.analog = v;
 	}
 	else
+	{
+		s.state = p.state;
 		s.binary = p.state == StateValue::On;
+	}
 
 	DataFlags f = p.Flags();
 	if(pt.type == PointType::State)
@@ -152,6 +171,8 @@ PointState FromPointValue(const IccpPointConf& pt, const PointValue& p, odc::msS
 		f.state = p.state;
 	}
 	s.quality = ToQuality(f, stateType);
+	if(overrange)
+		s.quality = s.quality | odc::QualityFlags::OVERRANGE;
 
 	if(p.timeStamp)
 		s.timestamp = static_cast<odc::msSinceEpoch_t>(*p.timeStamp) * 1000 + static_cast<odc::msSinceEpoch_t>(p.milliseconds.value_or(0));

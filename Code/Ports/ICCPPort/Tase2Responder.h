@@ -100,8 +100,12 @@ public:
 		return servePoints;
 	}
 
-	//ODC value updates. Returns the index into Conf().points if the value or quality changed (or was first set).
-	std::optional<size_t> Update(PointKind kind, size_t index, bool binary, double analog, uint32_t counter, odc::QualityFlags quality, odc::msSinceEpoch_t timestamp);
+	//ODC value updates. Returns the index into Conf().points if the value or quality changed (or was first set). `state` is for DoubleBinary points.
+	std::optional<size_t> Update(PointKind kind, size_t index, bool binary, double analog, uint32_t counter, odc::QualityFlags quality, odc::msSinceEpoch_t timestamp,
+		StateValue state = StateValue::Between);
+	//Whether a value cannot be served as the point's TASE.2 type: a Discrete value (an integer of width 32) that is not finite or does not fit after the scaling. It is then served
+	//as not valid (ToPointValue). Empty if it fits or the point is not configured, else the reason (for the log).
+	std::string Unrepresentable(PointKind kind, size_t index, double analog, uint32_t counter) const;
 	const PointState& State(size_t pointIndex) const
 	{
 		return states[pointIndex]; //port strand only (the only writer of the states); another thread uses StatesSnapshot()

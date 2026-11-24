@@ -234,6 +234,9 @@ TEST_CASE(SUITE("validation failures name the problem"))
 		{R"({"LocalDomain": "D", "Binaries": [{"Index": 0, "Name": "P"}, {"Index": 1, "Name": "P"}]})", true, "duplicate point Name"},
 		{R"({"LocalDomain": "D", "Binaries": [{"Index": 0, "Name": "P", "Type": "RealQ"}]})", true, "does not suit"},
 		{R"({"LocalDomain": "D", "Analogs": [{"Index": 0, "Name": "P", "Type": "StateQ"}]})", true, "does not suit"},
+		{R"({"LocalDomain": "D", "DoubleBinaries": [{"Index": 0, "Name": "P", "Type": "RealQ"}]})", true, "does not suit"},
+		{R"({"LocalDomain": "D", "DoubleBinaries": [{"Index": 0, "Name": "P"}, {"Index": 0, "Name": "Q"}]})", true, "duplicate Index"},
+		{R"({"LocalDomain": "D", "DoubleBinaries": {}})", true, "\"DoubleBinaries\" must be an array"},
 		{R"({"LocalDomain": "D", "Analogs": [{"Index": 0, "Name": "P", "Type": "Bogus"}]})", true, "unknown point"},
 		{R"({"LocalDomain": "D", "Analogs": [{"Index": 0, "Name": "P", "Scope": "XYZ"}]})", true, "\"Scope\""},
 		{R"({"LocalDomain": "D", "Analogs": [{"Index": 0, "Name": "P", "ScaleFactor": 0}]})", true, "ScaleFactor"},
@@ -260,6 +263,28 @@ TEST_CASE(SUITE("validation failures name the problem"))
 		REQUIRE_FALSE(problems.empty());
 		CHECK(AnyContains(problems, c.expect));
 	}
+}
+
+TEST_CASE(SUITE("DoubleBinaries: four state points, any State type, an index of their own"))
+{
+	ICCPPortConf c;
+	REQUIRE(c.Load(Parse(R"({"LocalDomain": "D",
+		"Binaries": [{"Index": 0, "Name": "B0"}],
+		"DoubleBinaries": [{"Index": 0, "Name": "DB0"}, {"Index": 1, "Name": "DB1", "Type": "State"},
+			{"Index": 2, "Name": "DB2", "Type": "StateQTimeTag"}, {"Index": 3, "Name": "DB3", "Type": "StateExtended", "Scope": "VCC"}]})"), true).empty());
+	REQUIRE(c.points.size() == 5);
+	const auto* b0 = c.FindPoint("B0", PointDirection::Serve);
+	const auto* db0 = c.FindPoint("DB0", PointDirection::Serve);
+	REQUIRE(b0);
+	REQUIRE(db0);
+	CHECK(b0->kind == PointKind::Binary);
+	CHECK(db0->kind == PointKind::DoubleBinary);
+	CHECK(db0->index == 0); //the same index as the Binary point: an index is used once per kind
+	CHECK(db0->type == iccp::tase2::PointType::StateQ);
+	CHECK(c.FindPoint("DB1", PointDirection::Serve)->type == iccp::tase2::PointType::State);
+	CHECK(c.FindPoint("DB2", PointDirection::Serve)->type == iccp::tase2::PointType::StateQTimeTag);
+	CHECK(c.FindPoint("DB3", PointDirection::Serve)->type == iccp::tase2::PointType::StateExtended);
+	CHECK(c.FindPoint("DB3", PointDirection::Serve)->scope == iccp::tase2::Scope::Vcc);
 }
 
 TEST_CASE(SUITE("AllChangesReported: true only with 2000-08, RBE, the ObjectChange condition and a BufferTime above 0"))

@@ -45,8 +45,22 @@ enum class PointKind : uint8_t
 {
 	Binary,
 	Analog,
-	Counter
+	Counter,
+	DoubleBinary //"DoubleBinaries": a 2 bit State (Between, Off, On, Invalid) as an ODC DoubleBitBinary event
 };
+
+//the ODC kind of a point, for logs and diagnostics
+inline const char* KindText(PointKind k)
+{
+	switch(k)
+	{
+		case PointKind::Binary: return "Binary";
+		case PointKind::Analog: return "Analog";
+		case PointKind::Counter: return "Counter";
+		case PointKind::DoubleBinary: return "DoubleBinary";
+	}
+	return "?";
+}
 
 //What this port does at the TASE.2 level, independent of the TCP direction.
 enum class ServiceRole : uint8_t

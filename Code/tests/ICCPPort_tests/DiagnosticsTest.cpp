@@ -328,6 +328,7 @@ struct Fixture
 			case PointKind::Binary: return 1;
 			case PointKind::Analog: return 100.0 + static_cast<double>(pt.index) + bump;
 			case PointKind::Counter: return 7.0 + static_cast<double>(pt.index) + bump;
+			case PointKind::DoubleBinary: return 2;
 		}
 		return 0;
 	}
@@ -337,6 +338,7 @@ struct Fixture
 		s.known = true;
 		s.quality = odc::QualityFlags::ONLINE;
 		s.binary = true;
+		s.state = tase2::StateValue::On;
 		s.analog = PeerValue(pt, bump);
 		s.counter = static_cast<uint32_t>(PeerValue(pt, bump));
 		s.timestamp = 1700000000000;

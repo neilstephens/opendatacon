@@ -510,7 +510,7 @@ std::string ClientSession::Where(const IccpPointConf* pt, const mms::ObjectName&
 	if(pt == nullptr)
 		return "ICC, domain " + name.domainId + "; special object";
 	std::string w = pt->scope == Scope::Icc ? "ICC, domain " + pt->domain : std::string("VCC");
-	w += "; ODC " + std::string(pt->kind == PointKind::Binary ? "Binary" : (pt->kind == PointKind::Analog ? "Analog" : "Counter")) + " index " +
+	w += "; ODC " + std::string(KindText(pt->kind)) + " index " +
 	     std::to_string(pt->index);
 	return w;
 }
@@ -689,7 +689,7 @@ void ClientSession::ProbeNextChunk(const std::shared_ptr<ProbeRun>& run)
 				e.error = a.error;
 				e.scope = pt->scope == Scope::Icc ? "ICC" : "VCC";
 				e.domain = pt->scope == Scope::Icc ? pt->domain : std::string();
-				e.kind = pt->kind == PointKind::Binary ? "Binary" : (pt->kind == PointKind::Analog ? "Analog" : "Counter");
+				e.kind = KindText(pt->kind);
 				e.odcIndex = pt->index;
 				if(a.error == mms::DataAccessError::ObjectNonExistent || a.error == mms::DataAccessError::ObjectUndefined)
 				{
