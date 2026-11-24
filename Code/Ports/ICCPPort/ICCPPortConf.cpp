@@ -204,6 +204,7 @@ bool TypeFits(PointKind kind, tase2::PointType t)
 		case PointKind::Binary: return tase2::IsStateType(t);
 		case PointKind::Analog: return tase2::IsRealType(t) || tase2::IsDiscreteType(t);
 		case PointKind::Counter: return tase2::IsDiscreteType(t);
+		case PointKind::DoubleBinary: return tase2::IsStateType(t);
 	}
 	return false;
 }
@@ -215,6 +216,7 @@ const char* KindName(PointKind k)
 		case PointKind::Binary: return "Binaries";
 		case PointKind::Analog: return "Analogs";
 		case PointKind::Counter: return "Counters";
+		case PointKind::DoubleBinary: return "DoubleBinaries";
 	}
 	return "?";
 }
@@ -518,7 +520,7 @@ std::vector<std::string> ICCPPortConf::Load(const Json::Value& root, bool listen
 	std::map<std::pair<PointKind, int>, std::set<size_t>> indexes; //an ODC index is used once per kind and direction
 	const std::pair<PointKind, tase2::PointType> kinds[] = {
 		{PointKind::Binary, tase2::PointType::StateQ}, {PointKind::Analog, tase2::PointType::RealQ},
-		{PointKind::Counter, tase2::PointType::DiscreteQ}
+		{PointKind::Counter, tase2::PointType::DiscreteQ}, {PointKind::DoubleBinary, tase2::PointType::StateQ}
 	};
 	for(const auto& [kind, defaultType] : kinds)
 	{
@@ -701,8 +703,10 @@ std::vector<std::string> ICCPPortConf::Load(const Json::Value& root, bool listen
 				const auto it = types.find(text);
 				if(it == types.end())
 					p.Add(where + "unknown control \"Type\" \"" + text + "\" (Command, DiscreteCommand, RealSetpoint or DiscreteSetpoint)");
+				else if(kind == ControlKind::Analog && it->second == tase2::ControlType::DiscreteCommand)
+					c.type = tase2::ControlType::DiscreteSetpoint; //a multi-state command: any integer, the same wire type (an integer of width 16), published as an AnalogOutput integer
 				else if(tase2::IsSetpoint(it->second) != (kind == ControlKind::Analog))
-					p.Add(where + "\"Type\" \"" + text + "\" does not suit " + key + (kind == ControlKind::Binary ? " (Command or DiscreteCommand)" : " (RealSetpoint or DiscreteSetpoint)"));
+					p.Add(where + "\"Type\" \"" + text + "\" does not suit " + key + (kind == ControlKind::Binary ? " (Command or DiscreteCommand)" : " (RealSetpoint, DiscreteSetpoint or DiscreteCommand)"));
 				else
 					c.type = it->second;
 			}

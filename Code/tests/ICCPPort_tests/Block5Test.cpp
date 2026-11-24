@@ -772,6 +772,87 @@ TEST_CASE(SUITE("what a peer does that is not defined: Write of the select objec
 	CHECK(g.Count("control DEV_CMD_01: select refused: hardware failure", LogLevel::Error) == 1);
 }
 
+TEST_CASE(SUITE("a client operating devices on the wire (verified): the captured writes and answers decode and re-encode exactly, direct operate, multi-state integers"))
+{
+	//ICCP-DiscreteControls.pcapng: a client writes to this port's devices with no select (no Read of a select object). The MMS PDUs, after the TPKT, COTP, session and presentation
+	//headers. Invoke ids 0x28 to 0x2d. Names are domain LVDERMS, items SOUTH_NONRES_*
+	auto hex = [](const std::string& s)
+		     {
+			     mms::Bytes b;
+			     for(size_t i = 0; i + 1 < s.size(); i += 2)
+				     b.push_back(static_cast<uint8_t>(std::stoi(s.substr(i, 2), nullptr, 16)));
+			     return b;
+		     };
+
+	struct Exchange
+	{
+		const char* request;
+		const char* answer;
+		const char* item;
+		mms::Data value;
+		std::optional<int64_t> error;
+	};
+	const std::vector<Exchange> exchanges = {
+		//a real setpoint (float 2000.0), accepted
+		{"a035020128a530a0253023a021a11f1a074c564445524d531a14534f5554485f4e4f4e5245535f456e6454696d65a00787050844fa0000",
+		 "a107020128a5028100", "SOUTH_NONRES_EndTime", mms::Data::Float32(2000.0f), std::nullopt},
+		//an integer command, 1 octet: refused with object-attribute-inconsistent, which is how a downstream OUT_OF_RANGE answer reaches the client (here the remote side's state did not allow the value then)
+		{"a032020129a52da0263024a022a1201a074c564445524d531a15534f5554485f4e4f4e5245535f4576656e74436d64a003850101",
+		 "a108020129a503800108", "SOUTH_NONRES_EventCmd", mms::Data::Integer(1), std::optional<int64_t>(8)},
+		{"a03202012aa52da0263024a022a1201a074c564445524d531a15534f5554485f4e4f4e5245535f4576656e74436d64a003850102",
+		 "a10802012aa503800108", "SOUTH_NONRES_EventCmd", mms::Data::Integer(2), std::optional<int64_t>(8)},
+		{"a039" "02012b" "a534a0293027a025a1231a074c564445524d531a18534f5554485f4e4f4e5245535f4578704c696d6974506374a00787050841a00000",
+		 "a10702012ba5028100", "SOUTH_NONRES_ExpLimitPct", mms::Data::Float32(20.0f), std::nullopt},
+		//the same command accepted: 2, and then 8 (a status with more than two states)
+		{"a03202012ca52da0263024a022a1201a074c564445524d531a15534f5554485f4e4f4e5245535f4576656e74436d64a003850102",
+		 "a10702012ca5028100", "SOUTH_NONRES_EventCmd", mms::Data::Integer(2), std::nullopt},
+		{"a03202012da52da0263024a022a1201a074c564445524d531a15534f5554485f4e4f4e5245535f4576656e74436d64a003850108",
+		 "a10702012da5028100", "SOUTH_NONRES_EventCmd", mms::Data::Integer(8), std::nullopt},
+	};
+	for(const auto& e : exchanges)
+	{
+		INFO(e.item);
+		const mms::Bytes reqBytes = hex(e.request);
+		const mms::Bytes ansBytes = hex(e.answer);
+
+		const mms::Pdu req = mms::Decode(reqBytes);
+		REQUIRE(std::holds_alternative<mms::ConfirmedRequest>(req));
+		CHECK(mms::Encode(req) == reqBytes); //nothing is lost or reordered
+		const auto& cr = std::get<mms::ConfirmedRequest>(req);
+		const auto* write = std::get_if<mms::WriteRequest>(&cr.service);
+		REQUIRE(write != nullptr);
+		const auto* list = std::get_if<mms::ListOfVariable>(&write->specification);
+		REQUIRE(list != nullptr);
+		REQUIRE(list->size() == 1);
+		CHECK((*list)[0].name.domainId == "LVDERMS");
+		CHECK((*list)[0].name.itemId == e.item);
+		REQUIRE(write->data.size() == 1);
+		CHECK(write->data[0] == e.value);
+
+		const mms::Pdu ans = mms::Decode(ansBytes);
+		REQUIRE(std::holds_alternative<mms::ConfirmedResponse>(ans));
+		CHECK(mms::Encode(ans) == ansBytes);
+		const auto& resp = std::get<mms::ConfirmedResponse>(ans);
+		CHECK(resp.invokeId == cr.invokeId);
+		const auto* wr = std::get_if<mms::WriteResponse>(&resp.service);
+		REQUIRE(wr != nullptr);
+		REQUIRE(wr->results.size() == 1);
+		CHECK(wr->results[0].success == !e.error.has_value());
+		if(e.error)
+			CHECK(wr->results[0].error == *e.error);
+	}
+
+	//the integers are plain 1 octet integers, which every integer device takes, and a float is what a setpoint device takes
+	for(const int64_t v : {int64_t(1), int64_t(2), int64_t(8)})
+	{
+		CHECK(mms::EncodeData(mms::Data::Integer(v)) == mms::Bytes({0x85, 0x01, static_cast<uint8_t>(v)}));
+		CHECK(tase2::ParseOperateData(ControlType::DiscreteSetpoint, mms::Data::Integer(v)).integer == v);
+		CHECK(tase2::ParseOperateData(ControlType::DiscreteCommand, mms::Data::Integer(v)).integer == v);
+	}
+	CHECK(mms::EncodeData(mms::Data::Float32(2000.0f)) == mms::Bytes({0x87, 0x05, 0x08, 0x44, 0xfa, 0x00, 0x00}));
+	CHECK(tase2::ParseOperateData(ControlType::RealSetpoint, mms::Data::Float32(20.0f)).real == Approx(20.0));
+}
+
 TEST_CASE(SUITE("the operate data is the bare value of the device's type; anything else is type-inconsistent"))
 {
 	//V: 100.0f as a peer writes it: FloatingPoint [7], exponent width 8, IEEE 754 single
@@ -1537,7 +1618,7 @@ TEST_CASE(SUITE("configuration: validation"))
 	bad(R"("BinaryControls": [{"Index": 0, "Name": "A"}, {"Index": 0, "Name": "B"}])", "duplicate Index 0 among the \"Serve\" BinaryControls");
 	bad(R"("BinaryControls": [{"Index": 0, "Name": "A"}, {"Index": 1, "Name": "A"}])", "duplicate control Name \"A\"");
 	bad(R"("BinaryControls": [{"Index": 0, "Name": "A", "Type": "RealSetpoint"}])", "does not suit BinaryControls (Command or DiscreteCommand)");
-	bad(R"("AnalogControls": [{"Index": 0, "Name": "A", "Type": "Command"}])", "does not suit AnalogControls (RealSetpoint or DiscreteSetpoint)");
+	bad(R"("AnalogControls": [{"Index": 0, "Name": "A", "Type": "Command"}])", "does not suit AnalogControls (RealSetpoint, DiscreteSetpoint or DiscreteCommand)");
 	bad(R"("AnalogControls": [{"Index": 0, "Name": "A", "Type": "Bogus"}])", "unknown control \"Type\" \"Bogus\"");
 	bad(R"("BinaryControls": [{"Index": 0, "Name": "A", "CommandValueOn": 1, "CommandValueOff": 1}])", "must differ");
 	bad(R"("BinaryControls": [{"Index": 0, "Name": "A", "ControlCodeOn": "NUL"}])", "\"ControlCodeOn\" must be an ODC control code");
@@ -1698,6 +1779,47 @@ TEST_CASE(SUITE("width 16, server side: an operate whose integer does not fit is
 
 	//a real setpoint is a 32 bit float: no integer width applies
 	CHECK(f.OperateRaw("DEV_SP_03", ControlType::RealSetpoint, 0, 1e10) == std::nullopt);
+}
+
+TEST_CASE(SUITE("multi-state commands: a DiscreteCommand in AnalogControls is an integer device, any value of the width goes downstream"))
+{
+	ICCPPortConf c;
+	REQUIRE(LoadProblems(R"({"ServiceRole": "Server", "LocalDomain": "D",
+		"BinaryControls": [{"Index": 0, "Name": "TWO_STATE", "Type": "DiscreteCommand"}],
+		"AnalogControls": [{"Index": 0, "Name": "MULTI_STATE", "Type": "DiscreteCommand"},
+			{"Index": 1, "Name": "MULTI_STATE_16", "Type": "DiscreteCommand", "AnalogOutputType": "Int16"}]})", true, &c).empty());
+	REQUIRE(c.controls.size() == 3);
+	CHECK(c.controls[0].kind == ControlKind::Binary); //still ON / OFF: two configured values
+	CHECK(c.controls[0].type == ControlType::DiscreteCommand);
+	CHECK(c.controls[1].kind == ControlKind::Analog);
+	CHECK(c.controls[1].type == ControlType::DiscreteSetpoint); //the same device on the wire: an integer of width 16
+	CHECK(c.controls[1].analogEvent == odc::EventType::AnalogOutputInt32);
+	CHECK(c.controls[2].analogEvent == odc::EventType::AnalogOutputInt16);
+
+	B5Fixture f(false, R"(, "AnalogControls": [{"Index": 0, "Name": "DEV_MS_01", "Type": "DiscreteCommand", "SelectRequired": false},
+		{"Index": 1, "Name": "DEV_MS_02", "Type": "DiscreteCommand", "AnalogOutputType": "Int16"}])");
+	f.StartClient();
+	//every state of a 4, 8 or 16 bit status: not only two values
+	for(int64_t v : {int64_t(0), int64_t(1), int64_t(2), int64_t(3), int64_t(4), int64_t(7), int64_t(15), int64_t(255), int64_t(-1), int64_t(32767), int64_t(65535)})
+	{
+		INFO(v);
+		CHECK(f.OperateRaw("DEV_MS_01", ControlType::DiscreteSetpoint, v) == std::nullopt);
+	}
+	REQUIRE(f.ops.size() == 11);
+	CHECK(f.ops[3].integer == 3);
+	CHECK(f.ops[3].value == Approx(3.0));
+	CHECK(f.ops[3].control->analogEvent == odc::EventType::AnalogOutputInt32);
+	CHECK(f.ops[10].integer == 65535);
+	//the width of the type still holds, and a float is not an integer command
+	CHECK(f.OperateRaw("DEV_MS_01", ControlType::DiscreteSetpoint, 65536) == std::optional<int64_t>(DA::ObjectAttributeInconsistent));
+	CHECK(f.WriteBare("DEV_MS_01", mms::Data::Float32(2.0f)).has_value());
+	CHECK(f.ops.size() == 11);
+	//select before operate, as for any device that needs it
+	CHECK(f.OperateRaw("DEV_MS_02", ControlType::DiscreteSetpoint, 5) == std::optional<int64_t>(DA::TemporarilyUnavailable));
+	CHECK(f.ReadSbo("DEV_MS_02").second == std::nullopt);
+	CHECK(f.OperateRaw("DEV_MS_02", ControlType::DiscreteSetpoint, 5) == std::nullopt);
+	CHECK(f.ops.back().integer == 5);
+	CHECK(f.ops.back().control->analogEvent == odc::EventType::AnalogOutputInt16);
 }
 
 TEST_CASE(SUITE("width 16, server side: a refused operate leaves a selected device selected, and the downstream conversion still applies after the width check"))

@@ -44,6 +44,7 @@
  *  directions; the raw flags octet stays available in PointValue.
  *
  *  Binary points: StateToBinary (On is true, everything else false), BinaryToState (true is On, false Off).
+ *  DoubleBinary points keep all four states (DoubleBitToState, StateToDoubleBit).
  */
 
 #ifndef ICCP_TASE2_QUALITY_H_
@@ -110,6 +111,36 @@ inline bool StateToBinary(StateValue s)
 inline StateValue BinaryToState(bool value)
 {
 	return value ? StateValue::On : StateValue::Off;
+}
+
+//ODC DoubleBitBinary {first, second} is the DNP3 double bit: 00 intermediate, 01 off, 10 on, 11 indeterminate; these are TASE.2's Between, Off, On and Invalid
+inline StateValue DoubleBitToState(bool first, bool second)
+{
+	return first ? (second ? StateValue::Invalid : StateValue::On) : (second ? StateValue::Off : StateValue::Between);
+}
+
+inline std::pair<bool, bool> StateToDoubleBit(StateValue s)
+{
+	switch(s)
+	{
+		case StateValue::Off: return {false, true};
+		case StateValue::On: return {true, false};
+		case StateValue::Invalid: return {true, true};
+		case StateValue::Between: break;
+	}
+	return {false, false};
+}
+
+inline const char* StateName(StateValue s)
+{
+	switch(s)
+	{
+		case StateValue::Between: return "Between";
+		case StateValue::Off: return "Off";
+		case StateValue::On: return "On";
+		case StateValue::Invalid: return "Invalid";
+	}
+	return "?";
 }
 
 } // namespace tase2

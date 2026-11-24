@@ -144,6 +144,12 @@ public:
 				case odc::EventType::Binary: r.value = event->GetPayload<odc::EventType::Binary>() ? 1 : 0; break;
 				case odc::EventType::Analog: r.value = event->GetPayload<odc::EventType::Analog>(); break;
 				case odc::EventType::Counter: r.value = event->GetPayload<odc::EventType::Counter>(); break;
+				case odc::EventType::DoubleBitBinary: //as the TASE.2 state: 0 Between, 1 Off, 2 On, 3 Invalid
+				{
+					const auto dbb = event->GetPayload<odc::EventType::DoubleBitBinary>();
+					r.value = (dbb.first ? 2 : 0) + (dbb.second ? 1 : 0);
+					break;
+				}
 				default: break;
 			}
 			events.push_back(r);
@@ -217,6 +223,7 @@ void Feed(ICCPPortBase& server, odc::EventType type, size_t index, double value,
 		case odc::EventType::Binary: event->SetPayload<odc::EventType::Binary>(value != 0); break;
 		case odc::EventType::Analog: event->SetPayload<odc::EventType::Analog>(double(value)); break;
 		case odc::EventType::Counter: event->SetPayload<odc::EventType::Counter>(uint32_t(value)); break;
+		case odc::EventType::DoubleBitBinary: event->SetPayload<odc::EventType::DoubleBitBinary>(odc::DBB((int(value) & 2) != 0, (int(value) & 1) != 0)); break; //value: the TASE.2 state, 0 to 3
 		default: break;
 	}
 	std::atomic_bool done{false};
@@ -1549,4 +1556,130 @@ TEST_CASE(SUITE("block 5: a command that arrives while the port is down is answe
 	CHECK(Wait(Issue(*h.a.port, Crob(0, odc::ControlCode::LATCH_ON))) == odc::CommandStatus::UNDEFINED);
 	h.a.port->Enable(); //enabled but the server is not there: no association
 	CHECK(Wait(Issue(*h.a.port, Crob(0, odc::ControlCode::LATCH_ON))) == odc::CommandStatus::UNDEFINED);
+}
+
+namespace
+{
+Json::Value ParseOverrides(const std::string& text)
+{
+	Json::Value v(Json::objectValue);
+	Json::CharReaderBuilder builder;
+	std::string errs;
+	std::istringstream in(text);
+	REQUIRE(Json::parseFromStream(builder, in, &v, &errs));
+	return v;
+}
+bool Online(odc::QualityFlags q)
+{
+	return (q & odc::QualityFlags::ONLINE) == odc::QualityFlags::ONLINE;
+}
+}
+
+TEST_CASE(SUITE("four state points: all four states of an ODC DoubleBitBinary reach the peer, in each State encoding"))
+{
+	const Json::Value both = ParseOverrides(R"({
+		"DoubleBinaries": [{"Index": 0, "Name": "POINT_0010_DB"},
+			{"Index": 1, "Name": "POINT_0011_DB", "Type": "StateQTimeTag"},
+			{"Index": 2, "Name": "POINT_0012_DB", "Type": "State"},
+			{"Index": 3, "Name": "POINT_0013_DB", "Type": "StateExtended"}]
+	})");
+	Json::Value clientOverrides = both;
+	clientOverrides["DataSets"] = ParseOverrides(R"({"DataSets": [
+		{"Name": "DS_TEST_001", "Members": ["POINT_0001_ST", "POINT_0010_DB", "POINT_0011_DB", "POINT_0012_DB", "POINT_0013_DB"]},
+		{"Name": "DS_TEST_002", "Members": ["POINT_0003_CNT"], "PollIntervalms": 300}]})")["DataSets"];
+	Harness h(20620, "BT_TEST_A", DefaultTransferSet, "1996-08", clientOverrides, both);
+	REQUIRE(h.server->ConfigValid());
+	REQUIRE(h.client->ConfigValid());
+	h.server->Enable();
+	constexpr odc::msSinceEpoch_t T = 1700000000000;
+	enum
+	{
+		Between = 0, Off = 1, On = 2, Invalid = 3
+	};
+	//every point has a different state to begin with, so a mix-up of the bits would show
+	const int first[4] = {On, Off, Between, Invalid};
+	for(size_t i = 0; i < 4; ++i)
+		Feed(*h.server, odc::EventType::DoubleBitBinary, i, first[i], T);
+	h.client->Enable();
+	REQUIRE(WaitFor([&] { return h.recorder.Count(odc::ConnectState::CONNECTED) == 1; }));
+	for(size_t i = 0; i < 4; ++i)
+		REQUIRE(WaitFor([&] { return h.recorder.LastIs(odc::EventType::DoubleBitBinary, i, first[i]); }));
+
+	//the quality that goes with the state
+	CHECK(Online(h.recorder.Last(odc::EventType::DoubleBitBinary, 0)->quality));                                                           //On
+	CHECK(Online(h.recorder.Last(odc::EventType::DoubleBitBinary, 1)->quality));                                                           //Off
+	CHECK(h.recorder.Last(odc::EventType::DoubleBitBinary, 2)->quality == (odc::QualityFlags::ONLINE | odc::QualityFlags::DISCONTINUITY)); //Between
+	CHECK_FALSE(Online(h.recorder.Last(odc::EventType::DoubleBitBinary, 3)->quality));                                                     //Invalid is not valid data
+
+	//every change of state, through every state, arrives as the same state
+	for(int state : {Invalid, Between, On, Off, On})
+	{
+		CAPTURE(state);
+		for(size_t i = 0; i < 4; ++i)
+			Feed(*h.server, odc::EventType::DoubleBitBinary, i, state, T + 1000 * (state + 1));
+		for(size_t i = 0; i < 4; ++i)
+			REQUIRE(WaitFor([&] { return h.recorder.LastIs(odc::EventType::DoubleBitBinary, i, state); }));
+	}
+	//the time stamp of a type that has one
+	CHECK(h.recorder.Last(odc::EventType::DoubleBitBinary, 1)->timestamp == T + 1000 * (On + 1));
+
+	//the state and the name of the points in the server's current state
+	const Json::Value cs = h.server->GetCurrentState();
+	const Json::Value& section = cs[cs.getMemberNames().front()];
+	REQUIRE(section["DoubleBinaries"].size() == 4);
+	CHECK(section["DoubleBinaries"][0]["Value"].asString() == "On");
+	CHECK(section["DoubleBinaries"][0]["Name"].asString() == "POINT_0010_DB");
+}
+
+TEST_CASE(SUITE("32 bit discrete: the extremes arrive exactly, a value that does not fit is served as not valid and never clamped"))
+{
+	const Json::Value serverOverrides = ParseOverrides(R"({
+		"Analogs": [{"Index": 0, "Name": "POINT_0001_MW"}, {"Index": 1, "Name": "POINT_0002_MW", "Type": "RealQTimeTag"},
+			{"Index": 2, "Name": "POINT_0004_DISC", "Type": "DiscreteQTimeTag"}, {"Index": 3, "Name": "POINT_0005_NEG", "Type": "DiscreteQTimeTag"}]
+	})");
+	Json::Value clientOverrides = ParseOverrides(R"({
+		"Analogs": [{"Index": 0, "Name": "POINT_0001_MW", "ScaleFactor": 0.5, "Offset": 10}, {"Index": 1, "Name": "POINT_0002_MW", "Type": "RealQTimeTag"},
+			{"Index": 2, "Name": "POINT_0004_DISC", "Type": "DiscreteQTimeTag"}],
+		"Counters": [{"Index": 0, "Name": "POINT_0003_CNT"}, {"Index": 1, "Name": "POINT_0005_NEG", "Type": "DiscreteQTimeTag"}],
+		"DataSets": [{"Name": "DS_TEST_001", "Members": ["POINT_0001_ST", "POINT_0004_DISC", "POINT_0005_NEG"]},
+			{"Name": "DS_TEST_002", "Members": ["POINT_0003_CNT"], "PollIntervalms": 300}]
+	})");
+	Harness h(20621, "BT_TEST_A", DefaultTransferSet, "1996-08", clientOverrides, serverOverrides);
+	REQUIRE(h.server->ConfigValid());
+	REQUIRE(h.client->ConfigValid());
+	h.server->Enable();
+	constexpr odc::msSinceEpoch_t T = 1700000000000;
+	Feed(*h.server, odc::EventType::Analog, 2, 2147483647.0, T);
+	Feed(*h.server, odc::EventType::Analog, 3, 0, T);
+	h.client->Enable();
+	REQUIRE(WaitFor([&] { return h.recorder.Count(odc::ConnectState::CONNECTED) == 1; }));
+	REQUIRE(WaitFor([&] { return h.recorder.LastIs(odc::EventType::Analog, 2, 2147483647.0); }));
+	CHECK(Online(h.recorder.Last(odc::EventType::Analog, 2)->quality));
+
+	Feed(*h.server, odc::EventType::Analog, 2, -2147483648.0, T + 1000);
+	REQUIRE(WaitFor([&] { return h.recorder.LastIs(odc::EventType::Analog, 2, -2147483648.0); }));
+	CHECK(Online(h.recorder.Last(odc::EventType::Analog, 2)->quality));
+
+	//one more than an int32 holds: not clamped to the maximum, not valid (the value cannot be trusted)
+	Feed(*h.server, odc::EventType::Analog, 2, 2147483648.0, T + 2000);
+	REQUIRE(WaitFor([&] { const auto r = h.recorder.Last(odc::EventType::Analog, 2); return r && !Online(r->quality); }));
+	CHECK(h.recorder.Last(odc::EventType::Analog, 2)->value != 2147483647.0);
+	Feed(*h.server, odc::EventType::Analog, 2, -3000000000.0, T + 3000);
+	REQUIRE(WaitFor([&] { const auto r = h.recorder.Last(odc::EventType::Analog, 2); return r && r->timestamp == T + 3000; }));
+	CHECK_FALSE(Online(h.recorder.Last(odc::EventType::Analog, 2)->quality));
+
+	//a value of the ODC Counter (an unsigned 32 bit number) above 2^31 - 1 is the same: not valid, not clamped
+	Feed(*h.server, odc::EventType::Counter, 0, 4000000000.0, T + 4000);
+	REQUIRE(WaitFor([&] { const auto r = h.recorder.Last(odc::EventType::Counter, 0); return r && !Online(r->quality); }));
+	CHECK(h.recorder.Last(odc::EventType::Counter, 0)->value != 2147483647.0);
+	Feed(*h.server, odc::EventType::Counter, 0, 2147483647.0, T + 5000);
+	REQUIRE(WaitFor([&] { return h.recorder.LastIs(odc::EventType::Counter, 0, 2147483647.0); }));
+	CHECK(Online(h.recorder.Last(odc::EventType::Counter, 0)->quality));
+
+	//a negative discrete value read as an ODC Counter (an unsigned point) is flagged OVERRANGE, not silently turned into 0
+	Feed(*h.server, odc::EventType::Analog, 3, -5, T + 6000);
+	REQUIRE(WaitFor([&] { const auto r = h.recorder.Last(odc::EventType::Counter, 1); return r && r->timestamp == T + 6000; }));
+	const auto neg = h.recorder.Last(odc::EventType::Counter, 1);
+	CHECK(neg->value == 0);
+	CHECK((neg->quality & odc::QualityFlags::OVERRANGE) == odc::QualityFlags::OVERRANGE);
 }

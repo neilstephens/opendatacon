@@ -209,7 +209,8 @@ std::vector<PointState> ResponderModel::StatesSnapshot() const
 	return states;
 }
 
-std::optional<size_t> ResponderModel::Update(PointKind kind, size_t index, bool binary, double analog, uint32_t counter, odc::QualityFlags quality, odc::msSinceEpoch_t timestamp)
+std::optional<size_t> ResponderModel::Update(PointKind kind, size_t index, bool binary, double analog, uint32_t counter, odc::QualityFlags quality, odc::msSinceEpoch_t timestamp,
+	StateValue state)
 {
 	if(!servePoints)
 		return std::nullopt;
@@ -233,6 +234,11 @@ std::optional<size_t> ResponderModel::Update(PointKind kind, size_t index, bool 
 			changed = changed || s.counter != counter;
 			s.counter = counter;
 			break;
+		case PointKind::DoubleBinary:
+			changed = changed || s.state != state;
+			s.state = state;
+			s.binary = state == StateValue::On;
+			break;
 	}
 	if(changed && s.known)
 		++s.cov;
@@ -242,6 +248,20 @@ std::optional<size_t> ResponderModel::Update(PointKind kind, size_t index, bool 
 	if(!changed)
 		return std::nullopt;
 	return it->second;
+}
+
+std::string ResponderModel::Unrepresentable(PointKind kind, size_t index, double analog, uint32_t counter) const
+{
+	if(!servePoints)
+		return std::string();
+	const auto it = byKindIndex.find({static_cast<int>(kind), index});
+	if(it == byKindIndex.end())
+		return std::string();
+	const IccpPointConf& pt = conf.points[it->second];
+	if(!IsDiscreteType(pt.type) || ScaledDiscrete(pt, analog, counter))
+		return std::string();
+	const double v = kind == PointKind::Counter ? static_cast<double>(counter) : analog;
+	return "the value " + std::to_string(v) + " of point " + pt.name + " is not an integer of width 32 (-2147483648 to 2147483647) after the scaling";
 }
 
 std::optional<size_t> ResponderModel::FindPoint(const mms::ObjectName& name) const

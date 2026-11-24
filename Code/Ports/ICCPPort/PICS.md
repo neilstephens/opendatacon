@@ -331,7 +331,7 @@ The objects at the head of a report are configured per transfer set (`SpecialObj
 ### Data value types (point types)
 
 The point type is taken from the configuration (`Type`), never inferred, because `{integer, flags}` is ambiguous between several types (quirk 19).
-Time tags are whole seconds; milliseconds are carried only by the `Extended` types (quirk 22). Defaults: Binaries `StateQ`, Analogs `RealQ`, Counters `DiscreteQ`.
+Time tags are whole seconds; milliseconds are carried only by the `Extended` types (quirk 22). Defaults: Binaries and DoubleBinaries `StateQ`, Analogs `RealQ`, Counters `DiscreteQ`.
 
 | Object type | Layout on the wire | Supported | Basis |
 |-------------|--------------------|-----------|-------|
@@ -343,7 +343,7 @@ Time tags are whole seconds; milliseconds are carried only by the `Extended` typ
 | Data_StateQ | bit string (8): state and flags in one octet | Yes | V |
 | Data_StateQTimeTag | structure { TimeStamp, StateQ } | Yes | S |
 | Data_StateExtended | structure { TimeStampExtended, StateQ, COV } | Yes | S |
-| Data_Discrete | integer | Yes | S |
+| Data_Discrete | integer, width 32 (signed, never clamped: a value that does not fit is served not valid, quirk 71) | Yes | T (802 clause 6.2.1) / S (the octets) |
 | Data_DiscreteQ | structure { integer, Data_Flags } | Yes | S |
 | Data_DiscreteQTimeTag | structure { TimeStamp, integer, Data_Flags } | Yes | S |
 | Data_DiscreteExtended | structure { TimeStampExtended, integer, Data_Flags, COV } | Yes | S |
@@ -353,7 +353,8 @@ Time tags are whole seconds; milliseconds are carried only by the `Extended` typ
 | COV | integer counter of value changes | Yes | S |
 
 Analog values are written as MMS floating point in the 32 bit form `[V]` (the 64 bit form is also decoded). Tests: `Tase2Test` ("Point values: every type encodes, decodes and is recognised"), `BlockedTransferTest` (the blocked octets of every type, which are `[V]` for `RealQ` and `StateQ` only).
-Mapping to ODC: State types to Binary events (On is true), Real and Discrete types to Analog or Counter events. The quality mapping to ODC `QualityFlags` is lossy in both directions and the raw flags octet is kept (quirk 20; [Points, data sets and quality](README.md#points-data-sets-and-quality)).
+Mapping to ODC: State types to Binary events (On is true) or, for `DoubleBinaries` points, to DoubleBitBinary events (all four states, quirk 71); Real and Discrete types to Analog or Counter events. The quality mapping to ODC `QualityFlags` is lossy in both directions and the raw flags octet is kept (quirk 20; [Points, data sets and quality](README.md#points-data-sets-and-quality)).
+Not supported: `Data_StateSupplemental` and its derived types (a State with a tag and an expected state in one octet), and the `...QTimeTagExtended` types (802:2014 clause 6.2.1); the `Extended` types are this port's reading `[S]` and differ from 802:2014 (README, known limitations).
 Not mapped: normal-value (abnormal) and time stamp quality flags.
 
 ### Association objects
@@ -369,7 +370,7 @@ Not mapped: normal-value (abnormal) and time stamp quality flags.
 | DSTransferSet | ICC | Yes | 12 members (1996-08) or 13 members (2000-08, with `AllChangesReported`); both accepted, the form written follows the peer's edition (`DSTransferSetStatusMember`) |
 | Device `D`, `D_SBO` | ICC or VCC | Yes | Block 5, A.12 |
 | `D_TAG` (Tag_Value) | same as `D` | Yes | Structure { Flags (bit string of 3), Reason (visible string of at most 255) }. The bit order of the tag value is an assumption `[S]` (quirk 60) |
-| Device command types | - | Yes | `Command`, `DiscreteCommand` (an integer of width 16, two configured values), `RealSetpoint` (a 32 bit float), `DiscreteSetpoint` (an integer of width 16). Quirks 39, 54 |
+| Device command types | - | Yes | `Command`, `DiscreteCommand` (an integer of width 16, two configured values; in `AnalogControls`, a multi-state command: any integer of the width), `RealSetpoint` (a 32 bit float), `DiscreteSetpoint` (an integer of width 16). The width 16 is the standard's (802 clause 6.2.2). Quirks 39, 54 |
 | Block_Data (blocked report variable) | VMD-specific | Yes | `[V]`; the id is `BlockedDataName` (default `Block_Data`) |
 | Information Message, TS and TA objects, accounts, programs, events | - | No | Not implemented |
 

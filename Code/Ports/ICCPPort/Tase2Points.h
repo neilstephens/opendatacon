@@ -29,6 +29,10 @@
  *  invalid states read as false with the quality of the flags (invalid also marks the value not valid).
  *  Time tags: seconds (and milliseconds for the extended types) since 1970; points without a time tag are stamped
  *  with the receive time. FromPointValue is FromData for a value that was already read (the blocked form of a report, Tase2Blocked.h).
+ *
+ *  Binary points collapse the state to a bool; DoubleBinary points keep Between, Off, On and Invalid. A Discrete value is a signed integer of width 32: a value that
+ *  does not fit (after scaling) is never clamped: it is served NotValid (ScaledDiscrete), and a received negative value of a Counter point is published as 0 with
+ *  the quality OVERRANGE.
  */
 
 #ifndef ICCP_TASE2_POINTS_H_
@@ -37,6 +41,7 @@
 #include "ICCPPortConf.h"
 #include "Tase2Quality.h"
 #include <opendatacon/IOTypes.h>
+#include <optional>
 
 namespace iccp
 {
@@ -48,12 +53,17 @@ struct PointState
 {
 	bool known = false;
 	bool binary = false;
+	StateValue state = StateValue::Between; //State types: all four states (DoubleBinary points); `binary` follows it (On is true)
 	double analog = 0;
 	uint32_t counter = 0;
 	odc::QualityFlags quality = odc::QualityFlags::NONE;
 	odc::msSinceEpoch_t timestamp = 0;
 	uint32_t cov = 0; //count of value changes, for the extended types
 };
+
+//The Discrete value (an integer of width 32, IEC 60870-6-802 clause 6.2.1: signed) for an ODC value of a point, after the scaling and the rounding to the nearest integer.
+//nullopt if the value is not finite or does not fit -2147483648 to 2147483647: it is never clamped. `counter` is used for a Counter point, `analog` for the others.
+std::optional<int64_t> ScaledDiscrete(const IccpPointConf& point, double analog, uint32_t counter);
 
 //The TASE.2 point value for a point's state. A point that is not known yet is sent as not valid.
 PointValue ToPointValue(const IccpPointConf& point, const PointState& state, odc::msSinceEpoch_t now);
