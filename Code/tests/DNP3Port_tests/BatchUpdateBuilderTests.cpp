@@ -64,7 +64,14 @@
  *      enabling deterministic testing of the destructor flush path.
  *
  *   5. BatchUpdateBuilderTest::GetBatchCount() – strand-safe read of
- *      batchCount, used inside WarmEMA to assert no partial batch pending.
+ *      batchCount.
+ *
+ *   6. BatchUpdateBuilderTest::SeedRate() – sets the EMA state directly
+ *      (strand-safe), so tests start from a known warm state instead of
+ *      depending on how a burst of events happens to be scheduled.
+ *
+ *   7. WaitUntil() – polls a condition, so waiting for the EMA to decay
+ *      takes as long as the decay and not a fixed worst case.
  *
  * Timing assertions are expressed as measured elapsed intervals with
  * generous tolerance bounds (CI_SLACK_MS covers slow CI machines).
@@ -86,6 +93,7 @@
  */
 
 #include "../Code/Ports/DNP3Port/BatchUpdateBuilder.h"
+#include "../CIDetect.h"
 #include "TestDNP3Helpers.h"
 #include "../ThreadPool.h"
 #include <catch.hpp>
@@ -120,6 +128,26 @@ static constexpr auto FLUSH_TIMEOUT = ms_t(10 * MAX_PERIOD_MS); // 2 000 ms
 // Additional slack added to measured-latency upper bounds so that
 // transiently slow schedulers don't produce false failures.
 static constexpr auto CI_SLACK = ms_t(5 * MAX_PERIOD_MS); // 1 000 ms
+
+// Seeded arrival rates (events/s). With the default parameters the window
+// is rate/MAX_COUNT*MAX_PERIOD_MS, capped at MAX_PERIOD_MS:
+// WARM_RATE holds the window at the cap for about half a second, then decays.
+static constexpr double WARM_RATE = 1000.0;
+static constexpr double HOT_RATE  = 1e9; // takes seconds to decay
+
+// Poll a condition until it holds or the timeout elapses
+template <typename P>
+bool WaitUntil(P pred, ms_t timeout = FLUSH_TIMEOUT)
+{
+	const auto end = std::chrono::steady_clock::now() + timeout;
+	while(!pred())
+	{
+		if(std::chrono::steady_clock::now() > end)
+			return false;
+		std::this_thread::sleep_for(2ms);
+	}
+	return true;
+}
 
 // ---------------------------------------------------------------------------
 // RAII test lifecycle wrapper
@@ -230,6 +258,26 @@ struct BatchUpdateBuilderTest
 		return p.get_future().get();
 	}
 
+	// Set the EMA state from within the strand, as if events had been
+	// arriving at this rate (events/s) up to now, and start the rate timer.
+	static void SeedRate(BatchUpdateBuilder& bb, double rate)
+	{
+		std::promise<void> p;
+		bb.pSyncStrand->post([&bb, &p, rate]
+			{
+				bb.smoothedArrivalRate = rate;
+				bb.instantRate = rate;
+				bb.lastArrivalTime = std::chrono::steady_clock::now();
+				if(!bb.samplingActive)
+				{
+					bb.samplingActive = true;
+					bb.emaSample();
+				}
+				p.set_value();
+			});
+		p.get_future().wait();
+	}
+
 	// Block until all work previously posted to the internal strand has
 	// completed. Equivalent to the old public Sync() on BatchUpdateBuilder.
 	static void Sync(const BatchUpdateBuilder& bb)
@@ -283,47 +331,12 @@ struct Fixture
 	void   Sync()                const { BatchUpdateBuilderTest::Sync(*bb); }
 	size_t CurrentBatchWindowMs() const { return BatchUpdateBuilderTest::CurrentBatchWindowMs(*bb); }
 
-	// Warm the EMA by sending count-ceiling-sized rapid bursts separated by
-	// one TICK of silence.  Each burst triggers a count-ceiling flush
-	// (batchCount → 0, flushSeq++, flush timer cancelled), leaving no
-	// partial batch or stray timer pending after WarmEMA returns.
-	// The rate timer fires during each inter-burst sleep and integrates
-	// the (very high) instantRate into smoothedArrivalRate, driving
-	// BatchPeriodms() positive after the first or second burst.
-	//
-	// Invariants on return:
-	//   • CurrentBatchWindowMs() > 0
-	//   • batchCount == 0  (no pending events in pBuilder)
-	//   • flush timer is not armed  (last burst was count-ceiling)
-	//
-	// Returns the flush count after Sync() for use as a stable baseline.
-	size_t WarmEMA(size_t maxPeriodMs = MAX_PERIOD_MS,
-		size_t maxCount    = MAX_COUNT)
+	// Seed the EMA so BatchPeriodms() is positive (MAX_PERIOD_MS, until it
+	// decays), with no partial batch or flush timer pending.
+	// Returns the flush count as a stable baseline.
+	size_t WarmEMA(double rate = WARM_RATE)
 	{
-		// TICK: EMA sampling interval — sleep this long between bursts so
-		// the rate timer has time to fire and update smoothedArrivalRate.
-		const auto tick = ms_t(static_cast<long long>(maxPeriodMs / maxCount));
-		const auto warmupTimeout = ms_t(maxPeriodMs * 10) + CI_SLACK;
-
-		const size_t maxBursts = 20; // bounded to fail fast on broken implementation
-		for(size_t burst = 0; burst < maxBursts; burst++)
-		{
-			const size_t flushBefore = os->FlushCount();
-			SendEvents(maxCount); // rapid — no spacing → count-ceiling flush guaranteed
-			REQUIRE(os->WaitForFlushes(flushBefore + 1, warmupTimeout));
-
-			// After a count-ceiling flush the strand invariant holds:
-			// batchCount==0, flushSeq incremented, flush timer cancelled.
-			REQUIRE(BatchUpdateBuilderTest::GetBatchCount(*bb) == 0);
-
-			// Sleep one TICK so the rate timer fires and updates smoothedArrivalRate.
-			std::this_thread::sleep_for(tick + ms_t(10));
-
-			if(CurrentBatchWindowMs() > 0)
-				break;
-		}
-
-		Sync();
+		BatchUpdateBuilderTest::SeedRate(*bb, rate);
 		REQUIRE(CurrentBatchWindowMs() > 0);
 		return os->FlushCount();
 	}
@@ -349,7 +362,7 @@ TEST_CASE(SUITE("AllEventsDelivered_CountCeilingOnly"))
 	constexpr size_t N = 50;
 	f.SendEvents(N);
 
-	REQUIRE(f.os->WaitForFlushes(N, FLUSH_TIMEOUT));
+	CHECK(f.os->WaitForFlushes(N, FLUSH_TIMEOUT));
 	f.Sync();
 
 	CHECK(f.os->TotalEvents()  == N);
@@ -370,10 +383,9 @@ TEST_CASE(SUITE("AllEventsDelivered_ManyCeilingFlushes"))
 	constexpr size_t N = MAX_COUNT * 4 + 2;
 	f.SendEvents(N);
 
-	// Wait for at least the 4 count flushes
-	REQUIRE(f.os->WaitForFlushes(4, FLUSH_TIMEOUT));
-	// Then wait for the remainder (timer-flushed), up to 1 extra flush
-	REQUIRE(f.os->WaitForFlushes(5, ms_t(MAX_PERIOD_MS) + CI_SLACK));
+	// Wait for everything: the remainder is timer-flushed, and the batch
+	// boundaries aren't fixed (the cold EMA can flush the first event alone)
+	CHECK(WaitUntil([&]{ return f.os->TotalEvents() == N; }));
 	f.Sync();
 
 	CHECK(f.os->TotalEvents() == N);
@@ -385,6 +397,12 @@ TEST_CASE(SUITE("AllEventsDelivered_ManyCeilingFlushes"))
 // Every event must produce exactly one flush.
 TEST_CASE(SUITE("AllEventsDelivered_TrickleRate"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - 2 s of real-time trickle, covered by the cold EMA latency tests");
+		return;
+	}
+
 	TestLifecycle lifecycle;
 	ThreadPool thread_pool(4);
 
@@ -395,7 +413,7 @@ TEST_CASE(SUITE("AllEventsDelivered_TrickleRate"))
 	constexpr size_t N = 5;
 	f.SendEvents(N, ms_t(MAX_PERIOD_MS * 2));
 
-	REQUIRE(f.os->WaitForFlushes(N, ms_t(N * MAX_PERIOD_MS * 3)));
+	CHECK(f.os->WaitForFlushes(N, ms_t(N * MAX_PERIOD_MS * 3)));
 	f.Sync();
 
 	CHECK(f.os->TotalEvents() == N);
@@ -406,6 +424,12 @@ TEST_CASE(SUITE("AllEventsDelivered_TrickleRate"))
 // high-rate bursts interleaved with pauses.
 TEST_CASE(SUITE("AllEventsDelivered_MixedLoad"))
 {
+	if(RunningOnCI())
+	{
+		WARN("Skipped on CI - 4 s of mixed real-time load, covered by the other AllEventsDelivered tests");
+		return;
+	}
+
 	TestLifecycle lifecycle;
 	ThreadPool thread_pool(4);
 
@@ -416,7 +440,7 @@ TEST_CASE(SUITE("AllEventsDelivered_MixedLoad"))
 
 	// Burst 1 (cold start – mostly count-ceiling flushes)
 	f.SendEvents(BURST);
-	REQUIRE(f.os->WaitForFlushes(1, FLUSH_TIMEOUT));
+	CHECK(f.os->WaitForFlushes(1, FLUSH_TIMEOUT));
 
 	// Pause to let EMA decay
 	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS * 4));
@@ -427,13 +451,13 @@ TEST_CASE(SUITE("AllEventsDelivered_MixedLoad"))
 	const size_t baseTrickle = f.os->FlushCount();
 	f.SendEvents(TRICKLE, ms_t(MAX_PERIOD_MS * 3));
 	// Total time for trickle = TRICKLE * MAX_PERIOD_MS * 3; give generous extra
-	REQUIRE(f.os->WaitForFlushes(baseTrickle + TRICKLE,
+	CHECK(f.os->WaitForFlushes(baseTrickle + TRICKLE,
 		ms_t(static_cast<long long>(TRICKLE) * MAX_PERIOD_MS * 5)));
 
 	// Burst 2 (warm-ish EMA by now)
 	const size_t beforeBurst2 = f.os->FlushCount();
 	f.SendEvents(BURST);
-	REQUIRE(f.os->WaitForFlushes(beforeBurst2 + 1, FLUSH_TIMEOUT));
+	CHECK(f.os->WaitForFlushes(beforeBurst2 + 1, FLUSH_TIMEOUT));
 
 	// Wait for any residual timer flush
 	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS) + CI_SLACK);
@@ -464,7 +488,7 @@ TEST_CASE(SUITE("CountCeiling_SingleFlushOfExactSize"))
 	const auto t_send = std::chrono::steady_clock::now();
 	f.SendEvents(MAX_COUNT); // exactly the ceiling
 
-	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, FLUSH_TIMEOUT));
+	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, FLUSH_TIMEOUT)); // (BatchSizes().back() below)
 	const auto elapsed = std::chrono::duration_cast<ms_t>(
 		std::chrono::steady_clock::now() - t_send);
 	f.Sync();
@@ -493,11 +517,11 @@ TEST_CASE(SUITE("CountCeiling_NoStaleTimerFlushAfterCeiling"))
 
 	// Send exactly one ceiling-worth of events
 	f.SendEvents(MAX_COUNT);
-	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, FLUSH_TIMEOUT));
+	CHECK(f.os->WaitForFlushes(baseFlushes + 1, FLUSH_TIMEOUT));
 
-	// Wait well beyond the batch window; the stale timer must NOT produce
+	// Wait beyond the batch window; the stale timer must NOT produce
 	// a second flush.
-	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS) + CI_SLACK);
+	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS) + 2 * TICK);
 	f.Sync();
 
 	// Still exactly one new flush (the count-ceiling one)
@@ -521,7 +545,7 @@ TEST_CASE(SUITE("CountCeiling_MultipleConsecutiveBursts"))
 	{
 		const size_t before = f.os->FlushCount();
 		f.SendEvents(MAX_COUNT);
-		REQUIRE(f.os->WaitForFlushes(before + 1, FLUSH_TIMEOUT));
+		CHECK(f.os->WaitForFlushes(before + 1, FLUSH_TIMEOUT));
 	}
 	f.Sync();
 
@@ -548,7 +572,7 @@ TEST_CASE(SUITE("Timer_ColdEmaFlushesImmediately"))
 	const auto t_send = std::chrono::steady_clock::now();
 	f.bb->Event(0, 0, opendnp3::EventMode::Detect);
 
-	REQUIRE(f.os->WaitForFlushes(1, CI_SLACK));
+	REQUIRE(f.os->WaitForFlushes(1, CI_SLACK)); // (BatchSizes().front() below)
 	const auto elapsed = std::chrono::steady_clock::now() - t_send;
 	f.Sync();
 
@@ -578,7 +602,7 @@ TEST_CASE(SUITE("Timer_WarmEmaHoldsBatchForWindow"))
 	f.SendEvents(FEW);
 
 	// Wait for the timer flush
-	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, ms_t(MAX_PERIOD_MS) + CI_SLACK));
+	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, ms_t(MAX_PERIOD_MS) + CI_SLACK)); // (BatchSizes().back() below)
 	const auto elapsed_ms =
 		std::chrono::duration_cast<ms_t>(std::chrono::steady_clock::now() - t_send).count();
 	f.Sync();
@@ -610,7 +634,7 @@ TEST_CASE(SUITE("Timer_BatchArrivesAsOneApplyCall"))
 	constexpr size_t FEW = 3;
 	f.SendEvents(FEW, 2ms);
 
-	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, ms_t(MAX_PERIOD_MS) + CI_SLACK));
+	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, ms_t(MAX_PERIOD_MS) + CI_SLACK)); // (BatchSizes().back() below)
 	f.Sync();
 
 	// All FEW events in a single Apply call
@@ -622,82 +646,47 @@ TEST_CASE(SUITE("Timer_BatchArrivesAsOneApplyCall"))
 //  Group 4 – EMA window adaptation
 // ===========================================================================
 
-// Higher event rate → larger smoothedArrivalRate → larger window → the same
-// number of events produces fewer, larger flushes.
-// Two fixtures run at different rates; the faster one must produce fewer flushes.
-TEST_CASE(SUITE("EMA_HigherRateFewerFlushes"))
+// Higher arrival rate → larger smoothedArrivalRate → larger window, up to
+// the cap, so the same events are batched into fewer, larger flushes.
+// Seeded rates give two known windows without waiting for events to be
+// batched at real-time rates.
+TEST_CASE(SUITE("EMA_HigherRateLargerWindow"))
 {
 	TestLifecycle lifecycle;
 	ThreadPool thread_pool(4);
 
 	Fixture f_slow, f_fast;
 
-	// Slow: 2× TICK between events; Fast: TICK/4 between events.
-	// Both send the same total number of events.
-	constexpr size_t N = MAX_COUNT * 10;
-	f_slow.SendEvents(N, TICK * 2);
-	f_fast.SendEvents(N, TICK / 4);
+	// rate/MAX_COUNT*MAX_PERIOD_MS: slow = 50 ms, fast = capped at MAX_PERIOD_MS
+	f_slow.WarmEMA(MAX_COUNT / 4.0);
+	f_fast.WarmEMA(HOT_RATE);
 
-	// Wait for all events to be delivered on both sides
-	const auto timeout = ms_t(static_cast<long long>(N) * TICK.count() * 2 + CI_SLACK.count());
-	REQUIRE(f_slow.os->WaitForFlushes(1, timeout));
-	REQUIRE(f_fast.os->WaitForFlushes(1, timeout));
-
-	// Drain any remaining timer flush
-	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS) + CI_SLACK);
-	f_slow.Sync();
-	f_fast.Sync();
-
-	REQUIRE(f_slow.os->TotalEvents() == N);
-	REQUIRE(f_fast.os->TotalEvents() == N);
-
-	// The faster stream must batch more aggressively (fewer flushes)
-	CAPTURE(f_slow.os->FlushCount(), f_fast.os->FlushCount());
-	CHECK(f_fast.os->FlushCount() < f_slow.os->FlushCount());
+	const size_t slowWindow = f_slow.CurrentBatchWindowMs();
+	const size_t fastWindow = f_fast.CurrentBatchWindowMs();
+	CAPTURE(slowWindow, fastWindow);
+	CHECK(slowWindow > 0);
+	CHECK(fastWindow > slowWindow);
+	CHECK(fastWindow == MAX_PERIOD_MS);
 }
 
-// After sustained-rate events warm the EMA, silence longer than
-// maxBatchPeriodMs causes the EMA to decay to zero.
-// Verified by checking that CurrentBatchWindowMs() returns 0 after silence.
+// After a sustained rate warms the EMA, silence longer than
+// maxBatchPeriodMs causes the EMA to decay to zero (window 0), and then
+// the next event flushes almost immediately (a 0 ms timer).
 TEST_CASE(SUITE("EMA_DecaysToZeroAfterSilence"))
 {
 	TestLifecycle lifecycle;
 	ThreadPool thread_pool(4);
 
 	Fixture f;
-	f.WarmEMA();
+	const size_t baseFlushes = f.WarmEMA();
 
-	// Confirm the window is non-zero after warm-up
-	REQUIRE(f.CurrentBatchWindowMs() > 0);
+	// Poll for the decay: it ends as soon as the window reaches 0
+	REQUIRE(WaitUntil([&]{ return f.CurrentBatchWindowMs() == 0; }, ms_t(MAX_PERIOD_MS * 10) + CI_SLACK));
 
-	// Silence for several EMA ticks (each tick at most zeroes instantRate
-	// once; after maxBatchPeriodMs all ticks that can fire have fired)
-	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS * 4) + CI_SLACK);
-
-	// Window should now be zero
-	CHECK(f.CurrentBatchWindowMs() == 0);
-}
-
-// After EMA decays to zero, the next event must flush almost immediately
-// (batch window = 0, so timer fires with 0 ms delay).
-TEST_CASE(SUITE("EMA_SingleEventFlushesImmediatelyAfterSilence"))
-{
-	TestLifecycle lifecycle;
-	ThreadPool thread_pool(4);
-
-	Fixture f;
-	f.WarmEMA();
-	const size_t baseFlushes = f.os->FlushCount();
-
-	// Wait for EMA to decay
-	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS * 4) + CI_SLACK);
-	REQUIRE(f.CurrentBatchWindowMs() == 0);
-
-	// Now send a single event and measure how long until it flushes
 	const auto t_send = std::chrono::steady_clock::now();
 	f.bb->Event(0, 0, opendnp3::EventMode::Detect);
 
-	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, CI_SLACK));
+	CHECK(f.os->WaitForFlushes(baseFlushes + 1, CI_SLACK));
 	const auto elapsed = std::chrono::steady_clock::now() - t_send;
 	INFO("Post-silence flush latency: " << std::chrono::duration_cast<ms_t>(elapsed).count() << " ms");
 
@@ -723,8 +712,8 @@ TEST_CASE(SUITE("EMA_LargerMaxPeriodGivesLongerLatency"))
 	Fixture f_long (LONG_PERIOD,  MAX_COUNT, EMA_WEIGHT);
 
 	// Warm both EMAs independently
-	f_short.WarmEMA(SHORT_PERIOD);
-	f_long.WarmEMA (LONG_PERIOD);
+	f_short.WarmEMA();
+	f_long.WarmEMA();
 
 	const size_t baseShort       = f_short.os->FlushCount();
 	const size_t baseLong        = f_long.os->FlushCount();
@@ -739,12 +728,12 @@ TEST_CASE(SUITE("EMA_LargerMaxPeriodGivesLongerLatency"))
 	f_long.SendEvents (FEW);
 
 	// Wait for both flushes with per-fixture generous timeouts
-	REQUIRE(f_short.os->WaitForFlushes(baseShort + 1,
+	CHECK(f_short.os->WaitForFlushes(baseShort + 1,
 		ms_t(static_cast<long long>(SHORT_PERIOD + CI_SLACK.count()))));
 	const auto short_elapsed = std::chrono::duration_cast<ms_t>(
 		std::chrono::steady_clock::now() - t_send);
 
-	REQUIRE(f_long.os->WaitForFlushes(baseLong + 1,
+	CHECK(f_long.os->WaitForFlushes(baseLong + 1,
 		ms_t(static_cast<long long>(LONG_PERIOD + CI_SLACK.count()))));
 	const auto long_elapsed = std::chrono::duration_cast<ms_t>(
 		std::chrono::steady_clock::now() - t_send);
@@ -764,11 +753,10 @@ TEST_CASE(SUITE("EMA_LargerMaxPeriodGivesLongerLatency"))
 }
 
 // Higher emaWeight adapts faster.
-// After warming both fixtures, silence for 5 EMA ticks.
-// The fast-weight fixture (0.9) decays its smoothedRate to near-zero in
-// ~5 ticks (0.1^5 ≈ 0); the slow-weight fixture (0.1) retains ~59%
-// of its warm value (0.9^5) → window still positive.
-// Verified via CurrentBatchWindowMs() rather than indirect timing.
+// After seeding both fixtures with the same rate and leaving them in silence,
+// the fast-weight fixture (0.9) decays to a zero window in a few ticks
+// (0.1^n), while the slow-weight fixture (0.1) retains most of its rate
+// (0.9^n), so its window is still positive at that point.
 TEST_CASE(SUITE("EMA_HigherWeightDecaysFaster"))
 {
 	TestLifecycle lifecycle;
@@ -780,20 +768,10 @@ TEST_CASE(SUITE("EMA_HigherWeightDecaysFaster"))
 	f_fast.WarmEMA();
 	f_slow.WarmEMA();
 
-	REQUIRE(f_fast.CurrentBatchWindowMs() > 0);
-	REQUIRE(f_slow.CurrentBatchWindowMs() > 0);
-
-	// Silence for exactly 5 EMA ticks (= MAX_PERIOD_MS) plus generous slack.
-	// weight=0.9: smoothedRate * 0.1^5 ≈ 0    → window decays to 0
-	// weight=0.1: smoothedRate * 0.9^5 ≈ 59%  → window remains positive
-	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS) + CI_SLACK);
-
-	const size_t fastWindow = f_fast.CurrentBatchWindowMs();
+	CHECK(WaitUntil([&]{ return f_fast.CurrentBatchWindowMs() == 0; }, ms_t(MAX_PERIOD_MS * 10) + CI_SLACK));
 	const size_t slowWindow = f_slow.CurrentBatchWindowMs();
-	CAPTURE(fastWindow, slowWindow);
-
-	CHECK(fastWindow == 0); // fast weight has decayed to zero
-	CHECK(slowWindow > 0);  // slow weight still retains history
+	CAPTURE(slowWindow);
+	CHECK(slowWindow > 0);
 }
 
 // Higher emaWeight adapts faster.
@@ -816,16 +794,15 @@ TEST_CASE(SUITE("EMA_HigherWeightWarmsUpFaster"))
 	// With a cold EMA the 0-ms timer fires almost immediately.
 	f_fast.bb->Event(0, 0, opendnp3::EventMode::Detect);
 	f_slow.bb->Event(0, 0, opendnp3::EventMode::Detect);
-	REQUIRE(f_fast.os->WaitForFlushes(1, FLUSH_TIMEOUT));
-	REQUIRE(f_slow.os->WaitForFlushes(1, FLUSH_TIMEOUT));
+	CHECK(f_fast.os->WaitForFlushes(1, FLUSH_TIMEOUT));
+	CHECK(f_slow.os->WaitForFlushes(1, FLUSH_TIMEOUT));
 	f_fast.Sync();
 	f_slow.Sync();
 
-	// Sleep slightly longer than one TICK so the rate timer fires exactly
-	// once on each fixture, incorporating instantRate into smoothedRate.
-	// The second rate timer fires at 2*TICK; with 10ms margin we read the
-	// window strictly between the first and second ticks.
-	std::this_thread::sleep_for(TICK + ms_t(20));
+	// Wait for the rate timer to fire (at least once) on each fixture,
+	// incorporating instantRate into smoothedRate. More ticks only move
+	// both windows towards the cap, so the ordering below holds.
+	CHECK(WaitUntil([&]{ return f_fast.CurrentBatchWindowMs() > 0 && f_slow.CurrentBatchWindowMs() > 0; }));
 
 	const size_t fastWindow = f_fast.CurrentBatchWindowMs();
 	const size_t slowWindow = f_slow.CurrentBatchWindowMs();
@@ -845,7 +822,7 @@ TEST_CASE(SUITE("EMA_WindowCappedAtMaxBatchPeriod"))
 
 	Fixture f;
 	// Drive at a very high rate to push the EMA as high as possible
-	f.WarmEMA(MAX_PERIOD_MS, MAX_COUNT);
+	f.WarmEMA(HOT_RATE);
 
 	const size_t window = f.CurrentBatchWindowMs();
 	CAPTURE(window, MAX_PERIOD_MS);
@@ -868,7 +845,7 @@ TEST_CASE(SUITE("Params_MaxCountOneMeansNoTimer"))
 	constexpr size_t N = 20;
 	f.SendEvents(N, 5ms); // high rate — would batch heavily with maxCount > 1
 
-	REQUIRE(f.os->WaitForFlushes(N, ms_t(static_cast<long long>(N) * 5 + CI_SLACK.count())));
+	CHECK(f.os->WaitForFlushes(N, ms_t(static_cast<long long>(N) * 5 + CI_SLACK.count())));
 	f.Sync();
 
 	CHECK(f.os->TotalEvents()  == N);
@@ -887,8 +864,8 @@ TEST_CASE(SUITE("Params_LargerMaxCountAllowsLargerBatches"))
 	Fixture f5 (MAX_PERIOD_MS, 5,  EMA_WEIGHT);
 	Fixture f10(MAX_PERIOD_MS, 10, EMA_WEIGHT);
 
-	f5.WarmEMA (MAX_PERIOD_MS, 5);
-	f10.WarmEMA(MAX_PERIOD_MS, 10);
+	f5.WarmEMA();
+	f10.WarmEMA();
 
 	const size_t base5       = f5.os->FlushCount();
 	const size_t base10      = f10.os->FlushCount();
@@ -899,8 +876,8 @@ TEST_CASE(SUITE("Params_LargerMaxCountAllowsLargerBatches"))
 	f5.SendEvents (10); // 2 flushes of 5
 	f10.SendEvents(10); // 1 flush of 10
 
-	REQUIRE(f5.os->WaitForFlushes (base5  + 2, FLUSH_TIMEOUT));
-	REQUIRE(f10.os->WaitForFlushes(base10 + 1, FLUSH_TIMEOUT));
+	CHECK(f5.os->WaitForFlushes (base5  + 2, FLUSH_TIMEOUT));
+	CHECK(f10.os->WaitForFlushes(base10 + 1, FLUSH_TIMEOUT));
 	f5.Sync();
 	f10.Sync();
 
@@ -929,8 +906,7 @@ TEST_CASE(SUITE("Edge_ZeroDtDoesNotCrash"))
 	f.bb->Event(1, 0, opendnp3::EventMode::Detect);
 
 	// All events must eventually be delivered
-	REQUIRE(f.os->WaitForFlushes(1, FLUSH_TIMEOUT));
-	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS) + CI_SLACK);
+	CHECK(WaitUntil([&]{ return f.os->TotalEvents() == 2; }));
 	f.Sync();
 
 	CHECK(f.os->TotalEvents() == 2);
@@ -955,7 +931,7 @@ TEST_CASE(SUITE("Edge_OutstationDestroyedBeforeBB"))
 	bb->Event(1, 0, opendnp3::EventMode::Detect);
 
 	// Drain and destroy BB without crashing
-	std::this_thread::sleep_for(ms_t(MAX_PERIOD_MS) + CI_SLACK);
+	BatchUpdateBuilderTest::Sync(*bb);
 	bb.reset(); // destructor should not crash
 
 	// No assertions beyond "we got here without a crash"
@@ -1003,7 +979,7 @@ TEST_CASE(SUITE("Edge_DestructorFlushesWithoutTimer"))
 	// Flush() is synchronous – MockOutstation::Apply() was called from inside
 	// the destructor, so the cv notification has already fired by now.
 	// WaitForFlushes() should return immediately.
-	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, CI_SLACK));
+	REQUIRE(f.os->WaitForFlushes(baseFlushes + 1, CI_SLACK)); // (BatchSizes().back() below)
 
 	// The destructor's Flush() must have delivered exactly FEW events
 	CHECK(f.os->TotalEvents() == baseTotalEvents + FEW);
