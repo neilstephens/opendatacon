@@ -100,7 +100,7 @@ When this define is turned ON, there is also a separate test program/project tha
 
 ## Internal data structure
 
-TODO
+The port maps opendatacon events and controls to Conitel/Baker protocol messages, and converts received protocol data back into corresponding events.
 
 ## Configuration files and syntax
 

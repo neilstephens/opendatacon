@@ -1,14 +1,33 @@
-# opendatacon version 1.11.0
+# opendatacon version 1.11.1
 
 ## Unreleased
-  * Event translation (serialisation/deserialisation and point mapping) extracted from KafkaPort into libODC, for reuse by other ports
-    * Template and CBOR translation moved to libODC; new Lua translation (in LuaWrappers) with the same default + per-point semantics
-    * New KafkaPort options (existing config is unchanged): `DefaultLua`/`DefaultLuaFile`, per-point `Lua`/`LuaFile`
-    * Message keys can now be generated per point from a template, a CBOR structure or Lua: `KeyTranslationMethod`, `DefaultKeyTemplate`, `DefaultKeyCBORStructure`, `DefaultKeyLua`/`DefaultKeyLuaFile`, and per-point `KeyTemplate`, `KeyCBORStructure`, `KeyLua`/`KeyLuaFile`
-    * Consumers use a generated key to identify the point, so the payload needn't carry the index and event type
-    * New `KeyClashDetection` option: `WARN` (default), `STRICT`, `DYNAMIC` (allows non-static keys)
-  * C API 1.1: translation functions added to `C_ODC_HostAPI`
-    * The host now accepts C libraries built against the same major version and an equal or older minor version
+  * New ICCPPort for IEC 60870-6 TASE.2
+    * Client, server and peer roles
+    * Point reads and serving, data-set reporting, and device controls
+    * TLS and MACE certificate authentication
+    * Four-state DoubleBinary points and signed 32-bit Discrete values
+  * Lua network access
+    * TCP/TLS sockets and HTTP(S) clients and servers
+    * Controlled by `NetEnabled`
+  * DNP3 counters and frozen counters
+    * Freeze requests and counter-to-analog mapping
+  * Event translation (serialisation/deserialisation and point mapping) extracted into libODC for reuse by other ports
+    * Template, CBOR and Lua translation, with default and per-point settings
+    * Event deserialisation templates support `<POINT:xxx>` placeholders
+  * KafkaPort translation improvements
+    * Lua translation options: `DefaultLua`/`DefaultLuaFile` and per-point `Lua`/`LuaFile`
+    * Generate message keys per point using templates, CBOR or Lua
+    * Consumers can use the key to identify a point without index and event type in the payload
+    * New `KeyClashDetection` option: `WARN` (default), `STRICT`, `DYNAMIC`
+  * C API 1.1
+    * Translation functions added to `C_ODC_HostAPI`
+    * The host accepts libraries built against the same major version and an equal or older minor version
+  * Breaking configuration change: rename `PointTraslationSource` to `PointTranslationSource`
+  * SimPort fixes and improvements
+    * `RELATIVE_TOD` mode accepts a `DayStart` setting
+    * Fixed time-of-day playback wrapping
+  * Stability and shutdown fixes for sockets, DNP3, ICCP, Lua and WebUI
+  * Fixed FileTransferPort receive handling
 
 ## 1.11.0
   * New C API — implement custom Ports, Transforms, and UI plugins in C, or any language that can impement C bindings

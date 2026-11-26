@@ -1,4 +1,4 @@
----Copies of licenses referenced below are contained in 3rdPartyLicenses directory
+---Copies of some licenses referenced below are contained in the 3rdPartyLicenses directory
 
 ----------------------------------------------------------------------------------
 --------------opendatacon bundles some third party source code:-------------------
@@ -298,7 +298,8 @@
     // Distributed under the MIT License (2.0) (http://opensource.org/licenses/MIT)
     //
     //
-    // Copyright (c) <year> <copyright holders>
+    // Copyright (c) 2011-2020 Twitter, Inc.
+    // Copyright (c) 2011-2020 The Bootstrap Authors
     // Permission is hereby granted, free of charge, to any person obtaining a copy
     // of this software and associated documentation files (the "Software"), to deal
     // in the Software without restriction, including without limitation the rights
@@ -328,7 +329,7 @@
     // Distributed under the MIT License (http://opensource.org/licenses/MIT)
     //
     //
-    // Copyright (c) <year> <copyright holders>
+    // Copyright JS Foundation and other contributors, https://js.foundation/
     // Permission is hereby granted, free of charge, to any person obtaining a copy
     // of this software and associated documentation files (the "Software"), to deal
     // in the Software without restriction, including without limitation the rights
@@ -358,7 +359,7 @@
     // Distributed under the MIT License (http://opensource.org/licenses/MIT)
     //
     //
-    // Copyright (c) <year> <copyright holders>
+    // Copyright (c) 2016 Federico Zivolo and contributors
     // Permission is hereby granted, free of charge, to any person obtaining a copy
     // of this software and associated documentation files (the "Software"), to deal
     // in the Software without restriction, including without limitation the rights

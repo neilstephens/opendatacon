@@ -142,8 +142,11 @@ Plugin specific dependencies:
 * SIMPORT - Build Simulation Port
 * MD3PORT - Build MD3 Port
 * CBPORT - Build Conitel-Baker Port
+* ICCPPORT - Build ICCP (TASE.2) Port
 * FILETRANSFERPORT - Build File Transfer Port
 * LUAPORT - Build Lua Port
+* KAFKAPORT - Build Kafka Port
+* GOMODBUSPORT - Build Go Modbus Port
 * LUATRANSFORM - Build Lua Transform
 * LUALOGSINK - Build Lua log sink plugin
 * LUAUICOMMANDER - Build Lua UI command script plugin
@@ -237,6 +240,7 @@ Ports are the interface between opendatacon and the outside world. A Port transl
 *   Python port (deprecated in favour of Lua port below)
 *   Kafka producer and consumer ports
 *   GoModbus client and server ports (via C API)
+*   ICCP client and server ports (IEC 60870-6 TASE.2); see [ICCPPort documentation](Code/Ports/ICCPPort/README.md)
 *   Lua port
     * Lua port allows custom run-time port implementations
     * See the ExampleConfig directory to see how you can write your own port in Lua
