@@ -203,6 +203,7 @@ private:
 	bool EndPointResolved(std::shared_ptr<void> tracker);
 	void ServerOpen(std::shared_ptr<odc::tcp::socket> pCandidateSock, odc::tcp::endpoint endpoint, std::string addr_str, std::shared_ptr<void> tracker);
 	void ClientOpen(std::shared_ptr<odc::tcp::socket> pCandidateSock, odc::tcp::endpoint endpoint, std::string addr_str, std::shared_ptr<void> tracker);
+	void StopOpening(std::shared_ptr<void> tracker);
 	void CheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);
 	void ThrottleCheckLastWrite(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, throttle_data_t throttle_data, std::shared_ptr<void> tracker);
 	void WriteBuffer(std::shared_ptr<odc::tcp::socket> pWriteSock, std::string remote_addr_str, std::shared_ptr<void> tracker);

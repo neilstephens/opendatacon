@@ -364,8 +364,9 @@ TEST_CASE(SUITE("ManyStrings"))
 		pSockMan2->Write(std::string(std::move(data2)));
 	}
 
-	interrupt_timer1.reset();
-	interrupt_timer2.reset();
+	//(cancelled, not reset: a handler may be running)
+	interrupt_timer1->cancel();
+	interrupt_timer2->cancel();
 	stop_timer.reset();
 
 	//just in case some interrupts were queued

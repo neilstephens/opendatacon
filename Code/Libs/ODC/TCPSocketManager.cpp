@@ -99,10 +99,7 @@ void TCPSocketManager::Close(unsigned int abort_after_ms)
 			manuallyClosed = true;
 			ramp_time_ms = 0;
 			pRetryTimer->cancel();
-			for(auto& ps : CandidatepSocks)
-				ps->close();
-			CandidatepSocks.clear();
-			pAcceptor.reset();
+			StopOpening(tracker);
 			close_abort_ms = abort_after_ms;
 			if(!isConnected)
 				return;
@@ -138,6 +135,43 @@ TCPSocketManager::~TCPSocketManager()
 
 //----------------Public^^^
 //----------------Private
+
+void TCPSocketManager::StopOpening(std::shared_ptr<void> tracker)
+{
+	for(auto it = CandidatepSocks.begin(); it != CandidatepSocks.end();)
+	{
+		std::error_code ec;
+		(*it)->remote_endpoint(ec);
+		if(ec)
+		{
+			(*it)->close();
+			it = CandidatepSocks.erase(it);
+		}
+		else        // Connected socket who's handler hasn't run
+			++it; // Leave it for the handler to close gracefully
+	}
+	if(!pAcceptor)
+		return;
+	std::error_code ec, addr_ec;
+	const auto local_end = pAcceptor->local_endpoint(addr_ec);
+	const auto local_str = local_end.address().to_string()+":"+std::to_string(local_end.port());
+	pAcceptor->non_blocking(true,ec);
+	while(!ec) // Drain any accept backlog that async_accept hasn't got to
+	{
+		std::shared_ptr<odc::tcp::socket> pAccepted = pIOS->make_tcp_socket();
+		pAcceptor->accept(*pAccepted,ec);
+		if(!ec)
+		{
+			const auto remote_end = pAccepted->remote_endpoint(addr_ec);
+			const auto remote_str = remote_end.address().to_string()+":"+std::to_string(remote_end.port());
+			pSockStrand->post([=,this]()
+				{
+					ConnectCompletionHandler(tracker,std::error_code(),pAccepted,local_str,remote_str);
+				});
+		}
+	}
+	pAcceptor.reset();
+}
 
 //the peer is expected to close its side when it sees ours shut. If it doesn't, the socket is closed.
 void TCPSocketManager::ArmCloseTimer(std::shared_ptr<void> tracker)
